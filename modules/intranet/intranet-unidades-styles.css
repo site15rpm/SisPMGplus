@@ -1,0 +1,478 @@
+/* Arquivo: intranet-unidades-styles.css */
+/* Estilos para o Módulo de Extração de Unidades */
+/* Refatorado: Correção de dimensionamento de botões e harmonia visual */
+
+/* Overlay do Modal - Escopado no container principal para alta especificidade */
+#sispmg-plus-container .sispmg-unidades-modal-overlay {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    background-color: rgba(0, 0, 0, 0.6) !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    z-index: 10002 !important;
+    padding: 10px;
+    box-sizing: border-box;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+}
+
+/* Container Principal do Modal */
+#sispmg-plus-container #sispmg-unidades-modal-container {
+    background-color: #fbf8f5 !important;
+    border: 1px solid #dcd3c5 !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+    display: flex;
+    flex-direction: column;
+    height: 90vh;
+    max-height: 95vh;
+    width: 100%;
+    /* Mantém a largura maior */
+    max-width: 900px; /* Ajustado para acomodar 2 colunas confortavelmente */
+    animation: sispmgfadeIn 0.2s ease-out !important;
+    overflow: hidden;
+}
+
+/* Wrapper Interno do Modal */
+#sispmg-plus-container #sispmg-unidades-modal-container .sispmg-plus-modal {
+    position: relative !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    animation: none !important;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    padding: 0 !important;
+    min-width: unset !important;
+    width: 100% !important;
+    overflow: hidden;
+}
+
+/* Corpo do Modal (Scrollável) */
+#sispmg-plus-container #sispmg-unidades-modal-container .sispmg-modal-body-content {
+    overflow-y: auto;
+  padding: 15px;
+  flex-grow: 1;
+}
+
+/* Cabeçalho */
+#sispmg-plus-container #sispmg-unidades-modal .sispmg-menu-header {
+    padding-right: 40px !important;
+    flex-shrink: 0;
+}
+
+/* Botão Fechar (X) */
+#sispmg-plus-container #sispmg-unidades-modal .sispmg-modal-close-btn {
+    all: unset;
+    box-sizing: border-box !important;
+    position: absolute !important;
+    top: 50% !important;
+    right: 15px !important;
+    transform: translateY(-50%) !important;
+    width: 24px !important;
+    height: 24px !important;
+    font-size: 20px !important;
+    line-height: 24px !important;
+    text-align: center !important;
+    color: #888 !important;
+    cursor: pointer !important;
+    border-radius: 4px !important;
+    transition: background-color 0.2s, color 0.2s !important;
+}
+#sispmg-plus-container #sispmg-unidades-modal .sispmg-modal-close-btn:hover {
+    background-color: #EFE6DD !important;
+    color: #333 !important;
+}
+
+
+#sispmg-plus-container #sispmg-unidades-modal .sispmg-modal-actions {
+    display: flex !important;
+    justify-content: flex-end !important;
+    flex-wrap: wrap;
+    gap: 10px !important;
+    padding: 15px !important;
+    border-top: 1px solid #dcd3c5 !important;
+    flex-shrink: 0;
+    background-color: #fbf8f5;
+}
+
+#sispmg-plus-container #sispmg-unidades-modal .sispmg-modal-actions #unidades-extract-now-btn {
+    margin-right: auto !important; /* Empurra para esquerda */
+}
+
+#sispmg-plus-container #sispmg-unidades-modal .sispmg-modal-actions button,
+#sispmg-plus-container #unidades-clear-history-btn  {
+    box-sizing: border-box !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 8px 16px !important;
+    font-size: 13px !important;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+    font-weight: 600 !important;
+    border-radius: 6px !important;
+    border: 1px solid transparent !important;
+    cursor: pointer !important;
+    transition: background-color 0.2s, border-color 0.2s !important;
+    margin-bottom: 5px;
+}
+#sispmg-plus-container #sispmg-unidades-modal .sispmg-modal-actions button:disabled {
+    opacity: 0.6 !important;
+    cursor: not-allowed !important;
+}
+
+/* Estilos de Botão Padronizados e Robustos */
+#sispmg-plus-container .sispmg-modal-btn-primary,
+#sispmg-plus-container .sispmg-modal-btn-secondary {
+    box-sizing: border-box !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    
+    /* Dimensionamento Fixo/Mínimo */
+    min-height: 38px !important;
+    min-width: 110px !important; /* Evita botões muito estreitos */
+    width: auto !important; /* Previne width:100% herdado */
+    padding: 0 16px !important;
+    
+    font-size: 13px !important;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+    font-weight: 600 !important;
+    line-height: 1.5 !important;
+    white-space: nowrap !important; /* Previne quebra de linha interna */
+    
+    border-radius: 4px !important;
+    border: 1px solid transparent !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease-in-out !important;
+    text-shadow: none !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1) !important;
+}
+
+/* Botão Primário */
+#sispmg-plus-container .sispmg-modal-btn-primary {
+    background-color: #b3a368 !important;
+    color: white !important;
+    border-color: #b3a368 !important;
+}
+#sispmg-plus-container .sispmg-modal-btn-primary:hover:not(:disabled) {
+    background-color: #9e8f57 !important;
+    border-color: #9e8f57 !important;
+}
+
+/* Botão Secundário */
+#sispmg-plus-container .sispmg-modal-btn-secondary {
+    background-color: #fbf8f5 !important;
+    color: #574e2d !important;
+    border-color: #dcd3c5 !important;
+}
+#sispmg-plus-container .sispmg-modal-btn-secondary:hover:not(:disabled) {
+    background-color: #f4f0e6 !important;
+    border-color: #b3a368 !important;
+    color: #333 !important;
+}
+
+#sispmg-plus-container button:disabled {
+    opacity: 0.6 !important;
+    cursor: not-allowed !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+
+/* Grid de Formulário (2 Colunas) */
+#sispmg-plus-container .sispmg-unidades-modal-form-grid {
+    display: grid !important;
+    /* Ajuste: 2 colunas */
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 15px !important;
+    font-size: 13px !important;
+    /* Ajuste: Faz colunas terem a mesma altura */
+    align-items: stretch !important;
+    margin-bottom: 15px; /* Espaço antes do histórico */
+}
+
+/* Seções (Cards Brancos) */
+#sispmg-plus-container .sispmg-unidades-form-section {
+    background-color: #fff !important;
+    padding: 12px !important;
+    border: 1px solid #dcd3c5 !important;
+    border-radius: 6px !important;
+    /* Ajuste: Adicionado para garantir que o flex funcione internamente se necessário */
+    display: flex;
+    flex-direction: column;
+}
+
+#sispmg-plus-container .sispmg-unidades-form-section h4 {
+    font-size: 14px !important;
+    margin-top: 0 !important;
+    margin-bottom: 12px !important;
+    padding-bottom: 8px !important;
+    border-bottom: 1px solid #EFE6DD !important;
+    color: #b3a368 !important;
+    font-weight: 600 !important;
+}
+
+/* Inputs e Labels */
+#sispmg-plus-container .sispmg-unidades-form-group {
+    margin-bottom: 12px !important;
+}
+
+#sispmg-plus-container .sispmg-unidades-form-group label {
+    display: block !important;
+    margin-bottom: 4px !important;
+    font-weight: 500 !important;
+    font-size: 13px !important;
+    padding: 0 !important;
+    line-height: normal !important;
+    width: auto !important;
+}
+
+
+#sispmg-plus-container .sispmg-unidades-form-group small {
+    font-size: 11px !important;
+    color: #6c757d !important;
+    margin-top: 4px !important;
+    display: block !important;
+}
+
+/* Padronização de Altura dos Inputs */
+#sispmg-plus-container .sispmg-unidades-form-group input[type="text"],
+#sispmg-plus-container .sispmg-unidades-form-group select {
+    all: unset;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    padding: 6px 8px !important;
+    border: 1px solid #dcd3c5 !important;
+    border-radius: 4px !important;
+    background-color: #fff !important;
+    font-size: 13px !important;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+    color: #333 !important;
+}
+
+
+/* Checkboxes */
+#sispmg-plus-container .sispmg-unidades-checkbox-group {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 6px !important;
+    margin-top: 8px !important;
+}
+
+#sispmg-plus-container .sispmg-unidades-checkbox-group label {
+    display: flex !important;
+    align-items: center !important;
+    font-weight: normal !important;
+    cursor: pointer !important;
+    font-size: 13px !important;
+    width: auto !important;
+    line-height: normal !important;
+}
+
+#sispmg-plus-container .sispmg-unidades-checkbox-group input {
+    all: unset;
+    width: 13px !important;
+    height: 13px !important;
+    border: 1px solid #dcd3c5 !important;
+    border-radius: 3px !important;
+    margin-right: 6px !important;
+    display: inline-block !important;
+    position: relative !important;
+    vertical-align: middle !important;
+    background-color: #fff;
+    flex-shrink: 0;
+}
+
+#sispmg-plus-container .sispmg-unidades-checkbox-group input:checked::before {
+    content: '' !important;
+    position: absolute !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    width: 7px !important;
+    height: 7px !important;
+    background-color: #b3a368 !important;
+    border-radius: 2px;
+}
+
+
+#sispmg-plus-container .sispmg-unidades-form-group input:focus,
+#sispmg-plus-container .sispmg-unidades-form-group select:focus {
+    border-color: #b3a368 !important;
+    box-shadow: 0 0 0 2px rgba(179, 163, 104, 0.2) !important;
+}
+
+#sispmg-plus-container .sispmg-unidades-checkbox-group input:checked {
+    background-color: #b3a368 !important;
+    border-color: #b3a368 !important;
+}
+
+/* Separadores */
+#sispmg-plus-container hr {
+    border: none !important;
+    border-top: 1px solid #EFE6DD !important;
+    margin: 15px 0 !important;
+}
+
+/* Seção de Histórico */
+#sispmg-plus-container .sispmg-unidades-history-section {
+    /* Ajuste: Ocupa toda a largura abaixo do grid principal */
+    grid-column: 1 / -1;
+    /* Remove a necessidade de definir grid-row */
+    display: flex; /* Mantém flex para alinhamento interno */
+    flex-direction: column;
+    background-color: #fff !important;
+    padding: 12px !important;
+    border: 1px solid #dcd3c5 !important;
+    border-radius: 6px !important;
+    margin-top: 0; /* Removido, grid-gap já espaça */
+}
+
+#sispmg-plus-container .sispmg-unidades-column-header {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    margin-bottom: 8px !important;
+    padding-bottom: 8px !important;
+    border-bottom: 1px solid #EFE6DD !important;
+}
+
+#sispmg-plus-container .sispmg-unidades-history-section h4 {
+    border: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    font-size: 14px !important;
+    color: #b3a368 !important;
+}
+
+#sispmg-plus-container #unidades-clear-history-btn {
+    background: #6c757d !important;
+    color: white !important;
+    padding: 4px 8px !important;
+    font-size: 11px !important;
+    margin-bottom: 0;
+}
+
+#sispmg-plus-container #unidades-clear-history-btn:hover { background-color: #5a6268 !important; }
+
+#sispmg-plus-container .sispmg-unidades-history-log {
+    /* Ajuste: Altura fixa novamente, pode ajustar se preferir */
+    height: 400px !important;
+    /* Mantém flex-grow se quiser que ocupe espaço caso haja altura disponível */
+    /* flex-grow: 1; */
+    min-height: 300px; /* Reduzido um pouco */
+    max-height: 600px; /* Reduzido um pouco */
+    background-color: #212529 !important;
+    color: #f8f9fa !important;
+    border-radius: 4px !important;
+    padding: 8px !important;
+    overflow-y: auto !important;
+    font-family: 'Courier New', Courier, monospace !important;
+    font-size: 11px !important;
+    line-height: 1.4 !important;
+}
+
+
+#sispmg-plus-container .sispmg-unidades-log-entry { margin-bottom: 4px !important; }
+#sispmg-plus-container .sispmg-unidades-log-timestamp { color: #888 !important; margin-right: 6px !important; }
+#sispmg-plus-container .sispmg-unidades-log-system { font-weight: bold !important; }
+#sispmg-plus-container .sispmg-unidades-log-info .sispmg-unidades-log-system { color: #17a2b8 !important; }
+#sispmg-plus-container .sispmg-unidades-log-success .sispmg-unidades-log-system { color: #28a745 !important; }
+#sispmg-plus-container .sispmg-unidades-log-error .sispmg-unidades-log-system { color: #dc3545 !important; }
+
+/* --- Estilos do Modal de Confirmação --- */
+#sispmg-plus-container .sispmg-confirmation-modal-overlay {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    background-color: rgba(0, 0, 0, 0.7) !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    z-index: 10003 !important;
+    animation: sispmgfadeIn 0.15s ease-out !important;
+}
+
+#sispmg-plus-container .sispmg-confirmation-modal-content {
+    background-color: #fbf8f5 !important;
+    padding: 20px !important;
+    border-radius: 8px !important;
+    border: 1px solid #dcd3c5 !important;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3) !important;
+    text-align: center !important;
+    max-width: 350px !important;
+    width: 90% !important;
+    font-size: 14px !important;
+    color: #333 !important;
+}
+
+#sispmg-plus-container .sispmg-confirmation-modal-content p {
+    margin: 0 0 20px 0 !important;
+    line-height: 1.5 !important;
+}
+
+#sispmg-plus-container .sispmg-confirmation-modal-actions {
+    display: flex !important;
+    justify-content: center !important;
+    gap: 10px !important;
+}
+
+#sispmg-plus-container .sispmg-confirmation-modal-actions button {
+     box-sizing: border-box !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 8px 16px !important;
+    font-size: 13px !important;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+    font-weight: 600 !important;
+    border-radius: 6px !important;
+    border: 1px solid transparent !important;
+    cursor: pointer !important;
+    transition: background-color 0.2s, border-color 0.2s !important;
+}
+#sispmg-plus-container .sispmg-confirmation-modal-actions #sispmg-confirm-btn {
+     background-color: #b3a368 !important;
+     color: white !important;
+     border-color: #b3a368 !important;
+}
+#sispmg-plus-container .sispmg-confirmation-modal-actions #sispmg-confirm-btn:hover {
+     background-color: #9e8f57 !important;
+     border-color: #9e8f57 !important;
+}
+#sispmg-plus-container .sispmg-confirmation-modal-actions #sispmg-cancel-btn {
+     background-color: #fbf8f5 !important;
+     color: #574e2d !important;
+     border-color: #dcd3c5 !important;
+}
+#sispmg-plus-container .sispmg-confirmation-modal-actions #sispmg-cancel-btn:hover {
+     background-color: #EFE6DD !important;
+     border-color: #c9bfae !important;
+}
+
+/* Responsividade */
+@media (max-width: 750px) {
+    #sispmg-plus-container #sispmg-unidades-modal-container {
+         max-width: 95vw;
+         max-height: 90vh;
+    }
+    #sispmg-plus-container .sispmg-unidades-modal-form-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    #sispmg-plus-container #sispmg-unidades-modal .sispmg-modal-actions #unidades-extract-now-btn {
+        order: 1 !important;
+    }
+}
+
+@keyframes sispmgfadeIn {
+  from { opacity: 0; transform: scale(0.98); }
+  to { opacity: 1; transform: scale(1); }
+}
