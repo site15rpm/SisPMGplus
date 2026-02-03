@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Configurações SisPMG+</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="popup-container">
+        <h3>SisPMG+</h3>
+
+        <div class="popup-section">
+            <p class="section-title">Módulo Terminal</p>
+            <div class="toggle-label">
+                <span>Ativar TerminalPMG+</span>
+                <label class="switch">
+                    <input type="checkbox" id="terminalModuleEnabled" checked>
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </div>
+
+        <div class="popup-section">
+            <p class="section-title">Módulos Intranet</p>
+            <div class="toggle-label">
+                <span>Ativar IntranetPMG+ (Geral)</span>
+                <label class="switch">
+                    <input type="checkbox" id="intranetModuleEnabled" checked>
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <div id="intranet-submodules">
+                <div class="toggle-label">
+                    <span>- PAdm+</span>
+                    <label class="switch">
+                        <input type="checkbox" id="padmModuleEnabled" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="toggle-label">
+                    <span>- Aniversariantes+</span>
+                    <label class="switch">
+                        <input type="checkbox" id="aniverModuleEnabled" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="toggle-label">
+                    <span>- SIRCONV+</span>
+                    <label class="switch">
+                        <input type="checkbox" id="sirconvModuleEnabled" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Seção do Novo Módulo de Abastecimentos -->
+        <div class="popup-section">
+            <p class="section-title">Módulo Abastecimentos</p>
+            <button id="abastecimentos-settings-btn" class="btn btn-full-width">Configurar Extração de Dados</button>
+        </div>
+
+        <div id="data-management" class="popup-section">
+             <p class="section-title">Gerenciamento de Dados</p>
+             <p class="reset-info">Use estas opções para limpar dados salvos e resolver problemas.</p>
+             <button id="reset-aniver-btn" class="btn btn-reset">Restaurar Padrões (Aniversariantes)</button>
+             <button id="reset-terminal-profiles-btn" class="btn btn-reset">Limpar Perfis (Terminal)</button>
+        </div>
+        
+    </div>
+
+    <!-- Modal de Confirmação -->
+    <div id="popup-modal-backdrop" class="sispmg-modal-backdrop hidden">
+        <div class="sispmg-modal">
+            <div class="sispmg-modal-content">
+                <p id="popup-modal-message"></p>
+            </div>
+            <div class="sispmg-modal-actions">
+                <button id="popup-modal-cancel-btn" class="btn">Cancelar</button>
+                <button id="popup-modal-confirm-btn" class="btn">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="popup-footer">
+        Um projeto de<br>
+        Cleriston Tameirão Silva<br>
+        Todos os direitos reservados.<br>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html>

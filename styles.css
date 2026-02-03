@@ -1,0 +1,183 @@
+/* Arquivo: styles.css */
+/* Contém os estilos para o popup.html da extensão. */
+
+/* --- Variáveis de Cor --- */
+:root {
+    --theme-green: #00D200;
+    --theme-pastel-bg: #EFE6DD;
+    --theme-dark-gold: #574e2d;
+    --theme-border: #dcd3c5;
+    --theme-light-gold: #b3a368;
+}
+
+/* --- Estilos Globais e do Popup --- */
+body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background-color: var(--theme-pastel-bg);
+    min-width: 280px;
+}
+
+.popup-container {
+    padding: 0 15px 10px 15px;
+    background-color: var(--theme-pastel-bg);
+}
+
+.popup-container h3 {
+    color: var(--theme-dark-gold);
+    text-align: center;
+    border-bottom: 1px solid var(--theme-border);
+    padding-bottom: 10px;
+    margin: 15px 0;
+}
+
+.popup-section {
+    padding: 10px 0;
+    border-bottom: 1px solid var(--theme-border);
+}
+.popup-section:last-of-type {
+    border-bottom: none;
+}
+
+.section-title {
+    font-size: 11px;
+    font-weight: bold;
+    color: var(--theme-light-gold, #b3a368);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+}
+
+.toggle-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14px;
+    cursor: pointer;
+    color: var(--theme-dark-gold);
+    margin-bottom: 10px;
+}
+.toggle-label:last-child {
+    margin-bottom: 0;
+}
+
+#intranet-submodules {
+    transition: opacity 0.3s ease;
+}
+
+.popup-footer {
+    text-align: center;
+    font-size: 11px;
+    color: #999;
+    margin-top: 10px;
+    border-top: 1px solid var(--theme-border);
+    padding-top: 10px;
+}
+
+/* --- Componentes --- */
+
+/* Botão Genérico */
+.btn {
+    width: 100%;
+    padding: 8px;
+    font-size: 13px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-bottom: 8px;
+    text-align: center;
+    font-weight: 500;
+    transition: background-color 0.2s, border-color 0.2s;
+    box-sizing: border-box;
+}
+.btn:last-child {
+    margin-bottom: 0;
+}
+.btn-full-width {
+    background-color: var(--theme-light-gold);
+    border-color: var(--theme-dark-gold);
+    color: white;
+}
+.btn-full-width:hover {
+    opacity: 0.9;
+}
+
+
+/* Switch (toggle) */
+.switch { position: relative; display: inline-block; width: 50px; height: 28px; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 28px; }
+.slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+input:checked + .slider { background-color: var(--theme-green); }
+input:checked + .slider:before { transform: translateX(22px); }
+
+/* Seção de Gerenciamento de Dados */
+#data-management p.reset-info {
+    font-size: 12px;
+    color: #666;
+    margin-top: 0;
+    margin-bottom: 12px;
+    text-align: center;
+    line-height: 1.4;
+}
+
+#data-management .btn-reset {
+    background-color: #f0f0f0;
+    border-color: #ccc;
+    color: #333;
+}
+#data-management .btn-reset:hover {
+    background-color: #e0e0e0;
+}
+
+/* Estilos do Modal do Popup */
+.sispmg-modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.sispmg-modal-backdrop.hidden {
+    display: none;
+}
+.sispmg-modal {
+    background: var(--theme-pastel-bg);
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid var(--theme-border);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    width: 90%;
+    max-width: 260px;
+    text-align: center;
+}
+.sispmg-modal-content p {
+    margin: 0 0 15px 0;
+    color: var(--theme-dark-gold);
+    font-size: 14px;
+    line-height: 1.5;
+}
+.sispmg-modal-actions {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+.sispmg-modal-actions .btn {
+    padding: 6px 12px;
+    font-size: 13px;
+    border-radius: 4px;
+    cursor: pointer;
+    border: 1px solid #ccc;
+    background-color: #f0f0f0;
+    width: auto; /* Sobrescreve o .btn genérico */
+    margin-bottom: 0;
+}
+#popup-modal-confirm-btn {
+    background-color: var(--theme-light-gold);
+    color: white;
+    border-color: var(--theme-dark-gold);
+}

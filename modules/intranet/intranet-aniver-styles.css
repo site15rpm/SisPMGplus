@@ -1,0 +1,209 @@
+/* Arquivo: modules/intranet/intranet-aniver-styles.css */
+/* Contém os estilos para os lembretes e modal de configuração de aniversariantes */
+
+@keyframes sispmgBirthdayGlow {
+    0%, 100% {
+        color: #000000;
+        text-shadow: 0 0 4px #17c500;
+    }
+    50% {
+        color: #000000;
+        text-shadow: 0 0 0px #ffffff;
+    }
+}
+
+/* Notificação e Modal de Aniversariantes */
+#sispmg-birthday-notification {
+    position: fixed !important; bottom: 20px; right: -400px;
+    width: 350px !important; background-color: #fbf8f5 !important; border: 1px solid #dcd3c5 !important;
+    border-radius: 8px !important; box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+    padding: 16px !important; z-index: 9998 !important; transition: right 0.5s ease-in-out !important;
+    max-height: 80vh !important; display: flex !important; flex-direction: column !important;
+}
+#sispmg-birthday-notification.visible { right: 20px !important; }
+.sispmg-birthday-title {
+    font-size: 16px !important; font-weight: 600 !important; margin-bottom: 12px !important;
+    border-bottom: 1px solid #dcd3c5 !important; padding-bottom: 8px !important;
+    display: flex !important; align-items: center !important; gap: 8px !important; flex-shrink: 0 !important;
+    position: relative !important;
+}
+.sispmg-birthday-content-wrapper {
+    overflow-y: auto !important;
+    flex-grow: 1 !important;
+}
+.sispmg-birthday-section { margin-bottom: 10px !important; }
+.sispmg-birthday-section:last-child { margin-bottom: 0 !important; }
+.sispmg-birthday-section ul {
+    margin: 8px 0 0 0 !important; padding-left: 0 !important; font-size: 14px !important;
+    list-style-type: none !important;
+}
+.sispmg-birthday-item {
+    padding-bottom: 4px !important; margin-bottom: 4px !important;
+}
+.sispmg-birthday-name { font-weight: 500 !important; }
+.sispmg-birthday-name.sispmg-birthday-today {
+    animation: sispmgBirthdayGlow 2s infinite !important;
+    font-weight: bold !important;
+}
+.sispmg-birthday-unit { font-size: 12px !important; color: #888 !important; margin-top: 2px !important; }
+.sispmg-birthday-separator { height: 1px !important; background-color: #e0e0e0 !important; margin: 12px 0 !important; }
+
+.sispmg-modal-close-btn {
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    position: absolute !important;
+    top: 4px !important;
+    right: 4px !important;
+    z-index: 10 !important;
+    width: 30px !important;
+    height: 30px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 24px !important;
+    font-weight: bold !important;
+    color: #888 !important;
+    cursor: pointer !important;
+    line-height: 1 !important;
+    border-radius: 50% !important;
+    transition: background-color 0.2s !important;
+}
+.sispmg-modal-close-btn:hover {
+    color: #333 !important;
+    background-color: rgba(0,0,0,0.1) !important;
+}
+
+
+/* Estilos para o Modal de Configuração de Aniversariantes */
+.sispmg-plus-modal {
+    width: 600px !important;
+    min-width: 550px !important;
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    display: flex !important;
+    max-height: 90vh !important;
+    flex-direction: column !important;
+}
+
+.sispmg-modal-body-content {
+    padding: 10px !important;
+    overflow-y: auto !important;
+    flex-grow: 1 !important;
+}
+
+.sispmg-config-row { display: flex !important; flex-direction: column; align-items: flex-start; margin-bottom: 15px; gap: 8px; }
+.sispmg-config-row label { font-weight: 500 !important; }
+.sispmg-config-row select, .sispmg-config-row input {
+    all: unset;
+    box-sizing: border-box !important;
+    border: 1px solid #dcd3c5 !important; border-radius: 4px !important; padding: 6px 8px !important;
+    background-color: #fff !important; color: #333 !important; width: 100% !important; font-size: 14px !important;
+}
+.sispmg-config-row.days-ahead-container {
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+}
+#sispmg-plus-container .sispmg-config-row.days-ahead-container label {
+    flex-grow: 1 !important;
+    display: block !important;
+}
+
+
+.sispmg-config-row input[type="number"] {
+    width: 80px !important;
+    text-align: center !important;
+}
+
+.sispmg-config-toggle { flex-direction: row !important; justify-content: space-between !important; align-items: center !important; }
+
+.sispmg-unit-selector {
+    display: flex !important;
+    gap: 10px !important;
+    width: 100% !important;
+    align-items: center !important;
+    flex-direction: row !important;
+}
+.sispmg-unit-list-container {
+    flex: 1 !important;
+    border: 1px solid #dcd3c5 !important;
+    border-radius: 4px !important;
+    height: 200px !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+.sispmg-unit-list-container label, .sispmg-unit-list-container input {
+    padding: 6px 8px !important;
+    font-weight: bold !important;
+    font-size: 13px !important;
+    border-bottom: 1px solid #dcd3c5 !important;
+    background-color: #EFE6DD !important;
+    width: 100% !important;
+    border-radius: 3px 3px 0 0 !important;
+    border-top: none !important;
+    border-left: none !important;
+    border-right: none !important;
+}
+.sispmg-unit-list-container input {
+    font-weight: normal !important;
+}
+
+.sispmg-unit-list-container ul {
+    list-style: none !important;
+    margin: 0 !important;
+    padding: 5px !important;
+    overflow-y: auto !important;
+    flex-grow: 1 !important;
+}
+.sispmg-unit-list-container ul li {
+    padding: 5px 8px !important;
+    cursor: pointer !important;
+    border-radius: 3px !important;
+    font-size: 13px !important;
+}
+.sispmg-unit-list-container ul li:hover {
+    background-color: #EFE6DD !important;
+}
+.sispmg-unit-list-container ul li.selected {
+    background-color: #b3a368 !important;
+    color: white !important;
+}
+.sispmg-unit-controls {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+}
+.sispmg-unit-controls button {
+    all: unset !important;
+    box-sizing: border-box !important;
+    border: 1px solid #dcd3c5 !important;
+    background-color: #f0f0f0 !important;
+    width: 30px !important;
+    height: 30px !important;
+    border-radius: 4px !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+.sispmg-unit-controls button:hover {
+    background-color: #EFE6DD !important;
+}
+
+
+.sispmg-modal-actions {
+    margin-top: 20px !important; display: flex !important; gap: 10px !important; justify-content: flex-end !important;
+    padding: 0 10px 10px !important;
+}
+.sispmg-modal-actions button {
+    all: unset !important; box-sizing: border-box !important;
+    padding: 8px 16px !important; border-radius: 6px !important; cursor: pointer !important;
+    font-weight: 500 !important;
+}
+.sispmg-modal-btn-primary { background-color: #007bff !important; color: white !important; }
+.sispmg-modal-btn-primary:hover { background-color: #0056b3 !important; }
+.sispmg-modal-btn-secondary { background-color: #e9ecef !important; color: #212529 !important; }
+.sispmg-modal-btn-secondary:hover { background-color: #d3d9df !important; }
