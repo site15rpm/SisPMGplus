@@ -16,9 +16,9 @@ const GAS_URL = 'https://script.google.com/macros/s/AKfycbwrgsnhG3ACcNFvCOOU-jjo
 const SIRCONV_JSON_URL = 'https://intranet.policiamilitar.mg.gov.br/lite/convenio/web/convenio/meus-convenios?pesquisa=%7B%22preposto%22:%22%22,%22numeroConvenio%22:%22%22,%22numeroFace%22:%22%22,%22todasUnidades%22:%22%22,%22unidade%22:%22%22,%22status%22:%22%22,%22dtInicio1%22:null,%22dtInicio2%22:null,%22dtFim1%22:null,%22dtFim2%22:null%7D';
 
 // --- LOGS ---
-async function addLog(message, type = 'info') {
+async function addLog(message, system = 'CONVÊNIOS', type = 'info') {
     const timestamp = new Date().toLocaleString('pt-BR');
-    const entry = { timestamp, message, type };
+    const entry = { timestamp, message, system, type };
     
     const { [LOGS_KEY]: logs = [] } = await chrome.storage.local.get(LOGS_KEY);
     logs.unshift(entry);
@@ -73,7 +73,7 @@ async function markAsRunToday(userId) {
 // --- EXTRAÇÃO (VIA JSON) ---
 async function fetchAndParseData() {
     try {
-        await addLog('Iniciando requisição JSON ao SIRCONV...', 'process');
+        await addLog('Iniciando requisição JSON ao SIRCONV...', 'SISTEMA', 'process');
         
         const response = await fetch(SIRCONV_JSON_URL, {
             method: 'GET',
@@ -93,11 +93,11 @@ async function fetchAndParseData() {
             throw new Error("Formato de resposta inválido (array 'convenios' não encontrado).");
         }
 
-        await addLog(`Dados obtidos com sucesso: ${convenios.length} convênios.`, 'success');
+        await addLog(`Dados obtidos com sucesso: ${convenios.length} convênios.`, 'SISTEMA', 'success');
         return convenios;
 
     } catch (error) {
-        await addLog(`Erro na extração de dados: ${error.message}`, 'error');
+        await addLog(`Erro na extração de dados: ${error.message}`, 'SISTEMA', 'error');
         throw error;
     }
 }
@@ -130,7 +130,7 @@ async function syncToGas(data, userId) {
     
     const csvContent = csvRows.join('\n');
 
-    await addLog(`Enviando ${data.length} registros para o GAS...`, 'process');
+    await addLog(`Enviando ${data.length} registros para o GAS...`, 'SISTEMA', 'process');
 
     const response = await fetch(GAS_URL, {
         method: 'POST',
@@ -151,12 +151,12 @@ async function syncToGas(data, userId) {
     try {
         const jsonResp = await response.json();
         if (!jsonResp.success) throw new Error(jsonResp.message || 'Erro desconhecido no GAS');
-        await addLog('Sincronização com GAS concluída com sucesso.', 'success');
+        await addLog('Sincronização com GAS concluída com sucesso.', 'SISTEMA', 'success');
     } catch (e) {
         // Ignora erro de JSON se for redirect opaco (sucesso)
         console.warn('SisPMG+ [Sirconv Convenios]: Resposta não-JSON do GAS (pode ser redirect), assumindo sucesso se HTTP OK.', e);
         if (response.ok || response.status === 302) {
-            await addLog('Sincronização com GAS concluída (redirect).', 'success');
+            await addLog('Sincronização com GAS concluída (redirect).', 'SISTEMA', 'success');
         } else {
             throw e;
         }
@@ -188,17 +188,17 @@ async function checkTrigger(userContext) {
 
 async function runProcess(userId = null) {
     try {
-        await addLog('=== Processo de extração iniciado ===', 'start');
+        await addLog('=== Processo de extração iniciado ===', 'SISTEMA', 'start');
         
         const data = await fetchAndParseData();
         
         if (data.length === 0) {
-            await addLog('Nenhum convênio encontrado para extração.', 'info');
+            await addLog('Nenhum convênio encontrado para extração.', 'SISTEMA', 'info');
             return;
         }
         
         await syncToGas(data, userId || 'manual');
-        await addLog('=== Processo concluído com sucesso ===', 'success');
+        await addLog('=== Processo concluído com sucesso ===', 'SISTEMA', 'success');
 
         // Marca como executado hoje para este usuário (apenas em execuções automáticas)
         if (userId) {
@@ -207,7 +207,7 @@ async function runProcess(userId = null) {
 
     } catch (error) {
         console.error("SisPMG+ [Sirconv Convenios Error]:", error);
-        await addLog(`❌ Erro no processo: ${error.message}`, 'error');
+        await addLog(`❌ Erro no processo: ${error.message}`, 'SISTEMA', 'error');
     }
 }
 
@@ -223,26 +223,18 @@ export function handleSirconvConveniosMessages(request, sender, sendResponse) {
             return true;
 
         case 'sirconv-convenios-clear-logs':
-            chrome.storage.local.set({ [LOGS_KEY]: [] })
-                .then(() => {
-                    sendResponse({ success: true });
-                    // Notifica sobre a limpeza
-                    chrome.tabs.query({}, (tabs) => {
-                        tabs.forEach(tab => {
-                            chrome.tabs.sendMessage(tab.id, { 
-                                action: 'sirconv-convenios-logs-updated', 
-                                logs: [] 
-                            }).catch(() => {});
-                        });
-                    });
-                })
-                .catch(err => sendResponse({ success: false, error: err.message }));
+            (async () => {
+                await chrome.storage.local.set({ [LOGS_KEY]: [] });
+                await addLog('Histórico de execuções foi limpo.', 'SISTEMA', 'info');
+                const { [LOGS_KEY]: logs } = await chrome.storage.local.get(LOGS_KEY);
+                sendResponse({ success: true, logs: logs || [] });
+            })();
             return true;
 
         case 'sirconv-convenios-manual-run':
             (async () => {
                 try {
-                    await addLog('Execução manual iniciada pelo usuário.', 'start');
+                    await addLog('Execução manual iniciada pelo usuário.', 'USUÁRIO', 'start');
                     await runProcess(null); // null = não marca como executado automaticamente
                     sendResponse({ success: true });
                 } catch (e) {

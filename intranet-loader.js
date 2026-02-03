@@ -5,8 +5,10 @@ let padmModuleInstance = null;
 let uiModuleInstance = null;
 let aniverModuleInstance = null;
 let sirconvModuleInstance = null;
-let sicorModuleInstance = null; // Novo módulo SICOR
-let praticasModuleInstance = null; // Novo módulo Práticas Supervisionadas
+let sirconvConveniosModuleInstance = null;
+let sicorModuleInstance = null;
+let praticasModuleInstance = null;
+let unidadesModuleInstance = null; // <-- ADICIONADO
 let globalConfig = null;
 let moduleSettings = {};
 
@@ -41,8 +43,10 @@ async function main(config) {
         'padmModuleEnabled', 
         'aniverModuleEnabled',
         'sirconvModuleEnabled',
+        'sirconvConveniosModuleEnabled',
         'sicorModuleEnabled',
-        'praticasModuleEnabled' // Novo módulo Práticas
+        'praticasModuleEnabled',
+        'unidadesModuleEnabled' // <-- ADICIONADO
     ]);
 
     if (moduleSettings.intranetModuleEnabled === false) {
@@ -65,17 +69,24 @@ async function main(config) {
     setInterval(checkAllModules, 1000);
 
     // --- Início da Modificação: Gatilho de Token ---
-    // Informa ao background que uma página foi carregada e (potencialmente) tem um token.
+    // Informa ao background que uma página foi carregada e um usuário foi identificado.
     try {
-        const { getCookie } = await import(globalConfig.utilsUrl);
+        const { getCookie, decodeJwt } = await import(globalConfig.utilsUrl);
         const token = getCookie('tokiuz'); // Usa a função com fallback do PrimeFaces
         
         if (token) {
-            // Envia o "gatilho" para o background
-            sendMessageToBackground('sicor-user-is-logged-in', {});
+            const decoded = decodeJwt(token);
+            if (decoded && decoded.g) {
+                 // Envia o "gatilho" genérico para o background
+                sendMessageToBackground('intranet-user-identified', {
+                    userPM: decoded.g,
+                    unitCode: decoded.u,
+                    system: 'INTRANET' // Identificador genérico
+                });
+            }
         }
     } catch (e) {
-        console.error('SisPMG+ [Loader]: Falha ao importar utils ou verificar token.', e);
+        console.error('SisPMG+ [Loader]: Falha ao processar token para gatilho de usuário.', e);
     }
     // --- Fim da Modificação ---
 }
@@ -117,6 +128,16 @@ function checkAllModules() {
         }
     }
 
+    // Verifica o módulo do SIRCONV Convenios
+    const isSirconvConveniosPage = window.location.href.includes('/lite/convenio/');
+    if (moduleSettings.sirconvConveniosModuleEnabled !== false) {
+        if (isSirconvConveniosPage && !sirconvConveniosModuleInstance) {
+            loadSirconvConveniosModule();
+        } else if (!isSirconvConveniosPage && sirconvConveniosModuleInstance) {
+            destroySirconvConveniosModule();
+        }
+    }
+
     // Verifica o módulo do SICOR
     const isSicorPage = window.location.href.includes('/SICOR/');
     if (moduleSettings.sicorModuleEnabled !== false) { 
@@ -124,6 +145,16 @@ function checkAllModules() {
             loadSicorModule();
         } else if (!isSicorPage && sicorModuleInstance) {
             destroySicorModule();
+        }
+    }
+
+    // Verifica o módulo de Unidades (disponível em todas as páginas da Intranet)
+    const isIntranetPage = window.location.hostname.includes('policiamilitar.mg.gov.br');
+    if (moduleSettings.unidadesModuleEnabled !== false) {
+        if (isIntranetPage && !unidadesModuleInstance) {
+            loadUnidadesModule();
+        } else if (!isIntranetPage && unidadesModuleInstance) {
+            destroyUnidadesModule();
         }
     }
 
@@ -158,6 +189,28 @@ function destroySicorModule() {
         sicorModuleInstance.destroySicorModule();
     }
     sicorModuleInstance = null;
+}
+
+/** Carrega o módulo UNIDADES de forma segura. */
+async function loadUnidadesModule() {
+    try {
+        console.log("SisPMG+: Página UNIDADES detectada. Carregando módulo...");
+        loadCSS(globalConfig.unidadesCssUrl);
+        const unidades = await import(globalConfig.unidadesModuleUrl);
+        unidades.initUnidadesModule(); // A função init cria o botão e o modal
+        unidadesModuleInstance = unidades; // Armazena a referência do módulo importado
+    } catch(e) {
+         console.error("SisPMG+: Falha ao carregar o módulo UNIDADES.", e);
+    }
+}
+
+/** Descarrega o módulo UNIDADES. */
+function destroyUnidadesModule() {
+    console.log("SisPMG+: Saindo da página UNIDADES. Descarregando módulo.");
+    if (unidadesModuleInstance && typeof unidadesModuleInstance.destroyUnidadesModule === 'function') {
+        unidadesModuleInstance.destroyUnidadesModule();
+    }
+    unidadesModuleInstance = null;
 }
 
 /** Carrega o módulo Práticas Supervisionadas. */
@@ -231,6 +284,39 @@ function destroySirconvModule() {
     sirconvModuleInstance = null;
 }
 
+/** Carrega o módulo SIRCONV Convênios de forma segura. */
+async function loadSirconvConveniosModule() {
+    try {
+        console.log("SisPMG+: Página SIRCONV Convênios detectada. Carregando módulo...");
+        
+        // Se houver URL de CSS definida, carrega (evita erro 404 se undefined)
+        if (globalConfig.sirconvConveniosCssUrl) {
+            loadCSS(globalConfig.sirconvConveniosCssUrl);
+        }
+
+        const module = await import(globalConfig.sirconvConveniosModuleUrl);
+        
+        if (typeof module.initSirconvConveniosModule === 'function') {
+            module.initSirconvConveniosModule(globalConfig); 
+            sirconvConveniosModuleInstance = module; 
+        } else {
+            console.error("SisPMG+: A função initSirconvConveniosModule não foi encontrada no módulo exportado.");
+        }
+
+    } catch(e) {
+         console.error("SisPMG+: Falha ao carregar o módulo SIRCONV Convênios.", e);
+    }
+}
+
+/** Descarrega o módulo SIRCONV Convênios. */
+function destroySirconvConveniosModule() {
+    console.log("SisPMG+: Saindo da página SIRCONV Convênios. Descarregando módulo.");
+    if (sirconvConveniosModuleInstance && typeof sirconvConveniosModuleInstance.destroySirconvConveniosModule === 'function') {
+        sirconvConveniosModuleInstance.destroySirconvConveniosModule();
+    }
+    sirconvConveniosModuleInstance = null;
+}
+
 /** Carrega o módulo de Aniversariantes. */
 async function loadAniverModule() {
     try {
@@ -278,7 +364,6 @@ function destroyPAdmModule() {
     uiModuleInstance.unregisterModule('PAdm+');
 }
 
-
 // --- FUNÇÕES AUXILIARES ---
 
 /**
@@ -286,6 +371,7 @@ function destroyPAdmModule() {
  * @param {string} url - A URL do arquivo CSS.
  */
 function loadCSS(url) {
+    if (!url || url === 'undefined') return; // Proteção contra URLs inválidas
     if (!document.querySelector(`link[href="${url}"]`)) {
         const link = document.createElement('link');
         link.rel = 'stylesheet';

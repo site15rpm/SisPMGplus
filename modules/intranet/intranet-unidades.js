@@ -1,7 +1,7 @@
 /**
  * Módulo: intranet-unidades.js
  * Descrição: Gerencia a interface e interações do modal de configuração de Extração de Unidades.
- * Refatorado para corresponder à estrutura DOM e CSS do Módulo SICOR.
+ * Refatorado para corresponder à estrutura DOM e CSS do Módulo UNIDADES.
  */
 import { sendMessageToBackground } from '../../common/utils.js';
 
@@ -35,9 +35,9 @@ class UnidadesModalHandler {
 
         const overlay = document.createElement('div');
         overlay.id = 'sispmg-unidades-modal-overlay';
-        overlay.className = 'sispmg-unidades-modal-overlay'; // Estilo definido no CSS global
+        overlay.className = 'sispmg-unidades-modal-overlay'; // Usa classe do UNIDADES
 
-        // HTML reestruturado para seguir o padrão visual e CSS do SICOR (container, header, body, footer)
+        // HTML reestruturado para seguir o padrão visual e CSS do UNIDADES
         overlay.innerHTML = `
         <div id="sispmg-unidades-modal-container">
             <div id="sispmg-unidades-modal" class="sispmg-plus-modal">
@@ -95,10 +95,13 @@ class UnidadesModalHandler {
 
                     </div>
                     
-                    <!-- Histórico de Execução (Movido para fora da Grid para corrigir layout) -->
+                    <!-- Histórico de Execução -->
                     <div class="sispmg-unidades-history-section">
-                        <h4>Histórico de Execução</h4>
-                        <div id="unidades-history-log" class="sispmg-unidades-history-log">
+                        <div class="sispmg-unidades-column-header">
+                            <h4>Histórico de Execução</h4>
+                            <button id="unidades-clear-history-btn">Limpar</button>
+                        </div>
+                        <div id="unidades-history-log" class="sispmg-unidades-log-box">
                             <div class="sispmg-unidades-log-entry">Nenhum registro ainda.</div>
                         </div>
                     </div>
@@ -112,7 +115,6 @@ class UnidadesModalHandler {
                     <button id="unidades-save-settings-btn" class="sispmg-modal-btn-primary">
                         Salvar e Agendar
                     </button>
-                    <!-- Adicionado botão cancelar para consistência -->
                     <button id="sispmg-unidades-close-footer-btn" class="sispmg-modal-btn-secondary">
                         Cancelar
                     </button>
@@ -171,6 +173,60 @@ class UnidadesModalHandler {
         overlay.querySelector('#unidades-extract-now-btn').addEventListener('click', async () => {
             await this._extractNow();
         });
+
+        // Limpar histórico
+        overlay.querySelector('#unidades-clear-history-btn').addEventListener('click', async () => {
+            await this._handleClearLogs();
+        });
+    }
+
+    async _handleClearLogs() {
+        await this._showConfirmationModal(
+            'Limpar o histórico de execução do módulo Unidades?',
+            async () => {
+                const response = await sendMessageToBackground('unidades-clear-logs', {});
+                if (response.success) {
+                    this._updateHistoryLog(response.logs || []);
+                } else {
+                    this._showInfoModal('Falha ao limpar o histórico.', 'error');
+                }
+            }
+        );
+    }
+
+    async _showConfirmationModal(message, onConfirm) {
+        const existingModal = document.getElementById('sispmg-confirmation-modal-overlay');
+        if (existingModal) existingModal.remove();
+
+        const modalOverlay = document.createElement('div');
+        modalOverlay.id = 'sispmg-confirmation-modal-overlay';
+        modalOverlay.className = 'sispmg-confirmation-modal-overlay';
+
+        modalOverlay.innerHTML = `
+            <div class="sispmg-confirmation-modal-content">
+                <p>${message}</p>
+                <div class="sispmg-confirmation-modal-actions">
+                    <button id="sispmg-confirm-btn" class="sispmg-modal-btn-primary">Confirmar</button>
+                    <button id="sispmg-cancel-btn" class="sispmg-modal-btn-secondary">Cancelar</button>
+                </div>
+            </div>
+        `;
+
+        const removeModal = () => modalOverlay.remove();
+
+        modalOverlay.querySelector('#sispmg-confirm-btn').addEventListener('click', async () => {
+            if (onConfirm && typeof onConfirm === 'function') {
+                await onConfirm();
+            }
+            removeModal();
+        });
+
+        modalOverlay.querySelector('#sispmg-cancel-btn').addEventListener('click', removeModal);
+        modalOverlay.addEventListener('click', (e) => {
+            if (e.target === modalOverlay) removeModal();
+        });
+
+        (document.getElementById('sispmg-plus-container') || document.body).appendChild(modalOverlay);
     }
 
     _closeModal() {

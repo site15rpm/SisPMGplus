@@ -61,12 +61,16 @@ export class SirconvConveniosModule {
         if (!logsArea) return;
         
         if (!logs || logs.length === 0) {
-            logsArea.innerHTML = '<div class="sispmg-sicor-log-entry">Sem logs recentes.</div>';
+            logsArea.innerHTML = '<div class="sispmg-sirconv-convenios-log-entry">Sem logs recentes.</div>';
             return;
         }
         
-        logsArea.innerHTML = logs.map(l => 
-            `<div class="sispmg-sicor-log-entry sispmg-sicor-log-${l.type}">[${l.timestamp}] ${l.message}</div>`
+        logsArea.innerHTML = logs.map(log => 
+            `<div class="sispmg-sirconv-convenios-log-entry sispmg-sirconv-convenios-log-${log.type || 'info'}">
+                <span class="sispmg-sirconv-convenios-log-timestamp">${log.timestamp}</span>
+                <span class="sispmg-sirconv-convenios-log-system">${log.system || 'SISTEMA'}:</span>
+                <span class="sispmg-sirconv-convenios-log-message">${log.message}</span>
+            </div>`
         ).join('');
         
         logsArea.scrollTop = 0;
@@ -92,7 +96,7 @@ export class SirconvConveniosModule {
 
             const overlay = document.createElement('div');
             overlay.id = 'sispmg-sirconv-convenios-modal-overlay';
-            overlay.className = 'sispmg-sicor-modal-overlay';
+            overlay.className = 'sispmg-sirconv-convenios-modal-overlay';
 
             overlay.innerHTML = `
             <div id="sispmg-sirconv-convenios-modal-container">
@@ -104,38 +108,43 @@ export class SirconvConveniosModule {
                     <div class="sispmg-modal-body-content">
                         
                         <!-- Seção de Informações -->
-                        <div class="sispmg-sicor-form-section" style="margin-bottom: 15px;">
+                        <div class="sispmg-sirconv-convenios-form-section">
                             <h4>Informações do Sistema</h4>
                             <div class="sispmg-sirconv-convenios-info">
                                 <p><strong>Funcionamento Automático:</strong></p>
-                                <p style="font-size: 12px; color: #666;">
-                                    ✓ Extração executada automaticamente <strong>uma vez por dia</strong><br>
-                                    ✓ Acionada quando você navega pelas páginas de convênios<br>
-                                    ✓ Registros existentes são atualizados, novos são inseridos<br>
-                                    ✓ ID do convênio usado como chave única
+                                <p>
+                                    ✓ A extração é executada automaticamente <strong>uma vez por dia</strong> por usuário.<br>
+                                    ✓ O gatilho é a sua navegação em qualquer página do sistema de convênios.<br>
+                                    ✓ Registros existentes são atualizados e novos são inseridos com base no ID único do convênio.
                                 </p>
                                 <p><strong>Destino dos Dados:</strong></p>
-                                <p style="font-size: 12px; color: #666;">
-                                    Google Sheets configurado automaticamente
+                                <p>
+                                    Os dados são enviados para uma planilha Google Sheets pré-configurada pela equipe de desenvolvimento.
                                 </p>
                             </div>
                         </div>
                         
                         <!-- Seção de Histórico -->
-                        <div class="sispmg-sicor-history-section">
-                            <div class="sispmg-sicor-column-header">
+                        <div class="sispmg-sirconv-convenios-history-section">
+                            <div class="sispmg-sirconv-convenios-column-header">
                                 <h4>Histórico de Execução</h4>
                                 <button id="sirconv-convenios-clear-logs-btn">Limpar</button>
                             </div>
-                            <div class="sispmg-sicor-log-box" id="sirconv-convenios-logs-area">
-                                ${logs.length > 0 ? 
-                                    logs.map(l => `<div class="sispmg-sicor-log-entry sispmg-sicor-log-${l.type}">[${l.timestamp}] ${l.message}</div>`).join('') 
-                                    : '<div class="sispmg-sicor-log-entry">Sem logs recentes.</div>'}
+                            <div class="sispmg-sirconv-convenios-log-box" id="sirconv-convenios-logs-area">
+                                ${logs.length > 0 ?
+                                    logs.map(log => `
+                                    <div class="sispmg-sirconv-convenios-log-entry sispmg-sirconv-convenios-log-${log.type || 'info'}">
+                                        <span class="sispmg-sirconv-convenios-log-timestamp">${log.timestamp}</span>
+                                        <span class="sispmg-sirconv-convenios-log-system">${log.system || 'SISTEMA'}:</span>
+                                        <span class="sispmg-sirconv-convenios-log-message">${log.message}</span>
+                                    </div>`).join('')
+                                    : '<div class="sispmg-sirconv-convenios-log-entry">Sem logs recentes.</div>'
+                                }
                             </div>
                         </div>
                     </div>
                     <div class="sispmg-modal-actions">
-                        <button id="sirconv-convenios-manual-run" class="sispmg-modal-btn-secondary">Executar Extração Agora</button>
+                        <button id="sirconv-convenios-manual-run" class="sispmg-modal-btn-secondary">Extrair Agora</button>
                         <button id="sispmg-sirconv-convenios-close-footer-btn" class="sispmg-modal-btn-secondary">Fechar</button>
                     </div>
                 </div>
@@ -155,32 +164,43 @@ export class SirconvConveniosModule {
     }
 
     _bindModalEvents() {
+        const overlay = document.getElementById('sispmg-sirconv-convenios-modal-overlay');
+        if (!overlay) return;
+
+        const closeModal = () => this._closeModal();
+
         // Botões de fechar
-        document.getElementById('sispmg-sirconv-convenios-close-btn')?.addEventListener('click', () => {
-            this._closeModal();
-        });
-        document.getElementById('sispmg-sirconv-convenios-close-footer-btn')?.addEventListener('click', () => {
-            this._closeModal();
+        overlay.querySelector('#sispmg-sirconv-convenios-close-btn').addEventListener('click', closeModal);
+        overlay.querySelector('#sispmg-sirconv-convenios-close-footer-btn').addEventListener('click', closeModal);
+        
+        // Clique fora do modal
+        overlay.addEventListener('click', (e) => {
+            if (e.target.id === 'sispmg-sirconv-convenios-modal-overlay') {
+                closeModal();
+            }
         });
 
         // Botão de executar agora
-        document.getElementById('sirconv-convenios-manual-run')?.addEventListener('click', async () => {
-            await this._runManualExtraction();
-        });
+        overlay.querySelector('#sirconv-convenios-manual-run').addEventListener('click', () => this._runManualExtraction());
 
         // Botão de limpar logs
-        document.getElementById('sirconv-convenios-clear-logs-btn')?.addEventListener('click', async () => {
-            if (confirm('Tem certeza que deseja limpar o histórico?')) {
-                await sendMessageToBackground('sirconv-convenios-clear-logs', {});
-                this._updateLogsDisplay([]);
-            }
+        overlay.querySelector('#sirconv-convenios-clear-logs-btn').addEventListener('click', () => {
+            this._showConfirmationModal(
+                'Tem certeza que deseja limpar o histórico?',
+                async () => {
+                    const response = await sendMessageToBackground('sirconv-convenios-clear-logs', {});
+                    if (response.success) {
+                        this._updateLogsDisplay(response.logs || []);
+                    } else {
+                        await this._showInfoModal('Falha ao limpar o histórico.', 'error');
+                    }
+                }
+            );
         });
     }
 
     async _runManualExtraction() {
-        const ui = window.SisPMG_UI;
         const btn = document.getElementById('sirconv-convenios-manual-run');
-        
         if (!btn) return;
         
         btn.disabled = true;
@@ -190,15 +210,14 @@ export class SirconvConveniosModule {
             const res = await sendMessageToBackground('sirconv-convenios-manual-run', {});
             
             if (res.success) {
-                ui?.showNotification?.('Extração concluída com sucesso!', 'success');
-                // Atualiza logs
+                await this._showInfoModal('Extração manual concluída com sucesso!', 'success');
                 const updatedLogs = await sendMessageToBackground('sirconv-convenios-get-logs', {});
                 this._updateLogsDisplay(updatedLogs.logs);
             } else {
-                throw new Error(res.error || 'Erro na extração');
+                throw new Error(res.error || 'Erro desconhecido na extração');
             }
         } catch (error) {
-            ui?.showNotification?.('Erro: ' + error.message, 'error');
+            await this._showInfoModal('Erro na extração manual: ' + error.message, 'error');
         } finally {
             btn.disabled = false;
             btn.textContent = 'Executar Extração Agora';
@@ -207,6 +226,88 @@ export class SirconvConveniosModule {
 
     _closeModal() {
         document.getElementById('sispmg-sirconv-convenios-modal-overlay')?.remove();
+    }
+
+    // --- Funções de Modal Auxiliares (padrão SIRCONV) ---
+
+    async _showConfirmationModal(message, onConfirm) {
+        const overlayId = 'sispmg-confirmation-modal-overlay';
+        document.getElementById(overlayId)?.remove();
+
+        const modalOverlay = document.createElement('div');
+        modalOverlay.id = overlayId;
+        modalOverlay.className = 'sispmg-confirmation-modal-overlay';
+
+        modalOverlay.innerHTML = `
+            <div class="sispmg-confirmation-modal-content">
+                <p>${message}</p>
+                <div class="sispmg-confirmation-modal-actions">
+                    <button id="sispmg-confirm-btn" class="sispmg-modal-btn-primary">Confirmar</button>
+                    <button id="sispmg-cancel-btn" class="sispmg-modal-btn-secondary">Cancelar</button>
+                </div>
+            </div>
+        `;
+
+        const removeModal = () => modalOverlay.remove();
+        const confirmBtn = modalOverlay.querySelector('#sispmg-confirm-btn');
+        const cancelBtn = modalOverlay.querySelector('#sispmg-cancel-btn');
+
+        confirmBtn.addEventListener('click', async () => {
+            if (typeof onConfirm === 'function') await onConfirm();
+            removeModal();
+        });
+
+        cancelBtn.addEventListener('click', removeModal);
+        modalOverlay.addEventListener('click', (e) => {
+            if (e.target === modalOverlay) removeModal();
+        });
+
+        (document.getElementById('sispmg-plus-container') || document.body).appendChild(modalOverlay);
+        confirmBtn.focus();
+    }
+
+    async _showInfoModal(message, type = 'info') {
+        return new Promise((resolve) => {
+            const overlayId = 'sispmg-info-modal-overlay';
+            document.getElementById(overlayId)?.remove();
+
+            const modalOverlay = document.createElement('div');
+            modalOverlay.id = overlayId;
+            modalOverlay.className = 'sispmg-confirmation-modal-overlay'; 
+
+            let title = 'Aviso';
+            let titleColor = '#007bff';
+            if (type === 'success') {
+                title = 'Sucesso';
+                titleColor = '#28a745';
+            } else if (type === 'error') {
+                title = 'Erro';
+                titleColor = '#dc3545';
+            }
+
+            modalOverlay.innerHTML = `
+                <div class="sispmg-confirmation-modal-content">
+                    <h3 style="text-align: center; margin-top: 0; color: ${titleColor};">${title}</h3>
+                    <p style="text-align: center; margin-bottom: 25px;">${message}</p>
+                    <div class="sispmg-confirmation-modal-actions" style="justify-content: center;">
+                        <button id="sispmg-info-ok-btn" class="sispmg-modal-btn-primary">OK</button>
+                    </div>
+                </div>
+            `;
+
+            const removeModal = () => {
+                modalOverlay.remove();
+                resolve();
+            };
+            const okBtn = modalOverlay.querySelector('#sispmg-info-ok-btn');
+            okBtn.addEventListener('click', removeModal);
+            modalOverlay.addEventListener('click', (e) => {
+                if (e.target === modalOverlay) removeModal();
+            });
+
+            (document.getElementById('sispmg-plus-container') || document.body).appendChild(modalOverlay);
+            okBtn.focus();
+        });
     }
 
     destroy() {

@@ -1,8 +1,8 @@
-/* Arquivo: intranet-unidades-styles.css */
-/* Estilos para o Módulo de Extração de Unidades */
-/* Refatorado: Correção de dimensionamento de botões e harmonia visual */
+/**
+ * Módulo: intranet-unidades-styles.css
+ * Descrição: Estilos para o Módulo de Extração de Unidades, alinhado com UNIDADES.
+ */
 
-/* Overlay do Modal - Escopado no container principal para alta especificidade */
 #sispmg-plus-container .sispmg-unidades-modal-overlay {
     position: fixed !important;
     top: 0 !important;
@@ -16,10 +16,9 @@
     z-index: 10002 !important;
     padding: 10px;
     box-sizing: border-box;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
 }
 
-/* Container Principal do Modal */
+/* Alterado para o ID específico do container de unidades */
 #sispmg-plus-container #sispmg-unidades-modal-container {
     background-color: #fbf8f5 !important;
     border: 1px solid #dcd3c5 !important;
@@ -27,17 +26,16 @@
     box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
     display: flex;
     flex-direction: column;
-    height: 90vh;
     max-height: 95vh;
     width: 100%;
-    /* Mantém a largura maior */
-    max-width: 900px; /* Ajustado para acomodar 2 colunas confortavelmente */
+    /* Mantém a largura maior do UNIDADES */
+    max-width: 900px;
     animation: sispmgfadeIn 0.2s ease-out !important;
     overflow: hidden;
 }
 
-/* Wrapper Interno do Modal */
-#sispmg-plus-container #sispmg-unidades-modal-container .sispmg-plus-modal {
+/* Seletor genérico para o conteúdo do modal */
+#sispmg-plus-container .sispmg-plus-modal {
     position: relative !important;
     background: transparent !important;
     border: none !important;
@@ -52,21 +50,28 @@
     overflow: hidden;
 }
 
-/* Corpo do Modal (Scrollável) */
-#sispmg-plus-container #sispmg-unidades-modal-container .sispmg-modal-body-content {
-    overflow-y: auto;
+#sispmg-plus-container .sispmg-modal-body-content {
+  overflow-y: auto;
   padding: 15px;
   flex-grow: 1;
 }
 
-/* Cabeçalho */
-#sispmg-plus-container #sispmg-unidades-modal .sispmg-menu-header {
+#sispmg-plus-container .sispmg-plus-modal .sispmg-menu-header {
     padding-right: 40px !important;
     flex-shrink: 0;
+    padding: 12px 15px !important;
+    margin-bottom: 0 !important;
+    border-bottom: 1px solid #dcd3c5 !important;
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    text-align: center !important;
+    color: #574e2d !important;
+    align-items: center !important;
+    justify-content: center !important;
+    position: relative !important;
 }
 
-/* Botão Fechar (X) */
-#sispmg-plus-container #sispmg-unidades-modal .sispmg-modal-close-btn {
+#sispmg-plus-container .sispmg-plus-modal .sispmg-modal-close-btn {
     all: unset;
     box-sizing: border-box !important;
     position: absolute !important;
@@ -83,13 +88,12 @@
     border-radius: 4px !important;
     transition: background-color 0.2s, color 0.2s !important;
 }
-#sispmg-plus-container #sispmg-unidades-modal .sispmg-modal-close-btn:hover {
+#sispmg-plus-container .sispmg-plus-modal .sispmg-modal-close-btn:hover {
     background-color: #EFE6DD !important;
     color: #333 !important;
 }
 
-
-#sispmg-plus-container #sispmg-unidades-modal .sispmg-modal-actions {
+#sispmg-plus-container .sispmg-plus-modal .sispmg-modal-actions {
     display: flex !important;
     justify-content: flex-end !important;
     flex-wrap: wrap;
@@ -99,13 +103,14 @@
     flex-shrink: 0;
     background-color: #fbf8f5;
 }
-
-#sispmg-plus-container #sispmg-unidades-modal .sispmg-modal-actions #unidades-extract-now-btn {
-    margin-right: auto !important; /* Empurra para esquerda */
+/* Seletor específico para o botão de extrair do unidades */
+#sispmg-plus-container #unidades-extract-now-btn {
+    margin-right: auto !important;
 }
 
-#sispmg-plus-container #sispmg-unidades-modal .sispmg-modal-actions button,
-#sispmg-plus-container #unidades-clear-history-btn  {
+
+#sispmg-plus-container .sispmg-plus-modal .sispmg-modal-actions button,
+#sispmg-plus-container #unidades-clear-history-btn { /* Específico para o botão limpar */
     box-sizing: border-box !important;
     display: inline-flex !important;
     align-items: center !important;
@@ -118,96 +123,51 @@
     border: 1px solid transparent !important;
     cursor: pointer !important;
     transition: background-color 0.2s, border-color 0.2s !important;
-    margin-bottom: 5px;
+    margin-bottom: 0; /* Ajustado */
 }
-#sispmg-plus-container #sispmg-unidades-modal .sispmg-modal-actions button:disabled {
+#sispmg-plus-container .sispmg-plus-modal .sispmg-modal-actions button:disabled {
     opacity: 0.6 !important;
     cursor: not-allowed !important;
 }
-
-/* Estilos de Botão Padronizados e Robustos */
-#sispmg-plus-container .sispmg-modal-btn-primary,
-#sispmg-plus-container .sispmg-modal-btn-secondary {
-    box-sizing: border-box !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    
-    /* Dimensionamento Fixo/Mínimo */
-    min-height: 38px !important;
-    min-width: 110px !important; /* Evita botões muito estreitos */
-    width: auto !important; /* Previne width:100% herdado */
-    padding: 0 16px !important;
-    
-    font-size: 13px !important;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
-    font-weight: 600 !important;
-    line-height: 1.5 !important;
-    white-space: nowrap !important; /* Previne quebra de linha interna */
-    
-    border-radius: 4px !important;
-    border: 1px solid transparent !important;
-    cursor: pointer !important;
-    transition: all 0.2s ease-in-out !important;
-    text-shadow: none !important;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.1) !important;
-}
-
-/* Botão Primário */
 #sispmg-plus-container .sispmg-modal-btn-primary {
     background-color: #b3a368 !important;
     color: white !important;
     border-color: #b3a368 !important;
 }
-#sispmg-plus-container .sispmg-modal-btn-primary:hover:not(:disabled) {
+#sispmg-plus-container .sispmg-modal-btn-primary:hover {
     background-color: #9e8f57 !important;
     border-color: #9e8f57 !important;
 }
-
-/* Botão Secundário */
 #sispmg-plus-container .sispmg-modal-btn-secondary {
     background-color: #fbf8f5 !important;
     color: #574e2d !important;
     border-color: #dcd3c5 !important;
 }
-#sispmg-plus-container .sispmg-modal-btn-secondary:hover:not(:disabled) {
-    background-color: #f4f0e6 !important;
-    border-color: #b3a368 !important;
-    color: #333 !important;
+#sispmg-plus-container .sispmg-modal-btn-secondary:hover {
+    background-color: #EFE6DD !important;
+    border-color: #c9bfae !important;
 }
 
-#sispmg-plus-container button:disabled {
-    opacity: 0.6 !important;
-    cursor: not-allowed !important;
-    transform: none !important;
-    box-shadow: none !important;
-}
-
-
-/* Grid de Formulário (2 Colunas) */
-#sispmg-plus-container .sispmg-unidades-modal-form-grid {
+/* Grid e Seções genéricas */
+.sispmg-unidades-modal-form-grid {
     display: grid !important;
-    /* Ajuste: 2 colunas */
     grid-template-columns: repeat(2, 1fr) !important;
     gap: 15px !important;
     font-size: 13px !important;
-    /* Ajuste: Faz colunas terem a mesma altura */
     align-items: stretch !important;
-    margin-bottom: 15px; /* Espaço antes do histórico */
+    margin-bottom: 15px;
 }
 
-/* Seções (Cards Brancos) */
-#sispmg-plus-container .sispmg-unidades-form-section {
+.sispmg-unidades-form-section {
     background-color: #fff !important;
     padding: 12px !important;
     border: 1px solid #dcd3c5 !important;
     border-radius: 6px !important;
-    /* Ajuste: Adicionado para garantir que o flex funcione internamente se necessário */
     display: flex;
     flex-direction: column;
 }
 
-#sispmg-plus-container .sispmg-unidades-form-section h4 {
+.sispmg-unidades-form-section h4 {
     font-size: 14px !important;
     margin-top: 0 !important;
     margin-bottom: 12px !important;
@@ -217,12 +177,11 @@
     font-weight: 600 !important;
 }
 
-/* Inputs e Labels */
-#sispmg-plus-container .sispmg-unidades-form-group {
+.sispmg-unidades-form-group {
     margin-bottom: 12px !important;
 }
 
-#sispmg-plus-container .sispmg-unidades-form-group label {
+.sispmg-unidades-form-group label {
     display: block !important;
     margin-bottom: 4px !important;
     font-weight: 500 !important;
@@ -232,17 +191,17 @@
     width: auto !important;
 }
 
-
-#sispmg-plus-container .sispmg-unidades-form-group small {
+.sispmg-unidades-form-group small {
     font-size: 11px !important;
     color: #6c757d !important;
     margin-top: 4px !important;
     display: block !important;
 }
 
-/* Padronização de Altura dos Inputs */
-#sispmg-plus-container .sispmg-unidades-form-group input[type="text"],
-#sispmg-plus-container .sispmg-unidades-form-group select {
+
+.sispmg-unidades-form-group input[type="text"],
+.sispmg-unidades-form-group input[type="date"],
+.sispmg-unidades-form-group select {
     all: unset;
     box-sizing: border-box !important;
     width: 100% !important;
@@ -254,17 +213,23 @@
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
     color: #333 !important;
 }
+.sispmg-unidades-form-group input:disabled {
+    background-color: #e9ecef !important;
+    cursor: not-allowed !important;
+    opacity: 0.7 !important;
+}
 
 
-/* Checkboxes */
-#sispmg-plus-container .sispmg-unidades-checkbox-group {
+.sispmg-unidades-checkbox-group,
+.sispmg-unidades-radio-group {
     display: flex !important;
     flex-direction: column !important;
     gap: 6px !important;
     margin-top: 8px !important;
 }
 
-#sispmg-plus-container .sispmg-unidades-checkbox-group label {
+.sispmg-unidades-checkbox-group label,
+.sispmg-unidades-radio-group label {
     display: flex !important;
     align-items: center !important;
     font-weight: normal !important;
@@ -273,8 +238,8 @@
     width: auto !important;
     line-height: normal !important;
 }
-
-#sispmg-plus-container .sispmg-unidades-checkbox-group input {
+.sispmg-unidades-checkbox-group input,
+.sispmg-unidades-radio-group input {
     all: unset;
     width: 13px !important;
     height: 13px !important;
@@ -288,7 +253,8 @@
     flex-shrink: 0;
 }
 
-#sispmg-plus-container .sispmg-unidades-checkbox-group input:checked::before {
+.sispmg-unidades-checkbox-group input:checked::before,
+.sispmg-unidades-radio-group input:checked::before {
     content: '' !important;
     position: absolute !important;
     top: 50% !important;
@@ -300,40 +266,23 @@
     border-radius: 2px;
 }
 
-
-#sispmg-plus-container .sispmg-unidades-form-group input:focus,
-#sispmg-plus-container .sispmg-unidades-form-group select:focus {
-    border-color: #b3a368 !important;
-    box-shadow: 0 0 0 2px rgba(179, 163, 104, 0.2) !important;
-}
-
-#sispmg-plus-container .sispmg-unidades-checkbox-group input:checked {
-    background-color: #b3a368 !important;
-    border-color: #b3a368 !important;
-}
-
-/* Separadores */
-#sispmg-plus-container hr {
+hr {
     border: none !important;
     border-top: 1px solid #EFE6DD !important;
     margin: 15px 0 !important;
 }
 
-/* Seção de Histórico */
-#sispmg-plus-container .sispmg-unidades-history-section {
-    /* Ajuste: Ocupa toda a largura abaixo do grid principal */
+.sispmg-unidades-history-section {
     grid-column: 1 / -1;
-    /* Remove a necessidade de definir grid-row */
-    display: flex; /* Mantém flex para alinhamento interno */
+    display: flex;
     flex-direction: column;
     background-color: #fff !important;
     padding: 12px !important;
     border: 1px solid #dcd3c5 !important;
     border-radius: 6px !important;
-    margin-top: 0; /* Removido, grid-gap já espaça */
+    margin-top: 0;
 }
-
-#sispmg-plus-container .sispmg-unidades-column-header {
+.sispmg-unidades-column-header {
     display: flex !important;
     justify-content: space-between !important;
     align-items: center !important;
@@ -341,32 +290,26 @@
     padding-bottom: 8px !important;
     border-bottom: 1px solid #EFE6DD !important;
 }
-
-#sispmg-plus-container .sispmg-unidades-history-section h4 {
+.sispmg-unidades-column-header h4 {
     border: none !important;
     margin: 0 !important;
     padding: 0 !important;
     font-size: 14px !important;
     color: #b3a368 !important;
 }
-
-#sispmg-plus-container #unidades-clear-history-btn {
+#unidades-clear-history-btn { /* Específico */
     background: #6c757d !important;
     color: white !important;
     padding: 4px 8px !important;
     font-size: 11px !important;
     margin-bottom: 0;
 }
+#unidades-clear-history-btn:hover { background-color: #5a6268 !important; }
 
-#sispmg-plus-container #unidades-clear-history-btn:hover { background-color: #5a6268 !important; }
-
-#sispmg-plus-container .sispmg-unidades-history-log {
-    /* Ajuste: Altura fixa novamente, pode ajustar se preferir */
+.sispmg-unidades-log-box {
     height: 400px !important;
-    /* Mantém flex-grow se quiser que ocupe espaço caso haja altura disponível */
-    /* flex-grow: 1; */
-    min-height: 300px; /* Reduzido um pouco */
-    max-height: 600px; /* Reduzido um pouco */
+    min-height: 300px;
+    max-height: 600px;
     background-color: #212529 !important;
     color: #f8f9fa !important;
     border-radius: 4px !important;
@@ -377,16 +320,15 @@
     line-height: 1.4 !important;
 }
 
+.sispmg-unidades-log-entry { margin-bottom: 4px !important; }
+.sispmg-unidades-log-timestamp { color: #888 !important; margin-right: 6px !important; }
+.sispmg-unidades-log-system { font-weight: bold !important; }
+.sispmg-unidades-log-info .sispmg-unidades-log-system { color: #17a2b8 !important; }
+.sispmg-unidades-log-success .sispmg-unidades-log-system { color: #28a745 !important; }
+.sispmg-unidades-log-error .sispmg-unidades-log-system { color: #dc3545 !important; }
 
-#sispmg-plus-container .sispmg-unidades-log-entry { margin-bottom: 4px !important; }
-#sispmg-plus-container .sispmg-unidades-log-timestamp { color: #888 !important; margin-right: 6px !important; }
-#sispmg-plus-container .sispmg-unidades-log-system { font-weight: bold !important; }
-#sispmg-plus-container .sispmg-unidades-log-info .sispmg-unidades-log-system { color: #17a2b8 !important; }
-#sispmg-plus-container .sispmg-unidades-log-success .sispmg-unidades-log-system { color: #28a745 !important; }
-#sispmg-plus-container .sispmg-unidades-log-error .sispmg-unidades-log-system { color: #dc3545 !important; }
 
-/* --- Estilos do Modal de Confirmação --- */
-#sispmg-plus-container .sispmg-confirmation-modal-overlay {
+.sispmg-confirmation-modal-overlay {
     position: fixed !important;
     top: 0 !important;
     left: 0 !important;
@@ -400,7 +342,7 @@
     animation: sispmgfadeIn 0.15s ease-out !important;
 }
 
-#sispmg-plus-container .sispmg-confirmation-modal-content {
+.sispmg-confirmation-modal-content {
     background-color: #fbf8f5 !important;
     padding: 20px !important;
     border-radius: 8px !important;
@@ -413,19 +355,19 @@
     color: #333 !important;
 }
 
-#sispmg-plus-container .sispmg-confirmation-modal-content p {
+.sispmg-confirmation-modal-content p {
     margin: 0 0 20px 0 !important;
     line-height: 1.5 !important;
 }
 
-#sispmg-plus-container .sispmg-confirmation-modal-actions {
+.sispmg-confirmation-modal-actions {
     display: flex !important;
     justify-content: center !important;
     gap: 10px !important;
 }
 
-#sispmg-plus-container .sispmg-confirmation-modal-actions button {
-     box-sizing: border-box !important;
+.sispmg-confirmation-modal-actions button {
+    box-sizing: border-box !important;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
@@ -438,37 +380,14 @@
     cursor: pointer !important;
     transition: background-color 0.2s, border-color 0.2s !important;
 }
-#sispmg-plus-container .sispmg-confirmation-modal-actions #sispmg-confirm-btn {
-     background-color: #b3a368 !important;
-     color: white !important;
-     border-color: #b3a368 !important;
-}
-#sispmg-plus-container .sispmg-confirmation-modal-actions #sispmg-confirm-btn:hover {
-     background-color: #9e8f57 !important;
-     border-color: #9e8f57 !important;
-}
-#sispmg-plus-container .sispmg-confirmation-modal-actions #sispmg-cancel-btn {
-     background-color: #fbf8f5 !important;
-     color: #574e2d !important;
-     border-color: #dcd3c5 !important;
-}
-#sispmg-plus-container .sispmg-confirmation-modal-actions #sispmg-cancel-btn:hover {
-     background-color: #EFE6DD !important;
-     border-color: #c9bfae !important;
-}
 
-/* Responsividade */
 @media (max-width: 750px) {
     #sispmg-plus-container #sispmg-unidades-modal-container {
          max-width: 95vw;
          max-height: 90vh;
     }
-    #sispmg-plus-container .sispmg-unidades-modal-form-grid {
+    .sispmg-unidades-modal-form-grid {
         grid-template-columns: 1fr !important;
-    }
-
-    #sispmg-plus-container #sispmg-unidades-modal .sispmg-modal-actions #unidades-extract-now-btn {
-        order: 1 !important;
     }
 }
 

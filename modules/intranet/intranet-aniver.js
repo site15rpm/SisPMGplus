@@ -260,6 +260,8 @@ export class BirthdayModule {
     }
     
     async showConfigModal() {
+        if (document.getElementById('sispmg-birthday-config-modal-overlay')) return;
+
         this.uiModule.showLoader();
         try {
             const unitsResponse = await sendMessageToBackground('fetchUnits', { token: getCookie('tokiuz') });
@@ -271,62 +273,84 @@ export class BirthdayModule {
             const userSectionName = userSectionData?.sectionName?.trim() || 'Não encontrada';
             const sectionLabel = `Restringir à(ao) ${userSectionName}`;
     
-            const modalHTML = `
-                <div id="sispmg-birthday-config-modal-content">
-                    <div class="sispmg-config-row days-ahead-container">
-                        <label for="days-ahead-input">Lembrar com antecedência de (dias):</label>
-                        <input type="number" id="days-ahead-input" min="1" max="30" value="${settings.daysAhead}">
-                    </div>
-                    <div class="sispmg-config-row sispmg-config-toggle">
-                        <span>${sectionLabel}</span>
-                    <label class="sispmg-plus-menu-switch"><input type="checkbox" id="restrict-to-section-toggle" ${settings.restrictToSection ? 'checked' : ''}><span class="sispmg-plus-menu-slider"></span></label>
-                </div>
-                <div class="sispmg-config-row sispmg-config-toggle">
-                    <span>Incluir unidades subordinadas</span>
-                    <label class="sispmg-plus-menu-switch"><input type="checkbox" id="include-subunits-toggle" ${settings.includeSubunits ? 'checked' : ''}><span class="sispmg-plus-menu-slider"></span></label>
-                </div>
-                <div class="sispmg-config-row sispmg-config-toggle">
-                    <span>Mostrar militares inativos</span>
-                    <label class="sispmg-plus-menu-switch"><input type="checkbox" id="include-inactive-toggle" ${settings.includeInactive ? 'checked' : ''}><span class="sispmg-plus-menu-slider"></span></label>
-                </div>
-                <div class="sispmg-config-row sispmg-unit-selector">
-                    <div class="sispmg-unit-list-container">
-                        <input type="text" id="unit-search-input" placeholder="Pesquisar unidade...">
-                        <ul id="available-units-list"></ul>
-                    </div>
-                    <div class="sispmg-unit-controls">
-                        <button id="add-unit-btn">&rarr;</button>
-                        <button id="remove-unit-btn">&larr;</button>
-                    </div>
-                    <div class="sispmg-unit-list-container">
-                        <label>Unidades Monitoradas</label>
-                        <ul id="selected-units-list"></ul>
-                    </div>
-                </div>
-            </div>`;
-        
-            const modal = this.uiModule.createModal('Configurar Aniversariantes', modalHTML, null, [
-                { text: 'Cancelar', className: 'sispmg-modal-btn-secondary', action: (m) => m.remove() },
-                { text: 'Salvar', className: 'sispmg-modal-btn-primary', action: async (m) => {
-                    const selectedUnits = Array.from(document.getElementById('selected-units-list').children).map(li => parseInt(li.dataset.value, 10));
-                    const newSettings = {
-                        daysAhead: parseInt(document.getElementById('days-ahead-input').value, 10) || 3,
-                        units: selectedUnits,
-                        includeSubunits: document.getElementById('include-subunits-toggle').checked,
-                        includeInactive: document.getElementById('include-inactive-toggle').checked,
-                        restrictToSection: document.getElementById('restrict-to-section-toggle').checked
-                    };
-                    await sendMessageToBackground('setStorage', { birthdaySettings: newSettings });
-                    await sendMessageToBackground('removeStorage', { keys: ['birthdayLastCheck', 'birthdayData'] });
-                    window.location.reload();
-                }}
-            ]);
+            const overlay = document.createElement('div');
+            overlay.id = 'sispmg-birthday-config-modal-overlay';
+            overlay.className = 'sispmg-sicor-modal-overlay';
 
-            const availableList = modal.querySelector('#available-units-list');
-            const selectedList = modal.querySelector('#selected-units-list');
-            const addBtn = modal.querySelector('#add-unit-btn');
-            const removeBtn = modal.querySelector('#remove-unit-btn');
-            const searchInput = modal.querySelector('#unit-search-input');
+            overlay.innerHTML = `
+                <div id="sispmg-birthday-config-modal-container" class="sispmg-sicor-modal-container">
+                    <div id="sispmg-birthday-config-modal" class="sispmg-plus-modal">
+                        <div class="sispmg-menu-header">
+                            Configurar Aniversariantes
+                            <button id="sispmg-bday-config-close-btn" class="sispmg-modal-close-btn">&times;</button>
+                        </div>
+                        <div class="sispmg-modal-body-content">
+                            <div id="sispmg-birthday-config-modal-content">
+                                <div class="sispmg-config-row days-ahead-container">
+                                    <label for="days-ahead-input">Lembrar com antecedência de (dias):</label>
+                                    <input type="number" id="days-ahead-input" min="1" max="30" value="${settings.daysAhead}">
+                                </div>
+                                <div class="sispmg-config-row sispmg-config-toggle">
+                                    <span>${sectionLabel}</span>
+                                    <label class="sispmg-plus-menu-switch"><input type="checkbox" id="restrict-to-section-toggle" ${settings.restrictToSection ? 'checked' : ''}><span class="sispmg-plus-menu-slider"></span></label>
+                                </div>
+                                <div class="sispmg-config-row sispmg-config-toggle">
+                                    <span>Incluir unidades subordinadas</span>
+                                    <label class="sispmg-plus-menu-switch"><input type="checkbox" id="include-subunits-toggle" ${settings.includeSubunits ? 'checked' : ''}><span class="sispmg-plus-menu-slider"></span></label>
+                                </div>
+                                <div class="sispmg-config-row sispmg-config-toggle">
+                                    <span>Mostrar militares inativos</span>
+                                    <label class="sispmg-plus-menu-switch"><input type="checkbox" id="include-inactive-toggle" ${settings.includeInactive ? 'checked' : ''}><span class="sispmg-plus-menu-slider"></span></label>
+                                </div>
+                                <div class="sispmg-unit-selector">
+                                    <div class="sispmg-unit-list-container">
+                                        <input type="text" id="unit-search-input" placeholder="Pesquisar unidade...">
+                                        <ul id="available-units-list"></ul>
+                                    </div>
+                                    <div class="sispmg-unit-controls">
+                                        <button id="add-unit-btn">&rarr;</button>
+                                        <button id="remove-unit-btn">&larr;</button>
+                                    </div>
+                                    <div class="sispmg-unit-list-container">
+                                        <label>Unidades Monitoradas</label>
+                                        <ul id="selected-units-list"></ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="sispmg-modal-actions">
+                             <button id="sispmg-bday-config-cancel-btn" class="sispmg-modal-btn-secondary">Cancelar</button>
+                             <button id="sispmg-bday-config-save-btn" class="sispmg-modal-btn-primary">Salvar</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        
+            (document.getElementById('sispmg-plus-container') || document.body).appendChild(overlay);
+            
+            const closeModal = () => overlay.remove();
+
+            overlay.querySelector('#sispmg-bday-config-close-btn').addEventListener('click', closeModal);
+            overlay.querySelector('#sispmg-bday-config-cancel-btn').addEventListener('click', closeModal);
+            overlay.querySelector('#sispmg-bday-config-save-btn').addEventListener('click', async () => {
+                const selectedUnits = Array.from(document.getElementById('selected-units-list').children).map(li => parseInt(li.dataset.value, 10));
+                const newSettings = {
+                    daysAhead: parseInt(document.getElementById('days-ahead-input').value, 10) || 3,
+                    units: selectedUnits,
+                    includeSubunits: document.getElementById('include-subunits-toggle').checked,
+                    includeInactive: document.getElementById('include-inactive-toggle').checked,
+                    restrictToSection: document.getElementById('restrict-to-section-toggle').checked
+                };
+                await sendMessageToBackground('setStorage', { birthdaySettings: newSettings });
+                await sendMessageToBackground('removeStorage', { keys: ['birthdayLastCheck', 'birthdayData'] });
+                window.location.reload();
+            });
+
+            const availableList = overlay.querySelector('#available-units-list');
+            const selectedList = overlay.querySelector('#selected-units-list');
+            const addBtn = overlay.querySelector('#add-unit-btn');
+            const removeBtn = overlay.querySelector('#remove-unit-btn');
+            const searchInput = overlay.querySelector('#unit-search-input');
             
             const updateLists = (filter = '') => {
                 availableList.innerHTML = '';

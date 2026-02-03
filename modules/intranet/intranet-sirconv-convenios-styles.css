@@ -1,14 +1,12 @@
 /**
  * Módulo: intranet-sirconv-convenios-styles.css
- * Descrição: Estilos para o modal de Extração de Convênios (SIRCONV)
- * IMPORTANTE: Usa !important em todas as regras para sobrepor estilos nativos da página
+ * Descrição: Estilos para o modal de Extração de Convênios, AGORA TOTALMENTE ALINHADO com SIRCONV-CONVENIOS.
  */
 
-/* ==========================================
-   OVERLAY E CONTAINER PRINCIPAL
-   ========================================== */
+/* Este arquivo agora espelha a estrutura do sirconv-convenios-styles.css, usando as mesmas classes. */
+/* Os seletores de ID foram adaptados para o modal de convênios. */
 
-#sispmg-plus-container .sispmg-sicor-modal-overlay {
+#sispmg-plus-container .sispmg-sirconv-convenios-modal-overlay {
     position: fixed !important;
     top: 0 !important;
     left: 0 !important;
@@ -19,9 +17,8 @@
     justify-content: center !important;
     align-items: center !important;
     z-index: 10002 !important;
-    padding: 10px !important;
-    box-sizing: border-box !important;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+    padding: 10px;
+    box-sizing: border-box;
 }
 
 #sispmg-plus-container #sispmg-sirconv-convenios-modal-container {
@@ -29,13 +26,13 @@
     border: 1px solid #dcd3c5 !important;
     border-radius: 8px !important;
     box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
-    display: flex !important;
-    flex-direction: column !important;
-    max-height: 95vh !important;
-    width: 100% !important;
-    max-width: 900px !important;
+    display: flex;
+    flex-direction: column;
+    max-height: 95vh;
+    width: 100%;
+    max-width: 750px; /* Um pouco mais estreito que o sirconv-convenios */
     animation: sispmgfadeIn 0.2s ease-out !important;
-    overflow: hidden !important;
+    overflow: hidden;
 }
 
 #sispmg-plus-container #sispmg-sirconv-convenios-modal-container .sispmg-plus-modal {
@@ -44,43 +41,28 @@
     border: none !important;
     box-shadow: none !important;
     animation: none !important;
-    display: flex !important;
-    flex-direction: column !important;
-    flex-grow: 1 !important;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
     padding: 0 !important;
     min-width: unset !important;
     width: 100% !important;
-    overflow: hidden !important;
+    overflow: hidden;
 }
 
 #sispmg-plus-container #sispmg-sirconv-convenios-modal-container .sispmg-modal-body-content {
-    overflow-y: auto !important;
-    padding: 15px !important;
-    flex-grow: 1 !important;
+  overflow-y: auto;
+  padding: 15px;
+  flex-grow: 1;
 }
 
-/* ==========================================
-   HEADER DO MODAL
-   ========================================== */
-
-#sispmg-plus-container #sispmg-sirconv-convenios-modal .sispmg-menu-header {
-    padding: 12px 15px !important;
+#sispmg-plus-container .sispmg-plus-modal .sispmg-menu-header {
     padding-right: 40px !important;
-    margin-bottom: 0 !important;
-    border-bottom: 1px solid #dcd3c5 !important;
-    font-size: 16px !important;
-    font-weight: 600 !important;
-    text-align: center !important;
-    color: #574e2d !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    position: relative !important;
-    flex-shrink: 0 !important;
+    flex-shrink: 0;
 }
 
-#sispmg-plus-container #sispmg-sirconv-convenios-modal .sispmg-modal-close-btn {
-    all: unset !important;
+#sispmg-plus-container .sispmg-plus-modal .sispmg-modal-close-btn {
+    all: unset;
     box-sizing: border-box !important;
     position: absolute !important;
     top: 50% !important;
@@ -96,291 +78,30 @@
     border-radius: 4px !important;
     transition: background-color 0.2s, color 0.2s !important;
 }
-
-#sispmg-plus-container #sispmg-sirconv-convenios-modal .sispmg-modal-close-btn:hover {
+#sispmg-plus-container .sispmg-plus-modal .sispmg-modal-close-btn:hover {
     background-color: #EFE6DD !important;
     color: #333 !important;
 }
 
-/* ==========================================
-   GRID DE FORMULÁRIO (2 COLUNAS)
-   ========================================== */
-
-#sispmg-plus-container .sispmg-sicor-modal-form-grid {
-    display: grid !important;
-    grid-template-columns: repeat(2, 1fr) !important;
-    gap: 15px !important;
-    font-size: 13px !important;
-    align-items: stretch !important;
-    margin-bottom: 15px !important;
-}
-
-#sispmg-plus-container .sispmg-sicor-form-section {
-    background-color: #fff !important;
-    padding: 12px !important;
-    border: 1px solid #dcd3c5 !important;
-    border-radius: 6px !important;
-    display: flex !important;
-    flex-direction: column !important;
-}
-
-#sispmg-plus-container .sispmg-sicor-form-section h4 {
-    font-size: 14px !important;
-    margin-top: 0 !important;
-    margin-bottom: 12px !important;
-    padding-bottom: 8px !important;
-    border-bottom: 1px solid #EFE6DD !important;
-    color: #b3a368 !important;
-    font-weight: 600 !important;
-}
-
-#sispmg-plus-container .sispmg-sicor-form-section hr {
-    margin: 12px 0 !important;
-    border: none !important;
-    border-top: 1px solid #EFE6DD !important;
-}
-
-/* ==========================================
-   GRUPOS DE FORMULÁRIO
-   ========================================== */
-
-#sispmg-plus-container .sispmg-sicor-form-group {
-    margin-bottom: 12px !important;
-}
-
-#sispmg-plus-container .sispmg-sicor-form-group label {
-    display: block !important;
-    margin-bottom: 4px !important;
-    font-weight: 500 !important;
-    font-size: 13px !important;
-    padding: 0 !important;
-    line-height: normal !important;
-    width: auto !important;
-    color: #333 !important;
-}
-
-#sispmg-plus-container .sispmg-sicor-form-group small {
-    font-size: 11px !important;
-    color: #6c757d !important;
-    margin-top: 4px !important;
-    display: block !important;
-}
-
-/* ==========================================
-   INPUTS E CONTROLES
-   ========================================== */
-
-#sispmg-plus-container .sispmg-sicor-form-group input[type="text"],
-#sispmg-plus-container .sispmg-sicor-form-group input.form-control,
-#sispmg-plus-container .sispmg-sicor-form-group select {
-    all: unset !important;
-    box-sizing: border-box !important;
-    width: 100% !important;
-    padding: 6px 8px !important;
-    border: 1px solid #dcd3c5 !important;
-    border-radius: 4px !important;
-    background-color: #fff !important;
-    font-size: 13px !important;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
-    color: #333 !important;
-    transition: border-color 0.2s !important;
-}
-
-#sispmg-plus-container .sispmg-sicor-form-group input[type="text"]:focus,
-#sispmg-plus-container .sispmg-sicor-form-group input.form-control:focus,
-#sispmg-plus-container .sispmg-sicor-form-group select:focus {
-    border-color: #b3a368 !important;
-    outline: none !important;
-}
-
-#sispmg-plus-container .sispmg-sicor-form-group input[type="text"]:disabled,
-#sispmg-plus-container .sispmg-sicor-form-group input.form-control:disabled {
-    background-color: #f5f5f5 !important;
-    color: #999 !important;
-    cursor: not-allowed !important;
-}
-
-/* ==========================================
-   CHECKBOXES
-   ========================================== */
-
-#sispmg-plus-container .sispmg-sicor-checkbox-group {
-    margin-top: 8px !important;
-}
-
-#sispmg-plus-container .sispmg-sicor-checkbox-group label {
-    display: flex !important;
-    align-items: center !important;
-    gap: 6px !important;
-    margin-bottom: 6px !important;
-    font-weight: normal !important;
-    cursor: pointer !important;
-}
-
-#sispmg-plus-container .sispmg-sicor-checkbox-group input[type="checkbox"] {
-    all: unset !important;
-    width: 16px !important;
-    height: 16px !important;
-    border: 1px solid #dcd3c5 !important;
-    border-radius: 3px !important;
-    background-color: #fff !important;
-    cursor: pointer !important;
-    flex-shrink: 0 !important;
-    display: inline-block !important;
-    position: relative !important;
-}
-
-#sispmg-plus-container .sispmg-sicor-checkbox-group input[type="checkbox"]:checked {
-    background-color: #b3a368 !important;
-    border-color: #b3a368 !important;
-}
-
-#sispmg-plus-container .sispmg-sicor-checkbox-group input[type="checkbox"]:checked::after {
-    content: "✓" !important;
-    position: absolute !important;
-    top: 50% !important;
-    left: 50% !important;
-    transform: translate(-50%, -50%) !important;
-    color: white !important;
-    font-size: 12px !important;
-    font-weight: bold !important;
-}
-
-#sispmg-plus-container .sispmg-sicor-checkbox-group input[type="checkbox"]:disabled {
-    opacity: 0.6 !important;
-    cursor: not-allowed !important;
-}
-
-/* ==========================================
-   SEÇÃO DE INFORMAÇÕES
-   ========================================== */
-
-#sispmg-plus-container .sispmg-sirconv-convenios-info {
-    font-size: 13px !important;
-    line-height: 1.6 !important;
-}
-
-#sispmg-plus-container .sispmg-sirconv-convenios-info p {
-    margin: 8px 0 !important;
-}
-
-#sispmg-plus-container .sispmg-sirconv-convenios-info strong {
-    font-weight: 600 !important;
-    color: #574e2d !important;
-}
-
-/* ==========================================
-   SEÇÃO DE HISTÓRICO
-   ========================================== */
-
-#sispmg-plus-container .sispmg-sicor-history-section {
-    background-color: #fff !important;
-    padding: 12px !important;
-    border: 1px solid #dcd3c5 !important;
-    border-radius: 6px !important;
-}
-
-#sispmg-plus-container .sispmg-sicor-column-header {
-    display: flex !important;
-    justify-content: space-between !important;
-    align-items: center !important;
-    margin-bottom: 10px !important;
-    padding-bottom: 8px !important;
-    border-bottom: 1px solid #EFE6DD !important;
-}
-
-#sispmg-plus-container .sispmg-sicor-column-header h4 {
-    font-size: 14px !important;
-    margin: 0 !important;
-    color: #b3a368 !important;
-    font-weight: 600 !important;
-}
-
-#sispmg-plus-container .sispmg-sicor-column-header button,
-#sispmg-plus-container #sirconv-convenios-clear-logs-btn {
-    all: unset !important;
-    box-sizing: border-box !important;
-    padding: 4px 10px !important;
-    font-size: 12px !important;
-    font-weight: 500 !important;
-    color: #dc3545 !important;
-    background-color: transparent !important;
-    border: 1px solid #dc3545 !important;
-    border-radius: 4px !important;
-    cursor: pointer !important;
-    transition: background-color 0.2s, color 0.2s !important;
-}
-
-#sispmg-plus-container .sispmg-sicor-column-header button:hover,
-#sispmg-plus-container #sirconv-convenios-clear-logs-btn:hover {
-    background-color: #dc3545 !important;
-    color: white !important;
-}
-
-#sispmg-plus-container .sispmg-sicor-log-box,
-#sispmg-plus-container #sirconv-convenios-logs-area {
-    max-height: 200px !important;
-    overflow-y: auto !important;
-    background-color: #f8f9fa !important;
-    border: 1px solid #e9ecef !important;
-    border-radius: 4px !important;
-    padding: 8px !important;
-    font-family: 'Courier New', monospace !important;
-    font-size: 11px !important;
-    line-height: 1.5 !important;
-}
-
-#sispmg-plus-container .sispmg-sicor-log-entry {
-    padding: 4px 0 !important;
-    border-bottom: 1px solid #e9ecef !important;
-    word-wrap: break-word !important;
-}
-
-#sispmg-plus-container .sispmg-sicor-log-entry:last-child {
-    border-bottom: none !important;
-}
-
-/* Estilos por tipo de log */
-#sispmg-plus-container .sispmg-sicor-log-entry.sispmg-sicor-log-start {
-    color: #0066cc !important;
-    font-weight: 600 !important;
-}
-
-#sispmg-plus-container .sispmg-sicor-log-entry.sispmg-sicor-log-process {
-    color: #666 !important;
-}
-
-#sispmg-plus-container .sispmg-sicor-log-entry.sispmg-sicor-log-success {
-    color: #28a745 !important;
-    font-weight: 500 !important;
-}
-
-#sispmg-plus-container .sispmg-sicor-log-entry.sispmg-sicor-log-error {
-    color: #dc3545 !important;
-    font-weight: 500 !important;
-}
-
-#sispmg-plus-container .sispmg-sicor-log-entry.sispmg-sicor-log-info {
-    color: #17a2b8 !important;
-}
-
-/* ==========================================
-   BOTÕES DE AÇÃO (FOOTER)
-   ========================================== */
-
-#sispmg-plus-container #sispmg-sirconv-convenios-modal .sispmg-modal-actions {
+#sispmg-plus-container .sispmg-plus-modal .sispmg-modal-actions {
     display: flex !important;
     justify-content: flex-end !important;
-    flex-wrap: wrap !important;
+    flex-wrap: wrap;
     gap: 10px !important;
     padding: 15px !important;
     border-top: 1px solid #dcd3c5 !important;
-    flex-shrink: 0 !important;
-    background-color: #fbf8f5 !important;
+    flex-shrink: 0;
+    background-color: #fbf8f5;
 }
 
-#sispmg-plus-container #sispmg-sirconv-convenios-modal .sispmg-modal-actions button {
-    all: unset !important;
+/* Regra específica para posicionar o botão à esquerda */
+#sispmg-plus-container #sispmg-sirconv-convenios-modal .sispmg-modal-actions #sirconv-convenios-manual-run {
+    margin-right: auto !important;
+}
+
+
+#sispmg-plus-container .sispmg-plus-modal .sispmg-modal-actions button,
+#sispmg-plus-container #sirconv-convenios-clear-logs-btn {
     box-sizing: border-box !important;
     display: inline-flex !important;
     align-items: center !important;
@@ -393,71 +114,113 @@
     border: 1px solid transparent !important;
     cursor: pointer !important;
     transition: background-color 0.2s, border-color 0.2s !important;
+    margin-bottom: 0;
 }
-
-#sispmg-plus-container #sispmg-sirconv-convenios-modal .sispmg-modal-actions button:disabled {
+#sispmg-plus-container .sispmg-plus-modal .sispmg-modal-actions button:disabled {
     opacity: 0.6 !important;
     cursor: not-allowed !important;
 }
-
-#sispmg-plus-container #sispmg-sirconv-convenios-modal .sispmg-modal-btn-primary,
-#sispmg-plus-container #sirconv-convenios-save-settings-btn {
+#sispmg-plus-container .sispmg-modal-btn-primary {
     background-color: #b3a368 !important;
     color: white !important;
     border-color: #b3a368 !important;
 }
-
-#sispmg-plus-container #sispmg-sirconv-convenios-modal .sispmg-modal-btn-primary:hover,
-#sispmg-plus-container #sirconv-convenios-save-settings-btn:hover {
+#sispmg-plus-container .sispmg-modal-btn-primary:hover {
     background-color: #9e8f57 !important;
     border-color: #9e8f57 !important;
 }
-
-#sispmg-plus-container #sispmg-sirconv-convenios-modal .sispmg-modal-btn-secondary,
-#sispmg-plus-container #sirconv-convenios-manual-run,
-#sispmg-plus-container #sispmg-sirconv-convenios-close-footer-btn {
+#sispmg-plus-container .sispmg-modal-btn-secondary {
     background-color: #fbf8f5 !important;
     color: #574e2d !important;
     border-color: #dcd3c5 !important;
 }
-
-#sispmg-plus-container #sispmg-sirconv-convenios-modal .sispmg-modal-btn-secondary:hover,
-#sispmg-plus-container #sirconv-convenios-manual-run:hover,
-#sispmg-plus-container #sispmg-sirconv-convenios-close-footer-btn:hover {
+#sispmg-plus-container .sispmg-modal-btn-secondary:hover {
     background-color: #EFE6DD !important;
     border-color: #c9bfae !important;
 }
 
-/* Botão "Executar Extração Agora" alinhado à esquerda */
-#sispmg-plus-container #sirconv-convenios-manual-run {
-    margin-right: auto !important;
+.sispmg-sirconv-convenios-form-section {
+    background-color: #fff !important;
+    padding: 12px !important;
+    border: 1px solid #dcd3c5 !important;
+    border-radius: 6px !important;
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 15px;
 }
 
-/* ==========================================
-   ANIMAÇÃO
-   ========================================== */
+.sispmg-sirconv-convenios-form-section h4 {
+    font-size: 14px !important;
+    margin-top: 0 !important;
+    margin-bottom: 12px !important;
+    padding-bottom: 8px !important;
+    border-bottom: 1px solid #EFE6DD !important;
+    color: #b3a368 !important;
+    font-weight: 600 !important;
+}
+
+.sispmg-sirconv-convenios-info p { margin: 8px 0 !important; font-size: 13px; line-height: 1.6;}
+.sispmg-sirconv-convenios-info strong { font-weight: 600 !important; color: #574e2d !important; }
+
+.sispmg-sirconv-convenios-history-section {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    background-color: #fff !important;
+    padding: 12px !important;
+    border: 1px solid #dcd3c5 !important;
+    border-radius: 6px !important;
+}
+.sispmg-sirconv-convenios-column-header {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    margin-bottom: 8px !important;
+    padding-bottom: 8px !important;
+    border-bottom: 1px solid #EFE6DD !important;
+}
+.sispmg-sirconv-convenios-column-header h4 {
+    border: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+#sirconv-convenios-clear-logs-btn {
+    background: #6c757d !important;
+    color: white !important;
+    padding: 4px 8px !important;
+    font-size: 11px !important;
+}
+#sirconv-convenios-clear-logs-btn:hover { background-color: #5a6268 !important; }
+
+.sispmg-sirconv-convenios-log-box {
+    min-height: 250px !important;
+    max-height: 400px;
+    background-color: #212529 !important;
+    color: #f8f9fa !important;
+    border-radius: 4px !important;
+    padding: 8px !important;
+    overflow-y: auto !important;
+    font-family: 'Courier New', Courier, monospace !important;
+    font-size: 11px !important;
+    line-height: 1.4 !important;
+}
+
+.sispmg-sirconv-convenios-log-entry { margin-bottom: 4px !important; }
+.sispmg-sirconv-convenios-log-timestamp { color: #888 !important; margin-right: 6px !important; }
+.sispmg-sirconv-convenios-log-system { font-weight: bold !important; }
+.sispmg-sirconv-convenios-log-info .sispmg-sirconv-convenios-log-system { color: #17a2b8 !important; }
+.sispmg-sirconv-convenios-log-success .sispmg-sirconv-convenios-log-system { color: #28a745 !important; }
+.sispmg-sirconv-convenios-log-error .sispmg-sirconv-convenios-log-system { color: #dc3545 !important; }
+
 
 @keyframes sispmgfadeIn {
-    from { 
-        opacity: 0 !important; 
-        transform: translateY(-5px) !important; 
-    }
-    to { 
-        opacity: 1 !important; 
-        transform: translateY(0) !important; 
-    }
+  from { opacity: 0; transform: scale(0.98); }
+  to { opacity: 1; transform: scale(1); }
 }
 
-/* ==========================================
-   RESPONSIVIDADE
-   ========================================== */
-
 @media (max-width: 768px) {
-    #sispmg-plus-container .sispmg-sicor-modal-form-grid {
-        grid-template-columns: 1fr !important;
-    }
-    
     #sispmg-plus-container #sispmg-sirconv-convenios-modal-container {
-        max-width: 95% !important;
+        max-width: 95vw;
+        max-height: 90vh;
     }
 }

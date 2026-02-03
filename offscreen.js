@@ -33,6 +33,80 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                  const infoMessage = infoMsgElement?.textContent.trim() ?? null;
                  sendResponse({ infoMessage: infoMessage });
 
+            } else if (request.action === 'parse-unidades-html') {
+                // <-- ADICIONADO: Parser de Unidades -->
+                try {
+                    // Selecionar tabela de dados (classe t1)
+                    const table = doc.querySelector("table.t1");
+                    if (!table) {
+                        sendResponse({ error: 'Tabela de dados (.t1) não encontrada no HTML retornado.' });
+                        return;
+                    }
+
+                    const rows = Array.from(table.querySelectorAll("tbody tr"));
+                    const parsedData = [];
+                    
+                    // Estado da hierarquia: índice = nível de indentação, valor = nome da unidade
+                    let hierarchyState = [];
+
+                    for (const row of rows) {
+                        const cells = row.querySelectorAll("td");
+                        if (cells.length === 0) continue; // Pula linhas de cabeçalho
+
+                        const cellUnidade = cells[0];
+                        
+                        // Extrair nome da unidade limpo
+                        let unitName = cellUnidade.textContent.trim();
+                        unitName = unitName.replace(/\s+/g, ' ');
+
+                        if (!unitName) continue;
+
+                        // Calcular nível de indentação baseado em spans com classe 'ic'
+                        const indentSpans = cellUnidade.querySelectorAll("span.ic");
+                        let level = indentSpans.length;
+
+                        // Atualizar estado da hierarquia
+                        hierarchyState = hierarchyState.slice(0, level);
+                        hierarchyState[level] = unitName;
+
+                        // Construir a "Árvore Reversa"
+                        const pathArray = hierarchyState.filter(u => u);
+                        
+                        // Deduplicação simples
+                        const uniquePath = [];
+                        pathArray.forEach((u, i) => {
+                            if (i === 0 || u !== pathArray[i-1]) {
+                                uniquePath.push(u);
+                            }
+                        });
+
+                        // Reverte para ficar do menor para o maior
+                        const fullPathString = uniquePath.slice().reverse().join("/");
+
+                        // Extrair outras colunas
+                        // Índices: 0:Unidade, 1:Cod, 2:Localidade, 3:CodLoc, 4:Endereço, 5:CEP
+                        const code = cells[1]?.textContent?.trim() || "";
+                        const location = cells[2]?.textContent?.trim() || "";
+                        const address = cells[4]?.textContent?.trim() || "";
+                        const cep = cells[5]?.textContent?.trim() || "";
+
+                        parsedData.push({
+                            hierarchyPath: fullPathString,
+                            unitName: unitName,
+                            code: code,
+                            location: location,
+                            address: address,
+                            cep: cep
+                        });
+                    }
+
+                    sendResponse({ data: parsedData });
+                } catch (error) {
+                    console.error('[Offscreen] Erro ao parsear HTML de unidades:', error);
+                    sendResponse({ error: `Erro ao parsear HTML: ${error.message}` });
+                }
+                // <-- FIM DO PARSER DE UNIDADES -->
+
             } else {
                  sendResponse({ error: `Ação desconhecida: ${request.action}` });
             }
@@ -45,4 +119,3 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
     return false; // Não lidou com a mensagem
 });
-

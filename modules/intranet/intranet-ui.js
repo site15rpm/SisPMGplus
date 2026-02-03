@@ -359,6 +359,33 @@ export class UIModule {
             `;
         }
 
+        // Adiciona item do menu para Extração de Convênios (SIRCONV)
+        const isSirconvConveniosPage = window.location.href.includes('/lite/convenio/');
+        if (isSirconvConveniosPage && this.modules['Extração de Convênios']) {
+             moduleItems += `
+                <div id="config-sirconv-convenios-btn" class="sispmg-menu-item">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M9 2a1 1 0 0 0-1 1v1H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-4V3a1 1 0 1 0-2 0v1H8V3a1 1 0 0 0-1-1zM4 8h16v12H4V8zm2 3v2h3v-2H6zm5 0v2h7v-2h-7zm-5 4v2h7v-2H6zm9 0v2h3v-2h-3z"/>
+                    </svg>
+                    <span>Extração de Convênios</span>
+                </div>
+            `;
+        }
+
+        // <-- ADICIONADO: Item do menu para Extração de Unidades -->
+        const isIntranetPage = window.location.hostname.includes('policiamilitar.mg.gov.br');
+        if (isIntranetPage && this.modules['Unidades']) {
+             moduleItems += `
+                <div id="config-unidades-btn" class="sispmg-menu-item">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5zm0 2.18l8 3.6v8.55c0 4.45-3.08 8.64-7.5 9.65v-9.98H10v9.98C5.58 24.97 2.5 20.78 2.5 16.33V7.78l8-3.6zM8 9v2h8V9H8zm0 4v2h8v-2H8z"/>
+                    </svg>
+                    <span>Extração de Unidades</span>
+                </div>
+            `;
+        }
+        // <-- FIM DA ADIÇÃO -->
+
         const dynamicLinksContent = await this.getDynamicLinksContent();
 
         let finalContent = `<div class="sispmg-menu-header">SisPMG+ Intranet</div>`;
@@ -403,6 +430,24 @@ export class UIModule {
                 this.closeHeaderMenu();
             });
         }
+
+        const sirconvConveniosButton = menu.querySelector('#config-sirconv-convenios-btn');
+        if (sirconvConveniosButton && this.modules['Extração de Convênios']) {
+             sirconvConveniosButton.addEventListener('click', () => {
+                this.modules['Extração de Convênios'].showConfig();
+                this.closeHeaderMenu();
+            });
+        }
+
+        // <-- ADICIONADO: Event listener para Extração de Unidades -->
+        const unidadesButton = menu.querySelector('#config-unidades-btn');
+        if (unidadesButton && this.modules['Unidades']) {
+             unidadesButton.addEventListener('click', () => {
+                this.modules['Unidades'].showConfig();
+                this.closeHeaderMenu();
+            });
+        }
+        // <-- FIM DA ADIÇÃO -->
         
         // Listeners para os botões estáticos removidos
 
@@ -521,4 +566,3 @@ export class UIModule {
         }
     }
 }
-
