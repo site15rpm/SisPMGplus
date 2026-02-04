@@ -126,106 +126,39 @@ export function initLogin(prototype) {
 
     prototype.handleExpiredPasswordAndStop = async function() {
         this.pauseAutomaticLoginMonitoring();
-        this.exibirNotificacao("Senha expirada. Iniciando fluxo de alteração...", true);
-    
+        this.exibirNotificacao("Senha expirada. Preenchendo dados para troca manual...", true);
+        
         try {
             const result = await this.getStorage(['userProfiles']);
             const profiles = result.userProfiles || {};
             const userProfile = profiles[this.userPM];
-    
-            if (!userProfile || !userProfile.user || !userProfile.pass) {
-                this.exibirNotificacao("Dados do usuário não encontrados para troca de senha.", false);
-                this.resumeScreenMonitoring();
-                return;
-            }
-    
-            const terminalUser = userProfile.user;
-            const expiredPassword = userProfile.pass;
-    
-            // Preenche os dados iniciais na tela de senha expirada
-            if (!await this.posicionar('Usuario')) throw new Error("Campo 'Usuario' não encontrado.");
-            await this.digitar(terminalUser);
-            if (!await this.posicionar('Senha..')) throw new Error("Campo 'Senha..' não encontrado.");
-            await this.digitar(expiredPassword, false);
-            await this.posicionar('Nova senha');
-            
-            // Solicita a nova senha ao usuário via modal
-            const newPassword = await new Promise(resolve => {
-                const contentHTML = `
-                    <p>Sua senha do terminal expirou. Por favor, digite uma nova senha.</p>
-                    <div class="password-input-container">
-                        <input id="new-password-input" type="text" autocomplete="new-password" placeholder="Digite a nova senha">
-                        <i class="fa-solid fa-eye" id="toggle-vis-icon"></i>
-                    </div>
-                    <div class="password-requirements">
-                         A senha deve seguir as regras do sistema (ex: 8 caracteres, letras, números).
-                    </div>`;
 
-                const modal = this.createModal('Alterar Senha Expirada', contentHTML, null, [
-                    { text: 'Cancelar', className: 'rotina-modal-cancel-btn', action: m => { this.closeModalAndFocus(m); resolve(null); } },
-                    { text: 'Confirmar Nova Senha', className: 'rotina-modal-save-btn', action: (m) => {
-                        const pass = m.querySelector('#new-password-input').value;
-                        if(pass && pass.length >= 4) { // Validação mínima
-                            this.closeModalAndFocus(m);
-                            resolve(pass);
-                        } else {
-                            this.exibirNotificacao("A senha parece curta demais.", false);
-                        }
-                    }}
-                ]);
+            if (userProfile && userProfile.user && userProfile.pass) {
+                const terminalUser = userProfile.user;
+                const expiredPassword = userProfile.pass;
 
-                const passInput = modal.querySelector('#new-password-input');
-                const toggleIcon = modal.querySelector('#toggle-vis-icon');
+                if (!await this.posicionar('Usuario')) throw new Error("Campo 'Usuario' não encontrado.");
+                await this.digitar(terminalUser);
+
+                if (!await this.posicionar('Senha..')) throw new Error("Campo 'Senha..' não encontrado.");
+                await this.digitar(expiredPassword, false);
+
+                // Deleta a senha salva
+                delete userProfile.pass;
+                userProfile.autoLoginEnabled = false;
+                await this.setStorage({ userProfiles: profiles });
+
+                this.exibirNotificacao("Senha antiga removida. Por favor, cadastre a nova senha manualmente.", true, 5000);
                 
-                toggleIcon.addEventListener('click', () => {
-                    const isPassword = passInput.type === 'password';
-                    passInput.type = isPassword ? 'text' : 'password';
-                    toggleIcon.classList.toggle('fa-eye', isPassword);
-                    toggleIcon.classList.toggle('fa-eye-slash', !isPassword);
-                });
-
-                passInput.focus();
-                passInput.onkeydown = (e) => {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        modal.querySelector('.rotina-modal-save-btn').click();
-                    }
-                };
-            });
-    
-            if (!newPassword) {
-                this.exibirNotificacao("Troca de senha cancelada pelo usuário.", false);
-                this.resumeScreenMonitoring(); // Libera o fluxo para o usuário
-                return;
+                // Posiciona o cursor para o usuário
+                await this.posicionar('Nova senha');
+            } else {
+                this.exibirNotificacao("Não foi possível encontrar dados salvos para preenchimento.", false);
             }
-    
-            // Continua com a automação da troca de senha
-            this.exibirNotificacao("Processando alteração de senha...", true);
-            await this.digitar(newPassword, false);
-            await this.teclar('ENTER');
-            
-            await this.localizarTexto('Confirme a nova senha', { esperar: 5, lancarErro: true });
-            await this.digitar(newPassword, false);
-            await this.teclar('ENTER');
-    
-            await this.localizarTexto('Senha alterada com sucesso', { esperar: 10, lancarErro: true });
-            this.exibirNotificacao("Senha alterada com sucesso!", true);
-    
-            // Salva a nova senha
-            userProfile.pass = newPassword;
-            userProfile.autoLoginEnabled = true;
-            await this.setStorage({ userProfiles: profiles });
-            this.exibirNotificacao("Login automático atualizado com a nova senha.", true);
-    
         } catch (error) {
-            await this.clearSavedPassword("expirada"); // Limpa a senha antiga se algo der errado
-            this.exibirNotificacao(`Erro ao trocar senha: ${error.message}`, false);
-        } finally {
-            this.passwordChangeFlowActive = false;
-            this.loginFlowActive = false;
-            this.resumeScreenMonitoring(); // Sempre resume o monitoramento
-            this.processScreenState(); // Reavalia a tela
+            this.exibirNotificacao(`Erro ao preencher dados: ${error.message}`, false);
         }
+        // Mantém o monitoramento pausado para o usuário finalizar o processo.
     };
 
     // --- LÓGICA DE LOGIN E TOKEN ---
