@@ -351,12 +351,23 @@ export function initActions(prototype) {
         
         if (verify) {
             try {
-                await this.localizarTexto(textToType, { esperar: 5, lancarErro: true, area: { apenasCamposDigitaveis: true } });
+                // Primeira tentativa: buscar apenas nos campos digitáveis (mais rápido e específico)
+                const foundInFields = await this.localizarTexto(textToType, { 
+                    esperar: 2, 
+                    lancarErro: false, 
+                    area: { apenasCamposDigitaveis: true } 
+                });
+                
+                // Se não encontrar, faz uma busca mais ampla na tela inteira como fallback
+                if (!foundInFields) {
+                    await this.localizarTexto(textToType, { esperar: 3, lancarErro: true });
+                }
             } catch (e) {
                  if (e instanceof UserCancellationError) {
                      throw e; 
                  }
-                 throw new Error(`Falha na verificação: O texto "${textToType}" não foi encontrado na tela.`);
+                 // A mensagem de erro agora é mais genérica para refletir a busca ampla
+                 throw new Error(`Falha na verificação: O texto "${textToType}" não foi encontrado na tela após a digitação.`);
             }
         } else {
             await this.waitForTerminalReady();
