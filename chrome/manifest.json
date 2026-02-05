@@ -1,0 +1,63 @@
+{
+"update_url": "https://clients2.google.com/service/update2/crx",
+
+  "manifest_version": 3,
+  "name": "SisPMG+",
+  "version": "2.9",
+  "description": "Adiciona funcionalidades e automações a sistemas utilizados pela PMMG.",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting",
+    "downloads",
+    "nativeMessaging",
+    "alarms",
+    "offscreen"
+  ],
+  "host_permissions": [
+    "*://*.policiamilitar.mg.gov.br/*",
+    "https://script.google.com/*",
+    "https://docs.google.com/",
+    "https://primebeneficios.com.br/*",
+    "https://sistema-customizado.primebeneficios.com.br/*",
+    "http://sgta.netfrota.com.br/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://terminal.policiamilitar.mg.gov.br/*"],
+      "js": ["common/browser-polyfill.js", "terminal-content-script.js"],
+      "run_at": "document_start"
+    },
+    {
+      "matches": ["*://*.policiamilitar.mg.gov.br/*"],
+      "exclude_matches": ["*://terminal.policiamilitar.mg.gov.br/*"],
+      "js": ["common/browser-polyfill.js", "intranet-content-script.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "SisPMG+"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "terminal-loader.js",
+        "intranet-loader.js",
+        "offscreen.html",
+        "common/*",
+        "modules/*"
+      ],
+      "matches": ["*://*.policiamilitar.mg.gov.br/*"]
+    }
+  ]
+}
