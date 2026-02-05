@@ -1,0 +1,226 @@
+/* Arquivo: modules/intranet/intranet-ui-styles.css */
+/* Contém os estilos para o menu global da extensão */
+@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css');
+
+/* Container global para isolar os estilos da extensão */
+#sispmg-plus-container {
+    all: initial !important; /* Reseta todos os estilos herdados */
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+    color: #333 !important;
+}
+
+#sispmg-plus-container * {
+    box-sizing: border-box !important; /* Garante que padding e border não afetem o tamanho final */
+}
+
+/* Estilo para o ícone, posicionado ao lado do avatar do usuário */
+#sispmg-plus-header-icon {
+    display: inline-block !important;
+    vertical-align: middle !important;
+    margin-right: 8px !important;
+    cursor: pointer !important;
+    opacity: 0.8 !important;
+    transition: opacity 0.2s ease-in-out !important;
+}
+#sispmg-plus-header-icon:hover {
+    opacity: 1 !important;
+}
+
+/* Animação de Fade-in para o menu */
+@keyframes sispmgfadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Novo estilo base para o menu suspenso */
+.sispmg-plus-menu {
+    position: fixed !important; 
+    width: 280px !important;
+    z-index: 9999 !important;
+    animation: sispmgfadeIn 0.2s ease-out !important;
+    background-color: #fbf8f5 !important;
+    border: 1px solid #dcd3c5 !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+    padding: 8px !important;
+    color: #574e2d !important;
+}
+
+/* Cabeçalho do Menu */
+.sispmg-menu-header {
+    padding: 4px 8px 12px 8px !important;
+    margin-bottom: 8px !important;
+    border-bottom: 1px solid #dcd3c5 !important;
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    text-align: center !important;
+    color: #574e2d !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    position: relative !important;
+}
+
+/* Estilo para os itens dentro do menu */
+.sispmg-menu-item {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    padding: 10px 8px !important;
+    color: #574e2d !important;
+    text-decoration: none !important;
+    font-size: 14px !important;
+    border-radius: 6px !important;
+    cursor: pointer !important;
+    transition: background-color 0.2s ease-in-out !important;
+}
+.sispmg-menu-item:hover {
+    background-color: #EFE6DD !important;
+}
+.sispmg-menu-item svg {
+    flex-shrink: 0 !important;
+}
+
+/* Estilo específico para o item com toggle */
+.sispmg-menu-toggle-item {
+    justify-content: space-between !important;
+}
+.sispmg-menu-toggle-item > span {
+    font-weight: 500 !important;
+}
+
+/* Separador do menu */
+.sispmg-menu-separator {
+    height: 1px !important;
+    background-color: #dcd3c5 !important;
+    margin: 8px 0 !important;
+}
+
+/* Estilo para Subtítulo (Novo) */
+.sispmg-menu-subtitle {
+    padding: 8px 12px 4px !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    color: #b3a368 !important; /* theme-light-gold */
+    text-transform: uppercase !important;
+    margin-top: 5px !important;
+}
+.sispmg-menu-subtitle:first-child {
+    margin-top: 0 !important;
+}
+
+/* Estilo para Erro (Novo) */
+.sispmg-menu-error {
+    padding: 10px 8px !important;
+    color: #dc3545 !important; /* Cor de perigo/erro */
+    font-size: 13px !important;
+    text-align: center !important;
+}
+
+
+/* Componente de switch (toggle) com escopo para evitar conflitos */
+#sispmg-plus-container .sispmg-plus-menu-switch {
+    all: unset !important; position: relative !important; display: inline-block !important;
+    width: 44px !important; height: 24px !important; flex-shrink: 0 !important; box-sizing: content-box !important;
+}
+#sispmg-plus-container .sispmg-plus-menu-switch input {
+    all: unset !important; opacity: 0 !important; width: 0 !important; height: 0 !important;
+}
+#sispmg-plus-container .sispmg-plus-menu-slider {
+    all: unset !important; position: absolute !important; cursor: pointer !important;
+    top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
+    background-color: #ccc !important; transition: .4s !important; border-radius: 24px !important; display: block !important;
+}
+#sispmg-plus-container .sispmg-plus-menu-slider:before {
+    all: unset !important; position: absolute !important; content: "" !important;
+    height: 18px !important; width: 18px !important; left: 3px !important; bottom: 3px !important;
+    background-color: white !important; transition: .4s !important; border-radius: 50% !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2) !important; display: block !important;
+}
+#sispmg-plus-container input:checked + .sispmg-plus-menu-slider {
+    background-color: #00D200 !important;
+}
+#sispmg-plus-container input:checked + .sispmg-plus-menu-slider:before {
+    transform: translateX(20px) !important;
+}
+
+/* Container para iframe em tela cheia e correção de visibilidade */
+body.sispmg-fullscreen-active > *:not(#sispmg-plus-container) {
+    visibility: hidden !important;
+}
+[id^="sispmg-fullscreen-iframe-container-"] {
+    display: none; /* Inicia oculto por padrão */
+    position: fixed !important; top: 0 !important; left: 0 !important;
+    width: 100vw !important; height: 100vh !important; z-index: 10000 !important;
+    background-color: #fff !important; animation: sispmgfadeIn 0.3s !important;
+}
+[id^="sispmg-fullscreen-iframe-container-"] iframe {
+    width: 100% !important; height: 100% !important; border: none !important;
+}
+
+/* Estilos para o botão SAIR do Iframe Fullscreen */
+[id^="sispmg-iframe-back-button-"] {
+    all: unset;
+    box-sizing: border-box;
+    display: inline-flex;
+    padding: 8px 16px;
+    font-weight: 500;
+    color: white;
+    background-color: #0d6efd;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    gap: 4px;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: fixed !important;
+    top: 22px !important;
+    right: 22px !important;
+    z-index: 10001 !important;
+}
+
+[id^="sispmg-iframe-back-button-"].btn-dark {
+    background-color: #343a40;
+    color: #fff;
+}
+
+[id^="sispmg-iframe-back-button-"]:hover {
+    box-shadow: 0 0 6px black;
+    border: 1px solid transparent;
+}
+
+[id^="sispmg-iframe-back-button-"]:active {
+    box-shadow: 0 0 10px black;
+    border: 1px solid transparent;
+}
+
+/* Estilos para o Loader */
+#sispmg-loader-overlay {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    background-color: rgba(0, 0, 0, 0.5) !important;
+    z-index: 10001 !important; /* Acima de outros modais/iframes */
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    animation: sispmgfadeIn 0.2s !important;
+}
+
+.sispmg-spinner {
+    border: 4px solid #f3f3f3 !important;
+    border-top: 4px solid #b3a368 !important; /* Cor em harmonia com o menu */
+    border-radius: 50% !important;
+    width: 40px !important;
+    height: 40px !important;
+    animation: sispmg-spin 1s linear infinite !important;
+}
+
+@keyframes sispmg-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
