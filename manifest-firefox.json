@@ -1,7 +1,5 @@
 {
-"update_url": "https://clients2.google.com/service/update2/crx",
-
-  "manifest_version": 3,
+"manifest_version": 3,
   "name": "SisPMG+",
   "version": "2.9",
   "description": "Adiciona funcionalidades e automações a sistemas utilizados pela PMMG.",
@@ -28,7 +26,7 @@
     "http://sgta.netfrota.com.br/*"
   ],
   "background": {
-    "service_worker": "background.js",
+    "scripts": ["background.js"],
     "type": "module"
   },
   "content_scripts": [
@@ -59,5 +57,11 @@
       ],
       "matches": ["*://*.policiamilitar.mg.gov.br/*"]
     }
-  ]
+  ],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "sispmgplus@cleriston.tameirao",
+      "strict_min_version": "109.0"
+    }
+  }
 }
