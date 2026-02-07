@@ -1,121 +1,89 @@
-﻿/**
+/**
  * Script para Documento Offscreen
  * Objetivo: Realizar parsing de HTML de forma genérica.
  */
-
-browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
+browser.runtime.onMessage.addListener(async (request, sender) => {
     // Escuta apenas mensagens direcionadas a 'offscreen'
-    if (request.target === 'offscreen') {
-        try {
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(request.html, 'text/html');
+    if (request.target !== 'offscreen') {
+        return;
+    }
 
-            if (request.action === 'parseDOM') {
+    try {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(request.html, request.parserType || 'text/html');
+
+        switch (request.action) {
+            case 'parseDOM': {
                 const element = doc.querySelector(request.selector);
-                let value = element ? (element.value ?? element.textContent ?? element.innerHTML) : null;
-                sendResponse({ value: value });
+                const value = element ? (element.value ?? element.textContent ?? element.innerHTML) : null;
+                return { value };
+            }
 
-            } else if (request.action === 'parseDOMErrorMessages') {
+            case 'parseDOMErrorMessages': {
                 const errorMsgElement = doc.querySelector('.msg_erro_geral');
                 const detailMsgElement = doc.querySelector('.msg_erro_detalhe');
-                const infoMsgElement = doc.querySelector('.msg.de.info'); // Corrigido seletor com ponto
+                const infoMsgElement = doc.querySelector('.msg.de.info');
 
                 let errorMessage = errorMsgElement?.textContent.trim() ?? null;
                 const detailMessage = detailMsgElement?.textContent.trim() ?? null;
                 const infoMessage = infoMsgElement?.textContent.trim() ?? null;
 
                 if (errorMessage && detailMessage) errorMessage += ` (${detailMessage})`;
-                 // Retorna erro OU info, priorizando erro.
-                 sendResponse({ errorMessage: errorMessage || infoMessage || "Erro/Info não encontrado no HTML." });
+                return { errorMessage: errorMessage || infoMessage || "Erro/Info não encontrado no HTML." };
+            }
 
-            } else if (request.action === 'parseDOMForInfoMessage') { // Nova ação para info
-                 const infoMsgElement = doc.querySelector('.msg.de.info'); // Corrigido seletor com ponto
-                 const infoMessage = infoMsgElement?.textContent.trim() ?? null;
-                 sendResponse({ infoMessage: infoMessage });
+            case 'parseDOMForInfoMessage': {
+                const infoMsgElement = doc.querySelector('.msg.de.info');
+                const infoMessage = infoMsgElement?.textContent.trim() ?? null;
+                return { infoMessage };
+            }
 
-            } else if (request.action === 'parse-unidades-html') {
-                // <-- ADICIONADO: Parser de Unidades -->
+            case 'parse-unidades-html': {
                 try {
-                    // Selecionar tabela de dados (classe t1)
                     const table = doc.querySelector("table.t1");
                     if (!table) {
-                        sendResponse({ error: 'Tabela de dados (.t1) não encontrada no HTML retornado.' });
-                        return;
+                        return { error: 'Tabela de dados (.t1) não encontrada no HTML retornado.' };
                     }
 
                     const rows = Array.from(table.querySelectorAll("tbody tr"));
                     const parsedData = [];
-                    
-                    // Estado da hierarquia: índice = nível de indentação, valor = nome da unidade
                     let hierarchyState = [];
 
                     for (const row of rows) {
                         const cells = row.querySelectorAll("td");
-                        if (cells.length === 0) continue; // Pula linhas de cabeçalho
+                        if (cells.length === 0) continue;
 
-                        const cellUnidade = cells[0];
-                        
-                        // Extrair nome da unidade limpo
-                        let unitName = cellUnidade.textContent.trim();
-                        unitName = unitName.replace(/\s+/g, ' ');
-
+                        let unitName = cells[0].textContent.trim().replace(/\s+/g, ' ');
                         if (!unitName) continue;
 
-                        // Calcular nível de indentação baseado em spans com classe 'ic'
-                        const indentSpans = cellUnidade.querySelectorAll("span.ic");
-                        let level = indentSpans.length;
-
-                        // Atualizar estado da hierarquia
+                        const level = cells[0].querySelectorAll("span.ic").length;
                         hierarchyState = hierarchyState.slice(0, level);
                         hierarchyState[level] = unitName;
 
-                        // Construir a "Árvore Reversa"
-                        const pathArray = hierarchyState.filter(u => u);
-                        
-                        // Deduplicação simples
-                        const uniquePath = [];
-                        pathArray.forEach((u, i) => {
-                            if (i === 0 || u !== pathArray[i-1]) {
-                                uniquePath.push(u);
-                            }
-                        });
-
-                        // Reverte para ficar do menor para o maior
+                        const uniquePath = [...new Set(hierarchyState.filter(Boolean))];
                         const fullPathString = uniquePath.slice().reverse().join("/");
-
-                        // Extrair outras colunas
-                        // Índices: 0:Unidade, 1:Cod, 2:Localidade, 3:CodLoc, 4:Endereço, 5:CEP
-                        const code = cells[1]?.textContent?.trim() || "";
-                        const location = cells[2]?.textContent?.trim() || "";
-                        const address = cells[4]?.textContent?.trim() || "";
-                        const cep = cells[5]?.textContent?.trim() || "";
 
                         parsedData.push({
                             hierarchyPath: fullPathString,
                             unitName: unitName,
-                            code: code,
-                            location: location,
-                            address: address,
-                            cep: cep
+                            code: cells[1]?.textContent?.trim() || "",
+                            location: cells[2]?.textContent?.trim() || "",
+                            address: cells[4]?.textContent?.trim() || "",
+                            cep: cells[5]?.textContent?.trim() || ""
                         });
                     }
-
-                    sendResponse({ data: parsedData });
+                    return { data: parsedData };
                 } catch (error) {
                     console.error('[Offscreen] Erro ao parsear HTML de unidades:', error);
-                    sendResponse({ error: `Erro ao parsear HTML: ${error.message}` });
+                    return { error: `Erro ao parsear HTML: ${error.message}` };
                 }
-                // <-- FIM DO PARSER DE UNIDADES -->
-
-            } else {
-                 sendResponse({ error: `Ação desconhecida: ${request.action}` });
             }
 
-        } catch (error) {
-            console.error("Erro ao fazer parse do HTML no offscreen:", error);
-            sendResponse({ value: null, errorMessage: null, infoMessage: null, error: error.message });
+            default:
+                return { error: `Ação desconhecida: ${request.action}` };
         }
-        return true; // Resposta assíncrona
+    } catch (error) {
+        console.error("Erro ao fazer parse do HTML no offscreen:", error);
+        return { error: error.message };
     }
-    return false; // Não lidou com a mensagem
 });
