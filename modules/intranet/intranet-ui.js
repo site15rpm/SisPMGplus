@@ -474,9 +474,9 @@ export class UIModule {
         }
 
         const agendaButton = menu.querySelector('#config-agenda-btn');
-        if (agendaButton) {
+        if (agendaButton && this.modules['Agenda']) {
             agendaButton.addEventListener('click', () => {
-                sendMessageToBackground('openSettingsPage', { page: 'modules/intranet/agenda-settings.html' });
+                this.modules['Agenda']?.showConfigModal();
                 this.closeHeaderMenu();
             });
         }

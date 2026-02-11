@@ -1,6 +1,9 @@
 // Arquivo: modules/intranet/intranet-agenda.js
 // Responsável pela lógica do novo módulo de Agenda da Intranet
 
+// CORREÇÃO: Importa a função de comunicação com o script de conteúdo/background.
+import { sendMessageToBackground } from '../../common/utils.js';
+
 export class IntranetAgendaModule {
     constructor() {
         console.log("SisPMG+ [Agenda]: Módulo de Agenda carregado.");
@@ -11,15 +14,14 @@ export class IntranetAgendaModule {
     async init() {
         // Lógica de inicialização do módulo
         console.log("SisPMG+ [Agenda]: Inicializando o módulo.");
+        await this.loadSettings(); // Carrega antes de injetar UI para ter as configs prontas
         this.injectUI();
-        await this.loadSettings();
         await this.loadTasks();
         this.renderTasks();
     }
 
     injectUI() {
         // Injeta o painel fixo na página
-        console.log("SisPMG+ [Agenda]: Injetando UI.");
         const panel = document.createElement('div');
         panel.id = 'sispmg-agenda-panel';
         panel.innerHTML = `
@@ -31,25 +33,19 @@ export class IntranetAgendaModule {
         `;
         document.body.appendChild(panel);
 
-        // Adiciona o listener para o botão de adicionar
-        document.getElementById('sispmg-agenda-add-btn').addEventListener('click', () => {
-            this.showTaskModal();
-        });
+        document.getElementById('sispmg-agenda-add-btn').addEventListener('click', () => this.showTaskModal());
     }
 
     showTaskModal(task = null) {
-        // Remove modal existente, se houver
-        const existingModal = document.getElementById('sispmg-agenda-modal');
-        if (existingModal) {
-            existingModal.remove();
-        }
+        const existingModal = document.getElementById('sispmg-task-modal');
+        if (existingModal) existingModal.remove();
 
-        // Cria e injeta o modal
         const modal = document.createElement('div');
-        modal.id = 'sispmg-agenda-modal';
+        modal.id = 'sispmg-task-modal';
+        modal.className = 'sispmg-agenda-modal-container'; // Classe para o container do modal
         modal.innerHTML = `
             <div class="sispmg-modal-content">
-                <span id="sispmg-agenda-modal-close">&times;</span>
+                <span class="sispmg-modal-close" id="sispmg-task-modal-close">&times;</span>
                 <h2>${task ? 'Editar Tarefa' : 'Nova Tarefa'}</h2>
                 <input type="datetime-local" id="sispmg-agenda-datetime" value="${task ? new Date(task.dueDate).toISOString().substring(0, 16) : ''}">
                 <textarea id="sispmg-agenda-info" placeholder="Descrição da atividade...">${task ? task.info : ''}</textarea>
@@ -58,42 +54,34 @@ export class IntranetAgendaModule {
         `;
         document.body.appendChild(modal);
 
-        // Listeners do modal
-        document.getElementById('sispmg-agenda-modal-close').addEventListener('click', () => {
-            modal.remove();
-        });
-
-        document.getElementById('sispmg-agenda-save-btn').addEventListener('click', () => {
+        modal.querySelector('#sispmg-task-modal-close').addEventListener('click', () => modal.remove());
+        modal.querySelector('#sispmg-agenda-save-btn').addEventListener('click', () => {
             this.saveTask(task ? task.id : null);
             modal.remove();
         });
     }
 
     async saveTask(taskId) {
-        const dueDate = document.getElementById('sispmg-agenda-datetime').value;
-        const info = document.getElementById('sispmg-agenda-info').value;
+        const dueDateInput = document.getElementById('sispmg-agenda-datetime');
+        const infoInput = document.getElementById('sispmg-agenda-info');
 
-        if (!dueDate || !info) {
+        if (!dueDateInput.value || !infoInput.value) {
             alert("Data/Hora e Descrição são obrigatórios.");
             return;
         }
 
+        const taskData = {
+            dueDate: new Date(dueDateInput.value).getTime(),
+            info: infoInput.value,
+        };
+
         if (taskId) {
-            // Edita a tarefa existente
             const task = this.tasks.find(t => t.id === taskId);
-            if(task) {
-                task.dueDate = new Date(dueDate).getTime();
-                task.info = info;
+            if (task) {
+                Object.assign(task, taskData);
             }
         } else {
-            // Cria uma nova tarefa
-            const newTask = {
-                id: Date.now(),
-                dueDate: new Date(dueDate).getTime(),
-                info: info,
-                completed: false
-            };
-            this.tasks.push(newTask);
+            this.tasks.push({ ...taskData, id: Date.now(), completed: false });
         }
 
         await this.persistTasks();
@@ -101,12 +89,10 @@ export class IntranetAgendaModule {
     }
 
     renderTasks() {
-        // Renderiza a lista de tarefas no painel
-        console.log("SisPMG+ [Agenda]: Renderizando tarefas.");
         const taskListContainer = document.getElementById('sispmg-agenda-task-list');
-        taskListContainer.innerHTML = ''; // Limpa a lista
+        if (!taskListContainer) return;
+        taskListContainer.innerHTML = '';
 
-        // Ordena as tarefas
         this.sortTasks();
 
         this.tasks.forEach(task => {
@@ -114,7 +100,6 @@ export class IntranetAgendaModule {
             taskElement.className = 'sispmg-agenda-task';
             taskElement.dataset.taskId = task.id;
 
-            // Define a cor baseada na data de vencimento
             this.applyTaskColor(taskElement, task);
 
             taskElement.innerHTML = `
@@ -122,24 +107,31 @@ export class IntranetAgendaModule {
                 <div class="sispmg-task-info">${task.info}</div>
                 <div class="sispmg-task-actions">
                     <button class="sispmg-task-complete-btn">${task.completed ? 'Reabrir' : 'Concluir'}</button>
+                    <button class="sispmg-task-edit-btn">Editar</button>
                 </div>
             `;
-            
             taskListContainer.appendChild(taskElement);
         });
 
-        // Adiciona listeners aos botões de concluir
-        document.querySelectorAll('.sispmg-task-complete-btn').forEach(btn => {
+        taskListContainer.querySelectorAll('.sispmg-task-complete-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                const taskId = e.target.closest('.sispmg-agenda-task').dataset.taskId;
-                this.toggleTaskComplete(parseInt(taskId));
+                const taskId = parseInt(e.target.closest('.sispmg-agenda-task').dataset.taskId, 10);
+                this.toggleTaskComplete(taskId);
+            });
+        });
+
+        taskListContainer.querySelectorAll('.sispmg-task-edit-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const taskId = parseInt(e.target.closest('.sispmg-agenda-task').dataset.taskId, 10);
+                const task = this.tasks.find(t => t.id === taskId);
+                if (task) this.showTaskModal(task);
             });
         });
     }
 
     applyTaskColor(element, task) {
         if (task.completed) {
-            element.style.borderColor = '#808080'; // Cor padrão para concluída
+            element.style.borderColor = this.settings.colors.completed;
             return;
         }
 
@@ -148,22 +140,27 @@ export class IntranetAgendaModule {
         const diffDays = (dueDate.getTime() - now.getTime()) / (1000 * 3600 * 24);
 
         if (diffDays < 1) {
-            element.style.borderColor = 'red'; // Vencido ou vence hoje
-        } else if (diffDays <= 3) {
-            element.style.borderColor = 'yellow'; // Vence em 1-3 dias
+            element.style.borderColor = this.settings.colors.expired;
+        } else if (diffDays <= this.settings.deadlines.soon) {
+            element.style.borderColor = this.settings.colors.soon;
         } else {
-            element.style.borderColor = 'green'; // Vence em 4+ dias
+            element.style.borderColor = this.settings.colors.far;
         }
     }
     
     sortTasks() {
         this.tasks.sort((a, b) => {
-            // Concluídas sempre vão para o final
-            if (a.completed !== b.completed) {
-                return a.completed ? 1 : -1;
+            if (a.completed !== b.completed) return a.completed ? 1 : -1;
+            
+            switch(this.settings.sortOrder) {
+                case 'desc':
+                    return b.dueDate - a.dueDate;
+                case 'alpha':
+                    return a.info.localeCompare(b.info);
+                case 'asc':
+                default:
+                    return a.dueDate - b.dueDate;
             }
-            // Ordena por data de vencimento
-            return a.dueDate - b.dueDate;
         });
     }
 
@@ -176,33 +173,133 @@ export class IntranetAgendaModule {
         }
     }
 
+    // --- Métodos de Configuração (Modal) ---
+
+    async showConfigModal() {
+        const existingModal = document.getElementById('sispmg-config-modal');
+        if (existingModal) existingModal.remove();
+
+        // Carrega as configurações mais recentes antes de mostrar
+        await this.loadSettings();
+
+        const modal = document.createElement('div');
+        modal.id = 'sispmg-config-modal';
+        modal.className = 'sispmg-agenda-modal-container';
+        modal.innerHTML = `
+            <div class="sispmg-modal-content">
+                <span class="sispmg-modal-close" id="sispmg-config-modal-close">&times;</span>
+                <h2>Configurações da Agenda</h2>
+                
+                <div class="sispmg-form-group">
+                    <h3>Cores das Tarefas</h3>
+                    <div class="sispmg-color-input">
+                        <label>Vencida:</label>
+                        <input type="color" id="config-color-expired" value="${this.settings.colors.expired}">
+                    </div>
+                    <div class="sispmg-color-input">
+                        <label>Vence em Breve:</label>
+                        <input type="color" id="config-color-soon" value="${this.settings.colors.soon}">
+                    </div>
+                    <div class="sispmg-color-input">
+                        <label>Distante:</label>
+                        <input type="color" id="config-color-far" value="${this.settings.colors.far}">
+                    </div>
+                    <div class="sispmg-color-input">
+                        <label>Concluída:</label>
+                        <input type="color" id="config-color-completed" value="${this.settings.colors.completed}">
+                    </div>
+                </div>
+
+                <div class="sispmg-form-group">
+                    <h3>Prazos</h3>
+                    <div class="sispmg-deadline-input">
+                        <label>"Em breve" significa vencer em até:</label>
+                        <input type="number" id="config-deadline-soon" min="1" value="${this.settings.deadlines.soon}">
+                        <span>dias.</span>
+                    </div>
+                </div>
+
+                <div class="sispmg-form-group">
+                    <h3>Ordenação</h3>
+                    <select id="config-sort-order">
+                        <option value="asc" ${this.settings.sortOrder === 'asc' ? 'selected' : ''}>Data crescente</option>
+                        <option value="desc" ${this.settings.sortOrder === 'desc' ? 'selected' : ''}>Data decrescente</option>
+                        <option value="alpha" ${this.settings.sortOrder === 'alpha' ? 'selected' : ''}>Ordem alfabética</option>
+                    </select>
+                </div>
+
+                <button id="sispmg-agenda-save-settings-btn">Salvar</button>
+            </div>
+        `;
+        document.body.appendChild(modal);
+
+        modal.querySelector('#sispmg-config-modal-close').addEventListener('click', () => modal.remove());
+        modal.querySelector('#sispmg-agenda-save-settings-btn').addEventListener('click', () => {
+            this.saveSettings(modal);
+            modal.remove();
+        });
+    }
+
+    async saveSettings(modal) {
+        const newSettings = {
+            colors: {
+                expired: modal.querySelector('#config-color-expired').value,
+                soon: modal.querySelector('#config-color-soon').value,
+                far: modal.querySelector('#config-color-far').value,
+                completed: modal.querySelector('#config-color-completed').value,
+            },
+            deadlines: {
+                soon: parseInt(modal.querySelector('#config-deadline-soon').value, 10),
+            },
+            sortOrder: modal.querySelector('#config-sort-order').value,
+        };
+
+        this.settings = newSettings;
+        // CORREÇÃO: Usa o sendMessageToBackground para salvar
+        await sendMessageToBackground('setStorage', { sispmg_agenda_settings: newSettings, storageType: 'local' });
+        
+        // Re-renderiza as tarefas para aplicar as novas configurações
+        this.renderTasks(); 
+    }
+
+    // --- Métodos de Persistência ---
+
     async loadTasks() {
-        const { sispmg_agenda_tasks } = await browser.storage.local.get('sispmg_agenda_tasks');
-        this.tasks = sispmg_agenda_tasks || [];
-        console.log("SisPMG+ [Agenda]: Tarefas carregadas.", this.tasks);
+        // CORREÇÃO: Usa o sendMessageToBackground para carregar
+        const result = await sendMessageToBackground('getStorage', { keys: ['sispmg_agenda_tasks'], storageType: 'local' });
+        if (result.success && result.value.sispmg_agenda_tasks) {
+            this.tasks = result.value.sispmg_agenda_tasks;
+        } else {
+            this.tasks = [];
+        }
     }
 
     async persistTasks() {
-        await browser.storage.local.set({ sispmg_agenda_tasks: this.tasks });
-        console.log("SisPMG+ [Agenda]: Tarefas salvas no armazenamento.");
+        // CORREÇÃO: Usa o sendMessageToBackground para salvar
+        await sendMessageToBackground('setStorage', { sispmg_agenda_tasks: this.tasks, storageType: 'local' });
     }
 
     async loadSettings() {
-        const { sispmg_agenda_settings } = await browser.storage.local.get('sispmg_agenda_settings');
-        // Padrões
+        // CORREÇÃO: Usa o sendMessageToBackground para carregar
+        const result = await sendMessageToBackground('getStorage', { keys: ['sispmg_agenda_settings'], storageType: 'local' });
+        
         const defaultSettings = {
-            colors: {
-                expired: 'red',
-                soon: 'yellow',
-                far: 'green',
-                completed: '#808080'
-            },
-            deadlines: {
-                soon: 3, // dias
-            },
-            sortOrder: 'asc' // asc, desc, alpha
+            colors: { expired: '#ff0000', soon: '#ffff00', far: '#008000', completed: '#808080' },
+            deadlines: { soon: 3 },
+            sortOrder: 'asc'
         };
-        this.settings = Object.assign(defaultSettings, sispmg_agenda_settings);
-        console.log("SisPMG+ [Agenda]: Configurações carregadas.", this.settings);
+        
+        if (result.success && result.value.sispmg_agenda_settings) {
+            // Merge profundo para evitar que configurações parciais quebrem o módulo
+            const savedSettings = result.value.sispmg_agenda_settings;
+            this.settings = {
+                ...defaultSettings,
+                ...savedSettings,
+                colors: { ...defaultSettings.colors, ...savedSettings.colors },
+                deadlines: { ...defaultSettings.deadlines, ...savedSettings.deadlines },
+            };
+        } else {
+            this.settings = defaultSettings;
+        }
     }
 }

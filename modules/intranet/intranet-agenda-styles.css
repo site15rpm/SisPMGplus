@@ -1,150 +1,253 @@
 /* Arquivo: modules/intranet/intranet-agenda-styles.css */
-/* Estilos para o novo módulo de Agenda da Intranet */
+/* Estilos para o novo módulo de Agenda da Intranet com !important */
 
 #sispmg-agenda-panel {
-    position: fixed;
-    top: 150px; /* Ajuste conforme necessário para não sobrepor o header */
-    left: 20px;
-    width: 300px;
-    height: 60vh;
-    background-color: #f9f9f9;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-    z-index: 9999;
-    display: flex;
-    flex-direction: column;
+    all: initial !important;
+    position: fixed !important;
+    top: 150px !important;
+    left: 20px !important;
+    width: 320px !important;
+    height: 65vh !important;
+    background-color: #f9f9f9 !important;
+    border: 1px solid #ccc !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+    z-index: 9998 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    font-family: sans-serif !important;
 }
 
 #sispmg-agenda-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 15px;
-    background-color: #eee;
-    border-bottom: 1px solid #ccc;
-    border-top-left-radius: 8px;
-    border-top-right-radius: 8px;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding: 10px 15px !important;
+    background-color: #e9ecef !important;
+    border-bottom: 1px solid #ccc !important;
+    border-top-left-radius: 8px !important;
+    border-top-right-radius: 8px !important;
 }
 
 #sispmg-agenda-header h3 {
-    margin: 0;
-    font-size: 16px;
+    all: initial !important;
+    font-family: sans-serif !important;
+    margin: 0 !important;
+    font-size: 18px !important;
+    font-weight: 600 !important;
+    color: #333 !important;
 }
 
 #sispmg-agenda-add-btn {
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    border: none;
-    background-color: #007bff;
-    color: white;
-    font-size: 24px;
-    line-height: 30px;
-    text-align: center;
-    cursor: pointer;
+    all: initial !important;
+    width: 32px !important;
+    height: 32px !important;
+    border-radius: 50% !important;
+    border: none !important;
+    background-color: #007bff !important;
+    color: white !important;
+    font-size: 26px !important;
+    line-height: 32px !important;
+    text-align: center !important;
+    cursor: pointer !important;
+    transition: background-color 0.2s !important;
+}
+
+#sispmg-agenda-add-btn:hover {
+    background-color: #0056b3 !important;
 }
 
 #sispmg-agenda-task-list {
-    flex-grow: 1;
-    overflow-y: auto;
-    padding: 10px;
+    flex-grow: 1 !important;
+    overflow-y: auto !important;
+    padding: 10px !important;
 }
 
 .sispmg-agenda-task {
-    background-color: white;
-    border-left: 5px solid; /* A cor será definida via JS */
-    padding: 10px;
-    margin-bottom: 10px;
-    border-radius: 4px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    background-color: #fff !important;
+    border-left-width: 5px !important;
+    border-left-style: solid !important;
+    padding: 12px !important;
+    margin-bottom: 10px !important;
+    border-radius: 4px !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
 }
 
 .sispmg-task-datetime {
-    font-size: 12px;
-    font-weight: bold;
-    margin-bottom: 5px;
+    font-size: 12px !important;
+    font-weight: bold !important;
+    color: #555 !important;
+    margin-bottom: 6px !important;
 }
 
 .sispmg-task-info {
-    font-size: 14px;
-    margin-bottom: 10px;
-    word-wrap: break-word;
+    font-size: 14px !important;
+    color: #333 !important;
+    margin-bottom: 10px !important;
+    word-wrap: break-word !important;
 }
 
 .sispmg-task-actions {
-    text-align: right;
+    display: flex !important;
+    justify-content: flex-end !important;
+    gap: 8px !important;
+}
+
+.sispmg-task-actions button {
+    all: initial !important;
+    font-family: sans-serif !important;
+    border: none !important;
+    padding: 6px 12px !important;
+    border-radius: 4px !important;
+    cursor: pointer !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    transition: opacity 0.2s !important;
+}
+
+.sispmg-task-actions button:hover {
+    opacity: 0.8 !important;
 }
 
 .sispmg-task-complete-btn {
-    background-color: #28a745;
-    color: white;
-    border: none;
-    padding: 5px 10px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 12px;
+    background-color: #28a745 !important;
+    color: white !important;
 }
 
-.sispmg-agenda-task[data-completed="true"] .sispmg-task-complete-btn {
-    background-color: #ffc107;
+.sispmg-task-edit-btn {
+    background-color: #ffc107 !important;
+    color: #212529 !important;
 }
 
-/* Estilos do Modal */
-#sispmg-agenda-modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0,0,0,0.5);
-    z-index: 10000;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+/* --- Estilos Genéricos de Modal --- */
+.sispmg-agenda-modal-container {
+    all: initial !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    background-color: rgba(0,0,0,0.6) !important;
+    z-index: 10000 !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    font-family: sans-serif !important;
 }
 
-.sispmg-modal-content {
-    background-color: white;
-    padding: 20px;
-    border-radius: 8px;
-    width: 400px;
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
+.sispmg-agenda-modal-container .sispmg-modal-content {
+    all: initial !important;
+    font-family: sans-serif !important;
+    background-color: #fff !important;
+    padding: 25px !important;
+    border-radius: 8px !important;
+    width: 450px !important;
+    max-width: 90% !important;
+    position: relative !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 20px !important;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3) !important;
 }
 
-#sispmg-agenda-modal-close {
-    position: absolute;
-    top: 10px;
-    right: 15px;
-    font-size: 24px;
-    cursor: pointer;
+.sispmg-agenda-modal-container .sispmg-modal-close {
+    all: initial !important;
+    position: absolute !important;
+    top: 15px !important;
+    right: 15px !important;
+    font-size: 28px !important;
+    font-family: sans-serif !important;
+    font-weight: bold !important;
+    color: #888 !important;
+    cursor: pointer !important;
+    line-height: 1 !important;
+}
+.sispmg-agenda-modal-container .sispmg-modal-close:hover {
+    color: #333 !important;
 }
 
-#sispmg-agenda-datetime {
-    width: 100%;
-    padding: 8px;
-    border-radius: 4px;
-    border: 1px solid #ccc;
+.sispmg-agenda-modal-container h2 {
+    all: initial !important;
+    font-family: sans-serif !important;
+    margin: 0 !important;
+    font-size: 22px !important;
+    font-weight: 600 !important;
+    color: #333 !important;
 }
 
-#sispmg-agenda-info {
-    width: 100%;
-    height: 150px;
-    padding: 8px;
-    border-radius: 4px;
-    border: 1px solid #ccc;
-    resize: vertical;
+.sispmg-agenda-modal-container input[type="datetime-local"],
+.sispmg-agenda-modal-container textarea,
+.sispmg-agenda-modal-container select {
+    all: initial !important;
+    font-family: sans-serif !important;
+    width: 100% !important;
+    padding: 10px !important;
+    border-radius: 4px !important;
+    border: 1px solid #ccc !important;
+    font-size: 16px !important;
+    box-sizing: border-box !important; /* Essencial */
 }
 
-#sispmg-agenda-save-btn {
-    align-self: flex-end;
-    padding: 10px 20px;
-    border: none;
-    border-radius: 4px;
-    background-color: #007bff;
-    color: white;
-    cursor: pointer;
+.sispmg-agenda-modal-container textarea {
+    height: 150px !important;
+    resize: vertical !important;
+}
+
+.sispmg-agenda-modal-container button {
+    all: initial !important;
+    font-family: sans-serif !important;
+    align-self: flex-end !important;
+    padding: 10px 25px !important;
+    border: none !important;
+    border-radius: 5px !important;
+    background-color: #007bff !important;
+    color: white !important;
+    cursor: pointer !important;
+    font-size: 16px !important;
+    font-weight: 600 !important;
+}
+
+/* Estilos específicos para modal de configuração */
+.sispmg-form-group {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 15px !important;
+}
+.sispmg-form-group h3 {
+    all: initial !important;
+    font-family: sans-serif !important;
+    font-size: 18px !important;
+    font-weight: 600 !important;
+    color: #444 !important;
+    margin: 0 !important;
+    border-bottom: 1px solid #eee !important;
+    padding-bottom: 5px !important;
+}
+
+.sispmg-color-input, .sispmg-deadline-input {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+}
+.sispmg-form-group label {
+    font-size: 14px !important;
+    color: #555 !important;
+}
+.sispmg-color-input input[type="color"] {
+    all: initial !important;
+    width: 40px !important;
+    height: 30px !important;
+    border: 1px solid #ddd !important;
+    cursor: pointer !important;
+}
+.sispmg-deadline-input input {
+    width: 70px !important;
+}
+.sispmg-deadline-input span {
+    font-size: 14px !important;
+    color: #555 !important;
+}
+
+select#config-sort-order {
+    padding: 8px !important;
 }

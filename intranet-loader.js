@@ -193,7 +193,7 @@ async function loadAgendaModule() {
         agendaModuleInstance.init();
         
         // Registra no menu de UI se necessário
-        // uiModuleInstance.registerModule({ name: 'Agenda', instance: agendaModuleInstance });
+        uiModuleInstance.registerModule({ name: 'Agenda', instance: agendaModuleInstance });
     } catch(e) {
          console.error("SisPMG+: Falha ao carregar o módulo de Agenda.", e);
     }
@@ -206,7 +206,7 @@ function destroyAgendaModule() {
     //     agendaModuleInstance.destroy();
     // }
     agendaModuleInstance = null;
-    // uiModuleInstance.unregisterModule('Agenda');
+    uiModuleInstance.unregisterModule('Agenda');
 }
 
 /** Carrega o módulo SICOR de forma segura. */
