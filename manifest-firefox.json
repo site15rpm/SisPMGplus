@@ -14,8 +14,7 @@
     "scripting",
     "downloads",
     "nativeMessaging",
-    "alarms",
-    "offscreen"
+    "alarms"
   ],
   "host_permissions": [
     "*://*.policiamilitar.mg.gov.br/*",
@@ -61,7 +60,18 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "sispmgplus@cleriston.tameirao",
-      "strict_min_version": "109.0"
+      "strict_min_version": "109.0",
+      "data_collection_permissions": {
+        "required": [
+          "authenticationInfo",
+          "browsingActivity",
+          "locationInfo",
+          "personalCommunications",
+          "personallyIdentifyingInfo",
+          "websiteActivity",
+          "websiteContent"
+        ]
+      }
     }
   }
 }

@@ -39,16 +39,8 @@ browser.runtime.onMessage.addListener((request, sender) => {
 
         const unidadesResponse = await handleUnidadesMessages(request, sender);
         if (unidadesResponse !== undefined) return unidadesResponse;
-
-        // --- ANTIGO: Camada de compatibilidade para handlers que usam sendResponse ---
-        let sendResponse;
-        const responsePromise = new Promise(resolve => {
-            sendResponse = function(response) {
-                resolve(response);
-            };
-        });
-
-        if (handleSicorMessages(request, sender, sendResponse)) return responsePromise;
+        const sicorResponse = await handleSicorMessages(request, sender);
+        if (sicorResponse !== undefined) return sicorResponse;
 
         // Manipula mensagens genéricas (usadas por todos os módulos) com async/await
         switch (action) {

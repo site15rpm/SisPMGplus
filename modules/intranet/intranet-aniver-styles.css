@@ -77,7 +77,7 @@
     all: unset;
     box-sizing: border-box !important;
     position: absolute !important;
-    top: 50% !important;
+    top: 5% !important;
     right: 15px !important;
     transform: translateY(-50%) !important;
     width: 24px !important;

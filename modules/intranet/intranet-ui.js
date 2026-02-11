@@ -91,6 +91,9 @@ export class UIModule {
         this.iconContainer = null;
         this.menuCloseTimer = null; // Temporizador para o fechamento do menu
         this.intranetModuleEnabled = true;
+        this.preloadedMenuContent = null; // Conteúdo pré-carregado do menu
+        this.isMenuContentLoading = false; // Flag para evitar carregamentos múltiplos
+        this.preloadDebounceTimer = null; // Timer para debouncing do pré-carregamento
     }
 
     async init() {
@@ -100,6 +103,32 @@ export class UIModule {
         if (this.intranetModuleEnabled) {
             this.hideHelpIcon();
             this.injectHeaderIcon();
+            this.preloadHeaderMenuContent(); // Pré-carrega o conteúdo do menu
+        }
+    }
+
+    async preloadHeaderMenuContent(force = false) {
+        // Previne carregamentos paralelos. Se já está carregando, a chamada atual é ignorada.
+        // A lógica de debounce em registerModule garante que a última chamada será executada.
+        if (this.isMenuContentLoading) return; 
+
+        // Se não for forçado, evita recarregar se o conteúdo já existir.
+        if (!force && this.preloadedMenuContent) {
+            return;
+        }
+
+        this.isMenuContentLoading = true;
+        try {
+            this.preloadedMenuContent = await this.getHeaderMenuContent();
+        } catch (error) {
+            console.error("SisPMG+ [UI]: Erro ao pré-carregar o conteúdo do menu.", error);
+            this.preloadedMenuContent = '<div class="sispmg-menu-item sispmg-menu-error">Erro ao carregar menu.</div>';
+        } finally {
+            this.isMenuContentLoading = false;
+            // Se o menu estiver aberto, atualiza seu conteúdo com os novos dados.
+            if (this.menuVisible) {
+                this.updateMenu();
+            }
         }
     }
     
@@ -138,16 +167,20 @@ export class UIModule {
 
     registerModule(module) {
         this.modules[module.name] = module.instance;
-        if(this.menuVisible) {
-            this.updateMenu();
-        }
+        
+        clearTimeout(this.preloadDebounceTimer);
+        this.preloadDebounceTimer = setTimeout(() => {
+            this.preloadHeaderMenuContent(true); // Força o recarregamento
+        }, 150);
     }
     
     unregisterModule(moduleName) {
         delete this.modules[moduleName];
-        if(this.menuVisible) {
-            this.updateMenu();
-        }
+
+        clearTimeout(this.preloadDebounceTimer);
+        this.preloadDebounceTimer = setTimeout(() => {
+            this.preloadHeaderMenuContent(true); // Força o recarregamento
+        }, 150);
     }
 
     injectHeaderIcon() {
@@ -196,8 +229,13 @@ export class UIModule {
         const menu = document.createElement('div');
         menu.id = 'sispmg-plus-header-menu';
         menu.className = 'sispmg-plus-menu'; 
-        // Adiciona um placeholder de carregamento
-        menu.innerHTML = `<div><div class="sispmg-menu-header">Carregando...</div></div>`;
+
+        // Usa o conteúdo pré-carregado ou mostra "Carregando..."
+        const content = this.preloadedMenuContent 
+            ? `<div>${this.preloadedMenuContent}</div>`
+            : `<div><div class="sispmg-menu-header">Carregando...</div></div>`;
+
+        menu.innerHTML = content;
         document.getElementById('sispmg-plus-container').appendChild(menu);
 
         const iconRect = this.iconContainer.getBoundingClientRect();
@@ -217,10 +255,12 @@ export class UIModule {
             this.menuCloseTimer = setTimeout(() => this.closeHeaderMenu(), 300);
         });
 
-        // Busca o conteúdo real e atualiza o menu
-        const content = await this.getHeaderMenuContent();
-        menu.firstElementChild.innerHTML = content;
         this.attachMenuEventListeners(menu);
+
+        // Se o conteúdo não estava pronto (raro), tenta carregar de novo em segundo plano
+        if (!this.preloadedMenuContent && !this.isMenuContentLoading) {
+            this.preloadHeaderMenuContent();
+        }
     }
 
     /**
@@ -373,8 +413,8 @@ export class UIModule {
         }
 
         // <-- ADICIONADO: Item do menu para Extração de Unidades -->
-        const isIntranetPage = window.location.hostname.includes('policiamilitar.mg.gov.br');
-        if (isIntranetPage && this.modules['Unidades']) {
+        const isUnidadesPage = window.location.href === 'https://intranet.policiamilitar.mg.gov.br/legado/operacoes/unidades/';
+        if (isUnidadesPage && this.modules['Unidades']) {
              moduleItems += `
                 <div id="config-unidades-btn" class="sispmg-menu-item">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
@@ -457,10 +497,10 @@ export class UIModule {
         });
     }
 
-    async updateMenu() {
+    updateMenu() {
         const menu = document.getElementById('sispmg-plus-header-menu');
-       if (menu) {
-            menu.firstElementChild.innerHTML = await this.getHeaderMenuContent();
+        if (menu && this.preloadedMenuContent) {
+            menu.firstElementChild.innerHTML = this.preloadedMenuContent;
             this.attachMenuEventListeners(menu);
         }
     }
