@@ -1,7 +1,7 @@
 // Arquivo: modules/intranet/intranet-agenda.js
 // Responsável pela lógica do novo módulo de Agenda da Intranet
 
-class IntranetAgendaModule {
+export class IntranetAgendaModule {
     constructor() {
         console.log("SisPMG+ [Agenda]: Módulo de Agenda carregado.");
         this.tasks = [];
@@ -205,13 +205,4 @@ class IntranetAgendaModule {
         this.settings = Object.assign(defaultSettings, sispmg_agenda_settings);
         console.log("SisPMG+ [Agenda]: Configurações carregadas.", this.settings);
     }
-}
-
-// Inicializa o módulo se estiver na página correta da Intranet
-if (window.location.href.includes('intranet.policiamilitar.mg.gov.br')) {
-    // Aguarda um pouco para garantir que a UI principal da intranet seja carregada
-    setTimeout(() => {
-        const agendaModule = new IntranetAgendaModule();
-        agendaModule.init();
-    }, 2000); 
 }
