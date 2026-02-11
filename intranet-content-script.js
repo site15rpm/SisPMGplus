@@ -169,6 +169,8 @@ try {
         uiCssUrl: browser.runtime.getURL('modules/intranet/intranet-ui-styles.css'),
         aniverModuleUrl: browser.runtime.getURL('modules/intranet/intranet-aniver.js'),
         aniverCssUrl: browser.runtime.getURL('modules/intranet/intranet-aniver-styles.css'),
+        agendaModuleUrl: browser.runtime.getURL('modules/intranet/intranet-agenda.js'),
+        agendaCssUrl: browser.runtime.getURL('modules/intranet/intranet-agenda-styles.css'),
         praticasModuleUrl: browser.runtime.getURL('modules/intranet/intranet-praticas.js'),
         praticasCssUrl: browser.runtime.getURL('modules/intranet/intranet-praticas-styles.css'),
         sirconvModuleUrl: browser.runtime.getURL('modules/intranet/intranet-sirconv.js'),

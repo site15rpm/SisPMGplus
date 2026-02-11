@@ -4,6 +4,7 @@
 let padmModuleInstance = null;
 let uiModuleInstance = null;
 let aniverModuleInstance = null;
+let agendaModuleInstance = null; // Módulo da Agenda
 let sirconvModuleInstance = null;
 let sirconvConveniosModuleInstance = null;
 let sicorModuleInstance = null;
@@ -42,6 +43,7 @@ async function main(config) {
         'intranetUiCustomization',
         'padmModuleEnabled', 
         'aniverModuleEnabled',
+        'agendaModuleEnabled', // Módulo da Agenda
         'sirconvModuleEnabled',
         'sirconvConveniosModuleEnabled',
         'sicorModuleEnabled',
@@ -98,13 +100,23 @@ async function main(config) {
  * Verifica periodicamente as condições para carregar ou descarregar os submódulos.
  */
 function checkAllModules() {
-    // Verifica o módulo de Aniversariantes
     const isPrincipalPage = window.location.hostname === 'principal.policiamilitar.mg.gov.br';
+
+    // Verifica o módulo de Aniversariantes
     if (moduleSettings.aniverModuleEnabled !== false) {
         if (isPrincipalPage && !aniverModuleInstance) {
             loadAniverModule();
         } else if (!isPrincipalPage && aniverModuleInstance) {
             destroyAniverModule();
+        }
+    }
+    
+    // Verifica o módulo da Agenda
+    if (moduleSettings.agendaModuleEnabled !== false) {
+        if (isPrincipalPage && !agendaModuleInstance) {
+            loadAgendaModule();
+        } else if (!isPrincipalPage && agendaModuleInstance) {
+            destroyAgendaModule();
         }
     }
 
@@ -167,6 +179,34 @@ function checkAllModules() {
             destroyPraticasModule();
         }
     }
+}
+
+/** Carrega o módulo de Agenda. */
+async function loadAgendaModule() {
+    try {
+        console.log("SisPMG+: Página principal detectada. Carregando módulo de Agenda...");
+        
+        loadCSS(globalConfig.agendaCssUrl);
+        const { IntranetAgendaModule } = await import(globalConfig.agendaModuleUrl);
+        
+        agendaModuleInstance = new IntranetAgendaModule();
+        agendaModuleInstance.init();
+        
+        // Registra no menu de UI se necessário
+        // uiModuleInstance.registerModule({ name: 'Agenda', instance: agendaModuleInstance });
+    } catch(e) {
+         console.error("SisPMG+: Falha ao carregar o módulo de Agenda.", e);
+    }
+}
+
+/** Descarrega o módulo de Agenda. */
+function destroyAgendaModule() {
+    console.log("SisPMG+: Saindo da página principal. Descarregando módulo de Agenda.");
+    // if (agendaModuleInstance && typeof agendaModuleInstance.destroy === 'function') {
+    //     agendaModuleInstance.destroy();
+    // }
+    agendaModuleInstance = null;
+    // uiModuleInstance.unregisterModule('Agenda');
 }
 
 /** Carrega o módulo SICOR de forma segura. */
