@@ -8,6 +8,7 @@ import { handleAbastecimentosMessages, initializeAbastecimentosBackground } from
 import { handleSicorMessages, initializeSicorBackground } from './modules/intranet/intranet-sicor-background.js';
 import { handleSirconvConveniosMessages, initializeSirconvConveniosBackground } from './modules/intranet/intranet-sirconv-convenios-background.js';
 import { handleUnidadesMessages, initializeUnidadesBackground } from './modules/intranet/intranet-unidades-background.js'; // <-- NOVO
+import { handleAgendaMessages, initializeAgendaBackground } from './modules/intranet/intranet-agenda-background.js';
 
 // Inicializa os listeners de cada módulo
 initializeTerminalBackground();
@@ -15,6 +16,7 @@ initializeAbastecimentosBackground();
 initializeSicorBackground();
 initializeSirconvConveniosBackground();
 initializeUnidadesBackground(); // <-- NOVO
+initializeAgendaBackground();
 
 // Listener de Mensagens Global
 browser.runtime.onMessage.addListener((request, sender) => {
@@ -30,6 +32,9 @@ browser.runtime.onMessage.addListener((request, sender) => {
 
         const intranetResponse = await handleIntranetMessages(request, sender);
         if (intranetResponse !== undefined) return intranetResponse;
+
+        const agendaResponse = await handleAgendaMessages(request, sender);
+        if (agendaResponse !== undefined) return agendaResponse;
 
         const abastecimentosResponse = await handleAbastecimentosMessages(request, sender);
         if (abastecimentosResponse !== undefined) return abastecimentosResponse;

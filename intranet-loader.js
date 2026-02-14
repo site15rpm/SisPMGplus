@@ -186,7 +186,12 @@ async function loadAgendaModule() {
     try {
         console.log("SisPMG+: Página principal detectada. Carregando módulo de Agenda...");
         
-        loadCSS(globalConfig.agendaCssUrl);
+        // Constrói a URL do CSS dinamicamente
+        const baseUrl = globalConfig.uiModuleUrl ? globalConfig.uiModuleUrl.split('/modules/')[0] : '';
+        if (baseUrl) {
+            loadCSS(`${baseUrl}/modules/intranet/intranet-agenda-styles.css`);
+        }
+        
         const { IntranetAgendaModule } = await import(globalConfig.agendaModuleUrl);
         
         agendaModuleInstance = new IntranetAgendaModule();
