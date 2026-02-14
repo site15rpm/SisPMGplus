@@ -4,7 +4,7 @@
 
 /* Container global para isolar os estilos da extensão */
 #sispmg-plus-container {
-    all: initial !important; /* Reseta todos os estilos herdados */
+    /* Removed all: initial !important; as it was too aggressive */
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
     color: #333 !important;
 }

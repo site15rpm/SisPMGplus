@@ -97,36 +97,34 @@ export class IntranetAgendaModule {
         this.renderTasks();
 
         // Check localStorage state after rendering
-        const isCollapsedFromStorage = localStorage.getItem('sispmg_agenda_collapsed') === 'true';
-        if (!isCollapsedFromStorage && this.panel) {
-            // If it should NOT be collapsed (i.e., was expanded), expand it smoothly.
-            // toggleCollapse will remove the 'collapsed' class and trigger the transition.
-            this.toggleCollapse(this.panel);
+        const isCollapsedFromStorage = localStorage.getItem('sispmg_agenda_collapsed') === 'true'; // Default to false (expanded) if not set
+        if (this.panel) {
+            this.toggleCollapse(this.panel, isCollapsedFromStorage); // Pass forceState directly
         }
     }
 
     injectUI() {
         this.panel = document.createElement('div');
         this.panel.id = 'sispmg-agenda-panel';
-        this.panel.classList.add('collapsed'); // Sempre começa recolhido para revelação suave
+        // this.panel.classList.add('collapsed'); // Visibility managed by 'collapsed' class now
 
-        // A ordem do HTML é invertida para o painel crescer para cima com flex-direction: column-reverse
         this.panel.innerHTML = `
-            <div id="sispmg-agenda-task-list"></div>
-            <div id="sispmg-agenda-header">
-                <div class="sispmg-agenda-title-group">
+            <div class="sispmg-panel-header">
+                <div class="sispmg-panel-title-group">
                     ${iconSVG_28}
-                    <h3>Agenda de Tarefas</h3>
+                    <span>Agenda de Tarefas</span>
                 </div>
-                <div class="sispmg-agenda-header-actions">
+                <div class="sispmg-panel-actions">
                     <button id="sispmg-agenda-add-btn" title="Nova Tarefa"><i class="fa-solid fa-plus"></i></button>
                     <button id="sispmg-agenda-collapse-btn" title="Recolher/Expandir">
                         <i class="fa-solid fa-chevron-up"></i>
                     </button>
                 </div>
             </div>
+            <div id="sispmg-agenda-task-list" class="sispmg-panel-content-wrapper"></div>
         `;
-        document.body.appendChild(this.panel);
+        const container = document.getElementById('sispmg-plus-container') || document.body;
+        container.appendChild(this.panel);
 
         document.getElementById('sispmg-agenda-add-btn').addEventListener('click', (e) => {
             e.stopPropagation();
@@ -138,14 +136,26 @@ export class IntranetAgendaModule {
         });
     }
 
-    toggleCollapse(panel) {
-        panel.classList.toggle('collapsed');
-        const isCollapsed = panel.classList.contains('collapsed');
-        localStorage.setItem('sispmg_agenda_collapsed', isCollapsed.toString());
-        
+    toggleCollapse(panel, forceState = null) {
         const icon = panel.querySelector('#sispmg-agenda-collapse-btn i');
-        icon.classList.toggle('fa-chevron-down', !isCollapsed);
-        icon.classList.toggle('fa-chevron-up', isCollapsed);
+        let isCollapsed = panel.classList.contains('collapsed');
+
+        if (forceState !== null) {
+            isCollapsed = forceState;
+        } else {
+            isCollapsed = !isCollapsed; // Toggle current state
+        }
+        
+        if (isCollapsed) {
+            panel.classList.add('collapsed');
+            icon.classList.remove('fa-chevron-down');
+            icon.classList.add('fa-chevron-up');
+        } else {
+            panel.classList.remove('collapsed');
+            icon.classList.remove('fa-chevron-up');
+            icon.classList.add('fa-chevron-down');
+        }
+        localStorage.setItem('sispmg_agenda_collapsed', isCollapsed.toString());
     }
 
     showTaskModal(task = null) {
@@ -774,10 +784,10 @@ export class IntranetAgendaModule {
                     <i class="fa-solid fa-users"></i>
                     <span class="sispmg-confirm-count">${confirmedUsers.length}</span>
                 </button>
-                <button class="sispmg-task-complete-btn sispmg-task-action-btn" data-task-id="${task.id}" title="${task.concluida ? 'Reabrir Tarefa' : 'Concluir Tarefa'}">
+                <button class="sispmg-task-complete-btn" title="${task.concluida ? 'Reabrir Tarefa' : 'Concluir Tarefa'}">
                     <i class="fa-solid ${task.concluida ? 'fa-arrow-rotate-left' : 'fa-check'}"></i>
                 </button>
-                <button class="sispmg-task-edit-btn sispmg-task-action-btn" data-task-id="${task.id}" title="Editar Tarefa">
+                <button class="sispmg-task-edit-btn" title="Editar Tarefa">
                     <i class="fa-solid fa-edit"></i>
                 </button>
             `;

@@ -11,57 +11,64 @@
 /* Painel Principal da Agenda */
 #sispmg-agenda-panel {
     position: fixed !important;
-    left: 20px;
+    left: 20px; /* Fixed on left side */
     bottom: 20px;
     width: 400px !important;
     max-width: 95vw !important;
-    max-height: 80vh !important;
+    max-height: 70vh !important;
     background-color: var(--agenda-bg) !important;
     border: 1px solid var(--agenda-border) !important;
     border-radius: 8px !important;
     box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
     z-index: 9990 !important;
     display: flex !important;
-    flex-direction: column-reverse !important; /* Faz o painel crescer para cima */
-    transition: all 0.3s ease-in-out !important;
+    flex-direction: column !important; /* Changed to column for header at top */
+    transition: all 0.3s ease-in-out !important; /* General transition for whole panel movement (if any) */
+    overflow: hidden; /* Ensure content doesn't overflow rounded corners */
 }
 
-#sispmg-agenda-header {
+/* Generalizado para cabeçalhos de painéis */
+.sispmg-panel-header {
     display: flex !important;
     justify-content: space-between !important;
     align-items: center !important;
     padding: 8px 12px !important;
     background-color: #826c2b !important;
     border-bottom: 1px solid #6d5b24 !important;
+    border-radius: 8px 8px 0px 0px !important;
+    height: 40px !important;
 }
 
-/* Correção para h3 não ter sublinhado */
-#sispmg-agenda-panel h3 {
+/* Correção para span não ter sublinhado */
+#sispmg-agenda-panel span {
     text-decoration: none !important;
     border: none !important;
     box-shadow: none !important;
 }
 
-#sispmg-agenda-header h3 {
+.sispmg-panel-header span {
     margin: 0 !important;
     color: #fff !important;
     font-size: 16px !important;
-    flex-grow: 0 !important; /* h3 não deve mais crescer */
+    flex-grow: 0 !important;
     text-align: center !important;
 }
 
-.sispmg-agenda-title-group {
+.sispmg-panel-title-group {
     display: flex !important;
     align-items: center !important;
-    justify-content: center !important;
+    justify-content: left !important;
     gap: 8px !important;
-    flex-grow: 1 !important; /* O grupo do título agora cresce */
+    flex-grow: 1 !important;
 }
 
-
+.sispmg-panel-actions {
+    display: flex !important;
+    gap: 8px !important;
+}
 
 /* Regra genérica para botões do cabeçalho */
-#sispmg-agenda-header button {
+.sispmg-panel-actions button {
     background-color: transparent !important;
     border: none !important;
     border-radius: 4px !important;
@@ -75,49 +82,35 @@
     align-items: center !important;
     justify-content: center !important;
 }
-#sispmg-agenda-header button:hover {
+.sispmg-panel-actions button:hover {
     background-color: rgba(255, 255, 255, 0.1) !important;
     color: #fff !important;
 }
 
-.sispmg-agenda-header-actions {
-    display: flex !important;
-    gap: 8px !important;
+/* Regras específicas para botões de ações do painel */
+#sispmg-agenda-panel #sispmg-agenda-add-btn {
+    background-color: #007bff !important; /* Cor azul para o botão adicionar */
 }
-
-/* Regras específicas para botões do cabeçalho com maior especificidade */
-#sispmg-agenda-header #sispmg-agenda-add-btn {
-    background-color: #007bff !important;
-}
-#sispmg-agenda-header #sispmg-agenda-add-btn:hover {
+#sispmg-agenda-panel #sispmg-agenda-add-btn:hover {
     background-color: #0069d9 !important;
 }
+/* A cor do botão de recolher será a padrão do .sispmg-panel-actions button (transparente) */
 
-#sispmg-agenda-header #sispmg-agenda-collapse-btn {
-    background-color: #9e8a40 !important;
-}
-#sispmg-agenda-header #sispmg-agenda-collapse-btn:hover {
-    background-color: #8a7637 !important;
-}
-
-#sispmg-agenda-task-list {
+/* Generalizado para o conteúdo dos painéis */
+.sispmg-panel-content-wrapper {
     padding: 10px !important;
     flex-grow: 1 !important;
-    max-height: 1000px !important; /* Aumentado para garantir espaço suficiente */
-    overflow: hidden !important;
-    transition: max-height 0.3s ease-in-out, padding 0.3s ease-in-out !important; /* Adicionado padding à transição */
+    max-height: calc(100% - 40px) !important; /* Max height - header height */
+    overflow-y: auto !important; /* Always allow scroll if content is too large */
+    transition: max-height 0.3s ease-in-out, padding 0.3s ease-in-out !important; /* Added for smooth collapse */
 }
 
-/* Aplica overflow-y: auto somente quando não está recolhido */
-#sispmg-agenda-panel:not(.collapsed) #sispmg-agenda-task-list {
-    overflow-y: auto !important;
-}
-
-/* Estado Recolhido */
-#sispmg-agenda-panel.collapsed #sispmg-agenda-task-list {
+/* Estado Recolhido do painel de agenda (conteúdo) */
+#sispmg-agenda-panel.collapsed .sispmg-panel-content-wrapper {
     max-height: 0 !important;
     padding-top: 0 !important;
     padding-bottom: 0 !important;
+    overflow: hidden !important;
 }
 
 /* Tarefa Individual */
