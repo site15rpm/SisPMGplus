@@ -33,7 +33,6 @@
     padding: 8px 12px !important;
     background-color: #826c2b !important;
     border-bottom: 1px solid #6d5b24 !important;
-    cursor: move !important;
 }
 
 /* Correção para h3 não ter sublinhado */
@@ -59,11 +58,7 @@
     flex-grow: 1 !important; /* O grupo do título agora cresce */
 }
 
-#sispmg-agenda-drag-handle {
-    font-weight: bold !important;
-    color: #c5bba0 !important;
-    margin-right: 8px !important;
-}
+
 
 /* Regra genérica para botões do cabeçalho */
 #sispmg-agenda-header button {
@@ -106,14 +101,23 @@
 }
 
 #sispmg-agenda-task-list {
-    overflow-y: auto !important;
     padding: 10px !important;
     flex-grow: 1 !important;
+    max-height: 1000px !important; /* Aumentado para garantir espaço suficiente */
+    overflow: hidden !important;
+    transition: max-height 0.3s ease-in-out, padding 0.3s ease-in-out !important; /* Adicionado padding à transição */
+}
+
+/* Aplica overflow-y: auto somente quando não está recolhido */
+#sispmg-agenda-panel:not(.collapsed) #sispmg-agenda-task-list {
+    overflow-y: auto !important;
 }
 
 /* Estado Recolhido */
 #sispmg-agenda-panel.collapsed #sispmg-agenda-task-list {
-    display: none !important;
+    max-height: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
 }
 
 /* Tarefa Individual */
@@ -140,8 +144,8 @@
     margin-right: 10px !important; 
     cursor: default !important;
 }
-.sispmg-task-info { font-weight: bold !important; font-size: 14px !important; color: #333 !important; word-break: break-word !important; }
-.sispmg-task-datetime { font-size: 11px !important; color: #888 !important; margin-bottom: 4px !important; }
+.sispmg-task-info { font-weight: bold !important; font-size: 13px !important; color: #333 !important; word-break: break-word !important; }
+.sispmg-task-datetime { color: #333 !important; margin-bottom: 4px !important; }
 
 /* Botões de Ação Verticais */
 .sispmg-task-actions {
@@ -240,7 +244,7 @@
     width: 90% !important;
     max-width: 450px !important;
 }
-.sispmg-agenda-modal-container h2 {
+#sispmg-task-modal h2 {
     color: var(--agenda-header-text) !important;
     text-align: center !important;
     border-bottom: 1px solid var(--agenda-border) !important;
@@ -258,8 +262,8 @@
 }
 .sispmg-agenda-modal-container .sispmg-modal-close:hover { color: #333 !important; }
 
-.sispmg-agenda-modal-container input:not([type="checkbox"]),
-.sispmg-agenda-modal-container textarea {
+#sispmg-task-modal input:not([type="checkbox"]),
+#sispmg-task-modal textarea {
     width: 100% !important;
     padding: 8px !important;
     margin-bottom: 15px !important;
@@ -269,6 +273,13 @@
     box-sizing: border-box !important;
     font-family: inherit !important;
     font-size: 14px !important;
+    color: #333 !important; /* Ensure font color */
+    color-scheme: light !important;
+}
+
+#sispmg-task-modal input[type="checkbox"] {
+    background-color: #fff !important;
+    color-scheme: light !important;
 }
 
 #sispmg-agenda-abrangencia {
@@ -322,7 +333,7 @@
     flex-shrink: 0 !important;
 }
 
-.sispmg-agenda-modal-container .sispmg-form-group label {
+#sispmg-task-modal .sispmg-form-group label {
     display: inline-block !important;
     white-space: nowrap !important;
     font-size: 14px !important;
@@ -331,7 +342,7 @@
     padding: 0 !important;
 }
 
-#sispmg-agenda-autoconfirmardias {
+#sispmg-task-modal #sispmg-agenda-autoconfirmardias {
     width: 60px !important;
 }
 
@@ -401,14 +412,20 @@
     border: 1px solid var(--agenda-border) !important;
     box-shadow: 0 5px 15px rgba(0,0,0,0.3) !important;
     width: 90% !important;
-    max-width: 400px !important;
+    max-width: 500px !important; /* Aumentado o max-width para o modal genérico */
+}
+
+/* Estilos específicos para o modal de detalhes da tarefa */
+.sispmg-task-detail-modal {
+    width: 450px !important; /* Largura fixa para detalhes */
+    height: 550px !important; /* Altura fixa para detalhes */
+    overflow-y: auto !important; /* Habilita rolagem para o conteúdo do modal */
 }
 
 .sispmg-alert-modal-content h4 {
     color: var(--agenda-header-text) !important;
     margin-top: 0 !important;
     margin-bottom: 15px !important;
-    font-size: 18px !important;
     text-align: center;
 }
 
@@ -432,11 +449,114 @@
     line-height: 1.5 !important;
 }
 
+/* Estilos para o modal de detalhes da tarefa */
+.sispmg-task-detail-header {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    margin-bottom: 15px !important;
+    padding-bottom: 10px !important;
+    border-bottom: 1px solid var(--agenda-border) !important;
+}
+
+.sispmg-task-detail-date {
+    font-size: 1.1em !important;
+    color: #555 !important;
+    margin-bottom: 5px !important;
+    font-weight: bold !important;
+}
+
+.sispmg-task-detail-title {
+    font-size: 1.2em !important;
+    font-weight: normal !important;
+    color: var(--agenda-header-text) !important;
+    margin: 0 !important;
+    text-align: left !important;
+    line-height: 1.2 !important;
+}
+
+.sispmg-task-detail-description-box {
+    background-color: #fff !important;
+    border: 1px solid var(--agenda-border) !important;
+    border-radius: 4px !important;
+    padding: 15px !important;
+    height: 288px !important; /* Altura máxima para a caixa de descrição */
+    overflow-y: auto !important; /* Adiciona barra de rolagem vertical */
+    white-space: pre-wrap !important; /* Preserva formatação e quebras de linha */
+    font-size: 14px !important;
+    line-height: 1.6 !important;
+    color: #333 !important;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.05) !important;
+    margin-top: 15px !important;
+}
+
 .sispmg-alert-modal-actions {
     display: flex !important;
     justify-content: flex-end !important;
     gap: 10px !important;
 }
+
+/* Estilos para o novo rodapé do modal com botões de ação */
+.sispmg-modal-footer {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding-top: 20px !important;
+    border-top: 1px solid var(--agenda-border) !important;
+    margin-top: 20px !important;
+}
+
+.sispmg-modal-action-buttons {
+    display: flex !important;
+    gap: 5px !important;
+    align-items: center !important;
+}
+
+.sispmg-task-action-btn {
+    all: unset;
+    box-sizing: border-box !important;
+    cursor: pointer !important;
+    width: 32px !important; /* Um pouco maior para o modal */
+    height: 32px !important; /* Um pouco maior para o modal */
+    border-radius: 4px !important;
+    transition: background-color 0.2s !important;
+    border: 1px solid #ddd !important;
+    background-color: #f7f7f7 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    color: #555 !important;
+    font-size: 14px !important; /* Ajustado para ser visível */
+}
+.sispmg-task-action-btn:hover { background-color: #eee !important; color: #000 !important; }
+
+/* Cores específicas para botões de ação no modal */
+
+.sispmg-task-action-btn.sispmg-task-edit-btn:hover {
+    background-color: #ffc107 !important; /* Amarelo */
+    border-color: #e0a800 !important;
+    color: #212529 !important;
+}
+
+
+.sispmg-task-action-btn.sispmg-task-complete-btn:hover {
+    background-color: #28a745 !important; /* Verde */
+    border-color: #218838 !important;
+    color: #fff !important;
+}
+
+
+.sispmg-task-action-btn.sispmg-task-user-confirm-btn:hover {
+    background-color: #007bff !important; /* Azul */
+    border-color: #007bff !important;
+    color: #fff !important;
+}
+.sispmg-task-action-btn.sispmg-task-user-confirm-btn.confirmed {
+    background-color: #6c757d !important; /* Cinza para confirmado */
+    border-color: #6c757d !important;
+    cursor: not-allowed !important;
+}
+
 
 .sispmg-alert-modal-actions button {
     padding: 8px 16px !important;

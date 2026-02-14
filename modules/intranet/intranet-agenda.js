@@ -92,24 +92,28 @@ export class IntranetAgendaModule {
             console.error("SisPMG+ [Agenda]: Falha ao obter número do usuário na inicialização.", e);
         }
 
-        this.injectUI();
+        this.injectUI(); // Panel is created and set to 'collapsed' by default
         await this.loadTasks();
         this.renderTasks();
+
+        // Check localStorage state after rendering
+        const isCollapsedFromStorage = localStorage.getItem('sispmg_agenda_collapsed') === 'true';
+        if (!isCollapsedFromStorage && this.panel) {
+            // If it should NOT be collapsed (i.e., was expanded), expand it smoothly.
+            // toggleCollapse will remove the 'collapsed' class and trigger the transition.
+            this.toggleCollapse(this.panel);
+        }
     }
 
     injectUI() {
-        const panel = document.createElement('div');
-        panel.id = 'sispmg-agenda-panel';
-        const isCollapsed = localStorage.getItem('sispmg_agenda_collapsed') === 'true';
-        if (isCollapsed) {
-            panel.classList.add('collapsed');
-        }
+        this.panel = document.createElement('div');
+        this.panel.id = 'sispmg-agenda-panel';
+        this.panel.classList.add('collapsed'); // Sempre começa recolhido para revelação suave
 
         // A ordem do HTML é invertida para o painel crescer para cima com flex-direction: column-reverse
-        panel.innerHTML = `
+        this.panel.innerHTML = `
             <div id="sispmg-agenda-task-list"></div>
             <div id="sispmg-agenda-header">
-                <span id="sispmg-agenda-drag-handle" title="Mover painel">::</span>
                 <div class="sispmg-agenda-title-group">
                     ${iconSVG_28}
                     <h3>Agenda de Tarefas</h3>
@@ -117,19 +121,12 @@ export class IntranetAgendaModule {
                 <div class="sispmg-agenda-header-actions">
                     <button id="sispmg-agenda-add-btn" title="Nova Tarefa"><i class="fa-solid fa-plus"></i></button>
                     <button id="sispmg-agenda-collapse-btn" title="Recolher/Expandir">
-                        <i class="fa-solid ${isCollapsed ? 'fa-chevron-up' : 'fa-chevron-down'}"></i>
+                        <i class="fa-solid fa-chevron-up"></i>
                     </button>
                 </div>
             </div>
         `;
-        document.body.appendChild(panel);
-
-        const savedPosition = localStorage.getItem('sispmg_agenda_position');
-        if (savedPosition) {
-            const { bottom, left } = JSON.parse(savedPosition);
-            panel.style.bottom = bottom;
-            panel.style.left = left;
-        }
+        document.body.appendChild(this.panel);
 
         document.getElementById('sispmg-agenda-add-btn').addEventListener('click', (e) => {
             e.stopPropagation();
@@ -137,10 +134,8 @@ export class IntranetAgendaModule {
         });
         document.getElementById('sispmg-agenda-collapse-btn').addEventListener('click', (e) => {
             e.stopPropagation();
-            this.toggleCollapse(panel);
+            this.toggleCollapse(this.panel);
         });
-        
-        this.setupDraggable(panel, document.getElementById('sispmg-agenda-header'));
     }
 
     toggleCollapse(panel) {
@@ -151,55 +146,6 @@ export class IntranetAgendaModule {
         const icon = panel.querySelector('#sispmg-agenda-collapse-btn i');
         icon.classList.toggle('fa-chevron-down', !isCollapsed);
         icon.classList.toggle('fa-chevron-up', isCollapsed);
-    }
-
-    setupDraggable(element, handle) {
-        let isDragging = false;
-        let offsetX, offsetY;
-
-        const onMouseMove = (e) => {
-            if (!isDragging) return;
-
-            // Calcula a nova posição 'left'
-            let newLeft = e.clientX - offsetX;
-            const maxLeft = window.innerWidth - element.offsetWidth;
-            newLeft = Math.max(0, Math.min(newLeft, maxLeft));
-            
-            // Calcula a nova posição 'bottom'
-            let newBottom = window.innerHeight - (e.clientY - offsetY + element.offsetHeight);
-            const maxBottom = window.innerHeight - element.offsetHeight;
-            newBottom = Math.max(0, Math.min(newBottom, maxBottom));
-
-            element.style.left = `${newLeft}px`;
-            element.style.top = 'auto'; // Garante que 'top' não interfira
-            element.style.bottom = `${newBottom}px`;
-        };
-
-        const onMouseUp = () => {
-            if (!isDragging) return;
-            isDragging = false;
-            document.removeEventListener('mousemove', onMouseMove);
-            document.removeEventListener('mouseup', onMouseUp);
-            
-            localStorage.setItem('sispmg_agenda_position', JSON.stringify({
-                bottom: element.style.bottom,
-                left: element.style.left
-            }));
-        };
-
-        handle.addEventListener('mousedown', (e) => {
-            if (e.target.closest('button') || e.target.closest('svg')) return;
-            
-            isDragging = true;
-            const rect = element.getBoundingClientRect();
-            // offsetY é calculado em relação ao topo do elemento, como antes
-            offsetX = e.clientX - rect.left;
-            offsetY = e.clientY - rect.top;
-
-            document.addEventListener('mousemove', onMouseMove);
-            document.addEventListener('mouseup', onMouseUp);
-            e.preventDefault();
-        });
     }
 
     showTaskModal(task = null) {
@@ -485,17 +431,7 @@ export class IntranetAgendaModule {
                 
                 const taskToShow = this.tasks.find(t => t.id === task.id);
                 if (taskToShow && taskToShow.descricao) {
-                    const date = new Date(taskToShow['data/hora']).toLocaleString('pt-BR', {
-                        year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
-                    });
-                    const modalContent = `
-                        <div class="sispmg-desc-modal-container">
-                            <strong>Data/Hora:</strong> ${date}
-                            <hr>
-                            <div class="sispmg-desc-modal-text">${taskToShow.descricao}</div>
-                        </div>
-                    `;
-                    this._showAlert(modalContent, taskToShow.assunto);
+                    this._showTaskDetailsModal(taskToShow);
                 }
             });
         });
@@ -740,26 +676,41 @@ export class IntranetAgendaModule {
         }
     }
 
-    _showModal(title, message, buttons) {
+    _showModal(title, message, buttons, options = {}, actionButtonsHTML = '') { // Adicionado actionButtonsHTML
         const modalBackdrop = document.createElement('div');
         modalBackdrop.className = 'sispmg-alert-modal-backdrop';
 
-        let buttonsHTML = '';
+        let controlButtonsHTML = '';
         buttons.forEach((btn, index) => {
-            buttonsHTML += `<button id="sispmg-alert-btn-${index}" class="${btn.className}">${btn.text}</button>`;
+            controlButtonsHTML += `<button id="sispmg-alert-btn-${index}" class="${btn.className}">${btn.text}</button>`;
         });
 
         modalBackdrop.innerHTML = `
-            <div class="sispmg-alert-modal-content">
+            <div class="sispmg-alert-modal-content ${options.contentClassName || ''}">
                 <h4>${title}</h4>
                 <p>${message}</p>
-                <div class="sispmg-alert-modal-actions">
-                    ${buttonsHTML}
+                <div class="sispmg-modal-footer">
+                    <div class="sispmg-modal-action-buttons">
+                        ${actionButtonsHTML}
+                    </div>
+                    <div class="sispmg-alert-modal-actions">
+                        ${controlButtonsHTML}
+                    </div>
                 </div>
             </div>
         `;
 
         document.body.appendChild(modalBackdrop);
+
+        // Aplica estilos de tamanho do modal se fornecidos nas opções
+        const modalContentElement = modalBackdrop.querySelector('.sispmg-alert-modal-content');
+        if (options.maxWidth) {
+            modalContentElement.style.maxWidth = options.maxWidth;
+        }
+        if (options.maxHeight) {
+            modalContentElement.style.maxHeight = options.maxHeight;
+            modalContentElement.style.overflowY = 'auto'; // Adiciona scroll se exceder max-height
+        }
 
         buttons.forEach((btn, index) => {
             modalBackdrop.querySelector(`#sispmg-alert-btn-${index}`).addEventListener('click', () => {
@@ -769,6 +720,7 @@ export class IntranetAgendaModule {
                 modalBackdrop.remove();
             });
         });
+        return modalBackdrop; // Retorna o backdrop para anexar listeners aos botões de ação
     }
 
     _showAlert(message, title = 'Aviso') {
@@ -792,5 +744,117 @@ export class IntranetAgendaModule {
                 }
             ]);
         });
+    }
+
+    _showTaskDetailsModal(task) {
+        if (!task) return;
+
+        const formattedDate = new Date(task['data/hora']).toLocaleString('pt-BR', {
+            year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
+        });
+
+        const contentHTML = `
+            <div class="sispmg-task-detail-header">
+                <span class="sispmg-task-detail-date">${formattedDate}</span>
+                <h4 class="sispmg-task-detail-title">${task.assunto}</h4>
+            </div>
+            ${task.descricao ? `<div class="sispmg-task-detail-description-box">${task.descricao}</div>` : ''}
+        `;
+
+        // --- Generate Action Buttons HTML ---
+        let actionButtonsHtml = '';
+        const isAuthor = this.userNumber && task.autor && this.userNumber === String(task.autor);
+        const confirmedUsers = (task.confirmacoes || '').split('|').filter(u => u);
+        const isConfirmedByUser = this.userNumber && confirmedUsers.includes(this.userNumber);
+
+        if (isAuthor) {
+            const titleText = confirmedUsers.length > 0 ? `Ver ${confirmedUsers.length} confirmações` : 'Nenhuma confirmação';
+            actionButtonsHtml = `
+                <button class="sispmg-task-view-confirmations-btn sispmg-task-action-btn" data-task-id="${task.id}" title="${titleText}">
+                    <i class="fa-solid fa-users"></i>
+                    <span class="sispmg-confirm-count">${confirmedUsers.length}</span>
+                </button>
+                <button class="sispmg-task-complete-btn sispmg-task-action-btn" data-task-id="${task.id}" title="${task.concluida ? 'Reabrir Tarefa' : 'Concluir Tarefa'}">
+                    <i class="fa-solid ${task.concluida ? 'fa-arrow-rotate-left' : 'fa-check'}"></i>
+                </button>
+                <button class="sispmg-task-edit-btn sispmg-task-action-btn" data-task-id="${task.id}" title="Editar Tarefa">
+                    <i class="fa-solid fa-edit"></i>
+                </button>
+            `;
+        } else if (checkAbrangencia(task.abrangencia, this.userData)) {
+             actionButtonsHtml = `
+                <button class="sispmg-task-user-confirm-btn sispmg-task-action-btn ${isConfirmedByUser ? 'confirmed' : ''}"
+                        data-task-id="${task.id}"
+                        title="${isConfirmedByUser ? 'Tarefa confirmada' : 'Confirmar leitura'}"
+                        ${isConfirmedByUser ? 'disabled' : ''}>
+                    <i class="fa-solid fa-check"></i>
+                </button>
+            `;
+        }
+        // --- End Generate Action Buttons HTML ---
+
+        const modalBackdrop = this._showModal(
+            'Informações Detalhadas',
+            contentHTML,
+            [{ text: 'OK', className: 'sispmg-alert-btn-confirm' }],
+            {
+                maxWidth: '450px', // Fixed width for portrait as requested
+                maxHeight: '600px', // Fixed height for portrait as requested
+                contentClassName: 'sispmg-task-detail-modal'
+            },
+            actionButtonsHtml // Pass generated action buttons
+        );
+
+        // --- Attach Event Listeners to Action Buttons ---
+        if (modalBackdrop) {
+            const container = modalBackdrop.querySelector('.sispmg-modal-action-buttons');
+            if (container) {
+                container.querySelectorAll('.sispmg-task-view-confirmations-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const taskId = e.target.closest('button').dataset.taskId;
+                        const modalTask = this.tasks.find(t => t.id === taskId);
+                        if (modalTask) {
+                            const confirmedUsers = (modalTask.confirmacoes || '').split('|').filter(u => u);
+                            const message = confirmedUsers.length > 0
+                                ? `Confirmado por:<br>${confirmedUsers.join(', ')}`
+                                : 'Nenhuma confirmação registrada para esta tarefa.';
+                            this._showAlert(message, 'Lista de Confirmações');
+                        }
+                    });
+                });
+
+                container.querySelectorAll('.sispmg-task-complete-btn').forEach(btn => {
+                    btn.addEventListener('click', async (e) => { // Added async here
+                        e.stopPropagation();
+                        const taskId = e.target.closest('button').dataset.taskId;
+                        await this.toggleTaskComplete(taskId); // Await the action
+                        modalBackdrop.remove(); // Close modal after action
+                    });
+                });
+
+                container.querySelectorAll('.sispmg-task-edit-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const taskId = e.target.closest('button').dataset.taskId;
+                        const modalTask = this.tasks.find(t => t.id.toString() === taskId.toString());
+                        if (modalTask) {
+                            this.showTaskModal(modalTask);
+                            modalBackdrop.remove(); // Close details modal when opening edit modal
+                        }
+                    });
+                });
+
+                container.querySelectorAll('.sispmg-task-user-confirm-btn').forEach(btn => {
+                    btn.addEventListener('click', async (e) => { // Added async here
+                        e.stopPropagation();
+                        if (btn.classList.contains('confirmed')) return; // Already confirmed
+                        const taskId = e.target.closest('button').dataset.taskId;
+                        await this.confirmTask(taskId); // Await the action
+                        modalBackdrop.remove(); // Close modal after action
+                    });
+                });
+            }
+        }
     }
 }
