@@ -2,6 +2,7 @@
 // Responsável pela lógica do novo módulo de Agenda da Intranet
 
 import { sendMessageToBackground, getCookie, decodeJwt } from '../../common/utils.js';
+import { iconSVG_28 } from '../../common/icon.js';
 
 /**
  * Verifica se o usuário atende aos critérios de abrangência.
@@ -74,6 +75,7 @@ export class IntranetAgendaModule {
         this.tasks = [];
         this.settings = {};
         this.userNumber = null;
+        this.userData = {};
     }
 
     async init() {
@@ -83,8 +85,8 @@ export class IntranetAgendaModule {
         
         try {
             const token = getCookie('tokiuz');
-            const userData = decodeJwt(token);
-            this.userNumber = userData ? String(userData.g) : null;
+            this.userData = decodeJwt(token);
+            this.userNumber = this.userData ? String(this.userData.g) : null;
         } catch (e) {
             this.userNumber = null;
             console.error("SisPMG+ [Agenda]: Falha ao obter número do usuário na inicialização.", e);
@@ -103,23 +105,29 @@ export class IntranetAgendaModule {
             panel.classList.add('collapsed');
         }
 
+        // A ordem do HTML é invertida para o painel crescer para cima com flex-direction: column-reverse
         panel.innerHTML = `
+            <div id="sispmg-agenda-task-list"></div>
             <div id="sispmg-agenda-header">
                 <span id="sispmg-agenda-drag-handle" title="Mover painel">::</span>
-                <h3>Agenda</h3>
-                <button id="sispmg-agenda-add-btn" title="Nova Tarefa"><i class="fa-solid fa-plus"></i></button>
-                <button id="sispmg-agenda-collapse-btn" title="Recolher/Expandir">
-                    <i class="fa-solid ${isCollapsed ? 'fa-chevron-right' : 'fa-chevron-left'}"></i>
-                </button>
+                <div class="sispmg-agenda-title-group">
+                    ${iconSVG_28}
+                    <h3>Agenda de Tarefas</h3>
+                </div>
+                <div class="sispmg-agenda-header-actions">
+                    <button id="sispmg-agenda-add-btn" title="Nova Tarefa"><i class="fa-solid fa-plus"></i></button>
+                    <button id="sispmg-agenda-collapse-btn" title="Recolher/Expandir">
+                        <i class="fa-solid ${isCollapsed ? 'fa-chevron-up' : 'fa-chevron-down'}"></i>
+                    </button>
+                </div>
             </div>
-            <div id="sispmg-agenda-task-list"></div>
         `;
         document.body.appendChild(panel);
 
         const savedPosition = localStorage.getItem('sispmg_agenda_position');
         if (savedPosition) {
-            const { top, left } = JSON.parse(savedPosition);
-            panel.style.top = top;
+            const { bottom, left } = JSON.parse(savedPosition);
+            panel.style.bottom = bottom;
             panel.style.left = left;
         }
 
@@ -141,8 +149,8 @@ export class IntranetAgendaModule {
         localStorage.setItem('sispmg_agenda_collapsed', isCollapsed.toString());
         
         const icon = panel.querySelector('#sispmg-agenda-collapse-btn i');
-        icon.classList.toggle('fa-chevron-left', !isCollapsed);
-        icon.classList.toggle('fa-chevron-right', isCollapsed);
+        icon.classList.toggle('fa-chevron-down', !isCollapsed);
+        icon.classList.toggle('fa-chevron-up', isCollapsed);
     }
 
     setupDraggable(element, handle) {
@@ -151,8 +159,20 @@ export class IntranetAgendaModule {
 
         const onMouseMove = (e) => {
             if (!isDragging) return;
-            element.style.left = `${e.clientX - offsetX}px`;
-            element.style.top = `${e.clientY - offsetY}px`;
+
+            // Calcula a nova posição 'left'
+            let newLeft = e.clientX - offsetX;
+            const maxLeft = window.innerWidth - element.offsetWidth;
+            newLeft = Math.max(0, Math.min(newLeft, maxLeft));
+            
+            // Calcula a nova posição 'bottom'
+            let newBottom = window.innerHeight - (e.clientY - offsetY + element.offsetHeight);
+            const maxBottom = window.innerHeight - element.offsetHeight;
+            newBottom = Math.max(0, Math.min(newBottom, maxBottom));
+
+            element.style.left = `${newLeft}px`;
+            element.style.top = 'auto'; // Garante que 'top' não interfira
+            element.style.bottom = `${newBottom}px`;
         };
 
         const onMouseUp = () => {
@@ -162,16 +182,17 @@ export class IntranetAgendaModule {
             document.removeEventListener('mouseup', onMouseUp);
             
             localStorage.setItem('sispmg_agenda_position', JSON.stringify({
-                top: element.style.top,
+                bottom: element.style.bottom,
                 left: element.style.left
             }));
         };
 
         handle.addEventListener('mousedown', (e) => {
-            if (e.target.tagName === 'BUTTON') return;
+            if (e.target.closest('button') || e.target.closest('svg')) return;
             
             isDragging = true;
             const rect = element.getBoundingClientRect();
+            // offsetY é calculado em relação ao topo do elemento, como antes
             offsetX = e.clientX - rect.left;
             offsetY = e.clientY - rect.top;
 
@@ -188,73 +209,154 @@ export class IntranetAgendaModule {
         const modal = document.createElement('div');
         modal.id = 'sispmg-task-modal';
         modal.className = 'sispmg-agenda-modal-container';
+
+        let dateValue = '';
+        let timeValue = '00:00';
+        if (task) {
+            const taskDate = new Date(task['data/hora']);
+            dateValue = taskDate.toISOString().split('T')[0];
+            timeValue = taskDate.toTimeString().split(' ')[0].substring(0, 5);
+        }
+
         modal.innerHTML = `
             <div class="sispmg-modal-content">
                 <span class="sispmg-modal-close" id="sispmg-task-modal-close">&times;</span>
                 <h2>${task ? 'Editar Tarefa' : 'Nova Tarefa'}</h2>
-                <input type="datetime-local" id="sispmg-agenda-datetime" value="${task ? new Date(task['data/hora']).toISOString().substring(0, 16) : ''}">
-                <textarea id="sispmg-agenda-assunto" placeholder="Descrição da atividade...">${task ? task.assunto : ''}</textarea>
+                
+                <div class="sispmg-datetime-group">
+                    <input type="date" id="sispmg-agenda-date" value="${dateValue}">
+                    <input type="time" id="sispmg-agenda-time" value="${timeValue}">
+                </div>
+
+                <textarea id="sispmg-agenda-assunto" placeholder="Assunto da atividade..." rows="1">${task ? task.assunto : ''}</textarea>
+                <textarea id="sispmg-agenda-descricao" placeholder="Detalhes da tarefa... (opcional)" rows="3">${task && task.descricao ? task.descricao : ''}</textarea>
                 <textarea id="sispmg-agenda-abrangencia" placeholder="Regra de abrangência (ex: g:123, t:SGT|CB, p:.*15RPM.*)" rows="1">${task && task.abrangencia ? task.abrangencia : ''}</textarea>
                 
-                <div class="sispmg-form-group" style="display: flex; align-items: center; gap: 10px; margin-top: 10px;">
+                <div class="sispmg-form-group">
                     <input type="checkbox" id="sispmg-agenda-autoconfirmar" ${task && task.autoConfirmar ? 'checked' : ''}>
                     <label for="sispmg-agenda-autoconfirmar">Autoconcluir após</label>
-                    <input type="number" id="sispmg-agenda-autoconfirmardias" min="1" value="${task && task.autoConfirmarDias ? task.autoConfirmarDias : '5'}" style="width: 60px;">
+                    <input type="number" id="sispmg-agenda-autoconfirmardias" min="1" max="15" value="${task && task.autoConfirmarDias ? task.autoConfirmarDias : '5'}">
                     <label for="sispmg-agenda-autoconfirmardias">dias.</label>
                 </div>
 
-                <button id="sispmg-agenda-save-btn">Salvar</button>
+                <div class="sispmg-modal-actions">
+                    ${task ? `<button id="sispmg-agenda-delete-btn" title="Excluir Tarefa"><i class="fas fa-trash"></i></button>` : ''}
+                    <button id="sispmg-agenda-save-btn">Salvar</button>
+                </div>
             </div>
         `;
         document.body.appendChild(modal);
 
-        const textarea = modal.querySelector('#sispmg-agenda-abrangencia');
-        const adjustHeight = () => {
-            textarea.style.height = 'auto';
-            textarea.style.height = `${textarea.scrollHeight}px`;
+        const abrangenciaInput = modal.querySelector('#sispmg-agenda-abrangencia');
+        const autoConfirmarCheckbox = modal.querySelector('#sispmg-agenda-autoconfirmar');
+        const autoConfirmarDiasInput = modal.querySelector('#sispmg-agenda-autoconfirmardias');
+
+        const handleAbrangenciaChange = () => {
+            if (abrangenciaInput.value.trim() !== '') {
+                autoConfirmarCheckbox.checked = true;
+                autoConfirmarCheckbox.disabled = true;
+            } else {
+                autoConfirmarCheckbox.disabled = false;
+            }
         };
-        textarea.addEventListener('input', adjustHeight);
-        setTimeout(adjustHeight, 0); 
+
+        // Auto-adjust height for all textareas
+        [abrangenciaInput, modal.querySelector('#sispmg-agenda-assunto'), modal.querySelector('#sispmg-agenda-descricao')].forEach(textarea => {
+            const adjustHeight = () => {
+                textarea.style.height = 'auto';
+                textarea.style.height = `${textarea.scrollHeight}px`;
+            };
+            textarea.addEventListener('input', adjustHeight);
+            setTimeout(adjustHeight, 0);
+        });
+        
+        abrangenciaInput.addEventListener('input', handleAbrangenciaChange);
+        setTimeout(handleAbrangenciaChange, 0);
+
+        autoConfirmarDiasInput.addEventListener('input', () => {
+            const value = parseInt(autoConfirmarDiasInput.value, 10);
+            if (value > 15) {
+                autoConfirmarDiasInput.value = '15';
+            } else if (value < 1) {
+                if (autoConfirmarDiasInput.value !== '') {
+                    autoConfirmarDiasInput.value = '1';
+                }
+            }
+        });
 
         modal.querySelector('#sispmg-task-modal-close').addEventListener('click', () => modal.remove());
-        modal.querySelector('#sispmg-agenda-save-btn').addEventListener('click', () => {
-            this.saveTask(task ? task.id : null);
-            modal.remove();
+        
+        modal.querySelector('#sispmg-agenda-save-btn').addEventListener('click', async () => {
+            const success = await this.saveTask(task ? task.id : null);
+            if (success) {
+                modal.remove();
+            }
         });
+
+        if (task) {
+            modal.querySelector('#sispmg-agenda-delete-btn').addEventListener('click', () => {
+                this.deleteTask(task.id);
+                modal.remove();
+            });
+        }
     }
 
     async saveTask(taskId) {
-        const dueDateInput = document.getElementById('sispmg-agenda-datetime');
+        const dateInput = document.getElementById('sispmg-agenda-date');
+        const timeInput = document.getElementById('sispmg-agenda-time');
         const assuntoInput = document.getElementById('sispmg-agenda-assunto');
+        const descricaoInput = document.getElementById('sispmg-agenda-descricao');
         const abrangenciaInput = document.getElementById('sispmg-agenda-abrangencia');
         const autoConfirmarInput = document.getElementById('sispmg-agenda-autoconfirmar');
         const autoConfirmarDiasInput = document.getElementById('sispmg-agenda-autoconfirmardias');
 
-        if (!dueDateInput.value || !assuntoInput.value) {
-            alert("Data/Hora e Assunto são obrigatórios.");
-            return;
+        if (!dateInput.value || !assuntoInput.value) {
+            this._showAlert("Data e Assunto são obrigatórios.");
+            return false;
         }
 
         if (!this.userNumber) {
-            alert("Não foi possível identificar o usuário. Faça login novamente.");
-            return;
+            this._showAlert("Não foi possível identificar o usuário. Faça login novamente.");
+            return false;
+        }
+
+        const timeValue = timeInput.value || '00:00';
+        const combinedISO = `${dateInput.value}T${timeValue}:00`;
+
+        const abrangenciaValue = abrangenciaInput.value.trim();
+        let autoConfirmarValue = autoConfirmarInput.checked;
+        let autoConfirmarDiasValue = parseInt(autoConfirmarDiasInput.value, 10) || 1;
+
+        if (abrangenciaValue !== '') {
+            autoConfirmarValue = true;
+            if (autoConfirmarDiasValue < 1) {
+                autoConfirmarDiasValue = 1;
+            }
+        }
+
+        if (autoConfirmarDiasValue > 15) {
+            autoConfirmarDiasValue = 15;
         }
         
         const eventData = {
             id: taskId || `evt_${Date.now()}`,
-            'data/hora': new Date(dueDateInput.value).toISOString(),
+            'data/hora': new Date(combinedISO).toISOString(),
             assunto: assuntoInput.value,
             concluida: false,
-            autor: this.userNumber,
-            abrangencia: abrangenciaInput.value.trim(),
+            autor: taskId ? undefined : this.userNumber, // Envia autor apenas na criação
+            abrangencia: abrangenciaValue,
             status: 'ACTIVE',
-            autoConfirmar: autoConfirmarInput.checked,
-            autoConfirmarDias: autoConfirmarDiasInput.value
+            autoConfirmar: autoConfirmarValue,
+            autoConfirmarDias: autoConfirmarDiasValue,
+            descricao: descricaoInput.value,
+            editorNumero: this.userNumber // Sempre envia quem está editando
         };
 
         const taskInUI = {
+            ...this.tasks.find(t => t.id === taskId), // Preserva campos não editáveis como 'confirmacoes'
             ...eventData,
             'data/hora': new Date(eventData['data/hora']).getTime(),
+            autor: taskId ? this.tasks.find(t => t.id === taskId).autor : this.userNumber // Mantém autor original
         };
 
         const existingTaskIndex = this.tasks.findIndex(t => t.id === taskId);
@@ -275,6 +377,40 @@ export class IntranetAgendaModule {
                 console.log("SisPMG+ [Agenda]: Evento salvo com sucesso em segundo plano.");
             } else {
                 console.error(`SisPMG+ [Agenda]: Falha ao salvar evento em segundo plano.`, response.error);
+                this._showAlert(`Falha ao salvar: ${response.error}`);
+            }
+        });
+
+        return true;
+    }
+
+    async deleteTask(taskId) {
+        const confirmed = await this._showConfirm("Tem certeza que deseja excluir esta tarefa?");
+        if (!confirmed) return;
+
+        const task = this.tasks.find(t => t.id === taskId);
+        if (!task) {
+            console.error(`SisPMG+ [Agenda]: Tarefa ${taskId} não encontrada para exclusão.`);
+            return;
+        }
+
+        const originalStatus = task.status;
+        task.status = 'DELETED';
+        this.renderTasks(); 
+
+        const gasUrl = 'https://script.google.com/macros/s/AKfycbyriniVNqgHE206Vzx3_rplOVwSxV2f6HjyAr1zEhmyXoMH_l8AkGLyin1PK4jI0tHe/exec';
+        
+        sendMessageToBackground('agenda-add-event', {
+            gasUrl: gasUrl,
+            eventData: { id: taskId, status: 'DELETED', editorNumero: this.userNumber }
+        }).then(response => {
+            if (response.success) {
+                console.log("SisPMG+ [Agenda]: Tarefa marcada como excluída em segundo plano.");
+            } else {
+                console.error(`SisPMG+ [Agenda]: Falha ao excluir tarefa em segundo plano.`, response.error);
+                this._showAlert("Falha ao sincronizar a exclusão. A tarefa será exibida novamente.");
+                task.status = originalStatus;
+                this.renderTasks();
             }
         });
     }
@@ -286,26 +422,49 @@ export class IntranetAgendaModule {
 
         this.sortTasks();
 
-        this.tasks.forEach(task => {
+        this.tasks.filter(task => task.status !== 'DELETED').forEach(task => {
             const taskElement = document.createElement('div');
             taskElement.className = 'sispmg-agenda-task';
             taskElement.dataset.taskId = task.id;
+            if (task.descricao) {
+                taskElement.classList.add('has-description');
+            }
 
             this.applyTaskColor(taskElement, task);
 
+            const isAuthor = this.userNumber && task.autor && this.userNumber === String(task.autor);
+            const confirmedUsers = (task.confirmacoes || '').split('|').filter(u => u);
+            const isConfirmedByUser = this.userNumber && confirmedUsers.includes(this.userNumber);
+
             let actionButtons = '';
-            if (this.userNumber && task.autor && this.userNumber === task.autor.toString()) {
+            if (isAuthor) {
+                const titleText = confirmedUsers.length > 0 ? `Ver ${confirmedUsers.length} confirmações` : 'Nenhuma confirmação';
                 actionButtons = `
                     <div class="sispmg-task-actions">
+                        <button class="sispmg-task-view-confirmations-btn" title="${titleText}">
+                            <i class="fa-solid fa-users"></i>
+                            <span class="sispmg-confirm-count">${confirmedUsers.length}</span>
+                        </button>
                         <button class="sispmg-task-complete-btn" title="${task.concluida ? 'Reabrir Tarefa' : 'Concluir Tarefa'}">
                             <i class="fa-solid ${task.concluida ? 'fa-arrow-rotate-left' : 'fa-check'}"></i>
                         </button>
                         <button class="sispmg-task-edit-btn" title="Editar Tarefa">
-                            <i class="fa-solid fa-pencil"></i>
+                            <i class="fa-solid fa-edit"></i>
+                        </button>
+                    </div>
+                `;
+            } else if (checkAbrangencia(task.abrangencia, this.userData)) {
+                 actionButtons = `
+                    <div class="sispmg-task-actions">
+                         <button class="sispmg-task-user-confirm-btn ${isConfirmedByUser ? 'confirmed' : ''}" 
+                                 title="${isConfirmedByUser ? 'Tarefa confirmada' : 'Confirmar leitura'}"
+                                 ${isConfirmedByUser ? 'disabled' : ''}>
+                            <i class="fa-solid fa-check"></i>
                         </button>
                     </div>
                 `;
             }
+
 
             const formattedDate = new Date(task['data/hora']).toLocaleString('pt-BR', {
                 year: 'numeric', month: '2-digit', day: '2-digit',
@@ -320,60 +479,152 @@ export class IntranetAgendaModule {
                 ${actionButtons}
             `;
             taskListContainer.appendChild(taskElement);
+
+            taskElement.addEventListener('click', (e) => {
+                if (e.target.closest('button')) return;
+                
+                const taskToShow = this.tasks.find(t => t.id === task.id);
+                if (taskToShow && taskToShow.descricao) {
+                    const date = new Date(taskToShow['data/hora']).toLocaleString('pt-BR', {
+                        year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
+                    });
+                    const modalContent = `
+                        <div class="sispmg-desc-modal-container">
+                            <strong>Data/Hora:</strong> ${date}
+                            <hr>
+                            <div class="sispmg-desc-modal-text">${taskToShow.descricao}</div>
+                        </div>
+                    `;
+                    this._showAlert(modalContent, taskToShow.assunto);
+                }
+            });
         });
 
-        taskListContainer.querySelectorAll('.sispmg-task-complete-btn').forEach(btn => {
+        this.addTaskActionListeners(taskListContainer);
+    }
+    
+    addTaskActionListeners(container) {
+        container.querySelectorAll('.sispmg-task-view-confirmations-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                e.stopPropagation(); // Impede que o clique acione o drag do painel
+                e.stopPropagation();
+                const taskId = e.target.closest('.sispmg-agenda-task').dataset.taskId;
+                const task = this.tasks.find(t => t.id === taskId);
+                if (task) {
+                    const confirmedUsers = (task.confirmacoes || '').split('|').filter(u => u);
+                    const message = confirmedUsers.length > 0 
+                        ? `Confirmado por:<br>${confirmedUsers.join(', ')}` 
+                        : 'Nenhuma confirmação registrada para esta tarefa.';
+                    this._showAlert(message, 'Lista de Confirmações');
+                }
+            });
+        });
+
+        container.querySelectorAll('.sispmg-task-complete-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
                 const taskId = e.target.closest('.sispmg-agenda-task').dataset.taskId;
                 this.toggleTaskComplete(taskId);
             });
         });
 
-        taskListContainer.querySelectorAll('.sispmg-task-edit-btn').forEach(btn => {
+        container.querySelectorAll('.sispmg-task-edit-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                e.stopPropagation(); // Impede que o clique acione o drag do painel
+                e.stopPropagation();
                 const taskId = e.target.closest('.sispmg-agenda-task').dataset.taskId;
                 const task = this.tasks.find(t => t.id.toString() === taskId.toString());
                 if (task) this.showTaskModal(task);
+            });
+        });
+        
+        container.querySelectorAll('.sispmg-task-user-confirm-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (btn.classList.contains('confirmed')) return; // Já confirmado
+                const taskId = e.target.closest('.sispmg-agenda-task').dataset.taskId;
+                this.confirmTask(taskId);
             });
         });
     }
 
     applyTaskColor(element, task) {
         element.classList.remove('blinking-border');
+        const category = this.getTaskCategory(task);
 
-        if (task.concluida) {
-            element.style.borderColor = this.settings.colors.completed;
-            return;
+        switch (category) {
+            case 0: // Vermelho (Expirada)
+                element.style.borderColor = this.settings.colors.expired;
+                element.classList.add('blinking-border');
+                break;
+            case 1: // Amarelo (Pendente)
+                element.style.borderColor = this.settings.colors.soon;
+                break;
+            case 2: // Azul (Confirmada)
+                element.style.borderColor = '#007bff';
+                break;
+            case 3: // Verde (Concluída)
+                element.style.borderColor = this.settings.colors.far;
+                break;
+            default:
+                element.style.borderColor = this.settings.colors.far;
+                break;
         }
+    }
 
-        const now = new Date();
+    getTaskCategory(task) {
+        const isConfirmedByUser = this.userNumber && (task.confirmacoes || '').split('|').includes(this.userNumber);
         const dueDate = new Date(task['data/hora']);
-        const diffDays = (dueDate.getTime() - now.getTime()) / (1000 * 3600 * 24);
+        const now = new Date();
+        now.setHours(0, 0, 0, 0); // Zera a hora para comparar apenas a data
+        dueDate.setHours(0, 0, 0, 0);
 
-        if (diffDays < 1) {
-            element.style.borderColor = this.settings.colors.expired;
-            element.classList.add('blinking-border');
-        } else if (diffDays <= this.settings.deadlines.soon) {
-            element.style.borderColor = this.settings.colors.soon;
-        } else {
-            element.style.borderColor = this.settings.colors.far;
-        }
+        if (task.concluida) return 3; // Verde
+        if (isConfirmedByUser) return 2; // Azul
+        if (dueDate < now) return 0; // Vermelho
+        return 1; // Amarelo
     }
     
     sortTasks() {
         this.tasks.sort((a, b) => {
-            if (a.concluida !== b.concluida) return a.concluida ? 1 : -1;
-            
-            switch(this.settings.sortOrder) {
-                case 'desc':
-                    return b['data/hora'] - a['data/hora'];
-                case 'alpha':
-                    return a.assunto.localeCompare(b.assunto);
-                case 'asc':
-                default:
-                    return a['data/hora'] - b['data/hora'];
+            const categoryA = this.getTaskCategory(a);
+            const categoryB = this.getTaskCategory(b);
+
+            // 1. Nível de classificação primário: Categoria (Cor)
+            if (categoryA !== categoryB) {
+                return categoryA - categoryB;
+            }
+
+            // 2. Nível de classificação secundário: Data/Hora (mais atual para mais antiga)
+            const dateA = a['data/hora'];
+            const dateB = b['data/hora'];
+            if (dateA !== dateB) {
+                return dateB - dateA;
+            }
+
+            // 3. Nível de classificação final: Ordem alfabética do assunto
+            return a.assunto.localeCompare(b.assunto);
+        });
+    }
+
+    async confirmTask(taskId) {
+        const task = this.tasks.find(t => t.id === taskId);
+        if (!task || !this.userNumber) return;
+
+        const confirmedUsers = (task.confirmacoes || '').split('|').filter(u => u);
+        if (!confirmedUsers.includes(this.userNumber)) {
+            confirmedUsers.push(this.userNumber);
+            task.confirmacoes = confirmedUsers.join('|');
+        }
+
+        this.renderTasks(); // Re-render to update button state
+
+        const gasUrl = 'https://script.google.com/macros/s/AKfycbyriniVNqgHE206Vzx3_rplOVwSxV2f6HjyAr1zEhmyXoMH_l8AkGLyin1PK4jI0tHe/exec';
+        sendMessageToBackground('agenda-confirm-task', {
+            gasUrl: gasUrl,
+            eventData: { taskId: taskId, userNumber: this.userNumber }
+        }).then(response => {
+            if (!response.success) {
+                console.error("Falha ao sincronizar confirmação.", response.error);
+                // Opcional: reverter a confirmação na UI se a chamada falhar
             }
         });
     }
@@ -381,7 +632,8 @@ export class IntranetAgendaModule {
     async toggleTaskComplete(taskId) {
         const task = this.tasks.find(t => t.id.toString() === taskId.toString());
         if (task) {
-            task.concluida = !task.concluida;
+            const newConcluidaStatus = !task.concluida;
+            task.concluida = newConcluidaStatus;
             this.renderTasks();
 
             const gasUrl = 'https://script.google.com/macros/s/AKfycbyriniVNqgHE206Vzx3_rplOVwSxV2f6HjyAr1zEhmyXoMH_l8AkGLyin1PK4jI0tHe/exec';
@@ -389,17 +641,18 @@ export class IntranetAgendaModule {
             sendMessageToBackground('agenda-add-event', {
                 gasUrl: gasUrl,
                 eventData: {
-                    ...task,
-                    'data/hora': new Date(task['data/hora']).toISOString(), 
+                    id: task.id, // Apenas o necessário para a atualização
+                    concluida: newConcluidaStatus,
+                    editorNumero: this.userNumber
                 }
             }).then(response => {
                 if (response.success) {
                     console.log(`SisPMG+ [Agenda]: Status da tarefa ${taskId} atualizado em segundo plano.`);
                 } else {
                     console.error(`SisPMG+ [Agenda]: Falha ao atualizar status da tarefa ${taskId}.`, response.error);
-                    task.concluida = !task.concluida;
+                    task.concluida = !newConcluidaStatus; // Reverte a alteração
                     this.renderTasks();
-                    alert('Falha ao atualizar o status da tarefa. A alteração foi desfeita.');
+                    this._showAlert('Falha ao atualizar o status da tarefa. A alteração foi desfeita.');
                 }
             });
         }
@@ -409,38 +662,6 @@ export class IntranetAgendaModule {
         const sheetId = '1wtk0NWpyXPm791PPB2ICoto1YnKyYJ4UCs5JxJIRM_U';
         const sheetName = 'agenda';
         
-        let userData = { f: [], fl: [], ff: [] };
-        try {
-            const token = getCookie('tokiuz');
-            if (token) {
-                const decoded = decodeJwt(token);
-                const userFunctions = Array.isArray(decoded.f) ? decoded.f.map(String) : [];
-                const userFunctionsL = [];
-                const userFunctionsF = [];
-
-                userFunctions.forEach(func => {
-                    const parts = func.split('.');
-                    if (parts.length > 1) {
-                        userFunctionsL.push(parts[0]);
-                        userFunctionsF.push(parts.slice(1).join('.'));
-                    } else {
-                        userFunctionsL.push(func);
-                        userFunctionsF.push("");
-                    }
-                });
-                
-                userData = {
-                    g: String(decoded.g || ''), t: String(decoded.t || ''), e: String(decoded.e || ''),
-                    p: String(decoded.p || ''), r: String(decoded.r || ''), u: String(decoded.u || ''),
-                    c: String(decoded.c || ''), f: userFunctions, fl: userFunctionsL, ff: userFunctionsF
-                };
-            }
-        } catch (e) {
-            console.error('SisPMG+ [Agenda]: Falha ao decodificar tokiuz para regras de abrangência.', e);
-            this.tasks = [];
-            return;
-        }
-
         const query = `SELECT * WHERE H != 'DELETED'`;
         const response = await sendMessageToBackground('agenda-fetch-data', {
             sheetId: sheetId,
@@ -452,20 +673,18 @@ export class IntranetAgendaModule {
             const now = new Date().getTime();
 
             this.tasks = response.data.filter(row => {
-                const autor = row[5];
-                const abrangencia = row[6] || '';
+                const autor = row[5]; // Coluna F
+                const abrangencia = row[6] || ''; // Coluna G
                 
-                // O autor sempre vê, ou verifica a regra de abrangência
-                const hasAccess = (this.userNumber && this.userNumber === autor.toString()) || checkAbrangencia(abrangencia, userData);
+                const hasAccess = (this.userNumber && this.userNumber === autor.toString()) || checkAbrangencia(abrangencia, this.userData);
                 
-                console.log(`%c[Agenda Debug] Task ID: ${row[0]} | Rule: "${abrangencia}" | Author: ${autor} | User: ${this.userNumber} | HasAccess: ${hasAccess}`, 'color: #3498db');
                 return hasAccess;
 
             }).map(row => {
-                let concluida = row[4] === 'TRUE' || row[4] === 1;
-                const autoConfirmar = row[8] === 'TRUE' || row[8] === 1;
-                const autoConfirmarDias = parseInt(row[9], 10);
-                const creationTimestamp = new Date(row[1]).getTime();
+                let concluida = row[4] === 'TRUE' || row[4] === 1; // Coluna E
+                const autoConfirmar = row[8] === 'TRUE' || row[8] === 1; // Coluna I
+                const autoConfirmarDias = parseInt(row[9], 10); // Coluna J
+                const creationTimestamp = new Date(row[1]).getTime(); // Coluna B
 
                 if (!concluida && autoConfirmar && autoConfirmarDias > 0) {
                     const deadline = creationTimestamp + (autoConfirmarDias * 24 * 60 * 60 * 1000);
@@ -475,16 +694,18 @@ export class IntranetAgendaModule {
                 }
 
                 return {
-                    id: row[0],
+                    id: row[0], // Coluna A
                     timestamp: creationTimestamp,
-                    'data/hora': new Date(row[2]).getTime(),
-                    assunto: row[3],
+                    'data/hora': new Date(row[2]).getTime(), // Coluna C
+                    assunto: row[3], // Coluna D
                     concluida: concluida,
-                    autor: row[5],
-                    abrangencia: row[6],
-                    status: row[7],
+                    autor: row[5], // Coluna F
+                    abrangencia: row[6], // Coluna G
+                    status: row[7], // Coluna H
                     autoConfirmar: autoConfirmar,
-                    autoConfirmarDias: autoConfirmarDias
+                    autoConfirmarDias: autoConfirmarDias,
+                    descricao: row[10] || '', // Coluna K
+                    confirmacoes: row[11] || '' // Coluna L
                 };
             });
         } else {
@@ -493,7 +714,6 @@ export class IntranetAgendaModule {
         }
     }
     
-    // ... restante do arquivo sem alterações ...
     async persistTasks() {
         console.warn("SisPMG+ [Agenda]: persistTasks não tem mais efeito. As tarefas são salvas individualmente.");
     }
@@ -518,5 +738,59 @@ export class IntranetAgendaModule {
         } else {
             this.settings = defaultSettings;
         }
+    }
+
+    _showModal(title, message, buttons) {
+        const modalBackdrop = document.createElement('div');
+        modalBackdrop.className = 'sispmg-alert-modal-backdrop';
+
+        let buttonsHTML = '';
+        buttons.forEach((btn, index) => {
+            buttonsHTML += `<button id="sispmg-alert-btn-${index}" class="${btn.className}">${btn.text}</button>`;
+        });
+
+        modalBackdrop.innerHTML = `
+            <div class="sispmg-alert-modal-content">
+                <h4>${title}</h4>
+                <p>${message}</p>
+                <div class="sispmg-alert-modal-actions">
+                    ${buttonsHTML}
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modalBackdrop);
+
+        buttons.forEach((btn, index) => {
+            modalBackdrop.querySelector(`#sispmg-alert-btn-${index}`).addEventListener('click', () => {
+                if (btn.action) {
+                    btn.action();
+                }
+                modalBackdrop.remove();
+            });
+        });
+    }
+
+    _showAlert(message, title = 'Aviso') {
+        this._showModal(title, message, [
+            { text: 'OK', className: 'sispmg-alert-btn-confirm' }
+        ]);
+    }
+
+    _showConfirm(message, title = 'Confirmação') {
+        return new Promise(resolve => {
+            this._showModal(title, message, [
+                {
+                    text: 'Cancelar',
+                    className: 'sispmg-alert-btn-cancel',
+                    action: () => resolve(false)
+                },
+                {
+                    text: 'Confirmar',
+                    className: 'sispmg-alert-btn-confirm',
+                    action: () => resolve(true)
+                }
+            ]);
+        });
     }
 }
