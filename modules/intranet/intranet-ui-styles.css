@@ -196,6 +196,67 @@ body.sispmg-fullscreen-active > *:not(#sispmg-plus-container) {
     border: 1px solid transparent;
 }
 
+/* Generalizado para cabeçalhos de painéis */
+.sispmg-panel-header {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding: 8px 12px !important;
+    background-color: #826c2b !important;
+    border-bottom: 1px solid #6d5b24 !important;
+    border-radius: 8px 8px 0px 0px !important;
+    height: 40px !important;
+}
+
+.sispmg-panel-header span {
+    margin: 0 !important;
+    color: #fff !important;
+    font-size: 16px !important;
+    flex-grow: 0 !important;
+    text-align: center !important;
+}
+
+.sispmg-panel-title-group {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: left !important;
+    gap: 8px !important;
+    flex-grow: 1 !important;
+}
+
+.sispmg-panel-actions {
+    display: flex !important;
+    gap: 8px !important;
+}
+
+/* Regra genérica para botões do cabeçalho */
+.sispmg-panel-actions button {
+    border: none !important;
+    border-radius: 4px !important;
+    width: 28px !important;
+    height: 28px !important;
+    font-size: 14px !important;
+    cursor: pointer !important;
+    transition: all 0.2s !important;
+    color: #fff !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+.sispmg-panel-actions button:hover {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    color: #fff !important;
+}
+
+/* Generalizado para o conteúdo dos painéis */
+.sispmg-panel-content-wrapper {
+    padding: 10px !important;
+    flex-grow: 1 !important;
+    max-height: calc(100% - 40px) !important; /* Max height - header height */
+    overflow-y: auto !important; /* Always allow scroll if content is too large */
+    transition: max-height 0.3s ease-in-out, padding 0.3s ease-in-out !important; /* Added for smooth collapse */
+}
+
 /* Estilos para o Loader */
 #sispmg-loader-overlay {
     position: fixed !important;

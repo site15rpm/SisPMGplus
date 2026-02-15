@@ -27,18 +27,6 @@
     overflow: hidden; /* Ensure content doesn't overflow rounded corners */
 }
 
-/* Generalizado para cabeçalhos de painéis */
-.sispmg-panel-header {
-    display: flex !important;
-    justify-content: space-between !important;
-    align-items: center !important;
-    padding: 8px 12px !important;
-    background-color: #826c2b !important;
-    border-bottom: 1px solid #6d5b24 !important;
-    border-radius: 8px 8px 0px 0px !important;
-    height: 40px !important;
-}
-
 /* Correção para span não ter sublinhado */
 #sispmg-agenda-panel span {
     text-decoration: none !important;
@@ -46,46 +34,7 @@
     box-shadow: none !important;
 }
 
-.sispmg-panel-header span {
-    margin: 0 !important;
-    color: #fff !important;
-    font-size: 16px !important;
-    flex-grow: 0 !important;
-    text-align: center !important;
-}
 
-.sispmg-panel-title-group {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: left !important;
-    gap: 8px !important;
-    flex-grow: 1 !important;
-}
-
-.sispmg-panel-actions {
-    display: flex !important;
-    gap: 8px !important;
-}
-
-/* Regra genérica para botões do cabeçalho */
-.sispmg-panel-actions button {
-    background-color: transparent !important;
-    border: none !important;
-    border-radius: 4px !important;
-    width: 28px !important;
-    height: 28px !important;
-    font-size: 14px !important;
-    cursor: pointer !important;
-    transition: all 0.2s !important;
-    color: #fff !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-}
-.sispmg-panel-actions button:hover {
-    background-color: rgba(255, 255, 255, 0.1) !important;
-    color: #fff !important;
-}
 
 /* Regras específicas para botões de ações do painel */
 #sispmg-agenda-panel #sispmg-agenda-add-btn {

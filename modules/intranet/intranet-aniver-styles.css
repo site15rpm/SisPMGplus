@@ -238,77 +238,19 @@
     border-radius: 8px !important; box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
     padding: 0 !important; /* Removido o padding do container */
     z-index: 9998 !important; transition: right 0.5s ease-in-out !important;
-    max-height: 80vh !important; display: flex !important; flex-direction: column !important;
+    max-height: 70vh !important; display: flex !important; flex-direction: column !important;
 }
 
 #sispmg-birthday-notification.visible { right: 20px !important; }
 
-/* Generalizado para cabeçalhos de painéis */
-.sispmg-panel-header {
-    display: flex !important;
-    justify-content: space-between !important;
-    align-items: center !important;
-    padding: 8px 12px !important;
-    background-color: #826c2b !important;
-    border-bottom: 1px solid #6d5b24 !important;
-    border-radius: 8px 8px 0px 0px !important;
-    height: 40px !important;
-}
 
-.sispmg-panel-header span {
-    margin: 0 !important;
-    color: #fff !important;
-    font-size: 16px !important;
-    flex-grow: 0 !important;
-    text-align: center !important;
-}
-
-.sispmg-panel-title-group {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: left !important;
-    gap: 8px !important;
-    flex-grow: 1 !important;
-}
-
-.sispmg-panel-actions {
-    display: flex !important;
-    gap: 8px !important;
-}
-
-/* Regra genérica para botões do cabeçalho */
-.sispmg-panel-actions button {
-    all: unset; /* To reset some inherited styles */
-    box-sizing: border-box !important;
-    cursor: pointer !important;
-    width: 28px !important;
-    height: 28px !important;
-    border-radius: 4px !important;
-    transition: all 0.2s !important;
-    background-color: transparent !important; /* Header button style */
-    border: none !important; /* Header button style */
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    color: #fff !important; /* Header button style */
-    font-size: 14px !important; /* Header button style */
-}
-
-.sispmg-panel-actions button:hover {
-    background-color: rgba(255, 255, 255, 0.1) !important; /* Header button hover style */
-    color: #fff !important; /* Header button hover style */
-}
 
 .sispmg-bday-letter-btn-blue {
-    background-color: #007bff !important; /* A nice blue color */
-    border-color: #007bff !important; /* Ensure border color matches */
-    color: #fff !important;
+    background-color: #007bff !important;
 }
 
 .sispmg-bday-letter-btn-blue:hover {
-    background-color: #0056b3 !important;
-    border-color: #0056b3 !important;
-    color: #fff !important;
+    background-color: #0069d9 !important;
 }
 
 /* Generalizado para o conteúdo dos painéis */
