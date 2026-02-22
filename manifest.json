@@ -52,10 +52,26 @@
         "terminal-loader.js",
         "intranet-loader.js",
         "offscreen.html",
-        "common/*",
-        "modules/*"
+        "common/*.css",
+        "modules/*.html",
+        "modules/*.css",
+        "modules/abastecimentos/*.html",
+        "modules/intranet/*.html",
+        "modules/lib/sheetjs/*.html",
+        "modules/terminal/*.html"
       ],
       "matches": ["*://*.policiamilitar.mg.gov.br/*"]
+    },
+    {
+      "resources": [
+        "common/browser-polyfill.js",
+        "common/icon.js",
+        "common/utils.js",
+        "modules/**/*.js",
+        "modules/**/*.mjs"
+      ],
+      "matches": ["*://*.policiamilitar.mg.gov.br/*"],
+      "type": "module"
     }
   ]
 }

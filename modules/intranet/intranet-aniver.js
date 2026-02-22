@@ -214,9 +214,16 @@ export class BirthdayModule {
         const notification = document.createElement('div');
         notification.id = 'sispmg-birthday-notification';
         notification.innerHTML = `
-            <button id="sispmg-bday-close-notif" class="sispmg-modal-close-btn">&times;</button>
-            <div class="sispmg-birthday-title">${this.iconSVG_28} <span>Lembrete de Aniversário</span></div>
-            <div class="sispmg-birthday-content-wrapper">${listHTML}</div>
+            <div class="sispmg-panel-header">
+                <div class="sispmg-panel-title-group">
+                    ${this.iconSVG_28} <span>Lembrete de Aniversário</span>
+                </div>
+                <div class="sispmg-panel-actions">
+                    <button id="sispmg-bday-letter-btn" class="sispmg-btn-icon sispmg-bday-action-btn sispmg-bday-letter-btn-blue"><i class="fas fa-envelope"></i></button>
+                    <button id="sispmg-bday-collapse-btn" class="sispmg-btn-icon sispmg-bday-action-btn"><i class="fas fa-chevron-right"></i></button>
+                </div>
+            </div>
+            <div class="sispmg-panel-content-wrapper">${listHTML}</div>
         `;
         
         const container = document.getElementById('sispmg-plus-container') || document.body;
@@ -224,35 +231,64 @@ export class BirthdayModule {
         
         let closeTimeout;
         let handleDocumentClick;
+        let isNotificationVisible = false; // Track current visibility state
 
-        const closeAndRemove = () => {
-             clearTimeout(closeTimeout);
-             document.removeEventListener('click', handleDocumentClick, true);
-             notification.classList.remove('visible');
-             setTimeout(() => notification.remove(), 500);
+        const collapseBtn = document.getElementById('sispmg-bday-collapse-btn');
+        const collapseIcon = collapseBtn.querySelector('i');
+
+        const toggleNotificationVisibility = (show) => {
+            if (show) {
+                notification.classList.add('visible');
+                collapseIcon.classList.remove('fa-chevron-left');
+                collapseIcon.classList.add('fa-chevron-right'); // Right arrow when visible
+                isNotificationVisible = true;
+            } else {
+                notification.classList.remove('visible');
+                collapseIcon.classList.remove('fa-chevron-right');
+                collapseIcon.classList.add('fa-chevron-left'); // Left arrow when hidden
+                isNotificationVisible = false;
+            }
         };
         
         handleDocumentClick = (e) => {
-            if (!notification.contains(e.target)) {
-                closeAndRemove();
+            if (!notification.contains(e.target) && isNotificationVisible) {
+                clearTimeout(closeTimeout); // Clear any pending auto-hide
+                toggleNotificationVisibility(false);
             }
         };
 
         const startCloseTimer = () => {
             clearTimeout(closeTimeout);
-            closeTimeout = setTimeout(closeAndRemove, 15000);
+            closeTimeout = setTimeout(() => {
+                if (isNotificationVisible) {
+                    toggleNotificationVisibility(false);
+                }
+            }, 15000);
         };
         
-        document.getElementById('sispmg-bday-close-notif').onclick = (e) => {
-            e.stopPropagation();
-            closeAndRemove();
-        };
-
         notification.addEventListener('mouseenter', () => clearTimeout(closeTimeout));
         notification.addEventListener('mouseleave', startCloseTimer);
 
+        collapseBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            clearTimeout(closeTimeout); // Clear any pending auto-hide on manual interaction
+            toggleNotificationVisibility(!isNotificationVisible);
+            if (isNotificationVisible) { // If it just became visible, restart timer
+                startCloseTimer();
+            }
+        });
+        
+        document.getElementById('sispmg-bday-letter-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            console.log('Botão de carta clicado. Funcionalidade a ser implementada.');
+            // A funcionalidade específica do botão de carta será adicionada aqui futuramente.
+            clearTimeout(closeTimeout); // Keep notification open on interaction
+            startCloseTimer(); // Restart timer
+        });
+
+        // Initial display
         setTimeout(() => {
-            notification.classList.add('visible');
+            toggleNotificationVisibility(true);
             document.addEventListener('click', handleDocumentClick, true);
         }, 100);
 
@@ -402,4 +438,3 @@ export class BirthdayModule {
         }
     }
 }
-

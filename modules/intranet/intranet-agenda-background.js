@@ -35,11 +35,10 @@ function parseGoogleSheetResponse(responseText) {
  */
 export async function handleAgendaMessages(request, sender) {
     const { action, payload } = request;
-    const { token, ...restOfPayload } = payload || {};
 
     switch (action) {
         case 'agenda-fetch-data': {
-            const { sheetId, sheet, query } = restOfPayload;
+            const { sheetId, sheet, query } = payload || {};
             const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&sheet=${sheet}&tq=${encodeURIComponent(query)}&_=${Date.now()}`;
             
             try {
@@ -54,16 +53,13 @@ export async function handleAgendaMessages(request, sender) {
             }
         }
 
-        case 'agenda-add-event': {
-            const { gasUrl, eventData } = restOfPayload;
-
-            // Aqui, podemos adicionar a extração de dados do usuário (tokiuz) se necessário.
-            // Por enquanto, apenas enviamos os dados do evento.
-            // Ex: const userData = await getUserData(token);
-            // const fullEventData = { ...eventData, user: userData };
+        case 'agenda-add-event':
+        case 'agenda-confirm-task': // Ambas as ações usam a mesma lógica de encaminhamento
+        {
+            const { gasUrl, eventData } = payload || {};
 
             if (!gasUrl) {
-                return { success: false, error: 'A URL do script (gasUrl) para adicionar eventos não foi configurada.' };
+                return { success: false, error: 'A URL do script (gasUrl) não foi configurada.' };
             }
 
             try {
@@ -71,21 +67,26 @@ export async function handleAgendaMessages(request, sender) {
                     method: 'POST',
                     mode: 'cors',
                     redirect: 'follow',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(eventData),
+                    headers: { 'Content-Type': 'application/json' },
+                    // Encapsula os dados com a ação para o GAS saber o que fazer
+                    body: JSON.stringify({ action: action, eventData: eventData }),
                 });
-                const result = await response.json();
+                
+                const resultText = await response.text();
+                const result = JSON.parse(resultText);
+
+                if (result.success === false) { // O GAS pode retornar success:false
+                    throw new Error(result.error || 'Erro desconhecido no GAS.');
+                }
+                
                 return { success: true, data: result };
             } catch (error) {
-                console.error(`SisPMG+ [Agenda Background]: Falha ao enviar dados para o Google Apps Script.`, error);
-                return { success: false, error: `Falha ao adicionar evento na agenda: ${error.message}` };
+                console.error(`SisPMG+ [Agenda Background]: Falha ao enviar dados para o GAS para a ação '${action}'.`, error);
+                return { success: false, error: error.message };
             }
         }
 
         default:
-            // Se a ação não for para este manipulador, não fazemos nada.
-            return;
+            return; // Ação não pertence a este módulo
     }
 }
