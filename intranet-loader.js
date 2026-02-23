@@ -1,4 +1,4 @@
-﻿// Arquivo: intranet-loader.js
+// Arquivo: intranet-loader.js
 // Ponto de entrada para os módulos da Intranet, com monitoramento contínuo de navegação.
 
 let padmModuleInstance = null;
@@ -101,6 +101,7 @@ async function main(config) {
  */
 function checkAllModules() {
     const isPrincipalPage = window.location.hostname === 'principal.policiamilitar.mg.gov.br';
+    const isPAdmPage = window.location.hostname === 'pa.policiamilitar.mg.gov.br';
 
     // Verifica o módulo de Aniversariantes
     if (moduleSettings.aniverModuleEnabled !== false) {
@@ -113,15 +114,15 @@ function checkAllModules() {
     
     // Verifica o módulo da Agenda
     if (moduleSettings.agendaModuleEnabled !== false) {
-        if (isPrincipalPage && !agendaModuleInstance) {
-            loadAgendaModule();
-        } else if (!isPrincipalPage && agendaModuleInstance) {
+        if ((isPrincipalPage || isPAdmPage) && !agendaModuleInstance) {
+            const loadUI = isPrincipalPage; // Só carrega a UI na página principal
+            loadAgendaModule(loadUI);
+        } else if (!isPrincipalPage && !isPAdmPage && agendaModuleInstance) {
             destroyAgendaModule();
         }
     }
 
     // Verifica o módulo do PAdm
-    const isPAdmPage = window.location.hostname === 'pa.policiamilitar.mg.gov.br';
     if (moduleSettings.padmModuleEnabled !== false) {
         if (isPAdmPage && !padmModuleInstance) {
             loadPAdmModule();
@@ -182,7 +183,7 @@ function checkAllModules() {
 }
 
 /** Carrega o módulo de Agenda. */
-async function loadAgendaModule() {
+async function loadAgendaModule(loadUI = true) {
     try {
         console.log("SisPMG+: Página principal detectada. Carregando módulo de Agenda...");
         
@@ -195,10 +196,11 @@ async function loadAgendaModule() {
         const { IntranetAgendaModule } = await import(globalConfig.agendaModuleUrl);
         
         agendaModuleInstance = new IntranetAgendaModule();
-        agendaModuleInstance.init();
+        agendaModuleInstance.init(loadUI);
         
-        // Registra no menu de UI se necessário
-        uiModuleInstance.registerModule({ name: 'Agenda', instance: agendaModuleInstance });
+        if (loadUI) {
+            uiModuleInstance.registerModule({ name: 'Agenda', instance: agendaModuleInstance });
+        }
     } catch(e) {
          console.error("SisPMG+: Falha ao carregar o módulo de Agenda.", e);
     }

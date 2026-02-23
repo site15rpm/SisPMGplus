@@ -52,7 +52,6 @@
 #sispmg-plus-container .sispmg-modal-body-content {
   overflow-y: auto;
   padding: 15px;
-  flex-grow: 1;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
   font-size: 14px;
 }
@@ -278,4 +277,35 @@
 
 #sispmg-plus-container label:first-child {
     width: auto !important;
+}
+
+/* Novos estilos para o item de aniversário com ícone */
+.sispmg-birthday-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+}
+
+.sispmg-birthday-details {
+    flex-grow: 1;
+}
+
+.sispmg-bday-letter-icon {
+    margin-left: 15px;
+    cursor: pointer;
+    color: #b3a368;
+    transition: color 0.2s;
+    font-size: 16px;
+}
+
+.sispmg-bday-letter-icon:hover {
+    color: #9e8f57;
+}
+
+.sispmg-no-birthdays {
+    padding: 20px;
+    text-align: center;
+    color: #666;
+    font-style: italic;
 }

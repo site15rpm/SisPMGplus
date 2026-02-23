@@ -22,7 +22,71 @@ export class PAdmModule {
         await this.loadState();
         if (this.moduleEnabled) {
             this.startObserver();
+            this.checkForBirthdayRecipients(); // Adicionado para verificar destinatários de aniversário
         }
+    }
+
+    // Função para verificar e preencher destinatários vindos do módulo de Aniversariantes
+    checkForBirthdayRecipients() {
+        const checkInterval = setInterval(async () => {
+            // Verifica se o formulário de escrita está visível e na URL correta
+            if (document.querySelector('app-formulario-escrever') && window.location.hash.startsWith('#/escrever')) {
+                const storage = await sendMessageToBackground('getStorage', { key: 'recipientsForPA' });
+                const nrPols = storage.success ? storage.value.recipientsForPA : null;
+
+                if (nrPols && nrPols.length > 0) {
+                    console.log('SisPMG+ [PAdmPMG+]: Destinatários de aniversário encontrados. Aguardando campo "Para"...', nrPols);
+                    
+                    clearInterval(checkInterval); // Para de verificar uma vez que encontrou
+                    
+                    // Limpa o storage imediatamente para não reprocessar
+                    await sendMessageToBackground('removeStorage', { keys: ['recipientsForPA'] });
+
+                    // Tenta encontrar o ID do campo "Para" de forma assíncrona
+                    const paraInputId = await this.findParaInputId();
+                    if (paraInputId) {
+                        // Usa a função existente para inserir os números
+                        this.inserirDestinatariosPorNumero(nrPols, paraInputId);
+                    } else {
+                        console.error('SisPMG+ [PAdmPMG+]: Não foi possível encontrar o campo "Para" para inserir os destinatários após várias tentativas.');
+                    }
+                }
+            }
+        }, 500); // Diminuído o intervalo para uma verificação mais rápida
+
+        // Para de verificar após 20 segundos para não rodar indefinidamente.
+        setTimeout(() => clearInterval(checkInterval), 20000);
+    }
+    
+    // Helper para encontrar o ID do campo "Para", aguardando o render do DOM
+    async findParaInputId() {
+        for (let i = 0; i < 20; i++) { // Tenta por 10 segundos (20 * 500ms)
+            const labels = document.querySelectorAll('app-formulario-escrever label');
+            for (const label of labels) {
+                let isParaLabel = false;
+                // Itera nos childNodes para encontrar o nó de texto "Para"
+                for (const node of label.childNodes) {
+                    if (node.nodeType === 3 && node.nodeValue.trim() === 'Para') { // nodeType 3 é TextNode
+                        isParaLabel = true;
+                        break;
+                    }
+                }
+
+                if (isParaLabel) {
+                    // O div com o input é o irmão seguinte da label
+                    const inputContainer = label.nextElementSibling;
+                    if (inputContainer) {
+                        const inputSpan = inputContainer.querySelector('span[contenteditable="true"]');
+                        if (inputSpan && inputSpan.id) {
+                            console.log('SisPMG+ [PAdmPMG+]: Campo "Para" encontrado com ID:', inputSpan.id);
+                            return inputSpan.id;
+                        }
+                    }
+                }
+            }
+            await this.sleep(500); // Reutiliza o método sleep existente na classe
+        }
+        return null;
     }
 
     async loadState() {
@@ -540,3 +604,4 @@ export class PAdmModule {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 }
+

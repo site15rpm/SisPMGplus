@@ -6,6 +6,8 @@
     --agenda-header-text: #574e2d;
     --agenda-primary-btn-bg: #b3a368;
     --agenda-primary-btn-border: #9e8f57;
+    --agenda-cancel-btn-bg: #6c757d;
+    --agenda-cancel-btn-border: #6c757d;
 }
 
 /* Painel Principal da Agenda */
@@ -22,39 +24,32 @@
     box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
     z-index: 9990 !important;
     display: flex !important;
-    flex-direction: column !important; /* Changed to column for header at top */
-    transition: all 0.3s ease-in-out !important; /* General transition for whole panel movement (if any) */
-    overflow: hidden; /* Ensure content doesn't overflow rounded corners */
+    flex-direction: column !important;
+    transition: all 0.3s ease-in-out !important;
+    overflow: hidden;
 }
 
-/* Correção para span não ter sublinhado */
 #sispmg-agenda-panel span {
     text-decoration: none !important;
     border: none !important;
     box-shadow: none !important;
 }
 
-
-
-/* Regras específicas para botões de ações do painel */
 #sispmg-agenda-panel #sispmg-agenda-add-btn {
-    background-color: #007bff !important; /* Cor azul para o botão adicionar */
+    background-color: #007bff !important;
 }
 #sispmg-agenda-panel #sispmg-agenda-add-btn:hover {
     background-color: #0069d9 !important;
 }
-/* A cor do botão de recolher será a padrão do .sispmg-panel-actions button (transparente) */
 
-/* Generalizado para o conteúdo dos painéis */
 .sispmg-panel-content-wrapper {
     padding: 10px !important;
     flex-grow: 1 !important;
-    max-height: calc(100% - 40px) !important; /* Max height - header height */
-    overflow-y: auto !important; /* Always allow scroll if content is too large */
-    transition: max-height 0.3s ease-in-out, padding 0.3s ease-in-out !important; /* Added for smooth collapse */
+    max-height: calc(100% - 40px) !important;
+    overflow-y: auto !important;
+    transition: max-height 0.3s ease-in-out, padding 0.3s ease-in-out !important;
 }
 
-/* Estado Recolhido do painel de agenda (conteúdo) */
 #sispmg-agenda-panel.collapsed .sispmg-panel-content-wrapper {
     max-height: 0 !important;
     padding-top: 0 !important;
@@ -62,7 +57,6 @@
     overflow: hidden !important;
 }
 
-/* Tarefa Individual */
 .sispmg-agenda-task {
     display: flex !important;
     justify-content: space-between !important;
@@ -74,22 +68,21 @@
     background-color: #fff !important;
     border-radius: 4px !important;
     box-shadow: 0 1px 3px rgba(0,0,0,0.08) !important;
-    transition: background-color 0.2s ease-in-out; /* Adiciona transição suave */
+    transition: background-color 0.2s ease-in-out;
 }
 .sispmg-agenda-task.has-description:hover {
     cursor: pointer !important;
-    background-color: #f8f6f2 !important; /* Um pouco mais escuro que var(--agenda-bg) */
+    background-color: #f8f6f2 !important;
 }
 
 .sispmg-task-content { 
     flex-grow: 1 !important; 
     margin-right: 10px !important; 
-    cursor: default !important;
+    cursor: pointer !important;
 }
 .sispmg-task-info { font-weight: bold !important; font-size: 13px !important; color: #333 !important; word-break: break-word !important; }
 .sispmg-task-datetime { color: #333 !important; margin-bottom: 4px !important; }
 
-/* Botões de Ação Verticais */
 .sispmg-task-actions {
     display: flex !important;
     flex-direction: column !important;
@@ -113,7 +106,6 @@
 }
 .sispmg-task-actions button:hover { background-color: #eee !important; color: #000 !important; }
 
-/* Remove a cor de fundo padrão para os botões específicos */
 .sispmg-task-actions .sispmg-task-complete-btn,
 .sispmg-task-actions .sispmg-task-edit-btn {
     background-color: #f7f7f7 !important;
@@ -121,20 +113,18 @@
     color: #555 !important;
 }
 
-/* Aplica as cores apenas no hover */
 .sispmg-task-actions .sispmg-task-complete-btn:hover {
-    background-color: #28a745 !important; /* Verde */
+    background-color: #28a745 !important;
     border-color: #218838 !important;
     color: #fff !important;
 }
 
 .sispmg-task-actions .sispmg-task-edit-btn:hover {
-    background-color: #ffc107 !important; /* Amarelo */
+    background-color: #ffc107 !important;
     border-color: #e0a800 !important;
     color: #212529 !important;
 }
 
-/* Estilo para o botão de confirmação do usuário quando já confirmado */
 .sispmg-task-user-confirm-btn.confirmed {
     background-color: #28a745 !important;
     border-color: #218838 !important;
@@ -164,7 +154,6 @@
     border: 1px solid white !important;
 }
 
-/* Modal de Agendamento */
 .sispmg-agenda-modal-container {
     position: fixed !important;
     top: 0 !important;
@@ -184,8 +173,13 @@
     border: 1px solid var(--agenda-border) !important;
     box-shadow: 0 2px 15px rgba(0,0,0,0.25) !important;
     width: 90% !important;
-    max-width: 450px !important;
 }
+
+#sispmg-task-modal .sispmg-modal-content {
+    width: 600px !important;
+    max-width: 600px !important;
+}
+
 #sispmg-task-modal h2 {
     color: var(--agenda-header-text) !important;
     text-align: center !important;
@@ -215,7 +209,7 @@
     box-sizing: border-box !important;
     font-family: inherit !important;
     font-size: 14px !important;
-    color: #333 !important; /* Ensure font color */
+    color: #333 !important;
     color-scheme: light !important;
 }
 
@@ -232,23 +226,6 @@
     line-height: 1.4 !important;
 }
 
-#sispmg-agenda-save-btn {
-    width: 100% !important;
-    padding: 10px !important;
-    font-size: 14px !important;
-    border: 1px solid transparent !important;
-    border-radius: 4px !important;
-    cursor: pointer !important;
-    text-align: center !important;
-    font-weight: 600 !important;
-    transition: background-color 0.2s !important;
-    box-sizing: border-box !important;
-    background-color: var(--agenda-primary-btn-bg) !important;
-    border-color: var(--agenda-primary-btn-border) !important;
-    color: white !important;
-}
-#sispmg-agenda-save-btn:hover { opacity: 0.9 !important; }
-
 .sispmg-datetime-group {
     display: flex !important;
     gap: 10px !important;
@@ -256,11 +233,11 @@
 }
 .sispmg-datetime-group input[type="date"] {
     flex-grow: 1 !important;
-    margin-bottom: 0 !important; /* Sobrescreve a regra geral de input */
+    margin-bottom: 0 !important;
 }
 .sispmg-datetime-group input[type="time"] {
     flex-grow: 0 !important;
-    margin-bottom: 0 !important; /* Sobrescreve a regra geral de input */
+    margin-bottom: 0 !important;
 }
 
 .sispmg-form-group {
@@ -295,6 +272,43 @@
     margin-top: 20px !important;
 }
 
+.sispmg-modal-actions .sispmg-agenda-btn {
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    appearance: none !important;
+    padding: 10px 15px !important;
+    font-size: 14px !important;
+    font-family: inherit !important;
+    line-height: 1.5 !important;
+    border-radius: 4px !important;
+    cursor: pointer !important;
+    text-align: center !important;
+    font-weight: 600 !important;
+    transition: opacity 0.2s !important;
+    box-sizing: border-box !important;
+    border: 1px solid transparent !important;
+    display: block !important;
+}
+
+.sispmg-modal-actions .sispmg-agenda-btn:hover {
+    opacity: 0.9 !important;
+}
+
+#sispmg-agenda-save-btn {
+    flex-grow: 1 !important;
+    background-color: var(--agenda-primary-btn-bg) !important;
+    border-color: var(--agenda-primary-btn-border) !important;
+    color: white !important;
+}
+
+#sispmg-agenda-cancel-btn {
+    flex-grow: 1 !important;
+    background-color: var(--agenda-cancel-btn-bg) !important;
+    border-color: var(--agenda-cancel-btn-border) !important;
+    color: white !important;
+}
+
+
 #sispmg-agenda-delete-btn {
     all: unset;
     box-sizing: border-box !important;
@@ -317,12 +331,6 @@
     border-color: #bd2130 !important;
 }
 
-#sispmg-agenda-save-btn {
-    flex-grow: 1 !important;
-    margin-top: 0 !important;
-}
-
-/* Animação de piscar */
 @keyframes blink {
     0% { border-left-color: #ff0000; }
     50% { border-left-color: transparent; }
@@ -333,7 +341,6 @@
     animation: blink 1.5s infinite !important;
 }
 
-/* Estilos para o modal de Alerta/Confirmação */
 .sispmg-alert-modal-backdrop {
     position: fixed !important;
     top: 0 !important;
@@ -354,14 +361,14 @@
     border: 1px solid var(--agenda-border) !important;
     box-shadow: 0 5px 15px rgba(0,0,0,0.3) !important;
     width: 90% !important;
-    max-width: 500px !important; /* Aumentado o max-width para o modal genérico */
+    max-width: 500px !important;
 }
 
-/* Estilos específicos para o modal de detalhes da tarefa */
 .sispmg-task-detail-modal {
-    width: 450px !important; /* Largura fixa para detalhes */
-    height: 550px !important; /* Altura fixa para detalhes */
-    overflow-y: auto !important; /* Habilita rolagem para o conteúdo do modal */
+    width: 450px !important;
+    max-width: 450px !important;
+    height: 550px !important;
+    overflow-y: auto !important;
 }
 
 .sispmg-alert-modal-content h4 {
@@ -375,7 +382,7 @@
     color: #333 !important;
     font-size: 15px !important;
     margin-bottom: 20px !important;
-    text-align: left !important; /* Alinhado à esquerda por padrão */
+    text-align: left !important;
     word-wrap: break-word !important;
 }
 
@@ -386,12 +393,11 @@
 }
 
 .sispmg-desc-modal-text {
-    white-space: pre-wrap !important; /* Mantém quebras de linha e espaços */
+    white-space: pre-wrap !important;
     font-size: 14px !important;
     line-height: 1.5 !important;
 }
 
-/* Estilos para o modal de detalhes da tarefa */
 .sispmg-task-detail-header {
     display: flex !important;
     flex-direction: column !important;
@@ -422,9 +428,9 @@
     border: 1px solid var(--agenda-border) !important;
     border-radius: 4px !important;
     padding: 15px !important;
-    height: 288px !important; /* Altura máxima para a caixa de descrição */
-    overflow-y: auto !important; /* Adiciona barra de rolagem vertical */
-    white-space: pre-wrap !important; /* Preserva formatação e quebras de linha */
+    height: 288px !important;
+    overflow-y: auto !important;
+    white-space: pre-wrap !important;
     font-size: 14px !important;
     line-height: 1.6 !important;
     color: #333 !important;
@@ -438,7 +444,6 @@
     gap: 10px !important;
 }
 
-/* Estilos para o novo rodapé do modal com botões de ação */
 .sispmg-modal-footer {
     display: flex !important;
     justify-content: space-between !important;
@@ -458,8 +463,8 @@
     all: unset;
     box-sizing: border-box !important;
     cursor: pointer !important;
-    width: 32px !important; /* Um pouco maior para o modal */
-    height: 32px !important; /* Um pouco maior para o modal */
+    width: 32px !important;
+    height: 32px !important;
     border-radius: 4px !important;
     transition: background-color 0.2s !important;
     border: 1px solid #ddd !important;
@@ -468,37 +473,32 @@
     align-items: center !important;
     justify-content: center !important;
     color: #555 !important;
-    font-size: 14px !important; /* Ajustado para ser visível */
+    font-size: 14px !important;
 }
 .sispmg-task-action-btn:hover { background-color: #eee !important; color: #000 !important; }
 
-/* Cores específicas para botões de ação no modal */
-
 .sispmg-task-action-btn.sispmg-task-edit-btn:hover {
-    background-color: #ffc107 !important; /* Amarelo */
+    background-color: #ffc107 !important;
     border-color: #e0a800 !important;
     color: #212529 !important;
 }
 
-
 .sispmg-task-action-btn.sispmg-task-complete-btn:hover {
-    background-color: #28a745 !important; /* Verde */
+    background-color: #28a745 !important;
     border-color: #218838 !important;
     color: #fff !important;
 }
 
-
 .sispmg-task-action-btn.sispmg-task-user-confirm-btn:hover {
-    background-color: #007bff !important; /* Azul */
+    background-color: #007bff !important;
     border-color: #007bff !important;
     color: #fff !important;
 }
 .sispmg-task-action-btn.sispmg-task-user-confirm-btn.confirmed {
-    background-color: #6c757d !important; /* Cinza para confirmado */
+    background-color: #6c757d !important;
     border-color: #6c757d !important;
     cursor: not-allowed !important;
 }
-
 
 .sispmg-alert-modal-actions button {
     padding: 8px 16px !important;

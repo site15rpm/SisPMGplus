@@ -74,7 +74,7 @@ export class BirthdayModule {
         const lastCheck = storedData.success ? storedData.value.birthdayLastCheck : null;
         let aniversariantes;
 
-        if (lastCheck === todayStr && storedData.value.birthdayData) {
+        if (lastCheck === todayStr && storedData.value.birthdayData !== undefined) {
             aniversariantes = storedData.value.birthdayData || [];
         } else {
             const token = getCookie('tokiuz');
@@ -111,8 +111,11 @@ export class BirthdayModule {
                 const uniqueBirthdays = Array.from(new Map(allBirthdays.map(p => [p.nrPol, p])).values());
                 aniversariantes = uniqueBirthdays;
                 
-                await sendMessageToBackground('setStorage', { birthdayLastCheck: todayStr });
-                await sendMessageToBackground('setStorage', { birthdayData: aniversariantes });
+                // Só salva no cache se encontrar algum aniversariante, para evitar cache de falhas.
+                if (aniversariantes.length > 0) {
+                    await sendMessageToBackground('setStorage', { birthdayLastCheck: todayStr });
+                    await sendMessageToBackground('setStorage', { birthdayData: aniversariantes });
+                }
 
             } catch (error) {
                 console.error('SisPMG+ [Aniversariantes]: Erro ao buscar aniversariantes:', error);
@@ -144,25 +147,30 @@ export class BirthdayModule {
         today.setHours(0, 0, 0, 0);
 
         const endDate = new Date(today);
-        endDate.setDate(today.getDate() + settings.daysAhead + 1);
+        endDate.setDate(today.getDate() + settings.daysAhead);
 
         const currentYear = today.getFullYear();
 
         const upcomingBirthdays = aniversariantes.map(person => {
-            if (!person.mesAniversario || !person.diaAniversario) return null;
+            if (!person.mesAniversario || !person.diaAniversario) {
+                return null;
+            }
 
             const birthDateThisYear = new Date(currentYear, person.mesAniversario - 1, person.diaAniversario);
             birthDateThisYear.setHours(0, 0, 0, 0);
 
-            const birthDateNextYear = new Date(currentYear + 1, person.mesAniversario - 1, person.diaAniversario);
-            birthDateNextYear.setHours(0, 0, 0, 0);
-
             let applicableBirthDate = null;
             
-            if (birthDateThisYear >= today && birthDateThisYear < endDate) {
-                applicableBirthDate = birthDateThisYear;
-            } else if (birthDateNextYear >= today && birthDateNextYear < endDate) {
-                applicableBirthDate = birthDateNextYear;
+            if (birthDateThisYear < today) {
+                const birthDateNextYear = new Date(currentYear + 1, person.mesAniversario - 1, person.diaAniversario);
+                birthDateNextYear.setHours(0, 0, 0, 0);
+                if (birthDateNextYear >= today && birthDateNextYear <= endDate) {
+                    applicableBirthDate = birthDateNextYear;
+                }
+            } else {
+                 if (birthDateThisYear >= today && birthDateThisYear <= endDate) {
+                    applicableBirthDate = birthDateThisYear;
+                }
             }
 
             if (applicableBirthDate) {
@@ -174,41 +182,55 @@ export class BirthdayModule {
         const deHoje = upcomingBirthdays.filter(p => p.fullDate.getTime() === today.getTime());
         const proximos = upcomingBirthdays.filter(p => p.fullDate.getTime() > today.getTime());
 
-        if (deHoje.length === 0 && proximos.length === 0) {
-            return;
-        }
-        
         document.getElementById('sispmg-birthday-notification')?.remove();
+
+        const openPaForRecipients = async (nrPols) => {
+            if (!nrPols || nrPols.length === 0) return;
+            console.log('SisPMG+ [Aniversariantes]: Salvando destinatários para o PA e navegando:', nrPols);
+            await sendMessageToBackground('setStorage', { recipientsForPA: nrPols });
+            window.location.href = 'https://pa.policiamilitar.mg.gov.br/#/escrever';
+        };
 
         const createListItemHTML = (person, isToday = false) => {
             const dateStr = isToday ? '' : `${String(person.diaAniversario).padStart(2, '0')}/${String(person.mesAniversario).padStart(2, '0')} - `;
             const todayClass = isToday ? 'sispmg-birthday-today' : '';
+            const letterIcon = isToday 
+                ? `<span class="sispmg-bday-letter-icon" data-nrpol="${person.nrPol}" title="Enviar mensagem"><i class="fas fa-envelope"></i></span>`
+                : '';
+
             return `<li class="sispmg-birthday-item">
-                        <div class="sispmg-birthday-name ${todayClass}">${dateStr}${person.nomeCompleto.trim()}</div>
-                        <div class="sispmg-birthday-unit">${person.nomeUnidade.trim()}</div>
+                        <div class="sispmg-birthday-details">
+                            <div class="sispmg-birthday-name ${todayClass}">${dateStr}${person.nomeCompleto.trim()}</div>
+                            <div class="sispmg-birthday-unit">${person.nomeUnidade.trim()}</div>
+                        </div>
+                        ${letterIcon}
                     </li>`;
         };
 
         let listHTML = '';
         
-        if (deHoje.length > 0) {
-            listHTML += '<div class="sispmg-birthday-section"><strong>Hoje:</strong><ul>';
-            deHoje.sort((a,b) => a.nomeCompleto.localeCompare(b.nomeCompleto)).forEach(p => { listHTML += createListItemHTML(p, true); });
-            listHTML += '</ul></div>';
-        }
-        
-        if (proximos.length > 0) {
-            if(deHoje.length > 0) listHTML += '<div class="sispmg-birthday-separator"></div>';
-            listHTML += `<div class="sispmg-birthday-section"><strong>Próximos ${settings.daysAhead} dias:</strong><ul>`;
-            proximos.sort((a,b) => {
-                if(a.fullDate.getTime() !== b.fullDate.getTime()) {
-                    return a.fullDate - b.fullDate;
-                }
-                return a.nomeCompleto.localeCompare(b.nomeCompleto);
-            }).forEach(p => { 
-                listHTML += createListItemHTML(p, false); 
-            });
-            listHTML += '</ul></div>';
+        if (deHoje.length === 0 && proximos.length === 0) {
+            listHTML = '<div class="sispmg-no-birthdays">Nenhum aniversário nos próximos dias.</div>';
+        } else {
+            if (deHoje.length > 0) {
+                listHTML += '<div class="sispmg-birthday-section"><strong>Hoje:</strong><ul>';
+                deHoje.sort((a,b) => a.nomeCompleto.localeCompare(b.nomeCompleto)).forEach(p => { listHTML += createListItemHTML(p, true); });
+                listHTML += '</ul></div>';
+            }
+            
+            if (proximos.length > 0) {
+                if(deHoje.length > 0) listHTML += '<div class="sispmg-birthday-separator"></div>';
+                listHTML += `<div class="sispmg-birthday-section"><strong>Próximos ${settings.daysAhead} dias:</strong><ul>`;
+                proximos.sort((a,b) => {
+                    if(a.fullDate.getTime() !== b.fullDate.getTime()) {
+                        return a.fullDate - b.fullDate;
+                    }
+                    return a.nomeCompleto.localeCompare(b.nomeCompleto);
+                }).forEach(p => { 
+                    listHTML += createListItemHTML(p, false); 
+                });
+                listHTML += '</ul></div>';
+            }
         }
 
         const notification = document.createElement('div');
@@ -219,7 +241,7 @@ export class BirthdayModule {
                     ${this.iconSVG_28} <span>Lembrete de Aniversário</span>
                 </div>
                 <div class="sispmg-panel-actions">
-                    <button id="sispmg-bday-letter-btn" class="sispmg-btn-icon sispmg-bday-action-btn sispmg-bday-letter-btn-blue"><i class="fas fa-envelope"></i></button>
+                    <button id="sispmg-bday-letter-btn" class="sispmg-btn-icon sispmg-bday-action-btn sispmg-bday-letter-btn-blue" title="Enviar para todos de hoje"><i class="fas fa-envelope"></i></button>
                     <button id="sispmg-bday-collapse-btn" class="sispmg-btn-icon sispmg-bday-action-btn"><i class="fas fa-chevron-right"></i></button>
                 </div>
             </div>
@@ -280,10 +302,24 @@ export class BirthdayModule {
         
         document.getElementById('sispmg-bday-letter-btn').addEventListener('click', (e) => {
             e.stopPropagation();
-            console.log('Botão de carta clicado. Funcionalidade a ser implementada.');
-            // A funcionalidade específica do botão de carta será adicionada aqui futuramente.
-            clearTimeout(closeTimeout); // Keep notification open on interaction
-            startCloseTimer(); // Restart timer
+            const nrPols = deHoje.map(p => p.nrPol);
+            openPaForRecipients(nrPols);
+            clearTimeout(closeTimeout);
+            startCloseTimer();
+        });
+
+        // Event delegation for individual letter icons
+        notification.addEventListener('click', (e) => {
+            const icon = e.target.closest('.sispmg-bday-letter-icon');
+            if (icon) {
+                e.stopPropagation();
+                const nrPol = icon.dataset.nrpol;
+                if (nrPol) {
+                    openPaForRecipients([nrPol]);
+                }
+                clearTimeout(closeTimeout);
+                startCloseTimer();
+            }
         });
 
         // Initial display
