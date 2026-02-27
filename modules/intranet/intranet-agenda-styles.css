@@ -38,8 +38,10 @@
 #sispmg-agenda-panel #sispmg-agenda-add-btn {
     background-color: #007bff !important;
 }
-#sispmg-agenda-panel #sispmg-agenda-add-btn:hover {
-    background-color: #0069d9 !important;
+
+#sispmg-agenda-panel #sispmg-agenda-info-btn,
+#sispmg-agenda-panel #sispmg-agenda-collapse-btn {
+    color: #574e2d !important; /* Cor do ícone de engrenagem */
 }
 
 .sispmg-panel-content-wrapper {
@@ -684,4 +686,29 @@
 }
 .sispmg-abrangencia-unit-option input[type="checkbox"] {
     flex-shrink: 0 !important;
+}
+
+/* Styles for the color legend modal */
+.sispmg-agenda-legend-container {
+    text-align: left !important;
+    font-size: 0.9em !important;
+    color: #333 !important;
+}
+
+.sispmg-agenda-legend-item {
+    margin-bottom: 12px !important;
+    display: flex !important;
+    align-items: center !important;
+}
+
+/* For the last item, remove margin-bottom */
+.sispmg-agenda-legend-item-last {
+    margin-bottom: 0 !important;
+}
+
+.sispmg-agenda-legend-indicator {
+    height: 25px !important;
+    border-left-width: 5px !important;
+    border-left-style: solid !important;
+    margin-right: 10px !important;
 }

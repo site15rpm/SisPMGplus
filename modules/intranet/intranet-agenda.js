@@ -207,6 +207,7 @@ export class IntranetAgendaModule {
                     <span>Agenda de Tarefas</span>
                 </div>
                 <div class="sispmg-panel-actions">
+                    <button id="sispmg-agenda-info-btn" title="Legenda de Cores"><i class="fa-solid fa-info-circle"></i></button>
                     <button id="sispmg-agenda-add-btn" title="Nova Tarefa"><i class="fa-solid fa-plus"></i></button>
                     <button id="sispmg-agenda-collapse-btn" title="Recolher/Expandir">
                         <i class="fa-solid fa-chevron-up"></i>
@@ -218,6 +219,10 @@ export class IntranetAgendaModule {
         const container = document.getElementById('sispmg-plus-container') || document.body;
         container.appendChild(this.panel);
 
+        document.getElementById('sispmg-agenda-info-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.showColorInfoModal();
+        });
         document.getElementById('sispmg-agenda-add-btn').addEventListener('click', (e) => {
             e.stopPropagation();
             this.showTaskModal();
@@ -226,6 +231,48 @@ export class IntranetAgendaModule {
             e.stopPropagation();
             this.toggleCollapse(this.panel);
         });
+    }
+
+    showColorInfoModal() {
+        const legendHTML = `
+            <style>
+                @keyframes sispmg-modal-blink {
+                    0% { border-left-color: ${this.settings.colors.expired} !important; }
+                    50% { border-left-color: transparent !important; }
+                    100% { border-left-color: ${this.settings.colors.expired} !important; }
+                }
+                .blinking-border.sispmg-agenda-legend-indicator { /* Ensure the class is specific */
+                    animation: sispmg-modal-blink 1.5s infinite;
+                }
+            </style>
+            <div class="sispmg-agenda-legend-container">
+                <div class="sispmg-agenda-legend-item">
+                    <div class="blinking-border sispmg-agenda-legend-indicator"></div>
+                    Vencidas ou vence hoje.
+                </div>
+                <div class="sispmg-agenda-legend-item">
+                    <div class="sispmg-agenda-legend-indicator" style="border-left-color: ${this.settings.colors.expired} !important;"></div>
+                    Vence amanhã.
+                </div>
+                <div class="sispmg-agenda-legend-item">
+                    <div class="sispmg-agenda-legend-indicator" style="border-left-color: orange !important;"></div>
+                    Vence em 2 ou 3 dias.
+                </div>
+                <div class="sispmg-agenda-legend-item">
+                    <div class="sispmg-agenda-legend-indicator" style="border-left-color: ${this.settings.colors.soon} !important;"></div>
+                    Vence em mais de 3 dias.
+                </div>
+                <div class="sispmg-agenda-legend-item">
+                    <div class="sispmg-agenda-legend-indicator" style="border-left-color: #007bff !important;"></div>
+                    Tarefa comportilhada por outro usuário e confirmada por você.
+                </div>
+                <div class="sispmg-agenda-legend-item sispmg-agenda-legend-item-last">
+                    <div class="sispmg-agenda-legend-indicator" style="border-left-color: ${this.settings.colors.far} !important;"></div>
+                    Tarefa concluída.
+                </div>
+            </div>
+        `;
+        this._showAlert(legendHTML, 'Legenda de Cores');
     }
 
     toggleCollapse(panel, forceState = null) {
@@ -768,17 +815,23 @@ export class IntranetAgendaModule {
         const category = this.getTaskCategory(task);
 
         switch (category) {
-            case 0: // Vermelho (Expirada)
+            case 0: // Vermelho (Expirada / Hoje) - Piscando
                 element.style.borderColor = this.settings.colors.expired;
                 element.classList.add('blinking-border');
                 break;
-            case 1: // Amarelo (Pendente)
+            case 1: // Vermelho (Amanhã) - Fixo
+                element.style.borderColor = this.settings.colors.expired;
+                break;
+            case 2: // Laranja (Faltam 2 a 3 dias)
+                element.style.borderColor = 'orange';
+                break;
+            case 3: // Amarelo (Pendente > 3 dias)
                 element.style.borderColor = this.settings.colors.soon;
                 break;
-            case 2: // Azul (Confirmada)
+            case 4: // Azul (Confirmada)
                 element.style.borderColor = '#007bff';
                 break;
-            case 3: // Verde (Concluída)
+            case 5: // Verde (Concluída)
                 element.style.borderColor = this.settings.colors.far;
                 break;
             default:
@@ -788,16 +841,37 @@ export class IntranetAgendaModule {
     }
 
     getTaskCategory(task) {
+        if (task.concluida) return 5; // Verde
         const isConfirmedByUser = this.userNumber && (task.confirmacoes || '').split('|').includes(this.userNumber);
-        const dueDate = new Date(task['data/hora']);
-        const now = new Date();
-        now.setHours(0, 0, 0, 0); // Zera a hora para comparar apenas a data
-        dueDate.setHours(0, 0, 0, 0);
+        if (isConfirmedByUser) return 4; // Azul
 
-        if (task.concluida) return 3; // Verde
-        if (isConfirmedByUser) return 2; // Azul
-        if (dueDate < now) return 0; // Vermelho
-        return 1; // Amarelo
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const dueDay = new Date(task['data/hora']);
+        dueDay.setHours(0, 0, 0, 0);
+
+        // Vermelho Piscando: Vencidas (dias passados) OU vencendo hoje
+        if (dueDay.getTime() <= today.getTime()) {
+            return 0;
+        }
+
+        // Calcula a diferença de dias
+        const diffTime = dueDay.getTime() - today.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        // Vermelho Fixo: Vencendo amanhã (1 dia)
+        if (diffDays === 1) {
+            return 1;
+        }
+
+        // Laranja: Vencendo em 2 ou 3 dias
+        if (diffDays === 2 || diffDays === 3) {
+            return 2;
+        }
+
+        // Amarelo: Todas as outras tarefas futuras (> 3 dias)
+        return 3;
     }
     
     sortTasks() {

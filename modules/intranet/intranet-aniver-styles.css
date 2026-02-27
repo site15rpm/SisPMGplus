@@ -244,11 +244,11 @@
 
 
 
-.sispmg-bday-letter-btn-blue {
+#sispmg-bday-letter-btn {
     background-color: #007bff !important;
 }
 
-.sispmg-bday-letter-btn-blue:hover {
+#sispmg-bday-letter-btn:hover {
     background-color: #0069d9 !important;
 }
 
@@ -348,12 +348,7 @@
     color: #888 !important;
 }
 
-#sispmg-bday-settings-btn {
+#sispmg-bday-settings-btn,
+#sispmg-bday-collapse-btn {
     color: #574e2d !important; /* Cor do ícone de engrenagem */
-    font-size: 16px !important;
-}
-
-#sispmg-bday-settings-btn:hover {
-    color: #9e8f57 !important;
-    background-color: #EFE6DD !important;
 }
