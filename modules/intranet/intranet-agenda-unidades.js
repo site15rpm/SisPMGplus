@@ -1,7 +1,7 @@
 // Arquivo: modules/intranet/intranet-agenda-unidades.js
 // Lógica de background para buscar unidades para o módulo de Agenda.
 
-import { sendMessageToOffscreen } from './intranet-agenda-offscreen.js'; // Precisaremos criar este helper
+import { sendMessageToOffscreen, closeOffscreenDocument } from './intranet-agenda-offscreen.js';
 
 /**
  * Busca os dados das unidades da intranet.
@@ -89,5 +89,7 @@ export async function fetchUnidadesForAgenda(userRegionCode) {
         console.error("SisPMG+ [Agenda/Unidades]: Erro ao buscar unidades:", error);
         // Retorna um array vazio em caso de erro para não quebrar a UI
         return [];
+    } finally {
+        await closeOffscreenDocument();
     }
 }
