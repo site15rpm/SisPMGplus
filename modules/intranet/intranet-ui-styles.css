@@ -15,12 +15,16 @@
 
 /* Estilo para o ícone, posicionado ao lado do avatar do usuário */
 #sispmg-plus-header-icon {
-    display: inline-block !important;
-    vertical-align: middle !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
     margin-right: 8px !important;
     cursor: pointer !important;
     opacity: 0.8 !important;
     transition: opacity 0.2s ease-in-out !important;
+    padding: 0 !important;
+    width: auto !important;
+    height: auto !important;
 }
 #sispmg-plus-header-icon:hover {
     opacity: 1 !important;

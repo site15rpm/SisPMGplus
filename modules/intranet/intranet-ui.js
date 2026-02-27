@@ -390,7 +390,7 @@ export class UIModule {
                 </div>
             `;
         }
-
+        /*
         if (agendaModuleEnabled && isPrincipalPage) {
             moduleItems += `
                 <div id="config-agenda-btn" class="sispmg-menu-item">
@@ -399,7 +399,7 @@ export class UIModule {
                 </div>
            `;
        }
-
+        */
         if (isSicorPage && this.modules['SICOR']) {
              moduleItems += `
                 <div id="config-sicor-btn" class="sispmg-menu-item">
@@ -423,7 +423,7 @@ export class UIModule {
         }
 
         // <-- ADICIONADO: Item do menu para Extração de Unidades -->
-        const isUnidadesPage = window.location.href === 'https://intranet.policiamilitar.mg.gov.br/legado/operacoes/unidades/';
+        const isUnidadesPage = window.location.href.startsWith('https://intranet.policiamilitar.mg.gov.br/legado/operacoes/unidades/');
         if (isUnidadesPage && this.modules['Unidades']) {
              moduleItems += `
                 <div id="config-unidades-btn" class="sispmg-menu-item">

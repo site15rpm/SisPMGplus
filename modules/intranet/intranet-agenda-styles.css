@@ -59,8 +59,7 @@
 
 .sispmg-agenda-task {
     display: flex !important;
-    justify-content: space-between !important;
-    align-items: center !important;
+    flex-direction: column !important; /* Change to column to stack header and info */
     border-left-width: 5px !important;
     border-left-style: solid !important;
     padding: 8px 12px !important;
@@ -69,6 +68,7 @@
     border-radius: 4px !important;
     box-shadow: 0 1px 3px rgba(0,0,0,0.08) !important;
     transition: background-color 0.2s ease-in-out;
+    position: relative !important; /* Needed for absolute positioning of actions if desired, or for hover */
 }
 .sispmg-agenda-task.has-description:hover {
     cursor: pointer !important;
@@ -77,19 +77,52 @@
 
 .sispmg-task-content { 
     flex-grow: 1 !important; 
-    margin-right: 10px !important; 
-    cursor: pointer !important;
-}
-.sispmg-task-info { font-weight: bold !important; font-size: 13px !important; color: #333 !important; word-break: break-word !important; }
-.sispmg-task-datetime { color: #333 !important; margin-bottom: 4px !important; }
-
-.sispmg-task-actions {
+    cursor: pointer !important; /* Cursor on the whole content area */
     display: flex !important;
     flex-direction: column !important;
-    gap: 5px !important;
+    width: 100% !important; /* Ensure content takes full width */
 }
-.sispmg-task-actions button {
-    all: unset;
+.sispmg-task-header {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    width: 100% !important;
+    margin-bottom: 5px !important; /* Space between header and subject */
+}
+
+.sispmg-task-info {
+    font-weight: bold !important;
+    font-size: 13px !important;
+    color: #333 !important;
+    word-break: break-word !important;
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2 !important;
+    -webkit-box-orient: vertical !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+.sispmg-task-datetime { 
+    color: #333 !important; 
+    white-space: nowrap !important; /* Prevent date/time from wrapping */
+    flex-shrink: 0 !important; /* Don't shrink date/time */
+}
+
+.sispmg-task-actions-wrapper {
+    display: flex !important; /* Display buttons horizontally */
+    gap: 5px !important; /* Space between buttons */
+    opacity: 0 !important; /* Initially hidden */
+    transition: opacity 0.2s ease-in-out !important; /* Smooth transition */
+    flex-shrink: 0 !important; /* Don't shrink action buttons */
+    align-items: center !important;
+}
+
+.sispmg-agenda-task:hover .sispmg-task-actions-wrapper {
+    opacity: 1 !important; /* Visible on task hover */
+}
+
+/* Specific button styles, now applied to direct buttons within wrapper */
+.sispmg-task-actions-wrapper button { /* Adjust selector if needed */
+    all: unset; /* Reset default button styles */
     box-sizing: border-box !important;
     cursor: pointer !important;
     width: 28px !important;
@@ -104,22 +137,22 @@
     color: #555 !important;
     font-size: 12px !important;
 }
-.sispmg-task-actions button:hover { background-color: #eee !important; color: #000 !important; }
+.sispmg-task-actions-wrapper button:hover { background-color: #eee !important; color: #000 !important; }
 
-.sispmg-task-actions .sispmg-task-complete-btn,
-.sispmg-task-actions .sispmg-task-edit-btn {
+.sispmg-task-actions-wrapper .sispmg-task-complete-btn,
+.sispmg-task-actions-wrapper .sispmg-task-edit-btn {
     background-color: #f7f7f7 !important;
     border-color: #ddd !important;
     color: #555 !important;
 }
 
-.sispmg-task-actions .sispmg-task-complete-btn:hover {
+.sispmg-task-actions-wrapper .sispmg-task-complete-btn:hover {
     background-color: #28a745 !important;
     border-color: #218838 !important;
     color: #fff !important;
 }
 
-.sispmg-task-actions .sispmg-task-edit-btn:hover {
+.sispmg-task-actions-wrapper .sispmg-task-edit-btn:hover {
     background-color: #ffc107 !important;
     border-color: #e0a800 !important;
     color: #212529 !important;
@@ -173,6 +206,10 @@
     border: 1px solid var(--agenda-border) !important;
     box-shadow: 0 2px 15px rgba(0,0,0,0.25) !important;
     width: 90% !important;
+    display: flex !important; /* Adicionado */
+    flex-direction: column !important; /* Adicionado */
+    height: auto !important; /* Alterado */
+    max-height: 90vh !important; /* Adicionado */
 }
 
 #sispmg-task-modal .sispmg-modal-content {
@@ -189,20 +226,11 @@
     margin-bottom: 20px !important;
     text-decoration: none !important;
 }
-.sispmg-agenda-modal-container .sispmg-modal-close {
-    float: right !important;
-    font-size: 24px !important;
-    font-weight: bold !important;
-    cursor: pointer !important;
-    color: #aaa !important;
-}
-.sispmg-agenda-modal-container .sispmg-modal-close:hover { color: #333 !important; }
 
 #sispmg-task-modal input:not([type="checkbox"]),
 #sispmg-task-modal textarea {
     width: 100% !important;
     padding: 8px !important;
-    margin-bottom: 15px !important;
     border: 1px solid var(--agenda-border) !important;
     border-radius: 4px !important;
     background-color: #fff !important;
@@ -211,6 +239,7 @@
     font-size: 14px !important;
     color: #333 !important;
     color-scheme: light !important;
+    height: inherit !important;
 }
 
 #sispmg-task-modal input[type="checkbox"] {
@@ -265,11 +294,16 @@
     width: 60px !important;
 }
 
-.sispmg-modal-actions {
+.sispmg-agenda-modal-container .sispmg-modal-actions {
     display: flex !important;
     gap: 10px !important;
     align-items: stretch !important;
-    margin-top: 20px !important;
+    position: sticky !important;
+    bottom: 0 !important;
+    background-color: var(--agenda-bg) !important;
+    z-index: 10 !important;
+    width: 100% !important;
+    margin-top: 10px !important;
 }
 
 .sispmg-modal-actions .sispmg-agenda-btn {
@@ -365,10 +399,15 @@
 }
 
 .sispmg-task-detail-modal {
-    width: 450px !important;
-    max-width: 450px !important;
-    height: 550px !important;
-    overflow-y: auto !important;
+    width: 600px !important;
+    max-width: 600px !important;
+    height: auto !important;
+    overflow-y: hidden !important;
+}
+
+/* Adiciona flex-grow e overflow-y para a área de conteúdo rolante dentro do modal */
+.sispmg-agenda-modal-container .sispmg-modal-content > *:not(h2):not(.sispmg-modal-actions):not(.sispmg-modal-footer) {
+    flex-grow: 1 !important;
 }
 
 .sispmg-alert-modal-content h4 {
@@ -402,9 +441,7 @@
     display: flex !important;
     flex-direction: column !important;
     align-items: flex-start !important;
-    margin-bottom: 15px !important;
-    padding-bottom: 10px !important;
-    border-bottom: 1px solid var(--agenda-border) !important;
+    margin-bottom: 10px !important;
 }
 
 .sispmg-task-detail-date {
@@ -428,7 +465,7 @@
     border: 1px solid var(--agenda-border) !important;
     border-radius: 4px !important;
     padding: 15px !important;
-    height: 288px !important;
+    height: 270px !important;
     overflow-y: auto !important;
     white-space: pre-wrap !important;
     font-size: 14px !important;
@@ -438,25 +475,33 @@
     margin-top: 15px !important;
 }
 
-.sispmg-alert-modal-actions {
+.sispmg-agenda-modal-container .sispmg-alert-modal-actions,
+.sispmg-alert-modal-backdrop .sispmg-alert-modal-actions {
     display: flex !important;
     justify-content: flex-end !important;
     gap: 10px !important;
+    width: auto !important;
 }
 
-.sispmg-modal-footer {
+.sispmg-agenda-modal-container .sispmg-modal-footer,
+.sispmg-alert-modal-backdrop .sispmg-modal-footer {
     display: flex !important;
     justify-content: space-between !important;
     align-items: center !important;
-    padding-top: 20px !important;
-    border-top: 1px solid var(--agenda-border) !important;
-    margin-top: 20px !important;
+    position: sticky !important;
+    bottom: 0 !important;
+    background-color: var(--agenda-bg) !important;
+    z-index: 10 !important;
+    width: 100% !important;
+    margin-top: 0 !important;
 }
 
-.sispmg-modal-action-buttons {
+.sispmg-agenda-modal-container .sispmg-modal-action-buttons,
+.sispmg-alert-modal-backdrop .sispmg-modal-action-buttons {
     display: flex !important;
     gap: 5px !important;
     align-items: center !important;
+    width: auto !important;
 }
 
 .sispmg-task-action-btn {
@@ -519,4 +564,124 @@
     background-color: #f0f0f0 !important;
     border-color: #ccc !important;
     color: #333 !important;
+}
+
+.sispmg-no-tasks {
+    text-align: center;
+    padding: 20px;
+    color: var(--text-color-light);
+    font-style: italic;
+}
+
+/* Estilos para o Construtor de Abrangência */
+#sispmg-agenda-abrangencia-builder {
+    margin-top: 15px !important;
+    margin-bottom: 15px !important;
+    padding: 10px !important;
+    border: 1px solid var(--agenda-border) !important;
+    border-radius: 4px !important;
+    background-color: #fdfdfa !important;
+    overflow: auto !important;
+}
+#sispmg-agenda-abrangencia-builder > label {
+    font-weight: bold !important;
+    font-size: 14px !important;
+    color: #333 !important;
+    display: block !important;
+    margin-bottom: 10px !important;
+}
+.sispmg-abrangencia-rule-row {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    margin-bottom: 8px !important;
+}
+.sispmg-abrangencia-type {
+    flex-basis: 150px !important;
+    flex-shrink: 0 !important;
+    padding: 6px !important;
+    border: 1px solid var(--agenda-border) !important;
+    border-radius: 4px !important;
+    background-color: #fff !important;
+    color: #333 !important;
+}
+.sispmg-abrangencia-values {
+    flex-grow: 1 !important;
+}
+.sispmg-abrangencia-value {
+    width: 100% !important;
+    padding: 6px !important;
+    border: 1px solid var(--agenda-border) !important;
+    border-radius: 4px !important;
+    background-color: #fff !important;
+    color: #333 !important;
+}
+.sispmg-abrangencia-remove-btn {
+    all: unset !important;
+    cursor: pointer !important;
+    width: 28px !important;
+    height: 28px !important;
+    border-radius: 50% !important;
+    background-color: #fde0e0 !important;
+    color: #dc3545 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 16px !important;
+    font-weight: bold !important;
+    border: 1px solid #ffc0c0 !important;
+    transition: all 0.2s !important;
+}
+.sispmg-abrangencia-remove-btn:hover {
+    background-color: #dc3545 !important;
+    color: #fff !important;
+}
+.sispmg-btn-add-rule {
+    all: unset !important;
+    cursor: pointer !important;
+    padding: 6px 12px !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    border-radius: 4px !important;
+    background-color: #e8e6e0 !important;
+    border: 1px solid #dcd3c5 !important;
+    color: #574e2d !important;
+    transition: all 0.2s !important;
+    margin-bottom: 10px !important;
+}
+.sispmg-btn-add-rule:hover {
+    background-color: #dcd3c5 !important;
+}
+
+/* Estilos para o seletor de unidades com busca */
+.sispmg-abrangencia-unit-search {
+    width: 100% !important;
+    padding: 6px !important;
+    border: 1px solid var(--agenda-border) !important;
+    border-radius: 4px 4px 0 0 !important;
+    margin-bottom: 0 !important;
+    border-bottom: none !important;
+}
+.sispmg-abrangencia-unit-select-container {
+    max-height: 150px !important;
+    overflow-y: auto !important;
+    border: 1px solid var(--agenda-border) !important;
+    border-radius: 0 0 4px 4px !important;
+    background-color: #fff !important;
+    padding: 5px !important;
+}
+.sispmg-abrangencia-unit-option {
+    padding: 5px 8px !important;
+    cursor: pointer !important;
+    border-radius: 3px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    color: #333 !important;
+}
+.sispmg-abrangencia-unit-option:hover {
+    background-color: #f0f0f0 !important;
+}
+.sispmg-abrangencia-unit-option input[type="checkbox"] {
+    flex-shrink: 0 !important;
 }

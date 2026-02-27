@@ -31,17 +31,40 @@ export class PAdmModule {
         const checkInterval = setInterval(async () => {
             // Verifica se o formulário de escrita está visível e na URL correta
             if (document.querySelector('app-formulario-escrever') && window.location.hash.startsWith('#/escrever')) {
-                const storage = await sendMessageToBackground('getStorage', { key: 'recipientsForPA' });
-                const nrPols = storage.success ? storage.value.recipientsForPA : null;
+                const keysToGet = ['recipientsForPA', 'birthdayMessagePayload'];
+                const storage = await sendMessageToBackground('getStorage', { key: keysToGet });
+                
+                if (!storage.success) {
+                    clearInterval(checkInterval);
+                    return;
+                }
+
+                const nrPols = storage.value.recipientsForPA;
+                const messagePayload = storage.value.birthdayMessagePayload;
+
+                // Limpa o storage imediatamente para não reprocessar, independentemente de sucesso posterior
+                await sendMessageToBackground('removeStorage', { keys: keysToGet });
+
+                if (messagePayload) {
+                    const subjectInput = document.getElementById('assunto-txt');
+                    const contentTextarea = document.getElementById('conteudo-txt');
+
+                    if (subjectInput && contentTextarea) {
+                        console.log('SisPMG+ [PAdmPMG+]: Preenchendo template de mensagem de aniversário.');
+                        subjectInput.value = messagePayload.subject || '';
+                        contentTextarea.value = messagePayload.message || '';
+                        
+                        // Dispara eventos para que o Angular detecte as mudanças
+                        subjectInput.dispatchEvent(new Event('input', { bubbles: true }));
+                        contentTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+                    }
+                }
 
                 if (nrPols && nrPols.length > 0) {
                     console.log('SisPMG+ [PAdmPMG+]: Destinatários de aniversário encontrados. Aguardando campo "Para"...', nrPols);
                     
                     clearInterval(checkInterval); // Para de verificar uma vez que encontrou
                     
-                    // Limpa o storage imediatamente para não reprocessar
-                    await sendMessageToBackground('removeStorage', { keys: ['recipientsForPA'] });
-
                     // Tenta encontrar o ID do campo "Para" de forma assíncrona
                     const paraInputId = await this.findParaInputId();
                     if (paraInputId) {
@@ -50,6 +73,9 @@ export class PAdmModule {
                     } else {
                         console.error('SisPMG+ [PAdmPMG+]: Não foi possível encontrar o campo "Para" para inserir os destinatários após várias tentativas.');
                     }
+                } else if (messagePayload) {
+                    // Se havia um payload mas nenhum destinatário, para de verificar
+                    clearInterval(checkInterval);
                 }
             }
         }, 500); // Diminuído o intervalo para uma verificação mais rápida

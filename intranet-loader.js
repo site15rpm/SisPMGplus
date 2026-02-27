@@ -38,7 +38,7 @@ async function main(config) {
     console.log('SisPMG+: Módulo de carregamento da Intranet iniciado.');
     globalConfig = config;
 
-    moduleSettings = await getSettingsFromStorage([
+    moduleSettings = (await getSettingsFromStorage([
         'intranetModuleEnabled', 
         'intranetUiCustomization',
         'padmModuleEnabled', 
@@ -49,7 +49,7 @@ async function main(config) {
         'sicorModuleEnabled',
         'praticasModuleEnabled',
         'unidadesModuleEnabled' // <-- ADICIONADO
-    ]);
+    ])) || {}; // Fallback para objeto vazio se a resposta for nula
 
     if (moduleSettings.intranetModuleEnabled === false) {
         return;
@@ -244,7 +244,7 @@ async function loadUnidadesModule() {
         console.log("SisPMG+: Página UNIDADES detectada. Carregando módulo...");
         loadCSS(globalConfig.unidadesCssUrl);
         const unidades = await import(globalConfig.unidadesModuleUrl);
-        unidades.initUnidadesModule(); // A função init cria o botão e o modal
+        unidades.initUnidadesModule(uiModuleInstance); // Passa a instância da UI diretamente
         unidadesModuleInstance = unidades; // Armazena a referência do módulo importado
     } catch(e) {
          console.error("SisPMG+: Falha ao carregar o módulo UNIDADES.", e);

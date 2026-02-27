@@ -95,9 +95,9 @@ export class IntranetAgendaModule {
             await this.loadTasks();
             this.renderTasks();
 
-            const isCollapsedFromStorage = localStorage.getItem('sispmg_agenda_collapsed') === 'true';
+            // const isCollapsedFromStorage = localStorage.getItem('sispmg_agenda_collapsed') === 'true'; // Removido: A lista deve sempre iniciar maximizada
             if (this.panel) {
-                this.toggleCollapse(this.panel, isCollapsedFromStorage);
+                this.toggleCollapse(this.panel, false); // Força a lista a iniciar maximizada
             }
         }
         
@@ -115,7 +115,6 @@ export class IntranetAgendaModule {
                     for (const node of mutation.addedNodes) {
                         if (node.nodeType === 1 && (node.tagName === 'APP-LER-MENSAGEM' || node.querySelector('app-ler-mensagem'))) {
                             this.injectAgendaButtonInMessageView();
-                            return; 
                         }
                     }
                 }
@@ -248,7 +247,7 @@ export class IntranetAgendaModule {
             icon.classList.remove('fa-chevron-up');
             icon.classList.add('fa-chevron-down');
         }
-        localStorage.setItem('sispmg_agenda_collapsed', isCollapsed.toString());
+        // localStorage.setItem('sispmg_agenda_collapsed', isCollapsed.toString()); // Removido: Não persistir o estado de recolhimento
     }
 
     showTaskModal(task = null) {
@@ -271,7 +270,6 @@ export class IntranetAgendaModule {
 
         modal.innerHTML = `
             <div class="sispmg-modal-content">
-                <span class="sispmg-modal-close" id="sispmg-task-modal-close">&times;</span>
                 <h2 style="font-size: 1.2em; margin-top: 0; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid var(--agenda-border); text-align: center;">${task && task.id ? 'Editar Tarefa' : 'Nova Tarefa'}</h2>
                 
                 <div class="sispmg-datetime-group">
@@ -279,9 +277,13 @@ export class IntranetAgendaModule {
                     <input type="time" id="sispmg-agenda-time" value="${timeValue}">
                 </div>
 
-                <textarea id="sispmg-agenda-assunto" placeholder="Assunto da atividade..." rows="1">${task && task.assunto ? task.assunto : ''}</textarea>
-                <textarea id="sispmg-agenda-descricao" placeholder="Detalhes da tarefa... (opcional)" rows="3">${task && task.descricao ? task.descricao : ''}</textarea>
-                <textarea id="sispmg-agenda-abrangencia" placeholder="Regra de abrangência (ex: g:123, t:SGT|CB, p:.*15RPM.*)" rows="1">${task && task.abrangencia ? task.abrangencia : ''}</textarea>
+                <textarea id="sispmg-agenda-assunto" style="margin-bottom: 15px !important;" placeholder="Assunto da tarefa..." rows="1">${task && task.assunto ? task.assunto : ''}</textarea>
+                <textarea id="sispmg-agenda-descricao" placeholder="Descrição da tarefa... (opcional)" rows="3">${task && task.descricao ? task.descricao : ''}</textarea>
+                
+                <div id="sispmg-agenda-abrangencia-builder">
+                    <button type="button" id="sispmg-add-abrangencia-rule-btn" class="sispmg-btn-add-rule"><i class="fa-solid fa-plus"></i> Adicionar Regra de Abrangência</button>
+                    <div id="sispmg-abrangencia-rules-container"></div>
+                </div>
                 
                 <div class="sispmg-form-group">
                     <input type="checkbox" id="sispmg-agenda-autoconfirmar" ${task && task.autoConfirmar ? 'checked' : ''}>
@@ -303,51 +305,33 @@ export class IntranetAgendaModule {
         modalContent.style.maxHeight = '90vh';
         modalContent.style.overflowY = 'auto';
 
-        const abrangenciaInput = modal.querySelector('#sispmg-agenda-abrangencia');
         const autoConfirmarCheckbox = modal.querySelector('#sispmg-agenda-autoconfirmar');
         const autoConfirmarDiasInput = modal.querySelector('#sispmg-agenda-autoconfirmardias');
 
-        const handleAbrangenciaChange = () => {
-            if (abrangenciaInput.value.trim() !== '') {
-                autoConfirmarCheckbox.checked = true;
-                autoConfirmarCheckbox.disabled = true;
-            } else {
-                autoConfirmarCheckbox.disabled = false;
-            }
-        };
+        this.initializeAbrangenciaBuilder(modal, task ? task.abrangencia : null);
 
-        [abrangenciaInput, modal.querySelector('#sispmg-agenda-assunto'), modal.querySelector('#sispmg-agenda-descricao')].forEach(textarea => {
+        // Ajuste de altura para textareas de assunto e descrição
+        [modal.querySelector('#sispmg-agenda-assunto'), modal.querySelector('#sispmg-agenda-descricao')].forEach(textarea => {
             const adjustHeight = () => {
+                if (!textarea) return;
                 textarea.style.height = 'auto';
                 textarea.style.height = `${textarea.scrollHeight}px`;
             };
             textarea.addEventListener('input', adjustHeight);
-            setTimeout(adjustHeight, 0);
+            setTimeout(adjustHeight, 0); // Ajusta a altura inicial
         });
-        
-        abrangenciaInput.addEventListener('input', handleAbrangenciaChange);
-        setTimeout(handleAbrangenciaChange, 0);
 
         autoConfirmarDiasInput.addEventListener('input', () => {
             const value = parseInt(autoConfirmarDiasInput.value, 10);
-            if (value > 15) {
-                autoConfirmarDiasInput.value = '15';
-            } else if (value < 1) {
-                if (autoConfirmarDiasInput.value !== '') {
-                    autoConfirmarDiasInput.value = '1';
-                }
-            }
+            if (value > 15) autoConfirmarDiasInput.value = '15';
+            else if (value < 1 && autoConfirmarDiasInput.value !== '') autoConfirmarDiasInput.value = '1';
         });
 
-        modal.querySelector('#sispmg-task-modal-close').addEventListener('click', () => modal.remove());
-        
         modal.querySelector('#sispmg-agenda-cancel-btn').addEventListener('click', () => modal.remove());
 
         modal.querySelector('#sispmg-agenda-save-btn').addEventListener('click', async () => {
             const success = await this.saveTask(task ? task.id : null);
-            if (success) {
-                modal.remove();
-            }
+            if (success) modal.remove();
         });
 
         if (task && task.id) {
@@ -358,12 +342,166 @@ export class IntranetAgendaModule {
         }
     }
 
+    async initializeAbrangenciaBuilder(modal, abrangenciaString) {
+        const container = modal.querySelector('#sispmg-abrangencia-rules-container');
+        const addRuleBtn = modal.querySelector('#sispmg-add-abrangencia-rule-btn');
+        const autoConfirmarCheckbox = modal.querySelector('#sispmg-agenda-autoconfirmar');
+        let unitsCache = null;
+
+        const ruleTypes = {
+            'g': 'Nº Funcional',
+            'u': 'Unidade',
+        };
+
+        /* Lista completa
+        const ruleTypes = {
+            'g': 'Nº Funcional (g)',
+            't': 'Posto/Grad (t)',
+            'u': 'Unidade (u)',
+            'p': 'Unidade por Regex (p)',
+            'c': 'Cargo (c)',
+        };
+        */
+        const updateAutoConfirmState = () => {
+            const hasRules = container.children.length > 0;
+            autoConfirmarCheckbox.checked = hasRules;
+            autoConfirmarCheckbox.disabled = hasRules;
+        };
+
+        const addRule = async (type = 'g', values = ['']) => {
+            const ruleId = `rule-${Date.now()}-${Math.random()}`;
+            const ruleRow = document.createElement('div');
+            ruleRow.className = 'sispmg-abrangencia-rule-row';
+            ruleRow.dataset.ruleId = ruleId;
+
+            const typeSelect = document.createElement('select');
+            typeSelect.className = 'sispmg-abrangencia-type';
+            for (const key in ruleTypes) {
+                const option = document.createElement('option');
+                option.value = key;
+                option.textContent = ruleTypes[key];
+                if (key === type) option.selected = true;
+                typeSelect.appendChild(option);
+            }
+
+            const valuesContainer = document.createElement('div');
+            valuesContainer.className = 'sispmg-abrangencia-values';
+
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'sispmg-abrangencia-remove-btn';
+            removeBtn.innerHTML = '<i class="fas fa-trash"></i>';
+            removeBtn.title = 'Remover Regra';
+
+            ruleRow.appendChild(typeSelect);
+            ruleRow.appendChild(valuesContainer);
+            ruleRow.appendChild(removeBtn);
+            container.prepend(ruleRow);
+
+            await updateValueInput(typeSelect, values);
+            updateAutoConfirmState();
+        };
+
+        const updateValueInput = async (typeSelect, values) => {
+            const ruleRow = typeSelect.closest('.sispmg-abrangencia-rule-row');
+            const valuesContainer = ruleRow.querySelector('.sispmg-abrangencia-values');
+            valuesContainer.innerHTML = ''; // Limpa o container
+
+            const selectedType = typeSelect.value;
+
+            if (selectedType === 'u') {
+                if (!unitsCache) {
+                    valuesContainer.innerHTML = '<span>Carregando unidades...</span>';
+                    const response = await sendMessageToBackground('agenda-fetch-unidades', { userRegionCode: this.userData?.e });
+                    unitsCache = response.success ? response.data : [];
+                    if (!response.success) {
+                        valuesContainer.innerHTML = '<span style="color: red;">Falha ao carregar.</span>';
+                        return;
+                    }
+                }
+
+                valuesContainer.innerHTML = ''; // Limpa o "Carregando..."
+                
+                const searchInput = document.createElement('input');
+                searchInput.type = 'text';
+                searchInput.placeholder = 'Pesquisar unidade...';
+                searchInput.className = 'sispmg-abrangencia-unit-search';
+                
+                const selectContainer = document.createElement('div');
+                selectContainer.className = 'sispmg-abrangencia-unit-select-container';
+
+                const renderOptions = (filter = '') => {
+                    selectContainer.innerHTML = '';
+                    const filteredUnits = unitsCache.filter(unit => unit.label.toLowerCase().includes(filter.toLowerCase()));
+                    
+                    filteredUnits.forEach(unit => {
+                        const optionDiv = document.createElement('div');
+                        optionDiv.className = 'sispmg-abrangencia-unit-option';
+                        optionDiv.dataset.value = unit.value;
+
+                        // Adiciona indentação baseada na profundidade da hierarquia
+                        const hierarchyDepth = (unit.hierarchyPath.match(/[/\\.]/g) || []).length;
+                        optionDiv.style.paddingLeft = `${8 + hierarchyDepth * 15}px`;
+
+                        const checkbox = document.createElement('input');
+                        checkbox.type = 'checkbox';
+                        checkbox.checked = values.includes(unit.value);
+                        
+                        optionDiv.appendChild(checkbox);
+                        optionDiv.append(` ${unit.label}`);
+                        selectContainer.appendChild(optionDiv);
+                    });
+                };
+
+                searchInput.addEventListener('input', () => renderOptions(searchInput.value));
+                valuesContainer.appendChild(searchInput);
+                valuesContainer.appendChild(selectContainer);
+                renderOptions();
+
+            } else {
+                const valueInput = document.createElement('input');
+                valueInput.type = 'text';
+                valueInput.className = 'sispmg-abrangencia-value';
+                valueInput.placeholder = 'Números separados por |';
+                valueInput.value = values.join('|');
+                valuesContainer.appendChild(valueInput);
+            }
+        };
+        
+        addRuleBtn.addEventListener('click', () => addRule());
+
+        container.addEventListener('click', (e) => {
+            if (e.target.classList.contains('sispmg-abrangencia-remove-btn')) {
+                e.target.closest('.sispmg-abrangencia-rule-row').remove();
+                updateAutoConfirmState();
+            }
+        });
+        
+        container.addEventListener('change', async (e) => {
+            if (e.target.classList.contains('sispmg-abrangencia-type')) {
+                await updateValueInput(e.target, ['']);
+            }
+        });
+
+        // Parse a string de abrangência existente para popular a UI
+        if (abrangenciaString) {
+            const rules = abrangenciaString.split(',');
+            for (const rule of rules) {
+                const [type, ...valuesPart] = rule.split(':');
+                if (type && valuesPart.length > 0) {
+                    const values = valuesPart.join(':').split('|');
+                    await addRule(type.trim(), values);
+                }
+            }
+        }
+        updateAutoConfirmState();
+    }
+
     async saveTask(taskId) {
         const dateInput = document.getElementById('sispmg-agenda-date');
         const timeInput = document.getElementById('sispmg-agenda-time');
         const assuntoInput = document.getElementById('sispmg-agenda-assunto');
         const descricaoInput = document.getElementById('sispmg-agenda-descricao');
-        const abrangenciaInput = document.getElementById('sispmg-agenda-abrangencia');
         const autoConfirmarInput = document.getElementById('sispmg-agenda-autoconfirmar');
         const autoConfirmarDiasInput = document.getElementById('sispmg-agenda-autoconfirmardias');
 
@@ -376,24 +514,52 @@ export class IntranetAgendaModule {
             this._showAlert("Não foi possível identificar o usuário. Faça login novamente.");
             return false;
         }
+        
+        // Constrói a string de abrangência a partir do builder
+        const rulesContainer = document.getElementById('sispmg-abrangencia-rules-container');
+        const ruleRows = rulesContainer.querySelectorAll('.sispmg-abrangencia-rule-row');
+        const abrangenciaMap = new Map();
+
+        ruleRows.forEach(row => {
+            const type = row.querySelector('.sispmg-abrangencia-type').value;
+            let values = [];
+
+            if (type === 'u') {
+                const selectedOptions = row.querySelectorAll('.sispmg-abrangencia-unit-option input:checked');
+                selectedOptions.forEach(opt => values.push(opt.closest('.sispmg-abrangencia-unit-option').dataset.value));
+            } else {
+                const valueInput = row.querySelector('.sispmg-abrangencia-value');
+                if (valueInput && valueInput.value) {
+                    values = valueInput.value.split(/\||,|;/).map(v => v.trim()).filter(Boolean);
+                }
+            }
+            
+            if (values.length > 0) {
+                if (abrangenciaMap.has(type)) {
+                    abrangenciaMap.get(type).push(...values);
+                } else {
+                    abrangenciaMap.set(type, values);
+                }
+            }
+        });
+
+        const abrangenciaValue = Array.from(abrangenciaMap.entries())
+            .map(([type, values]) => `${type}:${[...new Set(values)].join('|')}`) // Remove duplicatas
+            .join(',');
+
 
         const timeValue = timeInput.value || '00:00';
         const dataHoraString = `${dateInput.value}T${timeValue}:00`;
-
-        const abrangenciaValue = abrangenciaInput.value.trim();
+        
         let autoConfirmarValue = autoConfirmarInput.checked;
         let autoConfirmarDiasValue = parseInt(autoConfirmarDiasInput.value, 10) || 1;
 
         if (abrangenciaValue !== '') {
             autoConfirmarValue = true;
-            if (autoConfirmarDiasValue < 1) {
-                autoConfirmarDiasValue = 1;
-            }
+            if (autoConfirmarDiasValue < 1) autoConfirmarDiasValue = 1;
         }
 
-        if (autoConfirmarDiasValue > 15) {
-            autoConfirmarDiasValue = 15;
-        }
+        if (autoConfirmarDiasValue > 15) autoConfirmarDiasValue = 15;
         
         const eventData = {
             id: taskId || `evt_${Date.now()}`,
@@ -479,7 +645,14 @@ export class IntranetAgendaModule {
 
         this.sortTasks();
 
-        this.tasks.filter(task => task.status !== 'DELETED').forEach(task => {
+        const activeTasks = this.tasks.filter(task => task.status !== 'DELETED');
+
+        if (activeTasks.length === 0) {
+            taskListContainer.innerHTML = '<div class="sispmg-no-tasks">Nenhuma tarefa agendada.</div>';
+            return;
+        }
+
+        activeTasks.forEach(task => {
             const taskElement = document.createElement('div');
             taskElement.className = 'sispmg-agenda-task';
             taskElement.dataset.taskId = task.id;
@@ -493,49 +666,46 @@ export class IntranetAgendaModule {
             const confirmedUsers = (task.confirmacoes || '').split('|').filter(u => u);
             const isConfirmedByUser = this.userNumber && confirmedUsers.includes(this.userNumber);
 
-            let actionButtons = '';
-            if (isAuthor) {
-                const titleText = confirmedUsers.length > 0 ? `Ver ${confirmedUsers.length} confirmações` : 'Nenhuma confirmação';
-                actionButtons = `
-                    <div class="sispmg-task-actions">
-                        <button class="sispmg-task-view-confirmations-btn" title="${titleText}">
-                            <i class="fa-solid fa-users"></i>
-                            <span class="sispmg-confirm-count">${confirmedUsers.length}</span>
-                        </button>
-                        <button class="sispmg-task-complete-btn" title="${task.concluida ? 'Reabrir Tarefa' : 'Concluir Tarefa'}">
-                            <i class="fa-solid ${task.concluida ? 'fa-arrow-rotate-left' : 'fa-check'}"></i>
-                        </button>
-                        <button class="sispmg-task-edit-btn" title="Editar Tarefa">
-                            <i class="fa-solid fa-edit"></i>
-                        </button>
-                    </div>
-                `;
-            } else if (checkAbrangencia(task.abrangencia, this.userData)) {
-                 actionButtons = `
-                    <div class="sispmg-task-actions">
-                         <button class="sispmg-task-user-confirm-btn ${isConfirmedByUser ? 'confirmed' : ''}" 
-                                 title="${isConfirmedByUser ? 'Tarefa confirmada' : 'Confirmar leitura'}"
-                                 ${isConfirmedByUser ? 'disabled' : ''}>
-                            <i class="fa-solid fa-check"></i>
-                        </button>
-                    </div>
-                `;
-            }
-
-
-            const formattedDate = new Date(task['data/hora']).toLocaleString('pt-BR', {
-                year: 'numeric', month: '2-digit', day: '2-digit',
-                hour: '2-digit', minute: '2-digit'
-            });
-
-            taskElement.innerHTML = `
-                <div class="sispmg-task-content">
-                    <div class="sispmg-task-datetime">${formattedDate}</div>
-                    <div class="sispmg-task-info">${task.assunto}</div>
-                </div>
-                ${actionButtons}
-            `;
-            taskListContainer.appendChild(taskElement);
+                        let actionButtonsHTML = '';
+                        if (isAuthor) {
+                            const titleText = confirmedUsers.length > 0 ? `Ver ${confirmedUsers.length} confirmações` : 'Nenhuma confirmação';
+                            actionButtonsHTML = `
+                                <button class="sispmg-task-view-confirmations-btn" title="${titleText}">
+                                    <i class="fa-solid fa-users"></i>
+                                    <span class="sispmg-confirm-count">${confirmedUsers.length}</span>
+                                </button>
+                                <button class="sispmg-task-complete-btn" title="${task.concluida ? 'Reabrir Tarefa' : 'Concluir Tarefa'}">
+                                    <i class="fa-solid ${task.concluida ? 'fa-arrow-rotate-left' : 'fa-check'}"></i>
+                                </button>
+                                <button class="sispmg-task-edit-btn" title="Editar Tarefa">
+                                    <i class="fa-solid fa-edit"></i>
+                                </button>
+                            `;
+                        } else if (checkAbrangencia(task.abrangencia, this.userData)) {
+                             actionButtonsHTML = `
+                                <button class="sispmg-task-user-confirm-btn ${isConfirmedByUser ? 'confirmed' : ''}"
+                                         title="${isConfirmedByUser ? 'Tarefa confirmada' : 'Confirmar leitura'}"
+                                         ${isConfirmedByUser ? 'disabled' : ''}>
+                                    <i class="fa-solid fa-check"></i>
+                                </button>
+                            `;
+                        }
+            
+            
+                        const formattedDate = new Date(task['data/hora']).toLocaleString('pt-BR', {
+                            year: 'numeric', month: '2-digit', day: '2-digit',
+                            hour: '2-digit', minute: '2-digit'
+                        });
+            
+                        taskElement.innerHTML = `
+                            <div class="sispmg-task-content">
+                                <div class="sispmg-task-header">
+                                    <div class="sispmg-task-datetime">${formattedDate}</div>
+                                    <div class="sispmg-task-actions-wrapper">${actionButtonsHTML}</div>
+                                </div>
+                                <div class="sispmg-task-info">${task.assunto}</div>
+                            </div>
+                        `;            taskListContainer.appendChild(taskElement);
 
             taskElement.addEventListener('click', (e) => {
                 if (e.target.closest('button')) return;

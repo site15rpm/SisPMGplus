@@ -40,39 +40,69 @@ browser.runtime.onMessage.addListener(async (request, sender) => {
 
             case 'parse-unidades-html': {
                 try {
-                    const table = doc.querySelector("table.t1");
-                    if (!table) {
-                        return { error: 'Tabela de dados (.t1) não encontrada no HTML retornado.' };
+                    const container = doc.querySelector('#c');
+                    if (!container) {
+                        return { error: "Container 'div#c' não encontrado no HTML." };
                     }
 
-                    const rows = Array.from(table.querySelectorAll("tbody tr"));
                     const parsedData = [];
-                    let hierarchyState = [];
+                    const hierarchyStack = []; 
 
-                    for (const row of rows) {
-                        const cells = row.querySelectorAll("td");
-                        if (cells.length === 0) continue;
-
-                        let unitName = cells[0].textContent.trim().replace(/\s+/g, ' ');
-                        if (!unitName) continue;
-
-                        const level = cells[0].querySelectorAll("span.ic").length;
-                        hierarchyState = hierarchyState.slice(0, level);
-                        hierarchyState[level] = unitName;
-
-                        const uniquePath = [...new Set(hierarchyState.filter(Boolean))];
-                        const fullPathString = uniquePath.slice().reverse().join("/");
-
-                        parsedData.push({
-                            hierarchyPath: fullPathString,
-                            unitName: unitName,
-                            code: cells[1]?.textContent?.trim() || "",
-                            location: cells[2]?.textContent?.trim() || "",
-                            address: cells[4]?.textContent?.trim() || "",
-                            cep: cells[5]?.textContent?.trim() || ""
-                        });
+                    let htmlContent = container.innerHTML;
+                    
+                    const h2Index = htmlContent.indexOf('</h2>');
+                    if (h2Index !== -1) {
+                        htmlContent = htmlContent.substring(h2Index + 5);
                     }
+
+                    const lines = htmlContent.split(/<br\s*\/?>/i);
+
+                    lines.forEach(lineHtml => {
+                        lineHtml = lineHtml.trim();
+                        if (!lineHtml || !lineHtml.includes('<i>')) return;
+
+                        // Nível 1 = 1 span, Nível 2 = 2 spans, etc.
+                        const level = (lineHtml.match(/<span class=['"]ic rel join-(middle|bottom)['"]/g) || []).length;
+                        if(level === 0) return;
+
+                        const codeMatch = lineHtml.match(/<i>(\d+)<\/i>/);
+                        const code = codeMatch ? codeMatch[1] : null;
+                        if (!code) return;
+
+                        const tempDiv = doc.createElement('div');
+                        // Remove imagens (ícone de telefone) para não interferir na extração de texto
+                        tempDiv.innerHTML = lineHtml.replace(/<img[^>]+>/g, '');
+                        
+                        let name = tempDiv.textContent.replace(/-\s*\d+\s*$/, '').trim();
+                        name = name.replace(/\s\s+/g, ' ');
+
+                        if (!name) return;
+
+                        const stackIndex = level - 1;
+                        hierarchyStack.length = stackIndex;
+                        hierarchyStack[stackIndex] = name;
+
+                        const hierarchyPath = hierarchyStack.join(' / ');
+                        
+                        parsedData.push({
+                            hierarchyPath,
+                            unitName: name,
+                            code,
+                            location: '', 
+                            address: '',
+                            cep: ''
+                        });
+                    });
+
+                    if (parsedData.length === 0) {
+                        return { 
+                            error: 'Nenhuma unidade encontrada na análise do HTML.',
+                            html: request.html
+                        };
+                    }
+
                     return { data: parsedData };
+
                 } catch (error) {
                     console.error('[Offscreen] Erro ao parsear HTML de unidades:', error);
                     return { error: `Erro ao parsear HTML: ${error.message}` };

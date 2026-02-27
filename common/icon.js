@@ -2,7 +2,7 @@
 // Armazena e exporta o SVG do ícone da aplicação para ser reutilizado.
 
 export const iconSVG = `
-    <svg width="36" height="36" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg" style="font-family: 'Inter', sans-serif; display: block; border-radius: 5px;">
+    <svg width="36" height="36" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg" style="font-family: 'Inter', sans-serif; display: inline-block; border-radius: 5px;">
         <defs>
             <linearGradient id="gradBg-128" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#574e2d;"/><stop offset="100%" style="stop-color:#b3a368;"/></linearGradient>
             <linearGradient id="gradItem0-128" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" style="stop-color:#b3a368;"/><stop offset="100%" style="stop-color:#efe6dd;"/></linearGradient>

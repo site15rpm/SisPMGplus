@@ -1,6 +1,8 @@
 // Arquivo: modules/intranet/intranet-agenda-background.js
 // Lógica de background específica para o módulo de Agenda da Intranet.
 
+import { fetchUnidadesForAgenda } from './intranet-agenda-unidades.js';
+
 /**
  * Inicializa o background do módulo de agenda.
  * Atualmente, não há inicialização necessária, mas a função está aqui para consistência.
@@ -82,6 +84,17 @@ export async function handleAgendaMessages(request, sender) {
                 return { success: true, data: result };
             } catch (error) {
                 console.error(`SisPMG+ [Agenda Background]: Falha ao enviar dados para o GAS para a ação '${action}'.`, error);
+                return { success: false, error: error.message };
+            }
+        }
+        
+        case 'agenda-fetch-unidades': {
+            const { userRegionCode } = payload || {};
+            try {
+                const unidades = await fetchUnidadesForAgenda(userRegionCode);
+                return { success: true, data: unidades };
+            } catch (error) {
+                console.error(`SisPMG+ [Agenda Background]: Falha ao buscar unidades para a agenda.`, error);
                 return { success: false, error: error.message };
             }
         }

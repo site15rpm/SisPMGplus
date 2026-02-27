@@ -109,8 +109,13 @@ window.addEventListener('message', (event) => {
 
         browser.runtime.sendMessage({ action, payload })
             .then(response => {
+                let finalResponse = response;
+                if (response == null) { // Checks for both null and undefined
+                    console.error(`SisPMG+ [Intranet Content]: Resposta nula ou indefinida recebida do background para a ação '${action}'. Isso pode indicar um erro não tratado no service worker.`, { request: { action, payload } });
+                    finalResponse = { success: false, error: 'Resposta inválida do background.' };
+                }
                 document.dispatchEvent(new CustomEvent('SisPMG+:Response', {
-                    detail: { response, messageId }
+                    detail: { response: finalResponse, messageId }
                 }));
             })
             .catch(error => {

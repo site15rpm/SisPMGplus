@@ -14,7 +14,9 @@ async function getBirthdaySettings() {
         units: tokenData.u ? [tokenData.u] : [],
         includeSubunits: true,
         includeInactive: false,
-        restrictToSection: false
+        restrictToSection: false,
+        bdaySubject: 'Feliz Aniversário!',
+        bdayMessage: 'Prezado(a) [NOME],\n\nNesta data especial, desejo a você um feliz aniversário, com muita paz, saúde e sucesso!'
     };
 
     const result = await sendMessageToBackground('getStorage', { key: ['birthdaySettings'] });
@@ -182,12 +184,75 @@ export class BirthdayModule {
         const deHoje = upcomingBirthdays.filter(p => p.fullDate.getTime() === today.getTime());
         const proximos = upcomingBirthdays.filter(p => p.fullDate.getTime() > today.getTime());
 
-        document.getElementById('sispmg-birthday-notification')?.remove();
-
-        const openPaForRecipients = async (nrPols) => {
+        const openPaForRecipients = async (nrPols, personName = null) => {
             if (!nrPols || nrPols.length === 0) return;
-            console.log('SisPMG+ [Aniversariantes]: Salvando destinatários para o PA e navegando:', nrPols);
-            await sendMessageToBackground('setStorage', { recipientsForPA: nrPols });
+            
+            const settings = await getBirthdaySettings();
+            let message = settings.bdayMessage || '';
+            
+            if (personName) {
+                const RANKS_TO_KEEP = new Set([
+                    'ASP A OF', 'SD 1 CL', 'SD 2 CL', 'SUB TEN', 'TEN CEL', '1 SGT', '1 TEN', '2 SGT', '2 TEN', '3 SGT', 'ALUNO', 'MAJ', 'CAD', 'CAP', 'CEL', 'CB'
+                ]);
+
+                const ALL_RANKS = [
+                    'ASP A OF', 'SD 1 CL', 'SD 2 CL', 'SUB TEN', 'TEN CEL', 'SG1001', 'SG1003', 'SG1005', 'SG1008', 'SG1009', 'SG1010', 'SG1011', 
+                    'SG1012', 'SG1013', 'SG1014', 'SG1015', 'SG1016', 'SG1017', 'SG1018', 'SG1019', 'SG1020', 'SG1021', 'SG1022', 'SG1023', 'SG1024', 
+                    'SG1025', 'SG1026', 'SG1027', 'SG1028', 'SG1029', 'SG1030', 'SG1031', 'SG1032', 'SG1033', 'SG1035', 'SG1036', 'SG1037', 'SG1038', 
+                    'SG1039', 'SG1045', 'SG1046', 'SG1047', 'SG1049', 'SP1001', 'SP1002', 'SP1003', 'SP1004', 'SP1005', 'SP1006', 'SP1007', 'SP1008', 
+                    'SP1009', 'SP1011', 'SP1012', 'SP1013', '1 SGT', '1 TEN', '2 SGT', '2 TEN', '3 SGT', 'ALUNO', 'MAJ', 'CAD', 'CAP', 'CEL', 'CB'
+                ].map(r => r.toUpperCase());
+                
+                let rankPrefix = '';
+                let nameWithoutRank = personName.toUpperCase();
+
+                for (const rank of ALL_RANKS) {
+                    if (nameWithoutRank.startsWith(rank)) {
+                        if (nameWithoutRank.length === rank.length || nameWithoutRank[rank.length] === ' ') {
+                            rankPrefix = rank;
+                            nameWithoutRank = nameWithoutRank.substring(rank.length).trim();
+                            break;
+                        }
+                    }
+                }
+
+                let functionalName = '';
+                if (rankPrefix) {
+                    // Militar com graduação identificada
+                    const warName = nameWithoutRank.split(' ').pop() || '';
+                    const capitalizedWarName = warName.charAt(0) + warName.slice(1).toLowerCase();
+
+                    if (RANKS_TO_KEEP.has(rankPrefix)) {
+                        const capitalizedRank = rankPrefix.split(' ').map(p => p.charAt(0) + p.slice(1).toLowerCase()).join(' ');
+                        functionalName = `${capitalizedRank} ${capitalizedWarName}`;
+                    } else {
+                        functionalName = capitalizedWarName;
+                    }
+                } else {
+                    // Civil (sem graduação) ou formato de nome não esperado
+                    const firstName = nameWithoutRank.split(' ')[0] || '';
+                    functionalName = firstName.charAt(0) + firstName.slice(1).toLowerCase();
+                }
+
+                if (!functionalName) {
+                    functionalName = personName; // Fallback
+                }
+                
+                message = message.replace(/\[NOME\]/g, functionalName.trim());
+            } else {
+                message = message.replace(/Prezado\(a\) \[NOME\],?\s*/, '');
+            }
+
+            const payload = {
+                recipientsForPA: nrPols,
+                birthdayMessagePayload: {
+                    subject: settings.bdaySubject,
+                    message: message
+                }
+            };
+            
+            console.log('SisPMG+ [Aniversariantes]: Salvando payload para o PA e navegando:', payload);
+            await sendMessageToBackground('setStorage', payload);
             window.location.href = 'https://pa.policiamilitar.mg.gov.br/#/escrever';
         };
 
@@ -195,7 +260,7 @@ export class BirthdayModule {
             const dateStr = isToday ? '' : `${String(person.diaAniversario).padStart(2, '0')}/${String(person.mesAniversario).padStart(2, '0')} - `;
             const todayClass = isToday ? 'sispmg-birthday-today' : '';
             const letterIcon = isToday 
-                ? `<span class="sispmg-bday-letter-icon" data-nrpol="${person.nrPol}" title="Enviar mensagem"><i class="fas fa-envelope"></i></span>`
+                ? `<span class="sispmg-bday-letter-icon" data-nrpol="${person.nrPol}" data-nome="${person.nomeCompleto.trim()}" title="Enviar mensagem"><i class="fas fa-envelope"></i></span>`
                 : '';
 
             return `<li class="sispmg-birthday-item">
@@ -238,9 +303,10 @@ export class BirthdayModule {
         notification.innerHTML = `
             <div class="sispmg-panel-header">
                 <div class="sispmg-panel-title-group">
-                    ${this.iconSVG_28} <span>Lembrete de Aniversário</span>
+                    ${this.iconSVG_28} <span>Aniversariantes</span>
                 </div>
                 <div class="sispmg-panel-actions">
+                    <button id="sispmg-bday-settings-btn" class="sispmg-btn-icon sispmg-bday-action-btn" title="Configurações de Aniversário"><i class="fas fa-cog"></i></button>
                     <button id="sispmg-bday-letter-btn" class="sispmg-btn-icon sispmg-bday-action-btn sispmg-bday-letter-btn-blue" title="Enviar para todos de hoje"><i class="fas fa-envelope"></i></button>
                     <button id="sispmg-bday-collapse-btn" class="sispmg-btn-icon sispmg-bday-action-btn"><i class="fas fa-chevron-right"></i></button>
                 </div>
@@ -300,10 +366,21 @@ export class BirthdayModule {
             }
         });
         
+        document.getElementById('sispmg-bday-settings-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.showConfigModal();
+            clearTimeout(closeTimeout);
+            startCloseTimer();
+        });
+
         document.getElementById('sispmg-bday-letter-btn').addEventListener('click', (e) => {
             e.stopPropagation();
             const nrPols = deHoje.map(p => p.nrPol);
-            openPaForRecipients(nrPols);
+            let nameForMessage = null;
+            if (deHoje.length === 1) {
+                nameForMessage = deHoje[0].nomeCompleto.trim();
+            }
+            openPaForRecipients(nrPols, nameForMessage);
             clearTimeout(closeTimeout);
             startCloseTimer();
         });
@@ -314,8 +391,9 @@ export class BirthdayModule {
             if (icon) {
                 e.stopPropagation();
                 const nrPol = icon.dataset.nrpol;
+                const nome = icon.dataset.nome;
                 if (nrPol) {
-                    openPaForRecipients([nrPol]);
+                    openPaForRecipients([nrPol], nome);
                 }
                 clearTimeout(closeTimeout);
                 startCloseTimer();
@@ -388,6 +466,12 @@ export class BirthdayModule {
                                         <ul id="selected-units-list"></ul>
                                     </div>
                                 </div>
+                                <div class="sispmg-config-row sispmg-bday-message-template">
+                                    <label for="bday-subject-input">Assunto Padrão da Mensagem:</label>
+                                    <input type="text" id="bday-subject-input" value="${settings.bdaySubject || ''}">
+                                    <label for="bday-message-input">Texto Padrão da Mensagem (use [NOME] para o nome do militar):</label>
+                                    <textarea id="bday-message-input" rows="4">${settings.bdayMessage || ''}</textarea>
+                                </div>
                             </div>
                         </div>
                         <div class="sispmg-modal-actions">
@@ -411,7 +495,9 @@ export class BirthdayModule {
                     units: selectedUnits,
                     includeSubunits: document.getElementById('include-subunits-toggle').checked,
                     includeInactive: document.getElementById('include-inactive-toggle').checked,
-                    restrictToSection: document.getElementById('restrict-to-section-toggle').checked
+                    restrictToSection: document.getElementById('restrict-to-section-toggle').checked,
+                    bdaySubject: document.getElementById('bday-subject-input').value,
+                    bdayMessage: document.getElementById('bday-message-input').value
                 };
                 await sendMessageToBackground('setStorage', { birthdaySettings: newSettings });
                 await sendMessageToBackground('removeStorage', { keys: ['birthdayLastCheck', 'birthdayData'] });

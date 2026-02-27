@@ -394,8 +394,7 @@ class UnidadesModalHandler {
 }
 
 // Funções de inicialização e destruição exportadas
-export function initUnidadesModule() {
-    const ui = window.SisPMG_UI;
+export function initUnidadesModule(ui) {
     const unidadesInstance = new UnidadesModalHandler();
     unidadesInstance.init();
     if (ui?.registerModule) {

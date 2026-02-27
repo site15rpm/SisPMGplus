@@ -36,7 +36,7 @@
 }
 
 /* Cabeçalho */
-.sispmg-modal-header {
+.sispmg-modal .sispmg-modal-header {
     padding: 15px 20px !important;
     border-bottom: 1px solid #dcd3c5 !important;
     display: flex !important;
@@ -50,7 +50,7 @@
     width: 100% !important;
 }
 
-.sispmg-modal-close {
+.sispmg-modal .sispmg-modal-close {
     background: none !important;
     border: none !important;
     font-size: 20px !important;
@@ -62,12 +62,12 @@
     width: auto !important;
     height: auto !important;
 }
-.sispmg-modal-close:hover {
+.sispmg-modal .sispmg-modal-close:hover {
     color: #574e2d !important;
 }
 
 /* Corpo */
-.sispmg-modal-body {
+.sispmg-modal .sispmg-modal-body {
     padding: 20px !important;
     overflow-y: auto !important;
     max-height: 70vh !important;
@@ -175,7 +175,7 @@
 }
 
 /* Rodapé */
-.sispmg-modal-footer {
+.sispmg-modal .sispmg-modal-footer {
     padding: 15px 20px !important;
     border-top: 1px solid #dcd3c5 !important;
     background-color: rgba(220, 211, 197, 0.1) !important;

@@ -292,15 +292,15 @@
 }
 
 .sispmg-bday-letter-icon {
-    margin-left: 15px;
-    cursor: pointer;
-    color: #b3a368;
-    transition: color 0.2s;
-    font-size: 16px;
+    margin-left: 15px !important;
+    cursor: pointer !important;
+    color: #007bff !important; /* Cor azul */
+    transition: color 0.2s !important;
+    font-size: 16px !important;
 }
 
 .sispmg-bday-letter-icon:hover {
-    color: #9e8f57;
+    color: #0069d9 !important; /* Azul mais escuro no hover */
 }
 
 .sispmg-no-birthdays {
@@ -308,4 +308,52 @@
     text-align: center;
     color: #666;
     font-style: italic;
+}
+
+/* Estilos para os novos campos de assunto e mensagem no modal de configuração */
+.sispmg-bday-message-template {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 5px !important;
+    margin-top: 20px !important;
+    border-top: 1px solid #dcd3c5 !important;
+}
+
+.sispmg-bday-message-template label {
+    font-weight: 500 !important;
+    color: #333 !important;
+}
+
+#bday-subject-input,
+#bday-message-input {
+    all: unset !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    padding: 8px 10px !important;
+    border: 1px solid #dcd3c5 !important;
+    border-radius: 4px !important;
+    background-color: white !important;
+    color: #333 !important;
+    font-size: 14px !important;
+    line-height: 1.5 !important;
+    resize: vertical !important; /* Permite redimensionar verticalmente o textarea */
+}
+
+#bday-message-input {
+    min-height: 100px !important; /* Altura mínima para o textarea */
+}
+
+#bday-subject-input::placeholder,
+#bday-message-input::placeholder {
+    color: #888 !important;
+}
+
+#sispmg-bday-settings-btn {
+    color: #574e2d !important; /* Cor do ícone de engrenagem */
+    font-size: 16px !important;
+}
+
+#sispmg-bday-settings-btn:hover {
+    color: #9e8f57 !important;
+    background-color: #EFE6DD !important;
 }
