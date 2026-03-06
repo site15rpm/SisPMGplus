@@ -2,6 +2,7 @@
 // Lógica de background específica para o módulo de Agenda da Intranet.
 
 import { fetchUnidadesForAgenda } from './intranet-agenda-unidades.js';
+import { fetchWithKeepAlive } from '../../common/keep-alive.js';
 
 /**
  * Inicializa o background do módulo de agenda.
@@ -44,7 +45,7 @@ export async function handleAgendaMessages(request, sender) {
             const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&sheet=${sheet}&tq=${encodeURIComponent(query)}&_=${Date.now()}`;
             
             try {
-                const res = await fetch(url, { credentials: 'omit' });
+                const res = await fetchWithKeepAlive(url, { credentials: 'omit' });
                 if (!res.ok) throw new Error(`Falha na requisição: ${res.status} ${res.statusText}`);
                 const text = await res.text();
                 const parsedData = parseGoogleSheetResponse(text);
@@ -65,7 +66,7 @@ export async function handleAgendaMessages(request, sender) {
             }
 
             try {
-                const response = await fetch(gasUrl, {
+                const response = await fetchWithKeepAlive(gasUrl, {
                     method: 'POST',
                     mode: 'cors',
                     redirect: 'follow',

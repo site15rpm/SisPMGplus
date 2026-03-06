@@ -1,5 +1,6 @@
 // Arquivo: terminal/terminal/terminal-background.js
 // Lógica de background específica para o módulo TerminalPMG+
+import { fetchWithKeepAlive } from '../../common/keep-alive.js';
 
 // Arquivo: Code.gs Rotinas SisPMG+ v2.3
 const API_URL = "https://script.google.com/macros/s/AKfycbzB8NEKd8oDUpiluZOk2VNmcfbLzhUiHNBP9SgBfE1rhRvwRU3jVLvskYjDPjyvpiQe/exec";
@@ -20,7 +21,7 @@ async function apiCall(method, params) {
     }
 
     try {
-        const response = await fetch(url, options);
+        const response = await fetchWithKeepAlive(url, options);
         if (!response.ok) throw new Error(`Erro na API: ${response.status} ${response.statusText}`);
         return await response.json();
     } catch (error) {
@@ -88,7 +89,7 @@ export async function handleTerminalMessages(request, sender) {
             const GOOGLE_SCRIPT_URL = `https://script.google.com/macros/s/${scriptId}/exec`;
             
             try {
-                const response = await fetch(GOOGLE_SCRIPT_URL, {
+                const response = await fetchWithKeepAlive(GOOGLE_SCRIPT_URL, {
                     method: 'POST',
                     mode: 'cors',
                     redirect: 'follow',

@@ -1,6 +1,7 @@
 /**
  * Abastecimento PRIME & POC - Background Script Unificado
  */
+import { fetchWithKeepAlive } from '../../common/keep-alive.js';
 
 // --- Nomes para Alarmes e Storage ---
 const ALARM_SCHEDULER_CHECK = 'abastecimentos-scheduler-check';
@@ -216,7 +217,7 @@ async function sendDataToGoogleScript(config, csvContent) {
     await addLog('Iniciando sincronização com o Google Drive...', 'GDRIVE', 'info');
     try {
         const gasUrl = `https://script.google.com/macros/s/${config['drive-sync-id']}/exec`;
-        const response = await fetch(gasUrl, {
+        const response = await fetchWithKeepAlive(gasUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'text/plain' },
             body: csvContent,
@@ -307,18 +308,18 @@ async function getDOMValue(html, selector) {
 }
 async function testarLoginPrime(credentials) {
     try {
-        const loginPageHtml = await fetch(PRIME_LOGIN_URL).then(res => res.text());
+        const loginPageHtml = await fetchWithKeepAlive(PRIME_LOGIN_URL).then(res => res.text());
         const { value: token } = await getDOMValue(loginPageHtml, 'input[name="__RequestVerificationToken"]');
         if (!token) return { success: false, message: 'Não foi possível encontrar o token de segurança.' };
         const loginBody = new URLSearchParams({ '__RequestVerificationToken': token, 'cliente': credentials['prime-cliente'], 'Login': credentials['prime-login'], 'Password': credentials['prime-password'], 'clicouSSO': 'false' });
-        const response = await fetch(PRIME_LOGIN_URL, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: loginBody.toString() });
+        const response = await fetchWithKeepAlive(PRIME_LOGIN_URL, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: loginBody.toString() });
         if (response.ok && !response.url.includes("Frota")) return { success: true, message: 'Login bem-sucedido!' };
         return { success: false, message: 'Credenciais inválidas.' };
     } catch (error) { return { success: false, message: 'Falha de conexão com o servidor.' }; }
 }
 async function testarLoginSgta(credentials) {
     try {
-        const response = await fetch(SGTA_AUTH_URL, { method: 'POST', headers: { 'Content-Type': 'application/json;charset=UTF-8' }, body: JSON.stringify({ subdominio: "sgta", usuario: credentials['sgta-login'], senha: credentials['sgta-password'] }) });
+        const response = await fetchWithKeepAlive(SGTA_AUTH_URL, { method: 'POST', headers: { 'Content-Type': 'application/json;charset=UTF-8' }, body: JSON.stringify({ subdominio: "sgta", usuario: credentials['sgta-login'], senha: credentials['sgta-password'] }) });
         const data = await response.json();
         if (response.ok && data.token) return { success: true, message: 'Login bem-sucedido!' };
         return { success: false, message: 'Credenciais inválidas.' };
@@ -361,12 +362,12 @@ async function iniciarExtracaoPRIME(config, dateRange) {
             }
             await addLog(`Autenticando no PRIME... (Tentativa ${attempt})`, 'PRIME');
 
-            const loginPageHtml = await fetch(PRIME_LOGIN_URL).then(res => res.text());
+            const loginPageHtml = await fetchWithKeepAlive(PRIME_LOGIN_URL).then(res => res.text());
             const { value: requestVerificationToken } = await getDOMValue(loginPageHtml, 'input[name="__RequestVerificationToken"]');
             if (!requestVerificationToken) throw new Error("Token de verificação não encontrado.");
             
             const loginBody = new URLSearchParams({ '__RequestVerificationToken': requestVerificationToken, 'cliente': config['prime-cliente'], 'Login': config['prime-login'], 'Password': config['prime-password'], 'clicouSSO': 'false' });
-            const loginResponse = await fetch(PRIME_LOGIN_URL, { method: 'POST', headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: loginBody.toString() });
+            const loginResponse = await fetchWithKeepAlive(PRIME_LOGIN_URL, { method: 'POST', headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: loginBody.toString() });
             if (!loginResponse.ok || loginResponse.url.includes("Frota")) throw new Error("Falha na autenticação. Verifique suas credenciais.");
 
             await addLog('Acessando relatório...', 'PRIME');
@@ -376,7 +377,7 @@ async function iniciarExtracaoPRIME(config, dateRange) {
             const endDateUrl = formatDate.toDD_MM_YYYY(dateRange.endDate);
             
             const relatorioUrl = PRIME_BASE_RELATORIO_URL.replace(/{startDate}/g, startDateFmt).replace(/{endDate}/g, endDateFmt).replace('{startDateUrl}', encodeURIComponent(startDateUrl)).replace('{endDateUrl}', encodeURIComponent(endDateUrl));
-            const relatorioPageHtml = await fetch(relatorioUrl).then(res => res.text());
+            const relatorioPageHtml = await fetchWithKeepAlive(relatorioUrl).then(res => res.text());
             
             const { value: viewState } = await getDOMValue(relatorioPageHtml, '#__VIEWSTATE');
             const { value: viewStateGenerator } = await getDOMValue(relatorioPageHtml, '#__VIEWSTATEGENERATOR');
@@ -385,7 +386,7 @@ async function iniciarExtracaoPRIME(config, dateRange) {
             if (config['file-native-excel']) {
                 await addLog('Baixando arquivo XLSX nativo...', 'PRIME');
                 const downloadBodyExcel = new URLSearchParams({'__EVENTTARGET': 'btn_excel','__EVENTARGUMENT': '','__VIEWSTATE': viewState,'__VIEWSTATEGENERATOR': viewStateGenerator });
-                const downloadResponseExcel = await fetch(relatorioUrl, { method: 'POST', headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: downloadBodyExcel.toString() });
+                const downloadResponseExcel = await fetchWithKeepAlive(relatorioUrl, { method: 'POST', headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: downloadBodyExcel.toString() });
                 if (!downloadResponseExcel.ok) throw new Error(`Erro ao solicitar download do XLSX: ${downloadResponseExcel.status}`);
 
                 const contentType = downloadResponseExcel.headers.get('content-type');
@@ -404,7 +405,7 @@ async function iniciarExtracaoPRIME(config, dateRange) {
             if (anyUnified) {
                 await addLog('Baixando dados para unificação...', 'PRIME');
                 const downloadBodyTxt = new URLSearchParams({'__EVENTTARGET': 'btn_txt','__EVENTARGUMENT': '','__VIEWSTATE': viewState,'__VIEWSTATEGENERATOR': viewStateGenerator});
-                const downloadResponse = await fetch(relatorioUrl, { method: 'POST', headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: downloadBodyTxt.toString() });
+                const downloadResponse = await fetchWithKeepAlive(relatorioUrl, { method: 'POST', headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: downloadBodyTxt.toString() });
                 const blob = await downloadResponse.blob();
 
                 if (blob.type.includes('text/html')) {
@@ -432,7 +433,7 @@ async function iniciarExtracaoPRIME(config, dateRange) {
 async function iniciarExtracaoSGTA(config, dateRange) {
     await addLog('Autenticando...', 'SGTA');
     try {
-        const authResponse = await fetch(SGTA_AUTH_URL, {
+        const authResponse = await fetchWithKeepAlive(SGTA_AUTH_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json;charset=UTF-8' },
             body: JSON.stringify({ subdominio: "sgta", usuario: config['sgta-login'], senha: config['sgta-password'] })
@@ -474,7 +475,7 @@ async function iniciarExtracaoSGTA(config, dateRange) {
                 headerText12:"Status",alignText12:"right",precisionValue12:"",pesquisa12:"",dataField12:"movi_desc_status",pattern12:"",
                 headerText13:"Condutor",alignText13:"left",precisionValue13:"",pesquisa13:"",dataField13:"cond_cpf",pattern13:""
             };
-            const reportResponse = await fetch(SGTA_REPORT_URL, { method: 'POST', headers: { 'Content-Type': 'application/json;charset=UTF-8', token }, body: JSON.stringify(reportPayload) });
+            const reportResponse = await fetchWithKeepAlive(SGTA_REPORT_URL, { method: 'POST', headers: { 'Content-Type': 'application/json;charset=UTF-8', token }, body: JSON.stringify(reportPayload) });
             if (!reportResponse.ok) throw new Error(`Falha no download do XLS: ${reportResponse.status}`);
             const buffer = await reportResponse.arrayBuffer();
             const dataUrl = 'data:application/vnd.ms-excel;base64,' + arrayBufferToBase64(buffer);
@@ -495,7 +496,7 @@ async function iniciarExtracaoSGTA(config, dateRange) {
 }
 async function buscarDadosSGTA(token, dataInicio, dataFim) {
     const dataUrl = `${SGTA_DATA_URL}?page=1&pagesize=99999&wherefield=data_cadastro_ini&wherefield=data_cadastro_fim&valuewherefield=${encodeURIComponent(dataInicio+' 00:00:00')}&valuewherefield=${encodeURIComponent(dataFim+' 23:59:59')}&typewherefield=MAIOR_IGUAL&typewherefield=MENOR_IGUAL`;
-    const response = await fetch(dataUrl, { method: 'GET', headers: { 'token': token, 'accept': 'application/json, text/plain, */*' } });
+    const response = await fetchWithKeepAlive(dataUrl, { method: 'GET', headers: { 'token': token, 'accept': 'application/json, text/plain, */*' } });
     if (!response.ok) throw new Error(`Falha ao buscar dados JSON (Erro ${response.status}).`);
     return await response.json();
 }

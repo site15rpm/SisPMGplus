@@ -2,6 +2,7 @@
  * Módulo de Background: SIRCONV - Extração de Convênios
  * Gerencia a extração automática via JSON e envio para GAS.
  */
+import { fetchWithKeepAlive } from '../../common/keep-alive.js';
 
 const SETTINGS_KEY = 'sirconvConveniosSettings';
 const LOGS_KEY = 'sirconvConveniosLogs';
@@ -44,7 +45,7 @@ async function fetchAndParseData() {
     try {
         await addLog('Iniciando requisição JSON ao SIRCONV...', 'process');
         
-        const response = await fetch(SIRCONV_JSON_URL, {
+        const response = await fetchWithKeepAlive(SIRCONV_JSON_URL, {
             method: 'GET',
             headers: { 
                 'Accept': 'application/json, text/javascript, */*; q=0.01',
@@ -100,7 +101,7 @@ async function syncToGas(data, gasUrl) {
 
     await addLog(`Enviando ${data.length} registros para o GAS...`, 'process');
 
-    const response = await fetch(gasUrl, {
+    const response = await fetchWithKeepAlive(gasUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }, 
         body: JSON.stringify({

@@ -1,5 +1,6 @@
 // Arquivo: modules/intranet/intranet-background.js
 // Lógica de background específica para o módulo IntranetPMG+
+import { fetchWithKeepAlive } from '../../common/keep-alive.js';
 
 async function fetchApiData(url, token, options = {}) {
     const defaultOptions = {
@@ -13,7 +14,7 @@ async function fetchApiData(url, token, options = {}) {
     const finalOptions = { ...defaultOptions, ...options, headers: { ...defaultOptions.headers, ...options.headers } };
 
     try {
-        const response = await fetch(url, finalOptions);
+        const response = await fetchWithKeepAlive(url, finalOptions);
         const contentType = response.headers.get("content-type");
         let responseData;
 
@@ -129,7 +130,7 @@ export async function handleIntranetMessages(request, sender) {
             const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&sheet=${sheet}&tq=${encodeURIComponent(query)}&_=${bustCache || Date.now()}`;
             
             try {
-                const res = await fetch(url, { credentials: 'omit' });
+                const res = await fetchWithKeepAlive(url, { credentials: 'omit' });
                 if (!res.ok) throw new Error(`Falha na requisição: ${res.status} ${res.statusText}`);
                 const text = await res.text();
                 const parsedData = parseGoogleSheetResponse(text);
@@ -144,7 +145,7 @@ export async function handleIntranetMessages(request, sender) {
             const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&gid=${gid}&tq=${encodeURIComponent(query)}&_=${Date.now()}`;
             
             try {
-                const response = await fetch(url, { credentials: 'omit' });
+                const response = await fetchWithKeepAlive(url, { credentials: 'omit' });
                 if (!response.ok) throw new Error(`Falha na requisição: ${response.status} ${response.statusText}`);
                 const text = await response.text();
                 const jsonText = text.match(/google\.visualization\.Query\.setResponse\((.*)\);/s);

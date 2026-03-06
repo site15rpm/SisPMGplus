@@ -4,6 +4,7 @@
  * 
  * CONFIGURAÇÃO: URL do GAS embutida no código para uso automático
  */
+import { fetchWithKeepAlive } from '../../common/keep-alive.js';
 
 const LOGS_KEY = 'sirconvConveniosLogs';
 const LAST_RUN_KEY = 'sirconvConveniosLastRun'; // Armazena { userId: date }
@@ -74,7 +75,7 @@ async function fetchAndParseData() {
     try {
         await addLog('Iniciando requisição JSON ao SIRCONV...', 'SISTEMA', 'process');
         
-        const response = await fetch(SIRCONV_JSON_URL, {
+        const response = await fetchWithKeepAlive(SIRCONV_JSON_URL, {
             method: 'GET',
             headers: { 
                 'Accept': 'application/json, text/javascript, */*; q=0.01',
@@ -131,7 +132,7 @@ async function syncToGas(data, userId) {
 
     await addLog(`Enviando ${data.length} registros para o GAS...`, 'SISTEMA', 'process');
 
-    const response = await fetch(GAS_URL, {
+    const response = await fetchWithKeepAlive(GAS_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }, 
         body: JSON.stringify({

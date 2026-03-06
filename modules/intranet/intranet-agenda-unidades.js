@@ -2,6 +2,7 @@
 // Lógica de background para buscar unidades para o módulo de Agenda.
 
 import { sendMessageToOffscreen, closeOffscreenDocument } from './intranet-agenda-offscreen.js';
+import { fetchWithKeepAlive } from '../../common/keep-alive.js';
 
 /**
  * Busca os dados das unidades da intranet.
@@ -19,7 +20,7 @@ async function fetchUnidadesData(codigoRegiao) {
         ExibeCodigo: '1' // Equivalente a 'ExibeCodigo=1'
     });
 
-    const response = await fetch(url, {
+    const response = await fetchWithKeepAlive(url, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',

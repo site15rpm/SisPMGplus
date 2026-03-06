@@ -1,5 +1,6 @@
 // Arquivo: modules/intranet/intranet-unidades-background.js
 // Lógica de background específica para o módulo de Extração de Unidades.
+import { fetchWithKeepAlive } from '../../common/keep-alive.js';
 
 // --- Constantes ---
 const STORAGE_SETTINGS_KEY = 'unidadesSettings';
@@ -101,7 +102,7 @@ async function fetchUnidadesData(settings) {
     if (settings.verEndereco) bodyParams.append('cVerEnd', '1');
     if (settings.uniPrinc) bodyParams.append('UniPrinc', '1');
 
-    const response = await fetch(url, {
+    const response = await fetchWithKeepAlive(url, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
@@ -149,7 +150,7 @@ function convertToCSV(data) {
 async function sendToGoogleSheets(data, gasId) {
     if (!gasId) throw new Error('ID do Google Apps Script não configurado.');
     const url = `https://script.google.com/macros/s/${gasId}/exec`;
-    const response = await fetch(url, {
+    const response = await fetchWithKeepAlive(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

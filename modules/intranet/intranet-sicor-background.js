@@ -2,6 +2,7 @@
 // Lógica de background específica para o módulo SICOR.
 
 import * as XLSX from '../../modules/lib/sheetjs/xlsx.mjs';
+import { fetchWithKeepAlive } from '../../common/keep-alive.js';
 
 // --- Constantes ---
 const SICOR_ALARM_SCHEDULER_CHECK = 'sicor-scheduler-check'; // Nome do alarme periódico
@@ -227,7 +228,7 @@ export async function handleSicorMessages(request, sender) {
              const url = 'https://intranet.policiamilitar.mg.gov.br/SICOR/paginas/relatorios/relGerencial.jsf';
              try {
                 await addSicorLog('Buscando lista de unidades do SICOR...', 'SISTEMA');
-                 const response = await fetch(url, { credentials: 'include' });
+                 const response = await fetchWithKeepAlive(url, { credentials: 'include' });
                  if (!response.ok) throw new Error(`Status: ${response.status}`);
                  const htmlText = await response.text();
                  const selectRegex = /<select id="form:selUnidade"[^>]*>([\s\S]*?)<\/select>/;
@@ -589,7 +590,7 @@ async function executeSicorDownload(payload) {
 
     try {
         await addSicorLog(`[${logPrefix}${yearSuffix}] Obtendo ViewState...`, 'DOWNLOAD');
-        const initialResponse = await fetch(url, { credentials: 'include' });
+        const initialResponse = await fetchWithKeepAlive(url, { credentials: 'include' });
         if (!initialResponse.ok) throw new Error(`Status ${initialResponse.status}`);
         const htmlText = await initialResponse.text();
         const vsResponse = await sendMsgToOffscreen('parseDOM', { html: htmlText, selector: 'input[name="javax.faces.ViewState"]'});
@@ -617,7 +618,7 @@ async function executeSicorDownload(payload) {
         searchParams.append('javax.faces.source', 'form:btFiltrar'); searchParams.append('javax.faces.partial.ajax', 'true');
         searchParams.append('javax.faces.partial.execute', '@form'); searchParams.append('javax.faces.partial.render', '@form');
 
-        const searchResponse = await fetch(url, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8", "Faces-Request": "partial/ajax" }, body: searchParams.toString(), credentials: 'include' });
+        const searchResponse = await fetchWithKeepAlive(url, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8", "Faces-Request": "partial/ajax" }, body: searchParams.toString(), credentials: 'include' });
         if (!searchResponse.ok) throw new Error(`Pesquisa AJAX: Status ${searchResponse.status}`);
         const searchResponseXml = await searchResponse.text();
 
@@ -645,7 +646,7 @@ async function executeSicorDownload(payload) {
         downloadParams.delete('AJAXREQUEST'); downloadParams.delete('javax.faces.behavior.event'); downloadParams.delete('javax.faces.partial.event');
         downloadParams.delete('javax.faces.source'); downloadParams.delete('javax.faces.partial.ajax'); downloadParams.delete('javax.faces.partial.execute'); downloadParams.delete('javax.faces.partial.render');
 
-        const downloadResponse = await fetch(url, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: downloadParams.toString(), credentials: 'include' });
+        const downloadResponse = await fetchWithKeepAlive(url, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: downloadParams.toString(), credentials: 'include' });
         if (!downloadResponse.ok) throw new Error(`Download: Status ${downloadResponse.status}`);
         const contentType = downloadResponse.headers.get("content-type");
 
@@ -823,7 +824,7 @@ async function syncWithGoogleScript(gasId, csvData) {
     await addSicorLog(`Sincronizando ${recordCount} registros com Drive...`, 'GDRIVE', 'info');
     try {
         const gasUrl = `https://script.google.com/macros/s/${gasId}/exec`;
-        const response = await fetch(gasUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain; charset=utf-8' }, body: csvData, mode: 'cors', redirect: 'follow' });
+        const response = await fetchWithKeepAlive(gasUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain; charset=utf-8' }, body: csvData, mode: 'cors', redirect: 'follow' });
         let resultText = '';
         try { resultText = await response.text(); } catch (textError) { throw new Error(`Falha ao ler resposta GAS. Status: ${response.status}`); }
         if (!response.ok) throw new Error(`Erro resposta GAS. Status: ${response.status}. Resp: ${resultText.substring(0, 500)}`);
