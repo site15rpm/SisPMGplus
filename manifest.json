@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "SisPMG+",
-  "version": "2.9",
+  "version": "2.9.1",
   "description": "Adiciona funcionalidades e automações a sistemas utilizados pela PMMG.",
   "icons": {
     "16": "icons/icon16.png",
