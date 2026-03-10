@@ -75,6 +75,7 @@ export class BirthdayModule {
         const storedData = await sendMessageToBackground('getStorage', { key: ['birthdayLastCheck', 'birthdayData'] });
         const lastCheck = storedData.success ? storedData.value.birthdayLastCheck : null;
         let aniversariantes;
+        let hasFailed = false; // Flag para rastrear falhas
 
         if (lastCheck === todayStr && storedData.value.birthdayData !== undefined) {
             aniversariantes = storedData.value.birthdayData || [];
@@ -82,6 +83,7 @@ export class BirthdayModule {
             const token = getCookie('tokiuz');
             if (!token) {
                  console.error('SisPMG+ [Aniversariantes]: Token de autenticação não encontrado.');
+                 this.processAndNotify(null, { error: true, message: 'Falha de autenticação.' });
                  return;
             }
 
@@ -89,6 +91,8 @@ export class BirthdayModule {
                 let allBirthdays = [];
                 if (settings.units.length === 0) {
                      console.warn("SisPMG+ [Aniversariantes]: Nenhuma unidade configurada para monitorar aniversariantes.");
+                     // Não consideramos isso um erro, apenas uma configuração vazia.
+                     this.processAndNotify([]);
                      return;
                 }
 
@@ -105,6 +109,7 @@ export class BirthdayModule {
                             const birthdaysWithMonth = response.data.map(b => ({ ...b, mesAniversario: mes }));
                             allBirthdays.push(...birthdaysWithMonth);
                         } else {
+                            hasFailed = true; // Marca que uma falha ocorreu
                             console.warn(`SisPMG+ [Aniversariantes]: Falha ao buscar dados para unidade ${unidade}, mês ${mes}:`, response.error);
                         }
                     }
@@ -113,16 +118,23 @@ export class BirthdayModule {
                 const uniqueBirthdays = Array.from(new Map(allBirthdays.map(p => [p.nrPol, p])).values());
                 aniversariantes = uniqueBirthdays;
                 
-                // Só salva no cache se encontrar algum aniversariante, para evitar cache de falhas.
-                if (aniversariantes.length > 0) {
+                // Se a busca não falhou, atualiza o cache
+                if (!hasFailed) {
                     await sendMessageToBackground('setStorage', { birthdayLastCheck: todayStr });
                     await sendMessageToBackground('setStorage', { birthdayData: aniversariantes });
                 }
 
             } catch (error) {
                 console.error('SisPMG+ [Aniversariantes]: Erro ao buscar aniversariantes:', error);
+                this.processAndNotify(null, { error: true, message: 'Erro ao buscar dados.' });
                 return;
             }
+        }
+
+        // Condição de Erro: Se a busca falhou e não obtivemos nenhum dado
+        if (hasFailed && (!aniversariantes || aniversariantes.length === 0)) {
+            this.processAndNotify(null, { error: true, message: 'Falha ao carregar os dados.' });
+            return;
         }
 
         if (aniversariantes) {
@@ -143,47 +155,10 @@ export class BirthdayModule {
         }
     }
 
-    async processAndNotify(aniversariantes) {
-        const settings = await getBirthdaySettings();
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+    async processAndNotify(aniversariantes, errorInfo = null) {
+        let listHTML = '';
 
-        const endDate = new Date(today);
-        endDate.setDate(today.getDate() + settings.daysAhead);
-
-        const currentYear = today.getFullYear();
-
-        const upcomingBirthdays = aniversariantes.map(person => {
-            if (!person.mesAniversario || !person.diaAniversario) {
-                return null;
-            }
-
-            const birthDateThisYear = new Date(currentYear, person.mesAniversario - 1, person.diaAniversario);
-            birthDateThisYear.setHours(0, 0, 0, 0);
-
-            let applicableBirthDate = null;
-            
-            if (birthDateThisYear < today) {
-                const birthDateNextYear = new Date(currentYear + 1, person.mesAniversario - 1, person.diaAniversario);
-                birthDateNextYear.setHours(0, 0, 0, 0);
-                if (birthDateNextYear >= today && birthDateNextYear <= endDate) {
-                    applicableBirthDate = birthDateNextYear;
-                }
-            } else {
-                 if (birthDateThisYear >= today && birthDateThisYear <= endDate) {
-                    applicableBirthDate = birthDateThisYear;
-                }
-            }
-
-            if (applicableBirthDate) {
-                return { ...person, fullDate: applicableBirthDate };
-            }
-            return null;
-        }).filter(Boolean);
-
-        const deHoje = upcomingBirthdays.filter(p => p.fullDate.getTime() === today.getTime());
-        const proximos = upcomingBirthdays.filter(p => p.fullDate.getTime() > today.getTime());
-
+        // Funções auxiliares movidas para o topo para evitar ReferenceError.
         const openPaForRecipients = async (nrPols, personName = null) => {
             if (!nrPols || nrPols.length === 0) return;
             
@@ -191,17 +166,8 @@ export class BirthdayModule {
             let message = settings.bdayMessage || '';
             
             if (personName) {
-                const RANKS_TO_KEEP = new Set([
-                    'ASP A OF', 'SD 1 CL', 'SD 2 CL', 'SUB TEN', 'TEN CEL', '1 SGT', '1 TEN', '2 SGT', '2 TEN', '3 SGT', 'ALUNO', 'MAJ', 'CAD', 'CAP', 'CEL', 'CB'
-                ]);
-
-                const ALL_RANKS = [
-                    'ASP A OF', 'SD 1 CL', 'SD 2 CL', 'SUB TEN', 'TEN CEL', 'SG1001', 'SG1003', 'SG1005', 'SG1008', 'SG1009', 'SG1010', 'SG1011', 
-                    'SG1012', 'SG1013', 'SG1014', 'SG1015', 'SG1016', 'SG1017', 'SG1018', 'SG1019', 'SG1020', 'SG1021', 'SG1022', 'SG1023', 'SG1024', 
-                    'SG1025', 'SG1026', 'SG1027', 'SG1028', 'SG1029', 'SG1030', 'SG1031', 'SG1032', 'SG1033', 'SG1035', 'SG1036', 'SG1037', 'SG1038', 
-                    'SG1039', 'SG1045', 'SG1046', 'SG1047', 'SG1049', 'SP1001', 'SP1002', 'SP1003', 'SP1004', 'SP1005', 'SP1006', 'SP1007', 'SP1008', 
-                    'SP1009', 'SP1011', 'SP1012', 'SP1013', '1 SGT', '1 TEN', '2 SGT', '2 TEN', '3 SGT', 'ALUNO', 'MAJ', 'CAD', 'CAP', 'CEL', 'CB'
-                ].map(r => r.toUpperCase());
+                const RANKS_TO_KEEP = new Set(['ASP A OF', 'SD 1 CL', 'SD 2 CL', 'SUB TEN', 'TEN CEL', '1 SGT', '1 TEN', '2 SGT', '2 TEN', '3 SGT', 'ALUNO', 'MAJ', 'CAD', 'CAP', 'CEL', 'CB']);
+                const ALL_RANKS = ['ASP A OF', 'SD 1 CL', 'SD 2 CL', 'SUB TEN', 'TEN CEL', 'SG1001', 'SG1003', 'SG1005', 'SG1008', 'SG1009', 'SG1010', 'SG1011', 'SG1012', 'SG1013', 'SG1014', 'SG1015', 'SG1016', 'SG1017', 'SG1018', 'SG1019', 'SG1020', 'SG1021', 'SG1022', 'SG1023', 'SG1024', 'SG1025', 'SG1026', 'SG1027', 'SG1028', 'SG1029', 'SG1030', 'SG1031', 'SG1032', 'SG1033', 'SG1035', 'SG1036', 'SG1037', 'SG1038', 'SG1039', 'SG1045', 'SG1046', 'SG1047', 'SG1049', 'SP1001', 'SP1002', 'SP1003', 'SP1004', 'SP1005', 'SP1006', 'SP1007', 'SP1008', 'SP1009', 'SP1011', 'SP1012', 'SP1013', '1 SGT', '1 TEN', '2 SGT', '2 TEN', '3 SGT', 'ALUNO', 'MAJ', 'CAD', 'CAP', 'CEL', 'CB'].map(r => r.toUpperCase());
                 
                 let rankPrefix = '';
                 let nameWithoutRank = personName.toUpperCase();
@@ -218,10 +184,8 @@ export class BirthdayModule {
 
                 let functionalName = '';
                 if (rankPrefix) {
-                    // Militar com graduação identificada
                     const warName = nameWithoutRank.split(' ').pop() || '';
                     const capitalizedWarName = warName.charAt(0) + warName.slice(1).toLowerCase();
-
                     if (RANKS_TO_KEEP.has(rankPrefix)) {
                         const capitalizedRank = rankPrefix.split(' ').map(p => p.charAt(0) + p.slice(1).toLowerCase()).join(' ');
                         functionalName = `${capitalizedRank} ${capitalizedWarName}`;
@@ -229,15 +193,11 @@ export class BirthdayModule {
                         functionalName = capitalizedWarName;
                     }
                 } else {
-                    // Civil (sem graduação) ou formato de nome não esperado
                     const firstName = nameWithoutRank.split(' ')[0] || '';
                     functionalName = firstName.charAt(0) + firstName.slice(1).toLowerCase();
                 }
 
-                if (!functionalName) {
-                    functionalName = personName; // Fallback
-                }
-                
+                if (!functionalName) functionalName = personName;
                 message = message.replace(/\[NOME\]/g, functionalName.trim());
             } else {
                 message = message.replace(/Prezado\(a\) \[NOME\],?\s*/, '');
@@ -245,10 +205,7 @@ export class BirthdayModule {
 
             const payload = {
                 recipientsForPA: nrPols,
-                birthdayMessagePayload: {
-                    subject: settings.bdaySubject,
-                    message: message
-                }
+                birthdayMessagePayload: { subject: settings.bdaySubject, message: message }
             };
             
             console.log('SisPMG+ [Aniversariantes]: Salvando payload para o PA e navegando:', payload);
@@ -272,32 +229,68 @@ export class BirthdayModule {
                     </li>`;
         };
 
-        let listHTML = '';
-        
-        if (deHoje.length === 0 && proximos.length === 0) {
-            listHTML = '<div class="sispmg-no-birthdays">Nenhum aniversário nos próximos dias.</div>';
+        if (errorInfo) {
+            listHTML = `<div class="sispmg-error-message">${errorInfo.message || 'Ocorreu um erro.'}</div>`;
         } else {
-            if (deHoje.length > 0) {
-                listHTML += '<div class="sispmg-birthday-section"><strong>Hoje:</strong><ul>';
-                deHoje.sort((a,b) => a.nomeCompleto.localeCompare(b.nomeCompleto)).forEach(p => { listHTML += createListItemHTML(p, true); });
-                listHTML += '</ul></div>';
-            }
-            
-            if (proximos.length > 0) {
-                if(deHoje.length > 0) listHTML += '<div class="sispmg-birthday-separator"></div>';
-                listHTML += `<div class="sispmg-birthday-section"><strong>Próximos ${settings.daysAhead} dias:</strong><ul>`;
-                proximos.sort((a,b) => {
-                    if(a.fullDate.getTime() !== b.fullDate.getTime()) {
-                        return a.fullDate - b.fullDate;
+            const settings = await getBirthdaySettings();
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            const endDate = new Date(today);
+            endDate.setDate(today.getDate() + settings.daysAhead);
+
+            const currentYear = today.getFullYear();
+
+            const upcomingBirthdays = aniversariantes.map(person => {
+                if (!person.mesAniversario || !person.diaAniversario) return null;
+
+                const birthDateThisYear = new Date(currentYear, person.mesAniversario - 1, person.diaAniversario);
+                birthDateThisYear.setHours(0, 0, 0, 0);
+
+                let applicableBirthDate = null;
+                
+                if (birthDateThisYear < today) {
+                    const birthDateNextYear = new Date(currentYear + 1, person.mesAniversario - 1, person.diaAniversario);
+                    birthDateNextYear.setHours(0, 0, 0, 0);
+                    if (birthDateNextYear >= today && birthDateNextYear <= endDate) {
+                        applicableBirthDate = birthDateNextYear;
                     }
-                    return a.nomeCompleto.localeCompare(b.nomeCompleto);
-                }).forEach(p => { 
-                    listHTML += createListItemHTML(p, false); 
-                });
-                listHTML += '</ul></div>';
+                } else {
+                     if (birthDateThisYear >= today && birthDateThisYear <= endDate) {
+                        applicableBirthDate = birthDateThisYear;
+                    }
+                }
+
+                if (applicableBirthDate) return { ...person, fullDate: applicableBirthDate };
+                return null;
+            }).filter(Boolean);
+
+            const deHoje = upcomingBirthdays.filter(p => p.fullDate.getTime() === today.getTime());
+            const proximos = upcomingBirthdays.filter(p => p.fullDate.getTime() > today.getTime());
+
+            if (deHoje.length === 0 && proximos.length === 0) {
+                listHTML = '<div class="sispmg-no-birthdays">Nenhum aniversário nos próximos dias.</div>';
+            } else {
+                if (deHoje.length > 0) {
+                    listHTML += '<div class="sispmg-birthday-section"><strong>Hoje:</strong><ul>';
+                    deHoje.sort((a,b) => a.nomeCompleto.localeCompare(b.nomeCompleto)).forEach(p => { listHTML += createListItemHTML(p, true); });
+                    listHTML += '</ul></div>';
+                }
+                
+                if (proximos.length > 0) {
+                    if(deHoje.length > 0) listHTML += '<div class="sispmg-birthday-separator"></div>';
+                    listHTML += `<div class="sispmg-birthday-section"><strong>Próximos ${settings.daysAhead} dias:</strong><ul>`;
+                    proximos.sort((a,b) => {
+                        if(a.fullDate.getTime() !== b.fullDate.getTime()) return a.fullDate - b.fullDate;
+                        return a.nomeCompleto.localeCompare(b.nomeCompleto);
+                    }).forEach(p => { 
+                        listHTML += createListItemHTML(p, false); 
+                    });
+                    listHTML += '</ul></div>';
+                }
             }
         }
-
+        
         const notification = document.createElement('div');
         notification.id = 'sispmg-birthday-notification';
         notification.innerHTML = `
@@ -373,17 +366,30 @@ export class BirthdayModule {
             startCloseTimer();
         });
 
-        document.getElementById('sispmg-bday-letter-btn').addEventListener('click', (e) => {
-            e.stopPropagation();
-            const nrPols = deHoje.map(p => p.nrPol);
-            let nameForMessage = null;
-            if (deHoje.length === 1) {
-                nameForMessage = deHoje[0].nomeCompleto.trim();
+        const letterBtn = document.getElementById('sispmg-bday-letter-btn');
+        if (errorInfo || !aniversariantes) {
+             letterBtn.style.display = 'none';
+        } else {
+            const deHoje = aniversariantes
+                .map(person => {
+                     const today = new Date(); today.setHours(0, 0, 0, 0);
+                     const birthDateThisYear = new Date(today.getFullYear(), person.mesAniversario - 1, person.diaAniversario);
+                     return birthDateThisYear.getTime() === today.getTime() ? person : null;
+                }).filter(Boolean);
+
+            if (deHoje.length > 0) {
+                letterBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const nrPols = deHoje.map(p => p.nrPol);
+                    let nameForMessage = (deHoje.length === 1) ? deHoje[0].nomeCompleto.trim() : null;
+                    openPaForRecipients(nrPols, nameForMessage);
+                    clearTimeout(closeTimeout);
+                    startCloseTimer();
+                });
+            } else {
+                letterBtn.style.display = 'none';
             }
-            openPaForRecipients(nrPols, nameForMessage);
-            clearTimeout(closeTimeout);
-            startCloseTimer();
-        });
+        }
 
         // Event delegation for individual letter icons
         notification.addEventListener('click', (e) => {

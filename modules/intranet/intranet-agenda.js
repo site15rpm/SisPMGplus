@@ -690,6 +690,11 @@ export class IntranetAgendaModule {
         if (!taskListContainer) return;
         taskListContainer.innerHTML = '';
 
+        if (this.loadError) {
+            taskListContainer.innerHTML = `<div class="sispmg-error-message">${this.loadError.message}</div>`;
+            return;
+        }
+
         this.sortTasks();
 
         const activeTasks = this.tasks.filter(task => task.status !== 'DELETED');
@@ -946,6 +951,7 @@ export class IntranetAgendaModule {
     }
 
     async loadTasks() {
+        this.loadError = null; // Reseta o estado de erro
         const sheetId = '1wtk0NWpyXPm791PPB2ICoto1YnKyYJ4UCs5JxJIRM_U';
         const sheetName = 'agenda';
         
@@ -996,8 +1002,9 @@ export class IntranetAgendaModule {
                 };
             });
         } else {
-            console.error("SisPMG+ [Agenda]: Falha ao carregar tarefas da planilha.", response.error);
+            console.error("SisPMG+ [Agenda]: Falha ao carregar tarefas da planilha. Resposta inválida do background.", response?.error);
             this.tasks = [];
+            this.loadError = { message: 'Falha ao carregar as tarefas.' }; // Define o estado de erro
         }
     }
     
