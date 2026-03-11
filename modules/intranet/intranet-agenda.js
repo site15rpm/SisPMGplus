@@ -397,7 +397,7 @@ export class IntranetAgendaModule {
 
         const ruleTypes = {
             'g': 'Nº Funcional',
-            'u': 'Unidade',
+            'c': 'Unidade', // Alterado de 'u' para 'c' para Unidade
         };
 
         /* Lista completa
@@ -456,7 +456,7 @@ export class IntranetAgendaModule {
 
             const selectedType = typeSelect.value;
 
-            if (selectedType === 'u') {
+            if (selectedType === 'c') { // Alterado de 'u' para 'c'
                 if (!unitsCache) {
                     valuesContainer.innerHTML = '<span>Carregando unidades...</span>';
                     const response = await sendMessageToBackground('agenda-fetch-unidades', { userRegionCode: this.userData?.e });
@@ -530,17 +530,30 @@ export class IntranetAgendaModule {
             }
         });
 
+        let hiddenRules = [];
+
         // Parse a string de abrangência existente para popular a UI
         if (abrangenciaString) {
             const rules = abrangenciaString.split(',');
             for (const rule of rules) {
                 const [type, ...valuesPart] = rule.split(':');
-                if (type && valuesPart.length > 0) {
-                    const values = valuesPart.join(':').split('|');
-                    await addRule(type.trim(), values);
+                const trimmedType = type.trim();
+
+                if (trimmedType && valuesPart.length > 0) {
+                    // Usar Object.prototype.hasOwnProperty.call para segurança
+                    if (Object.prototype.hasOwnProperty.call(ruleTypes, trimmedType)) {
+                        const values = valuesPart.join(':').split('|');
+                        await addRule(trimmedType, values);
+                    } else {
+                        hiddenRules.push(rule); // Armazena a regra oculta
+                    }
                 }
             }
         }
+
+        // Armazenar as regras ocultas no modal para que saveTask possa acessá-las
+        modal.dataset.hiddenRules = JSON.stringify(hiddenRules);
+
         updateAutoConfirmState();
     }
 
@@ -571,7 +584,7 @@ export class IntranetAgendaModule {
             const type = row.querySelector('.sispmg-abrangencia-type').value;
             let values = [];
 
-            if (type === 'u') {
+            if (type === 'c') {
                 const selectedOptions = row.querySelectorAll('.sispmg-abrangencia-unit-option input:checked');
                 selectedOptions.forEach(opt => values.push(opt.closest('.sispmg-abrangencia-unit-option').dataset.value));
             } else {
@@ -590,9 +603,15 @@ export class IntranetAgendaModule {
             }
         });
 
-        const abrangenciaValue = Array.from(abrangenciaMap.entries())
-            .map(([type, values]) => `${type}:${[...new Set(values)].join('|')}`) // Remove duplicatas
+        const abrangenciaFromUI = Array.from(abrangenciaMap.entries())
+            .map(([type, values]) => `${type}:${[...new Set(values)].join('|')}`)
             .join(',');
+
+        const modal = document.getElementById('sispmg-task-modal');
+        const hiddenRules = modal?.dataset.hiddenRules ? JSON.parse(modal.dataset.hiddenRules) : [];
+        const hiddenRulesString = hiddenRules.join(',');
+
+        const abrangenciaValue = [abrangenciaFromUI, hiddenRulesString].filter(Boolean).join(',');
 
 
         const timeValue = timeInput.value || '00:00';
