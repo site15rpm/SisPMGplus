@@ -52,9 +52,10 @@ browser.runtime.onMessage.addListener((request, sender) => {
 
             // 2. Se nenhum módulo tratou a mensagem, processa ações genéricas/centrais.
             switch (action) {
+                case 'getSettings': // Adicionado alias para getStorage
                 case 'getStorage': {
                     const storageArea = payload?.storageType === 'local' ? browser.storage.local : browser.storage.sync;
-                    const items = await storageArea.get(payload.keys || null);
+                    const items = await storageArea.get(payload?.keys || null); // Corrigido com optional chaining
                     return { success: true, value: items };
                 }
                 case 'setStorage': {

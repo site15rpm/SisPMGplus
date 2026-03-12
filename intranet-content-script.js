@@ -127,6 +127,13 @@ window.addEventListener('message', (event) => {
 
 // Listener para mensagens vindas do background para a página
 browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    // Adicionado para o sinal de 'pronto'
+    if (request.action === 'sispmg-ready') {
+        console.log("SisPMG+ [Intranet Content]: Recebido sinal 'sispmg-ready' do background. Retransmitindo para a página.");
+        window.postMessage({ type: 'FROM_BACKGROUND', action: 'sispmg-ready' }, '*');
+        return; // Ação síncrona, não precisa de mais nada.
+    }
+
     // Lógica para atualizar logs do SICOR
     if (request.action === 'sicor-logs-updated') {
         window.postMessage({ type: 'FROM_SISPMG_BACKGROUND', action: request.action, logs: request.logs }, '*');

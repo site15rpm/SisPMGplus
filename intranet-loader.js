@@ -38,24 +38,19 @@ async function main(config) {
     console.log('SisPMG+: Módulo de carregamento da Intranet iniciado.');
     globalConfig = config;
 
-    moduleSettings = (await getSettingsFromStorage([
-        'intranetModuleEnabled', 
-        'intranetUiCustomization',
-        'padmModuleEnabled', 
-        'aniverModuleEnabled',
-        'agendaModuleEnabled', // Módulo da Agenda
-        'sirconvModuleEnabled',
-        'sirconvConveniosModuleEnabled',
-        'sicorModuleEnabled',
-        'praticasModuleEnabled',
-        'unidadesModuleEnabled' // <-- ADICIONADO
-    ])) || {}; // Fallback para objeto vazio se a resposta for nula
-
-    if (moduleSettings.intranetModuleEnabled === false) {
+    // 1. Obter configurações essenciais.
+    try {
+        moduleSettings = (await getSettingsFromStorage(['intranetModuleEnabled'])) || {};
+        if (moduleSettings.intranetModuleEnabled === false) {
+            console.log('SisPMG+: Módulo da Intranet desabilitado nas configurações.');
+            return;
+        }
+    } catch (e) {
+        console.error("SisPMG+: Falha crítica ao obter configurações iniciais. Interrompendo.", e);
         return;
     }
 
-    // Carrega o Módulo de UI, que é a base para os outros
+    // 2. Carrega o Módulo de UI, que é a base para os outros.
     try {
         const iconModule = await import(globalConfig.iconUrl);
         loadCSS(globalConfig.uiCssUrl);
@@ -64,33 +59,65 @@ async function main(config) {
         uiModuleInstance.init();
     } catch (error) {
         console.error("SisPMG+: Falha ao carregar o módulo de UI principal.", error);
-        return; // Interrompe se o módulo base falhar
+        return; // Interrompe se o módulo base falhar.
     }
 
-    // Inicia o loop de verificação contínua para carregar/descarregar módulos dinamicamente
-    setInterval(checkAllModules, 1000);
+    // 3. Lógica de inicialização em fases para aguardar o background.
+    let modulesInitialized = false;
+    const initializeDependentModules = async () => {
+        if (modulesInitialized) return;
+        modulesInitialized = true;
+        
+        console.log('SisPMG+ [Loader]: Inicializando módulos dependentes...');
 
-    // --- Início da Modificação: Gatilho de Token ---
-    // Informa ao background que uma página foi carregada e um usuário foi identificado.
+        // Carrega o restante das configurações dos módulos.
+        const otherSettings = (await getSettingsFromStorage([
+            'padmModuleEnabled', 'aniverModuleEnabled', 'agendaModuleEnabled', 'sirconvModuleEnabled',
+            'sirconvConveniosModuleEnabled', 'sicorModuleEnabled', 'praticasModuleEnabled', 'unidadesModuleEnabled'
+        ])) || {};
+        Object.assign(moduleSettings, otherSettings);
+
+        // Inicia o loop que verifica e carrega os módulos dinamicamente.
+        setInterval(checkAllModules, 1000);
+    };
+
+    // 4. Configura os gatilhos para a inicialização dos módulos dependentes.
+    window.addEventListener('message', (event) => {
+        if (event.source === window && event.data?.type === 'FROM_BACKGROUND' && event.data?.action === 'sispmg-ready') {
+            initializeDependentModules();
+        }
+    });
+    setTimeout(() => {
+        if (!modulesInitialized) {
+            console.warn('SisPMG+ [Loader]: Timeout esperando pelo sinal "sispmg-ready". Forçando inicialização dos módulos.');
+            initializeDependentModules();
+        }
+    }, 5000); // Timeout de 5 segundos como segurança.
+
+    // 5. Envia o gatilho de identificação do usuário, que fará o background responder com 'sispmg-ready'.
     try {
         const { getCookie, decodeJwt } = await import(globalConfig.utilsUrl);
-        const token = getCookie('tokiuz'); // Usa a função com fallback do PrimeFaces
-        
+        const token = getCookie('tokiuz');
         if (token) {
             const decoded = decodeJwt(token);
             if (decoded && decoded.g) {
-                 // Envia o "gatilho" genérico para o background
                 sendMessageToBackground('intranet-user-identified', {
                     userPM: decoded.g,
                     unitCode: decoded.u,
-                    system: 'INTRANET' // Identificador genérico
+                    system: 'INTRANET'
                 });
+            } else {
+                console.warn('SisPMG+ [Loader]: Token JWT não pôde ser decodificado. Forçando inicialização.');
+                initializeDependentModules();
             }
+        } else {
+            console.warn('SisPMG+ [Loader]: Token "tokiuz" não encontrado. Forçando inicialização.');
+            initializeDependentModules();
         }
     } catch (e) {
-        console.error('SisPMG+ [Loader]: Falha ao processar token para gatilho de usuário.', e);
+        console.error('SisPMG+ [Loader]: Falha ao processar token. Forçando inicialização de módulos.', e);
+        initializeDependentModules();
     }
-    // --- Fim da Modificação ---
 }
 
 

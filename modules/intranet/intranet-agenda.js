@@ -12,9 +12,13 @@ import { iconSVG_28 } from '../../common/icon.js';
  * @returns {boolean} - True se o usuário tiver acesso, false caso contrário.
  */
 function checkAbrangencia(abrangenciaString, userData) {
-    if (!abrangenciaString) return false;
+    if (!abrangenciaString) {
+        return false;
+    }
     const upperString = abrangenciaString.toUpperCase();
-    if (upperString === "PMMG" || upperString === "1") return true;
+    if (upperString === "PMMG" || upperString === "1") {
+        return true;
+    }
 
     const allCriteria = abrangenciaString.split(',');
     if (allCriteria.length === 0) return false;
@@ -27,43 +31,41 @@ function checkAbrangencia(abrangenciaString, userData) {
         const rules = parts.slice(1).join(':').trim();
         const ruleList = rules.split('|').map(r => r.trim()).filter(r => r);
 
-        if (!userData.hasOwnProperty(key) || ruleList.length === 0) {
+        const userValue = userData.hasOwnProperty(key) ? userData[key] : undefined;
+
+
+        if (userValue === undefined || ruleList.length === 0) {
             continue;
         }
 
-        const userValue = userData[key];
         let criteriaMet = false;
+        // Garante que todos os valores a serem testados sejam strings para uma comparação consistente.
+        const valuesToTest = Array.isArray(userValue) ? userValue.map(String) : [String(userValue)];
 
-        if (Array.isArray(userValue)) {
-            for (const userItem of userValue) {
-                for (const rule of ruleList) {
-                    try {
-                        if (new RegExp('^' + rule + '$', 'i').test(userItem)) {
-                            criteriaMet = true;
-                            break;
-                        }
-                    } catch (e) {
-                        if (userItem === rule) criteriaMet = true;
-                    }
-                }
-                if (criteriaMet) break;
-            }
-        } else if (typeof userValue === 'string') {
+        for (const value of valuesToTest) {
             for (const rule of ruleList) {
                 try {
-                    if (new RegExp('^' + rule + '$', 'i').test(userValue)) {
+                    // Compara usando Regex para flexibilidade
+                    if (new RegExp('^' + rule + '$', 'i').test(value)) {
                         criteriaMet = true;
                         break;
                     }
                 } catch (e) {
-                    if (userValue === rule) criteriaMet = true;
+                    // Fallback para comparação estrita caso a regex seja inválida
+                    if (value === rule) {
+                        criteriaMet = true;
+                        break;
+                    }
                 }
             }
-            if (criteriaMet) {
-                return true;
-            }
+            if (criteriaMet) break;
+        }
+        
+        if (criteriaMet) {
+            return true;
         }
     }
+    
     return false;
 }
 
@@ -79,29 +81,38 @@ export class IntranetAgendaModule {
 
     async init(loadUI = true) {
         console.log("SisPMG+ [Agenda]: Inicializando o módulo.");
-        await this.loadSettings();
-        
         try {
+            await this.loadSettings();
+            
             const token = getCookie('tokiuz');
-            this.userData = decodeJwt(token);
-            this.userNumber = this.userData ? String(this.userData.g) : null;
+            if (token) {
+                this.userData = decodeJwt(token);
+                this.userNumber = this.userData ? String(this.userData.g) : null;
+            } else {
+                throw new Error("Token 'tokiuz' não encontrado.");
+            }
+
+            if (loadUI) {
+                this.injectUI();
+                await this.loadTasks();
+                this.renderTasks();
+
+                if (this.panel) {
+                    this.toggleCollapse(this.panel, false);
+                }
+            }
+            
+            this.observeMessages();
         } catch (e) {
-            this.userNumber = null;
-            console.error("SisPMG+ [Agenda]: Falha ao obter número do usuário na inicialização.", e);
-        }
-
-        if (loadUI) {
-            this.injectUI();
-            await this.loadTasks();
-            this.renderTasks();
-
-            // const isCollapsedFromStorage = localStorage.getItem('sispmg_agenda_collapsed') === 'true'; // Removido: A lista deve sempre iniciar maximizada
+            console.error("SisPMG+ [Agenda]: Ocorreu um erro crítico durante a inicialização do módulo de Agenda.", e);
+            this.loadError = { message: `Erro na inicialização: ${e.message}` };
+            if (loadUI && !this.panel) {
+                this.injectUI(); // Injeta a UI para mostrar a mensagem de erro.
+            }
             if (this.panel) {
-                this.toggleCollapse(this.panel, false); // Força a lista a iniciar maximizada
+                this.renderTasks(); // renderTasks irá mostrar a mensagem de erro.
             }
         }
-        
-        this.observeMessages();
     }
 
     observeMessages() {
@@ -214,7 +225,9 @@ export class IntranetAgendaModule {
                     </button>
                 </div>
             </div>
-            <div id="sispmg-agenda-task-list" class="sispmg-panel-content-wrapper"></div>
+            <div id="sispmg-agenda-task-list" class="sispmg-panel-content-wrapper">
+                <div class="sispmg-loading-indicator">Carregando tarefas...</div>
+            </div>
         `;
         const container = document.getElementById('sispmg-plus-container') || document.body;
         container.appendChild(this.panel);
@@ -618,14 +631,22 @@ export class IntranetAgendaModule {
         const dataHoraString = `${dateInput.value}T${timeValue}:00`;
         
         let autoConfirmarValue = autoConfirmarInput.checked;
-        let autoConfirmarDiasValue = parseInt(autoConfirmarDiasInput.value, 10) || 1;
+        let autoConfirmarDiasValue = parseInt(autoConfirmarDiasInput.value, 10);
 
+        // Força a autoconfirmação se houver regras de abrangência
         if (abrangenciaValue !== '') {
             autoConfirmarValue = true;
-            if (autoConfirmarDiasValue < 1) autoConfirmarDiasValue = 1;
         }
-
-        if (autoConfirmarDiasValue > 15) autoConfirmarDiasValue = 15;
+        
+        if (autoConfirmarValue) {
+            // Se o valor for inválido (NaN) ou menor que 1, usa o padrão 5.
+            autoConfirmarDiasValue = isNaN(autoConfirmarDiasValue) || autoConfirmarDiasValue < 1 ? 5 : autoConfirmarDiasValue;
+            // Garante que o valor não exceda 15.
+            if (autoConfirmarDiasValue > 15) autoConfirmarDiasValue = 15;
+        } else {
+            // Se a autoconfirmação não estiver marcada, o valor dos dias é 0.
+            autoConfirmarDiasValue = 0;
+        }
         
         const eventData = {
             id: taskId || `evt_${Date.now()}`,
@@ -997,10 +1018,21 @@ export class IntranetAgendaModule {
                 const autoConfirmar = row[8] === 'TRUE' || row[8] === 1;
                 const autoConfirmarDias = parseInt(row[9], 10);
                 const creationTimestamp = new Date(row[1]).getTime();
+                const dueDateTimestamp = new Date(row[2]).getTime();
 
+                // Lógica de autoconclusão baseada na data de VENCIMENTO
                 if (!concluida && autoConfirmar && autoConfirmarDias > 0) {
-                    const deadline = creationTimestamp + (autoConfirmarDias * 24 * 60 * 60 * 1000);
-                    if (now >= deadline) {
+                    const dueDate = new Date(dueDateTimestamp); // Usa a data de vencimento (coluna C)
+                    dueDate.setHours(0, 0, 0, 0); 
+
+                    // O prazo final é N dias após a data de vencimento.
+                    const deadline = dueDate.setDate(dueDate.getDate() + autoConfirmarDias);
+
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0); 
+
+                    // A tarefa é autoconcluída se a data de hoje passou o prazo final.
+                    if (today.getTime() >= deadline) {
                         concluida = true;
                     }
                 }
@@ -1008,7 +1040,7 @@ export class IntranetAgendaModule {
                 return {
                     id: row[0],
                     timestamp: creationTimestamp,
-                    'data/hora': new Date(row[2]).getTime(),
+                    'data/hora': dueDateTimestamp,
                     assunto: row[3],
                     concluida: concluida,
                     autor: row[5],

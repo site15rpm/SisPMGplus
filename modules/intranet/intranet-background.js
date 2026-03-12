@@ -90,6 +90,18 @@ export async function handleIntranetMessages(request, sender) {
     const { token, ...restOfPayload } = payload || {};
 
     switch (action) {
+        case 'intranet-user-identified': {
+            try {
+                await browser.storage.local.set({ intranetUser: restOfPayload });
+                if (sender.tab?.id) {
+                    // Sinaliza para a aba de origem que o background está pronto
+                    browser.tabs.sendMessage(sender.tab.id, { action: 'sispmg-ready' });
+                }
+                return { success: true, message: 'User data saved and ready signal sent.' };
+            } catch (e) {
+                return { success: false, error: e.message };
+            }
+        }
         case 'fetchBirthdays': {
             const { mes, unidade, incluirSubunidades } = restOfPayload;
             const url = `https://aniversariantes.policiamilitar.mg.gov.br/backend/aniversariantes/${mes}/${unidade}/${incluirSubunidades}`;
