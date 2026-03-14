@@ -10,16 +10,21 @@ export function initUI(prototype) {
         if (document.getElementById('top-right-ui-container')) return;
         const uiContainer = document.createElement('div');
         uiContainer.id = 'top-right-ui-container';
-        const menuContainer = document.createElement('div');
-        menuContainer.id = 'rotina-menu-container';
-        menuContainer.innerHTML = `
-            <button id="rotina-menu-toggle">${this.iconSVG}</button>
-            <div id="rotina-menu-dropdown" class="hidden">
-                 <div class="rotina-menu-item-static" style="text-align:center; font-weight:bold; color: var(--theme-dark-gold);">Módulo Terminal</div>
-                 <div class="rotina-menu-item-static" style="font-size: 12px; text-align: center; padding: 4px 16px;">Use o popup para configurar</div>
+        
+        uiContainer.innerHTML = `
+            <div class="pre-login-wrapper">
+                <div id="pre-login-alias-badge" class="tab-alias-badge">Aba: ${this.tabAlias || '?'}</div>
+                <div id="rotina-menu-container">
+                    <button id="rotina-menu-toggle">${this.iconSVG}</button>
+                    <div id="rotina-menu-dropdown" class="hidden">
+                        <div class="rotina-menu-item-static menu-title-static">Módulo Terminal</div>
+                        <div class="rotina-menu-item-static menu-subtitle-static">Use o popup para configurar</div>
+                    </div>
+                </div>
             </div>`;
-        uiContainer.appendChild(menuContainer);
         document.body.appendChild(uiContainer);
+        
+        const menuContainer = document.getElementById('rotina-menu-container');
         const dropdown = document.getElementById('rotina-menu-dropdown');
         let hideMenuTimeout;
         menuContainer.addEventListener('mouseenter', () => { clearTimeout(hideMenuTimeout); this.saveCursorPosition(); dropdown.classList.remove('hidden'); });
@@ -37,6 +42,7 @@ export function initUI(prototype) {
         const taskbarContainer = document.createElement('div');
         taskbarContainer.id = 'taskbar-container';
         taskbarContainer.innerHTML = `
+            <div id="full-menu-alias-badge" class="tab-alias-badge">Aba: ${this.tabAlias || '?'}</div>
             <button id="taskbar-copy-btn" class="taskbar-btn" title="Opções de Cópia">📋 Copiar</button>
             <button id="taskbar-paste-btn" class="taskbar-btn" title="Colar da Área de Transferência">📥 Colar</button>
             <button id="taskbar-backtab-btn" class="taskbar-btn" title="BackTab">↩️ BackTab</button>

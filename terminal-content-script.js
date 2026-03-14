@@ -96,6 +96,8 @@ function showContextInvalidatedModal() {
 
 
 // --- PONTE DE COMUNICAÇÃO BIDIRECIONAL ---
+
+// 1. Escuta requisições originadas na Página (MAIN World) e despacha para o Background
 window.addEventListener('message', (event) => {
     if (event.source === window && event.data && event.data.type === 'FROM_APP') {
         const { action, payload, messageId } = event.data;
@@ -120,6 +122,15 @@ window.addEventListener('message', (event) => {
             });
     }
 }, false);
+
+// 2. Escuta comandos originados no Background e despacha para a Página (MAIN World)
+browser.runtime.onMessage.addListener((message, sender) => {
+    if (message && (message.type === 'EXECUTE_ROUTINE' || message.type === 'EXECUTION_RESULT')) {
+        document.dispatchEvent(new CustomEvent('SisPMG+:FromBackground', {
+            detail: message
+        }));
+    }
+});
 
 // --- LÓGICA DE INJEÇÃO ---
 try {
@@ -146,4 +157,3 @@ try {
 } catch (e) {
     console.error('SisPMG+: Falha ao injetar o loader do Terminal.', e);
 }
-

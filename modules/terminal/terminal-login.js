@@ -98,6 +98,7 @@ export function initLogin(prototype) {
                 this.reloginInProgress = false;
                 this.createFullMenu();
                 await this.loadRotinasFromCache();
+                this.isTerminalReadyForRoutines = true;
                 this.resumeScreenMonitoring();
             }
             return true;
@@ -199,6 +200,22 @@ export function initLogin(prototype) {
         const userProfile = profiles[tokenData.g];
         const hasSavedPass = userProfile && userProfile.autoLoginEnabled && userProfile.pass;
         
+        // Verifica se há uma instrução de auto-login recebida do background via Inter-Abas
+        if (this.autoLoginSystem) {
+            const systemTarget = this.autoLoginSystem.toUpperCase();
+            this.autoLoginSystem = null; // Consome a instrução
+
+            if (hasSavedPass) {
+                // Efetua login direto, ocultamente, simulando bypass do modal
+                this.handleSystemSelection(systemTarget, tokenData, userProfile.pass, true);
+                return;
+            } else {
+                // Se não tem senha salva, é obrigado a perguntar
+                this.promptForPasswordAndLogin(systemTarget, tokenData);
+                return;
+            }
+        }
+
         const contentHTML = `
             <div class="modal-header-container">
                 <p class="modal-user-greeting">Usuário: <strong>${tokenData.n}</strong></p>
@@ -367,12 +384,14 @@ export function initLogin(prototype) {
             
             await this.teclar('ENTER');
             
-            await this.localizarTexto("Logon executado com sucesso", { esperar: 10, lancarErro: true }); 
+            await this.localizarTexto("Logon executado com sucesso", { esperar: 20, lancarErro: true }); 
             
             this.isLoggedIn = true;
             this.resumeScreenMonitoring();
             this.createFullMenu(); 
-            this.loadRotinasFromCache();
+            
+            await this.loadRotinasFromCache();
+            this.isTerminalReadyForRoutines = true; // Libera execução Inter-Abas
             
             await this.executePostLoginActions();
             this.exibirNotificacao("Login concluído com sucesso!", true);

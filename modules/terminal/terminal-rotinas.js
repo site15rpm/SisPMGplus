@@ -32,14 +32,14 @@ class RotinaProcessor {
             'teclar', 'digitar', 'clicar', 'esperar', 'posicionar', 'localizarTexto',
             'colar', 'copiar', 'lerTela', 'criarModal', 'executarRotina', 'criarArquivo', 'lerArquivo',
             'excluirArquivo', 'anexarNoArquivo', 'processarLinhas', 'enviarParaPlanilha', 'obterDadosUsuario',
-            'debug' 
+            'executarEmAba', 'retornar', 'debug' 
         ];
         
         let processedCode = this.code;
 
         // Expressão regular que adiciona 'await' a chamadas de função assíncronas que ainda não o possuem.
-        // (?<!await\\s+) é um "negative lookbehind" para não adicionar 'await' se ele já existir.
-        // \\b garante que estamos pegando o nome exato da função, evitando substituições em nomes parciais.
+        // (?<!await\s+) é um "negative lookbehind" para não adicionar 'await' se ele já existir.
+        // \b garante que estamos pegando o nome exato da função, evitando substituições em nomes parciais.
         const regex = new RegExp(`(?<!await\\s+)(${asyncCommandNames.join('|')})\\b\\s*\\(`, 'g');
         processedCode = processedCode.replace(regex, 'await $1(');
 

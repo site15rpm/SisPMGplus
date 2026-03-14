@@ -5,6 +5,26 @@ import { fetchWithKeepAlive } from '../../common/keep-alive.js';
 // Arquivo: Code.gs Rotinas SisPMG+ v2.3
 const API_URL = "https://script.google.com/macros/s/AKfycbzB8NEKd8oDUpiluZOk2VNmcfbLzhUiHNBP9SgBfE1rhRvwRU3jVLvskYjDPjyvpiQe/exec";
 
+// Helper para gerenciar o estado da sessão de forma segura
+const getStorageEngine = () => browser.storage.session || browser.storage.local;
+
+async function getSessionState() {
+    const storage = getStorageEngine();
+    const result = await storage.get(['aliasMap', 'reverseAliasMap', 'nextAliasCode', 'pendingExecutions', 'autoLoginSystems']);
+    return {
+        aliasMap: result.aliasMap || {},
+        reverseAliasMap: result.reverseAliasMap || {},
+        nextAliasCode: result.nextAliasCode || 65, // 65 = 'A'
+        pendingExecutions: result.pendingExecutions || {},
+        autoLoginSystems: result.autoLoginSystems || {}
+    };
+}
+
+async function saveSessionState(state) {
+    const storage = getStorageEngine();
+    await storage.set(state);
+}
+
 async function apiCall(method, params) {
     let url = new URL(API_URL);
     let options = {
@@ -108,6 +128,106 @@ export async function handleTerminalMessages(request, sender) {
                 return { success: false, error: error.message };
             }
         }
+
+        case 'requestAlias': {
+            const state = await getSessionState();
+            const tabId = sender.tab.id;
+            let alias = state.aliasMap[tabId];
+
+            if (!alias) {
+                alias = String.fromCharCode(state.nextAliasCode++);
+                while (state.reverseAliasMap[alias]) {
+                    alias = String.fromCharCode(state.nextAliasCode++);
+                }
+                state.aliasMap[tabId] = alias;
+                state.reverseAliasMap[alias] = tabId;
+            }
+
+            // Verifica se há instrução de auto-login vinculada a esta aba/alias
+            const autoLoginSystem = state.autoLoginSystems[alias] || null;
+            if (autoLoginSystem) {
+                delete state.autoLoginSystems[alias]; // Consome a instrução
+            }
+            
+            await saveSessionState(state);
+
+            console.log(`SisPMG+ [Background]: Alias ${alias} atribuído à aba ${tabId}`);
+
+            if (state.pendingExecutions[alias] && state.pendingExecutions[alias].length > 0) {
+                const msgs = state.pendingExecutions[alias];
+                delete state.pendingExecutions[alias];
+                await saveSessionState(state);
+                
+                setTimeout(() => {
+                    msgs.forEach(msg => {
+                        console.log(`SisPMG+ [Background]: Entregando mensagem pendente para a aba ${alias}`);
+                        browser.tabs.sendMessage(tabId, msg).catch(e => console.error(e));
+                    });
+                }, 1500);
+            }
+
+            // Envia o autoLoginSystem junto com o alias
+            return { success: true, alias, autoLoginSystem };
+        }
+
+        case 'executeInTab': {
+            const { targetAlias, sourceAlias, routineName, customCode, messageId, targetSystem } = payload;
+            const state = await getSessionState();
+            let targetTabId = state.reverseAliasMap[targetAlias];
+
+            // Payload que será injetado na aba de destino agora contém customCode se fornecido.
+            const executeMsg = { type: 'EXECUTE_ROUTINE', routineName, customCode, sourceAlias, messageId, targetAlias };
+
+            if (targetTabId) {
+                try {
+                    await browser.tabs.get(targetTabId);
+                    browser.tabs.sendMessage(targetTabId, executeMsg).catch(e => console.error(e));
+                    console.log(`SisPMG+ [Background]: Encaminhando execução '${routineName}' para aba existente [${targetAlias}]`);
+                    return { success: true, status: 'sent' };
+                } catch(e) {
+                    delete state.aliasMap[targetTabId];
+                    delete state.reverseAliasMap[targetAlias];
+                    targetTabId = null;
+                }
+            }
+
+            if (!targetTabId) {
+                console.log(`SisPMG+ [Background]: Aba de destino [${targetAlias}] não existe. Criando nova aba...`);
+                
+                // Registra instrução de auto-login para quando a aba nascer
+                if (targetSystem) {
+                    state.autoLoginSystems[targetAlias] = targetSystem;
+                }
+
+                const newTab = await browser.tabs.create({ url: 'https://terminal.policiamilitar.mg.gov.br' });
+                
+                state.aliasMap[newTab.id] = targetAlias;
+                state.reverseAliasMap[targetAlias] = newTab.id;
+
+                if (!state.pendingExecutions[targetAlias]) {
+                    state.pendingExecutions[targetAlias] = [];
+                }
+                state.pendingExecutions[targetAlias].push(executeMsg);
+
+                await saveSessionState(state);
+                return { success: true, status: 'queued_and_tab_created' };
+            }
+            break;
+        }
+
+        case 'relayExecutionResult': {
+            const { targetAlias, messageId, result } = payload;
+            const state = await getSessionState();
+            const targetTabId = state.reverseAliasMap[targetAlias];
+            
+            if (targetTabId) {
+                console.log(`SisPMG+ [Background]: Retornando resultado da execução para a aba [${targetAlias}]`);
+                browser.tabs.sendMessage(targetTabId, { type: 'EXECUTION_RESULT', messageId, result }).catch(e => console.error(e));
+                return { success: true };
+            } else {
+                return { success: false, error: `Aba de origem [${targetAlias}] não encontrada ou foi fechada.` };
+            }
+        }
     }
 }
 
@@ -148,5 +268,26 @@ export function initializeTerminalBackground() {
             });
         }
     });
-}
 
+    // --- LIMPEZA DE ALIAS AO FECHAR ABA ---
+    browser.tabs.onRemoved.addListener(async (tabId) => {
+        try {
+            const storage = getStorageEngine();
+            const result = await storage.get(['aliasMap', 'reverseAliasMap', 'autoLoginSystems']);
+            const aliasMap = result.aliasMap || {};
+            const reverseAliasMap = result.reverseAliasMap || {};
+            const autoLoginSystems = result.autoLoginSystems || {};
+
+            if (aliasMap[tabId]) {
+                const alias = aliasMap[tabId];
+                console.log(`SisPMG+ [Background]: Aba fechada. Removendo alias [${alias}]`);
+                delete reverseAliasMap[alias];
+                delete aliasMap[tabId];
+                if (autoLoginSystems[alias]) delete autoLoginSystems[alias];
+                await storage.set({ aliasMap, reverseAliasMap, autoLoginSystems });
+            }
+        } catch (error) {
+            console.error('SisPMG+ [Background]: Erro ao limpar alias da aba fechada.', error);
+        }
+    });
+}

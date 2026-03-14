@@ -65,6 +65,12 @@ input:checked + .slider:before { transform: translateX(22px); }
     align-items: flex-start;
 }
 
+/* Alinhamento flexível para a interface de Pré-Login */
+.pre-login-wrapper {
+    display: flex;
+    align-items: center;
+}
+
 #top-right-ui-container.is-recording #vertical-taskbar {
     outline: 2px solid var(--theme-danger);
     border-radius: 5px;
@@ -125,6 +131,29 @@ input:checked + .slider:before { transform: translateX(22px); }
 .taskbar-btn { background-color: var(--theme-light-gold); border: 1px solid var(--theme-dark-gold); color: var(--theme-dark-gold); font-weight: bold; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; display: flex; align-items: center; gap: 5px;}
 .taskbar-btn:hover { background-color: var(--theme-pastel-bg); border-color: var(--theme-dark-gold); }
 
+/* --- Badges de Alias de Aba --- */
+.tab-alias-badge {
+    font-size: 13px;
+    background-color: #2c3e50;
+    color: #fff;
+    padding: 4px 8px;
+    border-radius: 4px;
+    margin-right: 8px;
+    font-weight: bold;
+    border: 1px solid #1a252f;
+    display: inline-flex;
+}
+
+/* Integração do Badge na Taskbar do Menu Completo (Imitando .taskbar-btn) */
+#full-menu-alias-badge {
+    background-color: transparent;
+    border: transparent;
+    color: #fff;
+    padding: 5px 10px;
+    font-size: 12px;
+    margin-right: 5px;
+    cursor: default; /* Mantém como indicador visual estático */
+}
 
 /* Menu Principal Flutuante */
 #rotina-menu-container { position: relative; background-color: var(--theme-dark-gold); padding: 5px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); height: 40px;}
@@ -138,6 +167,19 @@ input:checked + .slider:before { transform: translateX(22px); }
 .rotina-submenu { position: absolute; top: 0; right: 100%; margin-right: 1px; background-color: var(--theme-pastel-bg-light); min-width: 220px; box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2); z-index: 2; border-radius: 5px; padding: 8px 0; border: 1px solid var(--theme-border); }
 .rotina-menu-separator { height: 1px; background-color: var(--theme-border); margin: 8px 0; }
 .rotina-menu-item, .rotina-menu-item-static { padding: 8px 16px; display: block; border: none; background: none; width: 100%; text-align: left; cursor: pointer; font-size: 14px; color: var(--theme-text-dark); white-space: nowrap; /* Impede a quebra de linha */ }
+
+/* Auxiliares Estáticos do Menu */
+.menu-title-static {
+    text-align: center;
+    font-weight: bold;
+    color: var(--theme-dark-gold);
+}
+.menu-subtitle-static {
+    font-size: 12px;
+    text-align: center;
+    padding: 4px 16px;
+}
+
 .rotina-menu-item:hover { background-color: var(--theme-pastel-bg); }
 .rotina-menu-item-container { display: flex; align-items: center; }
 .rotina-menu-item-container .rotina-exec-btn { flex-grow: 1; overflow: hidden; text-overflow: ellipsis;}
@@ -314,6 +356,10 @@ input:checked + .slider:before { transform: translateX(22px); }
 }
 .context-menu-item:hover {
     background-color: var(--theme-pastel-bg);
+}
+.context-menu-item.disabled {
+    opacity: 0.5;
+    pointer-events: none;
 }
 .context-menu-item i {
     margin-right: 12px;

@@ -16,6 +16,14 @@ export class TerminalModule {
         this.iconSVG = config.iconSVG; // Ícone recebido do loader
         this.rotinas = { public: {}, user: {} };
         this.messageCallbacks = new Map();
+        
+        // Estado de Comunicação Inter-Abas
+        this.tabAlias = null;
+        this.pendingCrossTabExecutions = new Map();
+        this.executionReturnValue = undefined; // Valor a ser retornado bidirecionalmente
+        this.autoLoginSystem = null; // Instrução de auto-login recebida do background
+        this.isTerminalReadyForRoutines = false; // Flag crucial para roteamento seguro
+
         this.userPM = null;
         this.isLoggedIn = false;
         this.loginFlowActive = false;
@@ -77,8 +85,25 @@ export class TerminalModule {
     }
 
     async init() {
+        // Solicita e inicializa o Alias desta aba para roteamento de comandos
+        const response = await this.sendMessagePromise('requestAlias');
+        if (response && response.success) {
+            this.tabAlias = response.alias;
+            // Se o background informou que esta aba nasceu para abrir um sistema específico
+            if (response.autoLoginSystem) {
+                this.autoLoginSystem = response.autoLoginSystem;
+            }
+            console.log(`SisPMG+ [Terminal]: Alias inter-abas registrado: [${this.tabAlias}]`);
+            this.updateAliasBadge();
+        }
+
         this.createPreLoginUI();
         this.startGlobalScreenMonitor();
+    }
+
+    updateAliasBadge() {
+        const badges = document.querySelectorAll('.tab-alias-badge');
+        badges.forEach(badge => badge.textContent = `Aba: ${this.tabAlias || '?'}`);
     }
     
     startGlobalScreenMonitor() {
@@ -157,6 +182,7 @@ export class TerminalModule {
                 this.reloginInProgress = false;
                 this.createFullMenu();
                 await this.loadRotinasFromCache();
+                this.isTerminalReadyForRoutines = true; // Libera execuções pendentes Inter-Abas
                 this._startKeepAlive();
                 this.resumeScreenMonitoring();
             }
@@ -165,7 +191,6 @@ export class TerminalModule {
 
         const fullScreenText = this.getFullScreenText(true);
 
-        // ### INÍCIO DA MODIFICAÇÃO: Verificação de Senha Incorreta separada ###
         const senhaIncorretaPattern = /senha incorreta/i;
         if (senhaIncorretaPattern.test(fullScreenText)) {
             this._stopKeepAlive();
@@ -173,12 +198,10 @@ export class TerminalModule {
             setTimeout(() => this.reloadPage(), 3000);
             return;
         }
-        // ### FIM DA MODIFICAÇÃO ###
 
         const reloadPatterns = [
             /conex.*com o mainframe encerrada/i,
             /press.*to reconnect/i
-            // 'senha incorreta' foi movida para cima
         ];
         
         for (const pattern of reloadPatterns) {
@@ -243,12 +266,63 @@ export class TerminalModule {
         this.processScreenState();
     }
 
+    async waitForSystemReady() {
+        // Trava a execução Inter-Abas até o ambiente estar logado e rotinas carregadas
+        while (!this.isTerminalReadyForRoutines) {
+            await new Promise(resolve => setTimeout(resolve, 250));
+        }
+    }
+
     setupResponseListener() {
+        // Responses geradas por requisições locais (getStorage, etc)
         document.addEventListener('SisPMG+:Response', (event) => {
             const { response, messageId } = event.detail;
             if (this.messageCallbacks.has(messageId)) {
                 this.messageCallbacks.get(messageId)(response);
                 this.messageCallbacks.delete(messageId);
+            }
+        });
+
+        // Comandos roteados do background (Inter-Abas)
+        document.addEventListener('SisPMG+:FromBackground', (event) => {
+            const message = event.detail;
+
+            if (message.type === 'EXECUTE_ROUTINE') {
+                console.log(`SisPMG+ [Terminal]: Recebida requisição da aba [${message.sourceAlias}] para rotina '${message.routineName}'. Aguardando terminal ficar pronto...`);
+                
+                // Impede falha por acionamento precoce em abas recém-criadas
+                this.waitForSystemReady().then(async () => {
+                    console.log(`SisPMG+ [Terminal]: Sistema pronto. Executando rotina '${message.routineName}'.`);
+                    this.executionReturnValue = undefined; // Reseta o valor de retorno
+
+                    try {
+                        // Executa a rotina internamente sem test mode e sem auto-run.
+                        // Passamos o message.customCode se o usuário invocou passando o código puro.
+                        await this.executarRotina(message.routineName, false, message.customCode || null, false);
+                        
+                        // Notifica sucesso de volta para o Background rotear, incluindo dados caso o usuário tenha chamado retornar()
+                        this.sendMessage('relayExecutionResult', {
+                            targetAlias: message.sourceAlias,
+                            messageId: message.messageId,
+                            result: { success: true, data: this.executionReturnValue }
+                        });
+                    } catch (error) {
+                        // Notifica erro
+                        this.sendMessage('relayExecutionResult', {
+                            targetAlias: message.sourceAlias,
+                            messageId: message.messageId,
+                            result: { success: false, error: error.message }
+                        });
+                    }
+                });
+
+            } else if (message.type === 'EXECUTION_RESULT') {
+                // Resolve a Promise local do executarEmAba
+                const resolver = this.pendingCrossTabExecutions.get(message.messageId);
+                if (resolver) {
+                    resolver(message.result);
+                    this.pendingCrossTabExecutions.delete(message.messageId);
+                }
             }
         });
     }
@@ -259,12 +333,16 @@ export class TerminalModule {
         window.postMessage({ type: 'FROM_APP', action, payload, messageId }, '*');
     }
 
+    sendMessagePromise(action, payload = {}) {
+        return new Promise(resolve => this.sendMessage(action, payload, resolve));
+    }
+
     getStorage(keys) {
-        return new Promise(resolve => this.sendMessage('getStorage', { key: keys }, r => resolve(r.success ? r.value : {})));
+        return this.sendMessagePromise('getStorage', { key: keys }).then(r => r.success ? r.value : {});
     }
     
     setStorage(dataObject) {
-        return new Promise(resolve => this.sendMessage('setStorage', dataObject, r => resolve(r.success)));
+        return this.sendMessagePromise('setStorage', dataObject).then(r => r.success);
     }
     
     reloadPage() {

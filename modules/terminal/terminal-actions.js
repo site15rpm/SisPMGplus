@@ -702,6 +702,56 @@ export function initActions(prototype) {
         };
     };
     
+    // --- LÓGICA INTER-ABAS ---
+    prototype.executarEmAba = function(aliasDestino, rotinaTarget, sistemaDestino = null) {
+        return new Promise(async (resolve, reject) => {
+            await this._checkRotinaState();
+
+            if (!this.tabAlias) {
+                return reject(new Error("Alias de roteamento desta aba não está definido."));
+            }
+
+            const messageId = Date.now() + Math.random();
+
+            this.pendingCrossTabExecutions.set(messageId, (result) => {
+                if (result.success) {
+                    resolve(result.data); // Resolve a Promise com os dados devolvidos (se houver)
+                } else {
+                    reject(new Error(`Erro ao executar rotina na aba [${aliasDestino}]: ${result.error}`));
+                }
+            });
+
+            let routineName = rotinaTarget;
+            let customCode = null;
+
+            // Heurística de Injeção de Código: Se a string contiver caracteres comuns de instrução JS
+            // (quebra de linha, ponto e vírgula ou abertura de parênteses), assumimos que é código puro e não um nome de arquivo.
+            if (rotinaTarget && (rotinaTarget.includes('\n') || rotinaTarget.includes(';') || rotinaTarget.includes('()'))) {
+                routineName = "Rotina_Dinamica_Remota";
+                customCode = rotinaTarget;
+            }
+
+            // Herança de Sistema: Se nenhum sistema for especificado, assume o da aba atual.
+            const systemTarget = sistemaDestino || this.selectedSystemName;
+
+            console.log(`SisPMG+ [Terminal]: Solicitando execução na aba [${aliasDestino}] (Sistema Alvo: ${systemTarget || 'Nenhum'})`);
+            
+            this.sendMessage('executeInTab', {
+                targetAlias: aliasDestino,
+                sourceAlias: this.tabAlias,
+                routineName: routineName,
+                customCode: customCode,
+                messageId: messageId,
+                targetSystem: systemTarget
+            });
+        });
+    };
+
+    // Permite que uma rotina retorne dados para quem a chamou via executarEmAba
+    prototype.retornar = function(valor) {
+        this.executionReturnValue = valor;
+    };
+
     prototype.debug = function(...args) {
         console.log('[DEBUG ROTINA]', ...args);
     
