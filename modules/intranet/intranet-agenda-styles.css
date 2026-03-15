@@ -122,6 +122,11 @@
     opacity: 1 !important; /* Visible on task hover */
 }
 
+/* Especificamente para a lista de tarefas arquivadas onde hover é ruim com scroll */
+.sispmg-archived-list .sispmg-task-actions-wrapper {
+    opacity: 1 !important;
+}
+
 /* Specific button styles, now applied to direct buttons within wrapper */
 .sispmg-task-actions-wrapper button { /* Adjust selector if needed */
     all: unset; /* Reset default button styles */
@@ -367,14 +372,24 @@
     border-color: #bd2130 !important;
 }
 
-@keyframes blink {
+@keyframes blink-border {
     0% { border-left-color: #ff0000; }
     50% { border-left-color: transparent; }
     100% { border-left-color: #ff0000; }
 }
 
+@keyframes blink-opacity {
+    0% { opacity: 1; }
+    50% { opacity: 0; }
+    100% { opacity: 1; }
+}
+
 .blinking-border {
-    animation: blink 1.5s infinite !important;
+    animation: blink-border 1.5s infinite !important;
+}
+
+.sispmg-agenda-legend-indicator.blinking-border {
+    animation: blink-opacity 1.5s infinite !important;
 }
 
 .sispmg-alert-modal-backdrop {
@@ -398,6 +413,9 @@
     box-shadow: 0 5px 15px rgba(0,0,0,0.3) !important;
     width: 90% !important;
     max-width: 500px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    max-height: 90vh !important;
 }
 
 .sispmg-task-detail-modal {
@@ -412,17 +430,25 @@
     flex-grow: 1 !important;
 }
 
+.sispmg-modal-body-content {
+    flex-grow: 1 !important;
+    overflow-y: auto !important;
+    margin-bottom: 20px !important;
+    padding-right: 5px !important; /* espaço para o scroll */
+}
+
 .sispmg-alert-modal-content h4 {
     color: var(--agenda-header-text) !important;
     margin-top: 0 !important;
     margin-bottom: 15px !important;
     text-align: center;
+    flex-shrink: 0 !important;
 }
 
 .sispmg-alert-modal-content p {
     color: #333 !important;
     font-size: 15px !important;
-    margin-bottom: 20px !important;
+    margin-bottom: 10px !important;
     text-align: left !important;
     word-wrap: break-word !important;
 }
@@ -490,12 +516,11 @@
     display: flex !important;
     justify-content: space-between !important;
     align-items: center !important;
-    position: sticky !important;
-    bottom: 0 !important;
     background-color: var(--agenda-bg) !important;
     z-index: 10 !important;
     width: 100% !important;
     margin-top: 0 !important;
+    flex-shrink: 0 !important;
 }
 
 .sispmg-agenda-modal-container .sispmg-modal-action-buttons,
@@ -693,6 +718,7 @@
     text-align: left !important;
     font-size: 0.9em !important;
     color: #333 !important;
+    flex-shrink: 0 !important;
 }
 
 .sispmg-agenda-legend-item {
@@ -711,4 +737,17 @@
     border-left-width: 5px !important;
     border-left-style: solid !important;
     margin-right: 10px !important;
+}
+
+/* Arquivo de Tarefas */
+.sispmg-archived-tasks-section {
+    display: flex !important;
+    flex-direction: column !important;
+    margin-top: 25px !important;
+}
+
+.sispmg-archived-list {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 5px !important;
 }
