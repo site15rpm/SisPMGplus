@@ -703,12 +703,18 @@ export function initActions(prototype) {
     };
     
     // --- LÓGICA INTER-ABAS ---
-    prototype.executarEmAba = function(aliasDestino, rotinaTarget, sistemaDestino = null) {
+    prototype.executarRotinaEm = function(rotinaOuCodigo, aliasDestino = null, sistemaDestino = null) {
         return new Promise(async (resolve, reject) => {
             await this._checkRotinaState();
 
             if (!this.tabAlias) {
                 return reject(new Error("Alias de roteamento desta aba não está definido."));
+            }
+
+            // Lógica de nova aba: Se nenhum alias for especificado, cria um identificador temporário para forçar o background a abrir uma nova aba.
+            let finalAliasDestino = aliasDestino;
+            if (!finalAliasDestino) {
+                finalAliasDestino = 'T_' + Math.floor(1000 + Math.random() * 9000);
             }
 
             const messageId = Date.now() + Math.random();
@@ -717,27 +723,27 @@ export function initActions(prototype) {
                 if (result.success) {
                     resolve(result.data); // Resolve a Promise com os dados devolvidos (se houver)
                 } else {
-                    reject(new Error(`Erro ao executar rotina na aba [${aliasDestino}]: ${result.error}`));
+                    reject(new Error(`Erro ao executar rotina na aba [${finalAliasDestino}]: ${result.error}`));
                 }
             });
 
-            let routineName = rotinaTarget;
+            let routineName = rotinaOuCodigo;
             let customCode = null;
 
             // Heurística de Injeção de Código: Se a string contiver caracteres comuns de instrução JS
             // (quebra de linha, ponto e vírgula ou abertura de parênteses), assumimos que é código puro e não um nome de arquivo.
-            if (rotinaTarget && (rotinaTarget.includes('\n') || rotinaTarget.includes(';') || rotinaTarget.includes('()'))) {
+            if (rotinaOuCodigo && (rotinaOuCodigo.includes('\n') || rotinaOuCodigo.includes(';') || rotinaOuCodigo.includes('()'))) {
                 routineName = "Rotina_Dinamica_Remota";
-                customCode = rotinaTarget;
+                customCode = rotinaOuCodigo;
             }
 
             // Herança de Sistema: Se nenhum sistema for especificado, assume o da aba atual.
             const systemTarget = sistemaDestino || this.selectedSystemName;
 
-            console.log(`SisPMG+ [Terminal]: Solicitando execução na aba [${aliasDestino}] (Sistema Alvo: ${systemTarget || 'Nenhum'})`);
+            console.log(`SisPMG+ [Terminal]: Solicitando execução na aba [${finalAliasDestino}] (Sistema Alvo: ${systemTarget || 'Nenhum'})`);
             
             this.sendMessage('executeInTab', {
-                targetAlias: aliasDestino,
+                targetAlias: finalAliasDestino,
                 sourceAlias: this.tabAlias,
                 routineName: routineName,
                 customCode: customCode,
@@ -747,9 +753,40 @@ export function initActions(prototype) {
         });
     };
 
-    // Permite que uma rotina retorne dados para quem a chamou via executarEmAba
+    // Permite que uma rotina retorne dados para quem a chamou via executarRotinaEm
     prototype.retornar = function(valor) {
         this.executionReturnValue = valor;
+    };
+
+    // Fechar Abas
+    prototype.fechar = async function(aliasDestino = null) {
+        await this._checkRotinaState();
+        
+        if (aliasDestino) {
+            this.exibirNotificacao(`Solicitando fechamento da aba [${aliasDestino}]...`, true);
+            const response = await new Promise(resolve => this.sendMessage('closeTab', { targetAlias: aliasDestino }, resolve));
+            
+            if (response && !response.success) {
+                 this.exibirNotificacao(`Falha ao fechar aba: ${response.error}`, false);
+                 throw new Error(`Falha ao fechar aba: ${response.error}`);
+            }
+        } else {
+            if (this.isRemoteExecution) {
+                this.exibirNotificacao(`Fechamento da aba agendado para o fim da execução remota...`, true);
+                this.closeRequestedDuringRemote = true;
+            } else {
+                this.exibirNotificacao(`Fechando aba atual...`, true);
+                const response = await new Promise(resolve => this.sendMessage('closeTab', { targetAlias: null }, resolve));
+                
+                if (response && !response.success) {
+                     this.exibirNotificacao(`Falha ao fechar aba: ${response.error}`, false);
+                     throw new Error(`Falha ao fechar aba: ${response.error}`);
+                }
+            }
+        }
+        
+        // Se fechar a aba atual, o script morre com ela.
+        // Se fechar outra aba, o script segue.
     };
 
     prototype.debug = function(...args) {

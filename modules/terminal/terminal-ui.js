@@ -13,7 +13,7 @@ export function initUI(prototype) {
         
         uiContainer.innerHTML = `
             <div class="pre-login-wrapper">
-                <div id="pre-login-alias-badge" class="tab-alias-badge">Aba: ${this.tabAlias || '?'}</div>
+                <div id="pre-login-alias-badge" class="tab-alias-badge">${this.tabAlias || 'T?'}</div>
                 <div id="rotina-menu-container">
                     <button id="rotina-menu-toggle">${this.iconSVG}</button>
                     <div id="rotina-menu-dropdown" class="hidden">
@@ -42,7 +42,7 @@ export function initUI(prototype) {
         const taskbarContainer = document.createElement('div');
         taskbarContainer.id = 'taskbar-container';
         taskbarContainer.innerHTML = `
-            <div id="full-menu-alias-badge" class="tab-alias-badge">Aba: ${this.tabAlias || '?'}</div>
+            <div id="full-menu-alias-badge" class="tab-alias-badge">${this.tabAlias || 'T?'}</div>
             <button id="taskbar-copy-btn" class="taskbar-btn" title="Opções de Cópia">📋 Copiar</button>
             <button id="taskbar-paste-btn" class="taskbar-btn" title="Colar da Área de Transferência">📥 Colar</button>
             <button id="taskbar-backtab-btn" class="taskbar-btn" title="BackTab">↩️ BackTab</button>

@@ -23,6 +23,8 @@ export class TerminalModule {
         this.executionReturnValue = undefined; // Valor a ser retornado bidirecionalmente
         this.autoLoginSystem = null; // Instrução de auto-login recebida do background
         this.isTerminalReadyForRoutines = false; // Flag crucial para roteamento seguro
+        this.isRemoteExecution = false; // Indica se a rotina atual foi acionada remotamente
+        this.closeRequestedDuringRemote = false; // Flag para adiar fechamento da aba
 
         this.userPM = null;
         this.isLoggedIn = false;
@@ -103,7 +105,7 @@ export class TerminalModule {
 
     updateAliasBadge() {
         const badges = document.querySelectorAll('.tab-alias-badge');
-        badges.forEach(badge => badge.textContent = `Aba: ${this.tabAlias || '?'}`);
+        badges.forEach(badge => badge.textContent = this.tabAlias || 'T?');
     }
     
     startGlobalScreenMonitor() {
@@ -294,30 +296,38 @@ export class TerminalModule {
                 this.waitForSystemReady().then(async () => {
                     console.log(`SisPMG+ [Terminal]: Sistema pronto. Executando rotina '${message.routineName}'.`);
                     this.executionReturnValue = undefined; // Reseta o valor de retorno
+                    this.isRemoteExecution = true;
+                    this.closeRequestedDuringRemote = false;
 
                     try {
-                        // Executa a rotina internamente sem test mode e sem auto-run.
-                        // Passamos o message.customCode se o usuário invocou passando o código puro.
-                        await this.executarRotina(message.routineName, false, message.customCode || null, false);
+                        // Executa a rotina internamente passando o customCode (se existir). 
+                        // CÓDIGO CORRIGIDO AQUI: message.routineName é o nome ('Rotina_Dinamica_Remota' ou o caminho), message.customCode é o script literal puro.
+                        await this.executarRotina(message.routineName, false, message.customCode, false);
                         
                         // Notifica sucesso de volta para o Background rotear, incluindo dados caso o usuário tenha chamado retornar()
-                        this.sendMessage('relayExecutionResult', {
+                        await this.sendMessagePromise('relayExecutionResult', {
                             targetAlias: message.sourceAlias,
                             messageId: message.messageId,
                             result: { success: true, data: this.executionReturnValue }
                         });
                     } catch (error) {
                         // Notifica erro
-                        this.sendMessage('relayExecutionResult', {
+                        await this.sendMessagePromise('relayExecutionResult', {
                             targetAlias: message.sourceAlias,
                             messageId: message.messageId,
                             result: { success: false, error: error.message }
                         });
+                    } finally {
+                        this.isRemoteExecution = false;
+                        if (this.closeRequestedDuringRemote) {
+                            this.closeRequestedDuringRemote = false;
+                            this.sendMessage('closeTab', { targetAlias: null });
+                        }
                     }
                 });
 
             } else if (message.type === 'EXECUTION_RESULT') {
-                // Resolve a Promise local do executarEmAba
+                // Resolve a Promise local do roteamento Inter-Abas
                 const resolver = this.pendingCrossTabExecutions.get(message.messageId);
                 if (resolver) {
                     resolver(message.result);

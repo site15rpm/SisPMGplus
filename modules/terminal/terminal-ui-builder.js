@@ -198,35 +198,46 @@ export class UiBuilder {
         return [
             // Categoria: Comunicação Avançada (Inter-Abas)
             {
-                type: 'executar-aba', title: 'executarEmAba(aliasDestino, rotinaOuCodigo, sistema)', category: 'Comunicação Avançada', icon: 'fa-solid fa-network-wired',
-                description: 'Envia um comando para outra aba (identificada pelo Alias, ex: "B", "C"). Pode executar uma rotina já salva ou injetar código puro dinamicamente. Se a aba de destino não existir, ela será criada e logada automaticamente. A rotina atual ficará pausada até receber o retorno.',
+                type: 'executar-em', title: 'executarRotinaEm(rotinaOuCodigo, aliasDestino, sistema)', category: 'Comunicação Avançada', icon: 'fa-solid fa-network-wired',
+                description: 'Executa uma rotina ou código em outra aba. Se nenhum alias for informado, abre uma nova aba. A aba de destino fará login automático no sistema da aba atual ou no sistema especificado. A rotina atual ficará pausada aguardando o retorno.',
                 args: [
-                    { name: 'aliasDestino', type: 'string', description: 'A letra da aba de destino (ex: "B").', optional: false },
                     { name: 'rotinaOuCodigo', type: 'string', description: 'O caminho de uma rotina salva OU um bloco de código JavaScript válido e literal.', optional: false },
-                    { name: 'sistema', type: 'string', description: 'A sigla do sistema para auto-login se a aba for criada agora (ex: "BPM", "SIRH"). Se omitido, ela herdará o sistema em que a aba atual está logada.', optional: true }
+                    { name: 'aliasDestino', type: 'string', description: 'A identificação da aba de destino (ex: "B"). Se omitido, cria uma nova aba autônoma.', optional: true },
+                    { name: 'sistema', type: 'string', description: 'A sigla do sistema para auto-login (ex: "BPM", "SIRH"). Se omitido, herda o sistema da aba atual.', optional: true }
                 ],
                 examples: [
                     {
-                        description: 'Execução Básica: Chamar uma rotina já salva na Aba B e aguardar seu término.',
-                        code: 'exibirNotificacao("Chamando a Aba B...", true, 2);\nconst resultado = executarEmAba("B", "Utilitarios/Extrair_Dados");\nexibirNotificacao("Aba B terminou. Retorno: " + resultado);'
+                        description: 'Nova Aba (Mais simples): Abre uma nova aba, faz login no sistema atual e executa a rotina.',
+                        code: 'exibirNotificacao("Abrindo nova aba...");\nconst resultado = executarRotinaEm("Utilitarios/Extrair_Dados");\nexibirNotificacao("Retorno da nova aba: " + resultado);'
                     },
                     {
-                        description: 'Injeção Dinâmica: Enviar código puro para a Aba B executar, forçando auto-login no BPM caso a aba B esteja fechada.',
-                        code: 'const codigoRemoto = `\n    exibirNotificacao("Aba B: Iniciando captura...");\n    esperar(1);\n    const linhaDados = obterTextoLinha(5);\n    retornar(linhaDados);\n`;\n\nconst retornoDaAbaB = executarEmAba("B", codigoRemoto, "BPM");\ndebug("Capturado via Injeção na Aba B:", retornoDaAbaB);'
+                        description: 'Aba Específica (Alias): Executa uma rotina na aba identificada como "B".',
+                        code: 'const resultado = executarRotinaEm("Utilitarios/Extrair_Dados", "B");\nexibirNotificacao("Aba B terminou. Retorno: " + resultado);'
                     },
                     {
-                        description: 'Comunicação em Cadeia (A -> B -> C): A Aba A aciona a B, que aciona a C. O resultado volta em cascata.',
-                        code: '// Este bloco de código vai rodar na Aba B\nconst codigoAbaB = `\n    exibirNotificacao("Aba B acionada. Repassando comando para Aba C...");\n    \n    // O código que a Aba B mandará a Aba C executar\n    const codigoAbaC = "esperar(1); retornar(\\"Dados Ultrassecretos da Aba C\\");";\n    \n    // A Aba B chama a C e fica aguardando...\n    const respostaC = executarEmAba("C", codigoAbaC);\n    \n    // A Aba B devolve a resposta recebida da C, de volta para a A\n    retornar("Repassado por B: " + respostaC);\n`;\n\n// A Aba A inicia a cadeia chamando a Aba B\nexibirNotificacao("Aba A: Iniciando o efeito dominó...", true);\nconst resultadoFinal = executarEmAba("B", codigoAbaB);\n\n// O resultado final chega na Aba A e é exibido\ncriarModal({ title: "Cascata Concluída", elements: [{ type: "title", text: resultadoFinal }] });'
+                        description: 'Injeção Dinâmica + Sistema: Envia código puro para a Aba B, forçando login no BPM.',
+                        code: 'const codigoRemoto = `\n    exibirNotificacao("Aba B: Iniciando captura...");\n    esperar(1);\n    const linhaDados = obterTextoLinha(5);\n    retornar(linhaDados);\n`;\n\nconst retornoDaAbaB = executarRotinaEm(codigoRemoto, "B", "BPM");\ndebug("Capturado via Injeção na Aba B:", retornoDaAbaB);'
                     }
                 ]
             },
             {
                 type: 'retornar', title: 'retornar(valor)', category: 'Comunicação Avançada', icon: 'fa-solid fa-reply-all',
-                description: 'Envia um dado (texto, número, array ou objeto) de volta para a aba que acionou esta rotina remotamente. É projetada para funcionar em conjunto com a função `executarEmAba()`.',
+                description: 'Envia um dado (texto, número, array ou objeto) de volta para a aba que acionou esta rotina remotamente. É projetada para funcionar em conjunto com a função `executarRotinaEm()`.',
                 args: [{ name: 'valor', type: 'any', description: 'O dado que será retornado para resolver a Promise na aba de origem.', optional: false }],
                 examples: [
                     { description: 'Retornar um texto fixo atestando o sucesso da execução remota.', code: 'retornar("PROCESSO_CONCLUIDO_COM_SUCESSO");' },
                     { description: 'Capturar o texto de uma linha específica e retornar para a origem.', code: 'const numProtocolo = obterTextoLinha(5);\nretornar(numProtocolo);' }
+                ]
+            },
+            {
+                type: 'fechar', title: 'fechar(aliasDestino)', category: 'Comunicação Avançada', icon: 'fa-solid fa-rectangle-xmark',
+                description: 'Fecha uma aba do terminal. Se chamada sem argumentos, fecha a aba atual (interrompendo o script). Se um alias for fornecido (ex: "B"), fecha a aba correspondente remotamente.',
+                args: [
+                    { name: 'aliasDestino', type: 'string', description: 'A letra/alias da aba a ser fechada (ex: "B"). Se omitido, fecha a própria aba em execução.', optional: true }
+                ],
+                examples: [
+                    { description: 'Fechar a aba atual após concluir uma tarefa em cascata.', code: 'exibirNotificacao("Finalizando este nó...");\nfechar();' },
+                    { description: 'Fechar a Aba B após extrair os dados necessários dela.', code: 'fechar("B");\nexibirNotificacao("Aba B encerrada com sucesso.");' }
                 ]
             },
 

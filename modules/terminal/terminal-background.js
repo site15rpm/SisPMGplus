@@ -10,11 +10,11 @@ const getStorageEngine = () => browser.storage.session || browser.storage.local;
 
 async function getSessionState() {
     const storage = getStorageEngine();
-    const result = await storage.get(['aliasMap', 'reverseAliasMap', 'nextAliasCode', 'pendingExecutions', 'autoLoginSystems']);
+    const result = await storage.get(['aliasMap', 'reverseAliasMap', 'nextAliasIndex', 'pendingExecutions', 'autoLoginSystems']);
     return {
         aliasMap: result.aliasMap || {},
         reverseAliasMap: result.reverseAliasMap || {},
-        nextAliasCode: result.nextAliasCode || 65, // 65 = 'A'
+        nextAliasIndex: result.nextAliasIndex || 1, // Contador numérico para T1, T2, T3...
         pendingExecutions: result.pendingExecutions || {},
         autoLoginSystems: result.autoLoginSystems || {}
     };
@@ -135,9 +135,9 @@ export async function handleTerminalMessages(request, sender) {
             let alias = state.aliasMap[tabId];
 
             if (!alias) {
-                alias = String.fromCharCode(state.nextAliasCode++);
+                alias = 'T' + (state.nextAliasIndex++);
                 while (state.reverseAliasMap[alias]) {
-                    alias = String.fromCharCode(state.nextAliasCode++);
+                    alias = 'T' + (state.nextAliasIndex++);
                 }
                 state.aliasMap[tabId] = alias;
                 state.reverseAliasMap[alias] = tabId;
@@ -226,6 +226,30 @@ export async function handleTerminalMessages(request, sender) {
                 return { success: true };
             } else {
                 return { success: false, error: `Aba de origem [${targetAlias}] não encontrada ou foi fechada.` };
+            }
+        }
+
+        case 'closeTab': {
+            const { targetAlias } = payload;
+            const state = await getSessionState();
+            let tabIdToClose;
+
+            if (targetAlias) {
+                tabIdToClose = state.reverseAliasMap[targetAlias];
+            } else {
+                tabIdToClose = sender.tab.id;
+            }
+
+            if (tabIdToClose) {
+                try {
+                    await browser.tabs.remove(tabIdToClose);
+                    return { success: true };
+                } catch (error) {
+                    console.error(`SisPMG+ [Background]: Erro ao fechar aba ${tabIdToClose}`, error);
+                    return { success: false, error: error.message };
+                }
+            } else {
+                return { success: false, error: `Aba [${targetAlias || 'Atual'}] não encontrada ou já foi fechada.` };
             }
         }
     }

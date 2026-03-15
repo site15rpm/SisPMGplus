@@ -149,9 +149,7 @@ input:checked + .slider:before { transform: translateX(22px); }
     background-color: transparent;
     border: transparent;
     color: #fff;
-    padding: 5px 10px;
-    font-size: 12px;
-    margin-right: 5px;
+    margin-right: 0px;
     cursor: default; /* Mantém como indicador visual estático */
 }
 

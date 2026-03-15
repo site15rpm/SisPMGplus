@@ -32,7 +32,7 @@ class RotinaProcessor {
             'teclar', 'digitar', 'clicar', 'esperar', 'posicionar', 'localizarTexto',
             'colar', 'copiar', 'lerTela', 'criarModal', 'executarRotina', 'criarArquivo', 'lerArquivo',
             'excluirArquivo', 'anexarNoArquivo', 'processarLinhas', 'enviarParaPlanilha', 'obterDadosUsuario',
-            'executarEmAba', 'retornar', 'debug' 
+            'executarRotinaEm', 'retornar', 'debug', 'fechar'
         ];
         
         let processedCode = this.code;
