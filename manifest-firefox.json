@@ -1,7 +1,7 @@
 {
-"manifest_version": 3,
+  "manifest_version": 3,
   "name": "SisPMG+",
-  "version": "2.9",
+  "version": "2.9.6",
   "description": "Adiciona funcionalidades e automações a sistemas utilizados pela PMMG.",
   "icons": {
     "16": "icons/icon16.png",
@@ -26,7 +26,14 @@
   ],
   "background": {
     "scripts": ["background.js"],
+    "service_worker": "background.js",
     "type": "module"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "sispmgplus@cleriston.tameirao",
+      "strict_min_version": "109.0"
+    }
   },
   "content_scripts": [
     {
@@ -55,39 +62,20 @@
         "modules/*.html",
         "modules/*.css",
         "modules/abastecimentos/*.html",
+        "modules/abastecimentos/*.css",
+        "modules/abastecimentos/*.js",
         "modules/intranet/*.html",
         "modules/lib/sheetjs/*.html",
-        "modules/terminal/*.html"
-      ],
-      "matches": ["*://*.policiamilitar.mg.gov.br/*"]
-    },
-    {
-      "resources": [
+        "modules/terminal/*.html",
+        "icons/*.png",
+        "icons/*.svg",
         "common/browser-polyfill.js",
-        "common/icon.js",
-        "common/utils.js",
+        "common/*.js",
+        "common/*.mjs",
         "modules/**/*.js",
         "modules/**/*.mjs"
       ],
-      "matches": ["*://*.policiamilitar.mg.gov.br/*"],
-      "type": "module"
+      "matches": ["*://*.policiamilitar.mg.gov.br/*"]
     }
-  ],
-  "browser_specific_settings": {
-    "gecko": {
-      "id": "sispmgplus@cleriston.tameirao",
-      "strict_min_version": "109.0",
-      "data_collection_permissions": {
-        "required": [
-          "authenticationInfo",
-          "browsingActivity",
-          "locationInfo",
-          "personalCommunications",
-          "personallyIdentifyingInfo",
-          "websiteActivity",
-          "websiteContent"
-        ]
-      }
-    }
-  }
+  ]
 }

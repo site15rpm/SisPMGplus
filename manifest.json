@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "SisPMG+",
-  "version": "2.9.5",
+  "version": "2.9.6",
   "description": "Adiciona funcionalidades e automações a sistemas utilizados pela PMMG.",
   "icons": {
     "16": "icons/icon16.png",
@@ -56,22 +56,20 @@
         "modules/*.html",
         "modules/*.css",
         "modules/abastecimentos/*.html",
+        "modules/abastecimentos/*.css",
+        "modules/abastecimentos/*.js",
         "modules/intranet/*.html",
         "modules/lib/sheetjs/*.html",
-        "modules/terminal/*.html"
-      ],
-      "matches": ["*://*.policiamilitar.mg.gov.br/*"]
-    },
-    {
-      "resources": [
+        "modules/terminal/*.html",
+        "icons/*.png",
+        "icons/*.svg",
         "common/browser-polyfill.js",
-        "common/icon.js",
-        "common/utils.js",
+        "common/*.js",
+        "common/*.mjs",
         "modules/**/*.js",
         "modules/**/*.mjs"
       ],
-      "matches": ["*://*.policiamilitar.mg.gov.br/*"],
-      "type": "module"
+      "matches": ["*://*.policiamilitar.mg.gov.br/*"]
     }
   ]
 }

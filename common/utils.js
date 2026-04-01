@@ -12,9 +12,18 @@ export function sendMessageToBackground(action, payload) {
         const messageId = Date.now() + Math.random();
         
         const responseListener = (event) => {
-            if (event.detail.messageId === messageId) {
-                document.removeEventListener('SisPMG+:Response', responseListener);
-                resolve(event.detail.response);
+            // event.detail é uma string JSON vinda do content-script,
+            // que é a forma segura de passar dados no Firefox.
+            if (!event.detail || typeof event.detail !== 'string') return;
+            
+            try {
+                const detail = JSON.parse(event.detail);
+                if (detail.messageId === messageId) {
+                    document.removeEventListener('SisPMG+:Response', responseListener);
+                    resolve(detail.response);
+                }
+            } catch (e) {
+                // Ignora eventos que não são JSON válido, pois podem não ser para nós.
             }
         };
         document.addEventListener('SisPMG+:Response', responseListener);

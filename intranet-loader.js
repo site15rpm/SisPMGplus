@@ -465,9 +465,14 @@ function sendMessageToBackground(action, payload) {
         const messageId = Date.now() + Math.random();
         
         const responseListener = (event) => {
-            if (event.detail.messageId === messageId) {
+            if (!event.detail) return;
+
+            // O event.detail agora é uma string JSON enviada pelo content-script.
+            const detail = JSON.parse(event.detail);
+
+            if (detail.messageId === messageId) {
                 document.removeEventListener('SisPMG+:Response', responseListener);
-                resolve(event.detail.response);
+                resolve(detail.response);
             }
         };
         document.addEventListener('SisPMG+:Response', responseListener);

@@ -115,7 +115,7 @@ window.addEventListener('message', (event) => {
                     finalResponse = { success: false, error: 'Resposta inválida do background.' };
                 }
                 document.dispatchEvent(new CustomEvent('SisPMG+:Response', {
-                    detail: { response: finalResponse, messageId }
+                    detail: JSON.stringify({ response: finalResponse, messageId })
                 }));
             })
             .catch(error => {
