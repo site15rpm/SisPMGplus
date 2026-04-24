@@ -91,16 +91,21 @@ export async function handleIntranetMessages(request, sender) {
 
     switch (action) {
         case 'intranet-user-identified': {
-            try {
-                await browser.storage.local.set({ intranetUser: restOfPayload });
-                if (sender.tab?.id) {
-                    // Sinaliza para a aba de origem que o background está pronto
-                    browser.tabs.sendMessage(sender.tab.id, { action: 'sispmg-ready' });
+            // Este evento é um gatilho para múltiplos módulos.
+            // Ele não deve retornar uma resposta para permitir que outros handlers na cadeia o processem.
+            (async () => {
+                try {
+                    await browser.storage.local.set({ intranetUser: restOfPayload });
+                    if (sender.tab?.id) {
+                        // Sinaliza para a aba de origem que o background está pronto
+                        browser.tabs.sendMessage(sender.tab.id, { action: 'sispmg-ready' });
+                    }
+                } catch (e) {
+                    console.error('SisPMG+ [Intranet Background]: Falha ao processar intranet-user-identified.', e);
                 }
-                return { success: true, message: 'User data saved and ready signal sent.' };
-            } catch (e) {
-                return { success: false, error: e.message };
-            }
+            })();
+            // Não retorna nada para que outros handlers possam processar a mensagem.
+            break; 
         }
         case 'fetchBirthdays': {
             const { mes, unidade, incluirSubunidades } = restOfPayload;
