@@ -546,6 +546,29 @@ export class UiBuilder {
             
             // Categoria: Integrações Externas
             { 
+                type: 'ler-planilha', title: 'lerPlanilha(idPlanilha, nomeAba, consulta)', category: 'Integrações Externas', icon: 'fa-solid fa-file-excel',
+                description: 'Extração direta de dados de Planilhas Google públicas via API gviz. Retorna uma matriz bidimensional (Array de Arrays).',
+                args: [
+                    { name: 'idPlanilha', type: 'string', description: 'ID da planilha (presente na URL entre /d/ e /edit).', optional: false },
+                    { name: 'nomeAba', type: 'string', description: 'Nome da aba (página) da planilha. Opcional.', optional: true },
+                    { name: 'consulta', type: 'string', description: 'Consulta SQL-like (ex: "SELECT A, B WHERE C > 10"). Opcional.', optional: true }
+                ],
+                examples: [{ description: 'Ler dados de uma planilha de consulta de CPFs.', code: 'const dados = lerPlanilha("ID_DA_SUA_PLANILHA", "ListaCPFs");\nif (dados && dados.length > 0) {\n    exibirNotificacao("Total de registros lidos: " + dados.length);\n}' }]
+            },
+            { 
+                type: 'processar-planilha', title: 'processarPlanilha(dados, callback, pularCabecalho)', category: 'Integrações Externas', icon: 'fa-solid fa-list-check',
+                description: 'Itera automaticamente sobre a matriz de dados de uma planilha, executando a lógica definida para cada linha.',
+                args: [
+                    { name: 'dados', type: 'array', description: 'A matriz de dados retornada por lerPlanilha().', optional: false },
+                    { name: 'callback', type: 'function', description: 'Função engatilhada para cada linha `(linha, indice) => {}`.', optional: false },
+                    { name: 'pularCabecalho', type: 'boolean', description: 'Se deve ignorar a primeira linha (cabeçalho). Padrão: true.', optional: true }
+                ],
+                examples: [{ 
+                    description: 'Ler planilha e processar cada linha digitando o CPF no terminal.', 
+                    code: 'const dados = lerPlanilha("ID_DA_PLANILHA", "Sheet1");\nprocessarPlanilha(dados, (linha) => {\n    const cpf = linha[0]; // Assume que o CPF está na primeira coluna (A)\n    posicionar("CPF:");\n    digitar(cpf);\n    teclar("ENTER");\n    localizarTexto("Concluído");\n    teclar("F3");\n});' 
+                }]
+            },
+            { 
                 type: 'enviar-planilha', title: 'enviarParaPlanilha(idScript, nomeAba, dados)', category: 'Integrações Externas', icon: 'fa-solid fa-sheet-plastic',
                 description: 'Integração REST com Google AppScripts (Planilhas Google). Pousa matrizes JS em linhas bidimensionais diretas das pastas da G-Suite.',
                 args: [

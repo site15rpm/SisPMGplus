@@ -1,6 +1,7 @@
 // Arquivo: modules/intranet/intranet-background.js
 // Lógica de background específica para o módulo IntranetPMG+
 import { fetchWithKeepAlive } from '../../common/keep-alive.js';
+import { parseGoogleSheetResponse } from '../../common/google-sheets.js';
 
 async function fetchApiData(url, token, options = {}) {
     const defaultOptions = {
@@ -67,20 +68,6 @@ function parseUserSectionHTML(html) {
         regionCode: cleanContent(cellsMatch[7]),
         regionName: cleanContent(cellsMatch[8])
     };
-}
-
-// Converte a resposta do Google Sheets para um formato de array 2D mais simples.
-function parseGoogleSheetResponse(responseText) {
-    const jsonText = responseText.match(/google\.visualization\.Query\.setResponse\((.*)\);/s);
-    if (!jsonText || !jsonText[1]) {
-        console.error("SisPMG+ [Background]: Formato de resposta do banco de dados inesperado");
-        throw new Error('Formato de resposta do banco de dados inesperado.<br><br>Atualize a página e tente novamente. Se o erro persistir, contate o administrador do sistema.');
-    }
-    const data = JSON.parse(jsonText[1]);
-    if (!data.table || !data.table.rows) return [];
-
-    const parsedData = data.table.rows.map(row => row.c.map(cell => cell ? (cell.f || cell.v) : null));
-    return parsedData;
 }
 
 export async function handleIntranetMessages(request, sender) {

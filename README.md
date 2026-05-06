@@ -329,6 +329,27 @@ Exclui um arquivo do sistema de arquivos da extensão.
 
 ---
 
+#### `lerPlanilha(idPlanilha, nomeAba, consulta)`
+Lê dados de uma planilha pública do Google Sheets.
+
+-   **Argumentos:**
+    -   `idPlanilha` (String): O ID da planilha (encontrado na URL).
+    -   `nomeAba` (String, opcional): O nome da aba (página) da planilha.
+    -   `consulta` (String, opcional): Uma consulta SQL-like (ex: "SELECT A, B WHERE C > 10").
+-   **Retorno:** Promessa que resolve em uma matriz bidimensional `[[col1, col2, ...], [linha2...]]`.
+
+---
+
+#### `processarPlanilha(dados, callback, pularCabecalho)`
+Itera sobre os dados de uma planilha, facilitando a execução de tarefas em loop.
+
+-   **Argumentos:**
+    -   `dados` (Array): A matriz retornada por `lerPlanilha`.
+    -   `callback` (Função): Função executada para cada linha: `(linha, indice) => { ... }`.
+    -   `pularCabecalho` (Boolean, opcional): Se deve ignorar a primeira linha. Padrão: `true`.
+
+---
+
 #### `enviarParaPlanilha(idDoScript, nomeDaAba, dados)`
 Envia dados diretamente para uma Planilha Google. Requer a configuração prévia de um Google Apps Script.
 

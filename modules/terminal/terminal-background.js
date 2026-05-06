@@ -1,6 +1,7 @@
 // Arquivo: terminal/terminal/terminal-background.js
 // Lógica de background específica para o módulo TerminalPMG+
 import { fetchWithKeepAlive } from '../../common/keep-alive.js';
+import { parseGoogleSheetResponse } from '../../common/google-sheets.js';
 
 // Arquivo: Code.gs Rotinas SisPMG+ v2.3
 const API_URL = "https://script.google.com/macros/s/AKfycbzB8NEKd8oDUpiluZOk2VNmcfbLzhUiHNBP9SgBfE1rhRvwRU3jVLvskYjDPjyvpiQe/exec";
@@ -250,6 +251,22 @@ export async function handleTerminalMessages(request, sender) {
                 }
             } else {
                 return { success: false, error: `Aba [${targetAlias || 'Atual'}] não encontrada ou já foi fechada.` };
+            }
+        }
+
+        case 'fetchSheetData': {
+            const { sheetId, sheetName, query } = payload;
+            const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json${sheetName ? `&sheet=${encodeURIComponent(sheetName)}` : ''}${query ? `&tq=${encodeURIComponent(query)}` : ''}&_=${Date.now()}`;
+            
+            try {
+                const response = await fetchWithKeepAlive(url, { credentials: 'omit' });
+                if (!response.ok) throw new Error(`Falha na requisição: ${response.status} ${response.statusText}`);
+                const text = await response.text();
+                const parsedData = parseGoogleSheetResponse(text);
+                return { success: true, data: parsedData };
+            } catch (error) {
+                console.error(`SisPMG+ [Background]: Falha ao buscar dados do Google Sheets.`, error);
+                return { success: false, error: error.message };
             }
         }
     }

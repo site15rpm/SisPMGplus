@@ -111,9 +111,11 @@ window.addEventListener('message', (event) => {
         browser.runtime.sendMessage({ action, payload })
             .then(response => {
                 // A resposta da promessa é tratada aqui.
-                document.dispatchEvent(new CustomEvent('SisPMG+:Response', {
-                    detail: { response, messageId }
-                }));
+                window.postMessage({
+                    type: 'SisPMG+:Response',
+                    response,
+                    messageId
+                }, '*');
             })
             .catch(error => {
                 // Erros, incluindo um contexto invalidado, rejeitarão a promessa.
@@ -126,9 +128,10 @@ window.addEventListener('message', (event) => {
 // 2. Escuta comandos originados no Background e despacha para a Página (MAIN World)
 browser.runtime.onMessage.addListener((message, sender) => {
     if (message && (message.type === 'EXECUTE_ROUTINE' || message.type === 'EXECUTION_RESULT')) {
-        document.dispatchEvent(new CustomEvent('SisPMG+:FromBackground', {
-            detail: message
-        }));
+        window.postMessage({
+            type: 'SisPMG+:FromBackground',
+            message
+        }, '*');
     }
 });
 

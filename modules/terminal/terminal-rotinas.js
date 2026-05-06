@@ -26,34 +26,29 @@ class RotinaProcessor {
         // Para simplificar a escrita de rotinas, a extensão insere 'await'
         // automaticamente antes de chamar qualquer função listada em 'asyncCommandNames'.
         // Isso significa que o usuário NÃO PRECISA escrever 'await' em seu código.
-        // Se novas funções assíncronas forem adicionadas ao escopo das rotinas,
-        // elas DEVEM ser incluídas nesta lista para manter o comportamento.
         const asyncCommandNames = [
             'teclar', 'digitar', 'clicar', 'esperar', 'posicionar', 'localizarTexto',
             'colar', 'copiar', 'lerTela', 'criarModal', 'executarRotina', 'criarArquivo', 'lerArquivo',
-            'excluirArquivo', 'anexarNoArquivo', 'processarLinhas', 'enviarParaPlanilha', 'obterDadosUsuario',
-            'executarRotinaEm', 'retornar', 'debug', 'fechar'
+            'excluirArquivo', 'anexarNoArquivo', 'processarLinhas', 'lerPlanilha', 'processarPlanilha',
+            'enviarParaPlanilha', 'obterDadosUsuario', 'executarRotinaEm', 'retornar', 'debug', 'fechar',
+            'lerPlanilhaObjetos', 'selecionarEmTabela',
+            'solicitarEntrada', 'localizarQualquerTexto'
         ];
         
         let processedCode = this.code;
 
-        // Expressão regular que adiciona 'await' a chamadas de função assíncronas que ainda não o possuem.
-        // (?<!await\s+) é um "negative lookbehind" para não adicionar 'await' se ele já existir.
-        // \b garante que estamos pegando o nome exato da função, evitando substituições em nomes parciais.
         const regex = new RegExp(`(?<!await\\s+)(${asyncCommandNames.join('|')})\\b\\s*\\(`, 'g');
         processedCode = processedCode.replace(regex, 'await $1(');
 
-        // Tratamento especial para o callback do processarLinhas
         processedCode = processedCode.replace(
-            /processarLinhas\s*\(([^,]+),\s*\(([^)]*)\)\s*=>/g,
-            'processarLinhas($1, async ($2) =>'
+            /(processarLinhas|processarPlanilha)\s*\(([^,]+),\s*\(([^)]*)\)\s*=>/g,
+            '$1($2, async ($3) =>'
         );
 
         const fullCommandNames = [...commandNames, ...specialFunctions];
         
         let rotinaExecutor;
         try {
-            // Cria uma nova função assíncrona com o código processado.
             rotinaExecutor = new AsyncFunction(...fullCommandNames, processedCode);
         } catch (e) {
             throw new Error(`Erro de sintaxe na rotina: ${e.message}`);
@@ -67,11 +62,9 @@ class RotinaProcessor {
             }
         });
         
-        // Executa o código da rotina com as funções do contexto.
         await rotinaExecutor.apply(this.context, boundCommands);
     }
 }
-
 
 export function initRotinas(prototype) {
 
@@ -119,8 +112,6 @@ export function initRotinas(prototype) {
         const originalCount = userProfile.favorites.length;
         const cleanedFavorites = userProfile.favorites.filter(favPath => {
             const exists = rotinaExists(favPath);
-            if (!exists) {
-            }
             return exists;
         });
 
@@ -482,16 +473,11 @@ export function initRotinas(prototype) {
     
         let content = null;
 
-        // Se o caminho começa com 'public', busca apenas nas rotinas públicas.
         if (pathParts[0].toLowerCase() === 'public') {
             content = findPath(this.rotinas.public, pathParts.slice(1));
-        } 
-        // Se o contexto da chamada (ex: UI) já define como pública.
-        else if (isPublic) {
+        } else if (isPublic) {
             content = findPath(this.rotinas.public, pathParts);
-        } 
-        // Caso contrário, busca apenas nas rotinas do usuário.
-        else {
+        } else {
             content = findPath(this.rotinas.user, pathParts);
         }
     
@@ -547,7 +533,6 @@ export function initRotinas(prototype) {
             }
         } catch (error) {
             if (error.name === 'UserCancellationError') {
-                // Erro de cancelamento do usuário é tratado no finally, sem exibir modal de erro.
             } else {
                 console.error(`Erro ao executar a rotina '${name}':`, error);
 
@@ -561,11 +546,9 @@ export function initRotinas(prototype) {
                             this.rotinaState = 'stopped';
                             break;
                         case 'pause':
-                            // A lógica de pausar já foi tratada no modal
                             break;
                         case 'continue':
                             this.exibirNotificacao("Erro ignorado. Continuando a execução.", true, 3);
-                            // Permite que o loop continue (se houver), engolindo o erro.
                             break;
                         case 'edit':
                             this.rotinaState = 'stopped';
@@ -630,7 +613,19 @@ export function initRotinas(prototype) {
                 if (mouseClickMatch && mouseClickMatch[3] === 'M') {
                      this.recordedActions.push(`clicar(${parseInt(mouseClickMatch[2])}, ${parseInt(mouseClickMatch[1])});`);
                 } else if (specialKeyName) {
-                    this.recordedActions.push(`teclar('${specialKeyName}');`);
+                    // Lógica de aglutinação de teclas
+                    const lastIndex = this.recordedActions.length - 1;
+                    const lastAction = lastIndex >= 0 ? this.recordedActions[lastIndex] : null;
+                    const match = lastAction ? lastAction.match(/^teclar\('([^']+)'(?:,\s*'x(\d+)')?\);$/) : null;
+
+                    if (match && match[1] === specialKeyName) {
+                        // Se a tecla anterior foi a mesma, incrementa o multiplicador
+                        const count = match[2] ? parseInt(match[2], 10) + 1 : 2;
+                        this.recordedActions[lastIndex] = `teclar('${specialKeyName}', 'x${count}');`;
+                    } else {
+                        // Se foi uma tecla diferente, grava como uma nova ação
+                        this.recordedActions.push(`teclar('${specialKeyName}');`);
+                    }
                 }
             } else if (data.length >= 1 && data.charCodeAt(0) >= 32) {
                 this.textBuffer += data;
@@ -733,7 +728,5 @@ export function initRotinas(prototype) {
     };
 
     prototype.autoExecutar = function() {
-        // Esta função serve como um marcador para a lógica em checkForAutoExecutarRotinas.
-        // Ela não tem implementação aqui propositalmente.
     };
 }

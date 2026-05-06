@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "SisPMG+",
-  "version": "2.9.7",
+  "version": "2.9.8",
   "description": "Adiciona funcionalidades e automações a sistemas utilizados pela PMMG.",
   "icons": {
     "16": "icons/icon16.png",
@@ -26,13 +26,13 @@
   ],
   "background": {
     "scripts": ["background.js"],
-    "service_worker": "background.js",
     "type": "module"
   },
   "browser_specific_settings": {
     "gecko": {
       "id": "sispmgplus@cleriston.tameirao",
-      "strict_min_version": "109.0"
+      "strict_min_version": "112.0",
+      "update_url": "https://raw.githubusercontent.com/cleristontameirao/SisPMGplus/master/updates.json"
     }
   },
   "content_scripts": [

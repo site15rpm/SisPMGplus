@@ -100,8 +100,6 @@ export function initActions(prototype) {
     // Função interna para pausar a execução se a rotina estiver em estado 'paused'
     // e para lançar um erro se a rotina for interrompida ('stopped').
     prototype._checkRotinaState = async function() {
-        // Se não houver processador de rotina ativo, não faz nada.
-        // Isso previne que a verificação de tela (processScreenState) lance erros indevidos.
         if (!this.currentRotinaProcessor) return;
 
         while (this.rotinaState === 'paused') {
@@ -171,12 +169,10 @@ export function initActions(prototype) {
             });
         };
     
-        // Verificação imediata se não houver tempo de espera.
         if (config.esperar === 0) {
             return checkCondition();
         }
     
-        // Lógica de espera.
         return new Promise((resolve, reject) => {
             if (checkCondition()) {
                 resolve(true);
@@ -329,14 +325,25 @@ export function initActions(prototype) {
         }
     };
     
-    prototype.teclar = async function(nomeTecla) {
+    // --- LÓGICA DE REPETIÇÃO INCLUÍDA NA AÇÃO DE TECLAR ---
+    prototype.teclar = async function(nomeTecla, repeticoes = 'x1') {
         await this._checkRotinaState();
-        const upperCaseKey = nomeTecla.toUpperCase();
+        const upperCaseKey = String(nomeTecla).toUpperCase();
         const sequence = this.keyMap[upperCaseKey];
+        
+        let qtd = 1;
+        if (typeof repeticoes === 'string' && repeticoes.toLowerCase().startsWith('x')) {
+            qtd = parseInt(repeticoes.substring(1), 10) || 1;
+        } else if (typeof repeticoes === 'number') {
+            qtd = repeticoes;
+        }
+
         if (sequence) {
-            await this.esperar(undefined);
-            this.term._core._onData.fire(sequence);
-            await this.waitForTerminalReady();
+            for (let i = 0; i < qtd; i++) {
+                if (i > 0) await this.esperar(undefined); // Aguarda entre repetições
+                this.term._core._onData.fire(sequence);
+                await this.waitForTerminalReady();
+            }
         } else {
             console.warn(`[Rotina JS] Tecla especial desconhecida: ${nomeTecla}`);
         }
@@ -351,22 +358,17 @@ export function initActions(prototype) {
         
         if (verify) {
             try {
-                // Primeira tentativa: buscar apenas nos campos digitáveis (mais rápido e específico)
                 const foundInFields = await this.localizarTexto(textToType, { 
                     esperar: 2, 
                     lancarErro: false, 
                     area: { apenasCamposDigitaveis: true } 
                 });
                 
-                // Se não encontrar, faz uma busca mais ampla na tela inteira como fallback
                 if (!foundInFields) {
                     await this.localizarTexto(textToType, { esperar: 3, lancarErro: true });
                 }
             } catch (e) {
-                 if (e instanceof UserCancellationError) {
-                     throw e; 
-                 }
-                 // A mensagem de erro agora é mais genérica para refletir a busca ampla
+                 if (e instanceof UserCancellationError) throw e; 
                  throw new Error(`Falha na verificação: O texto "${textToType}" não foi encontrado na tela após a digitação.`);
             }
         } else {
@@ -424,7 +426,6 @@ export function initActions(prototype) {
     
         let foundPosition = findLabel();
     
-        // Tenta encontrar o rótulo por até 5 segundos.
         if (!foundPosition) {
             const endTime = Date.now() + 5000;
             while (Date.now() < endTime) {
@@ -471,19 +472,14 @@ export function initActions(prototype) {
     };
     
     prototype.obterTexto = function(linhaInicial, colunaInicial, linhaFinal, colunaFinal) {
-        // Overload based on the number of arguments provided.
         switch (arguments.length) {
             case 0:
-                // obterTexto(): Retorna o texto da tela inteira.
                 return this.getFullScreenText();
             case 1:
-                // obterTexto(linha): Retorna o texto de uma linha específica.
                 return this.obterTextoLinha(linhaInicial);
             case 2:
-                // obterTexto(linha, coluna): Retorna o texto de uma linha a partir de uma coluna.
                 return this.getBlockText(linhaInicial - 1, linhaInicial - 1, colunaInicial - 1, this.term.cols);
             case 4:
-                // obterTexto(linhaInicial, colunaInicial, linhaFinal, colunaFinal): Retorna o texto de uma área.
                 return this.getBlockText(linhaInicial - 1, linhaFinal - 1, colunaInicial - 1, colunaFinal);
             default:
                 throw new Error("Número de argumentos inválido para obterTexto. Use 0, 1, 2 ou 4 argumentos.");
@@ -626,7 +622,7 @@ export function initActions(prototype) {
         return match ? match[1] : null;
     };
     
-    // --- PROCESSAMENTO DE ARQUIVOS ---
+    // --- PROCESSAMENTO DE ARQUIVOS E PLANILHAS ---
     prototype.processarLinhas = async function(nomeArquivo, callback) {
         await this._checkRotinaState();
         try {
@@ -635,10 +631,6 @@ export function initActions(prototype) {
                 const linhas = conteudo.split('\n').filter(l => l.trim() !== '');
                 for (const [index, linha] of linhas.entries()) {
                     await this._checkRotinaState();
-                    
-                    // IMPORTANTE: O callback aqui é envolvido em um 'await' implícito pelo
-                    // RotinaProcessor, permitindo que o usuário use funções como 'digitar'
-                    // sem precisar escrever 'await' dentro do callback.
                     await callback(linha.trim(), index, linhas);
                 }
             }
@@ -647,7 +639,6 @@ export function initActions(prototype) {
         }
     };
 
-    // --- FUNCIONALIDADES AVANÇADAS ---
     prototype.obterCamposDigitaveis = function() {
         return getDigitableFields(this.term);
     };
@@ -669,10 +660,49 @@ export function initActions(prototype) {
         }
     };
 
-    /**
-     * Obtém os dados do usuário logado a partir do cookie 'tokiuz'.
-     * @returns {Promise<object|null>} Um objeto com as informações do usuário ou null se não for encontrado.
-     */
+    prototype.lerPlanilha = async function(sheetId, sheetName = '', query = '') {
+        await this._checkRotinaState();
+        if (!sheetId) throw new Error("lerPlanilha: O ID da planilha (sheetId) é obrigatório.");
+
+        const response = await new Promise(resolve => {
+            this.sendMessage('fetchSheetData', { sheetId, sheetName, query }, resolve);
+        });
+
+        if (response && response.success) {
+            return response.data;
+        } else {
+            const errorMsg = response?.error || 'Erro desconhecido ao ler planilha.';
+            this.exibirNotificacao(errorMsg, false);
+            throw new Error(`lerPlanilha: ${errorMsg}`);
+        }
+    };
+
+    prototype.processarPlanilha = async function(data, callback, ignoreHeader = true) {
+        await this._checkRotinaState();
+        if (!Array.isArray(data) || data.length === 0) {
+            console.warn("processarPlanilha: Dados inválidos ou vazios.");
+            return;
+        }
+
+        const startIndex = ignoreHeader ? 1 : 0;
+        for (let i = startIndex; i < data.length; i++) {
+            await this._checkRotinaState();
+            try {
+                await callback(data[i], i);
+            } catch (error) {
+                if (error.name === 'UserCancellationError') throw error;
+                console.error(`Erro ao processar linha ${i} da planilha:`, error);
+                
+                const userChoice = await this.showGenericErrorModal(`Processar Planilha (Linha ${i})`, error);
+                if (userChoice === 'stop') throw new UserCancellationError('Execução interrompida pelo usuário.');
+                if (userChoice === 'pause') {
+                    i--;
+                    continue;
+                }
+            }
+        }
+    };
+
     prototype.obterDadosUsuario = async function() {
         await this._checkRotinaState();
         const token = getCookie('tokiuz');
@@ -682,12 +712,8 @@ export function initActions(prototype) {
         }
 
         const tokenData = decodeJwt(token);
-        if (!tokenData) {
-            this.exibirNotificacao("Falha ao decodificar os dados do usuário.", false);
-            return null;
-        }
+        if (!tokenData) return null;
 
-        // Mapeia os campos para nomes mais descritivos
         return {
             numeroPM: tokenData.g,
             postoGraduacao: tokenData.t,
@@ -711,7 +737,6 @@ export function initActions(prototype) {
                 return reject(new Error("Alias de roteamento desta aba não está definido."));
             }
 
-            // Lógica de nova aba: Se nenhum alias for especificado, cria um identificador temporário para forçar o background a abrir uma nova aba.
             let finalAliasDestino = aliasDestino;
             if (!finalAliasDestino) {
                 finalAliasDestino = 'T_' + Math.floor(1000 + Math.random() * 9000);
@@ -721,7 +746,7 @@ export function initActions(prototype) {
 
             this.pendingCrossTabExecutions.set(messageId, (result) => {
                 if (result.success) {
-                    resolve(result.data); // Resolve a Promise com os dados devolvidos (se houver)
+                    resolve(result.data);
                 } else {
                     reject(new Error(`Erro ao executar rotina na aba [${finalAliasDestino}]: ${result.error}`));
                 }
@@ -730,18 +755,13 @@ export function initActions(prototype) {
             let routineName = rotinaOuCodigo;
             let customCode = null;
 
-            // Heurística de Injeção de Código: Se a string contiver caracteres comuns de instrução JS
-            // (quebra de linha, ponto e vírgula ou abertura de parênteses), assumimos que é código puro e não um nome de arquivo.
             if (rotinaOuCodigo && (rotinaOuCodigo.includes('\n') || rotinaOuCodigo.includes(';') || rotinaOuCodigo.includes('()'))) {
                 routineName = "Rotina_Dinamica_Remota";
                 customCode = rotinaOuCodigo;
             }
 
-            // Herança de Sistema: Se nenhum sistema for especificado, assume o da aba atual.
             const systemTarget = sistemaDestino || this.selectedSystemName;
 
-            console.log(`SisPMG+ [Terminal]: Solicitando execução na aba [${finalAliasDestino}] (Sistema Alvo: ${systemTarget || 'Nenhum'})`);
-            
             this.sendMessage('executeInTab', {
                 targetAlias: finalAliasDestino,
                 sourceAlias: this.tabAlias,
@@ -753,12 +773,10 @@ export function initActions(prototype) {
         });
     };
 
-    // Permite que uma rotina retorne dados para quem a chamou via executarRotinaEm
     prototype.retornar = function(valor) {
         this.executionReturnValue = valor;
     };
 
-    // Fechar Abas
     prototype.fechar = async function(aliasDestino = null) {
         await this._checkRotinaState();
         
@@ -784,9 +802,6 @@ export function initActions(prototype) {
                 }
             }
         }
-        
-        // Se fechar a aba atual, o script morre com ela.
-        // Se fechar outra aba, o script segue.
     };
 
     prototype.debug = function(...args) {
@@ -874,5 +889,218 @@ export function initActions(prototype) {
         }).join(' ');
         logContainer.appendChild(entry);
         logContainer.scrollTop = logContainer.scrollHeight;
+    };
+
+    // ============================================================================
+    // APRIMORAMENTOS DA BASE DE ROTINAS (LOW-CODE & DATA HANDLING GENÉRICO)
+    // ============================================================================
+
+    /**
+     * Lê a planilha e converte os dados em um Array de Objetos JSON usando a 1ª linha como chave.
+     */
+    prototype.lerPlanilhaObjetos = async function(sheetId, sheetName = '', query = '') {
+        const dadosArray = await this.lerPlanilha(sheetId, sheetName, query);
+        if (!dadosArray || dadosArray.length < 2) return [];
+        
+        const cabecalho = dadosArray[0].map(c => String(c).trim()); 
+        
+        return dadosArray.slice(1).map(linha => {
+            const obj = {};
+            cabecalho.forEach((colNome, i) => {
+                obj[colNome] = linha[i] !== undefined ? linha[i] : '';
+            });
+            return obj;
+        });
+    };
+
+    /**
+     * Utilitário visual para seleção de itens usando modal HTML dinâmica.
+     */
+    prototype.selecionarEmTabela = function(titulo, descricao, colunas, dados, renderRowFn) {
+        return new Promise(async (resolve) => {
+            await this._checkRotinaState();
+            
+            let html = `<p style="font-size: 14px; color: #555;">${descricao}</p>`;
+            html += `<div style="max-height: 50vh; overflow-y: auto; margin-top: 15px; border: 1px solid #ddd; border-radius: 4px;">`;
+            html += `<table style="width: 100%; border-collapse: collapse; font-size: 14px;">`;
+            html += `<thead style="position: sticky; top: 0; background: #f4f6f8; box-shadow: 0 1px 2px rgba(0,0,0,0.1); z-index: 1;"><tr>`;
+            
+            colunas.forEach(col => html += `<th style="padding: 10px; border: 1px solid #ddd; text-align: left;">${col}</th>`);
+            html += `</tr></thead><tbody>`;
+            
+            dados.forEach((item, index) => {
+                html += `<tr class="sys-table-row-selectable" data-index="${index}" style="cursor: pointer; border-bottom: 1px solid #eee;">${renderRowFn(item)}</tr>`;
+            });
+            
+            html += `</tbody></table></div>`;
+
+            if (!document.getElementById('sys-table-modal-style')) {
+                const style = document.createElement('style');
+                style.id = 'sys-table-modal-style';
+                style.innerHTML = `.sys-table-row-selectable:hover { background-color: #e2eef9 !important; }`;
+                document.head.appendChild(style);
+            }
+
+            const buttons = [
+                { text: 'Cancelar', className: 'rotina-modal-cancel-btn', action: m => { this.closeModalAndFocus(m); resolve(null); } }
+            ];
+
+            const modalRef = this.createModal(titulo, html, null, buttons, { modalClass: 'sys-table-modal' });
+
+            modalRef.querySelectorAll('.sys-table-row-selectable').forEach(tr => {
+                tr.onclick = () => {
+                    const idx = tr.getAttribute('data-index');
+                    this.closeModalAndFocus(modalRef);
+                    resolve(dados[idx]);
+                };
+            });
+        });
+    };
+
+    /**
+     * NOVO: Pede uma informação diretamente ao usuário com campo de digitação
+     */
+    prototype.solicitarEntrada = function(titulo, mensagem, placeholder = '') {
+        return new Promise(async (resolve) => {
+            await this._checkRotinaState();
+            let html = `<p style="font-size: 14px; margin-bottom: 10px;">${mensagem}</p>`;
+            html += `<input type="text" id="sys-prompt-input" class="modal-text-input" placeholder="${placeholder}" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">`;
+
+            let modalRef = null;
+            const buttons = [
+                { text: 'Cancelar', className: 'rotina-modal-cancel-btn', action: m => { this.closeModalAndFocus(m); resolve(null); } },
+                { text: 'Confirmar', className: 'rotina-modal-save-btn', action: m => {
+                    const val = m.querySelector('#sys-prompt-input').value;
+                    this.closeModalAndFocus(m);
+                    resolve(val);
+                }}
+            ];
+
+            modalRef = this.createModal(titulo, html, null, buttons);
+            setTimeout(() => {
+                const input = modalRef.querySelector('#sys-prompt-input');
+                if (input) input.focus();
+            }, 100);
+        });
+    };
+
+    /**
+     * NOVO: Aguarda que UM dentre VÁRIOS textos apareça na tela e retorna qual foi. 
+     */
+    prototype.localizarQualquerTexto = async function(alvosArray, options = {}) {
+        await this._checkRotinaState();
+        const config = { esperar: 5, caseSensitive: false, ...options };
+        
+        const getSearchText = () => this.getFullScreenText(!config.caseSensitive);
+        const getOriginalText = () => this.getFullScreenText(false);
+
+        const checkCondition = () => {
+            let sourceText = getSearchText();
+            let originalText = getOriginalText();
+            
+            for (let target of alvosArray) {
+                if (target instanceof RegExp) {
+                    const regexFlags = config.caseSensitive ? target.flags.replace('i', '') : target.flags.includes('i') ? target.flags : target.flags + 'i';
+                    if (new RegExp(target.source, regexFlags).test(originalText)) return target;
+                } else {
+                    let targetString = String(target);
+                    if (!config.caseSensitive) targetString = targetString.toUpperCase();
+                    if (sourceText.includes(targetString)) return target;
+                }
+            }
+            return null;
+        };
+
+        if (config.esperar === 0) return checkCondition();
+
+        return new Promise((resolve) => {
+            const initialCheck = checkCondition();
+            if (initialCheck) { resolve(initialCheck); return; }
+
+            let watcher, poller;
+            const startTime = Date.now();
+            const timeoutMs = config.esperar * 1000;
+
+            const cleanup = () => {
+                clearTimeout(poller);
+                watcher?.dispose();
+            };
+
+            watcher = this.term.onWriteParsed(() => {
+                const match = checkCondition();
+                if (match) { cleanup(); resolve(match); }
+            });
+
+            const pollForStateAndTimeout = async () => {
+                try {
+                    await this._checkRotinaState();
+                    if (Date.now() - startTime > timeoutMs) {
+                        cleanup();
+                        resolve(null);
+                        return;
+                    }
+                    poller = setTimeout(pollForStateAndTimeout, 100);
+                } catch (e) {
+                    cleanup();
+                    resolve(null);
+                }
+            };
+            pollForStateAndTimeout();
+        });
+    };
+
+    /**
+     * NOVO: Agrupa um Array de Objetos por uma chave específica (ex: agrupar itens por "convenio")
+     */
+    prototype.agruparDados = function(arrayDeObjetos, chave) {
+        if (!Array.isArray(arrayDeObjetos)) return {};
+        return arrayDeObjetos.reduce((resultado, item) => {
+            const valorDaChave = item[chave];
+            if (valorDaChave === undefined) return resultado;
+            if (!resultado[valorDaChave]) resultado[valorDaChave] = [];
+            resultado[valorDaChave].push(item);
+            return resultado;
+        }, {});
+    };
+
+    /**
+     * NOVO: Formatação Inteligente de Data
+     */
+    prototype.formatarData = function(dataOriginal, formatoDestino = 'DDMMAAAA') {
+        if (!dataOriginal) return '';
+        let str = String(dataOriginal).trim();
+        let dataObj;
+
+        if (str.includes('/')) {
+            const partes = str.split(' ')[0].split('/'); 
+            dataObj = new Date(`${partes[2]}-${partes[1]}-${partes[0]}T12:00:00`);
+        } else if (str.includes('-')) {
+            dataObj = new Date(str.split(' ')[0] + "T12:00:00");
+        } else {
+            return str; 
+        }
+
+        if (isNaN(dataObj)) return '';
+
+        const d = String(dataObj.getDate()).padStart(2, '0');
+        const m = String(dataObj.getMonth() + 1).padStart(2, '0');
+        const y = dataObj.getFullYear();
+
+        switch (formatoDestino.toUpperCase()) {
+            case 'DDMMAAAA': return `${d}${m}${y}`; 
+            case 'DD/MM/AAAA': return `${d}/${m}/${y}`;
+            case 'YYYY-MM-DD': return `${y}-${m}-${d}`;
+            default: return `${d}${m}${y}`;
+        }
+    };
+
+    prototype.extrairNumeros = function(texto) {
+        if (!texto) return '';
+        return String(texto).replace(/\D/g, '');
+    };
+
+    prototype.converterMoeda = function(texto) {
+        if (!texto) return 0;
+        return parseFloat(String(texto).replace(/[R$\s\.]/g, '').replace(',', '.')) || 0;
     };
 }

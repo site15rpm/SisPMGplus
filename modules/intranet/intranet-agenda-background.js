@@ -3,6 +3,7 @@
 
 import { fetchUnidadesForAgenda } from './intranet-agenda-unidades.js';
 import { fetchWithKeepAlive } from '../../common/keep-alive.js';
+import { parseGoogleSheetResponse } from '../../common/google-sheets.js';
 
 /**
  * Inicializa o background do módulo de agenda.
@@ -10,24 +11,6 @@ import { fetchWithKeepAlive } from '../../common/keep-alive.js';
  */
 export function initializeAgendaBackground() {
     // console.log('SisPMG+ [Agenda Background]: Módulo de agenda inicializado.');
-}
-
-/**
- * Converte a resposta do Google Sheets para um formato de array 2D mais simples.
- * @param {string} responseText O texto da resposta da API do Google Visualization.
- * @returns {Array<Array<string|number|null>>} Os dados da planilha como um array de linhas.
- */
-function parseGoogleSheetResponse(responseText) {
-    const jsonText = responseText.match(/google\.visualization\.Query\.setResponse\((.*)\);/s);
-    if (!jsonText || !jsonText[1]) {
-        console.error("SisPMG+ [Agenda Background]: Formato de resposta do banco de dados da agenda inesperado.");
-        throw new Error('Formato de resposta do banco de dados da agenda inesperado.');
-    }
-    const data = JSON.parse(jsonText[1]);
-    if (!data.table || !data.table.rows) return [];
-
-    const parsedData = data.table.rows.map(row => row.c.map(cell => cell ? (cell.f || cell.v) : null));
-    return parsedData;
 }
 
 /**

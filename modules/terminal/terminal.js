@@ -58,7 +58,9 @@ export class TerminalModule {
         this.timedDisabledAutoRun = {};
         this.waitingForAutoRunTrigger = [];
 
-        this.keepAliveInterval = null;
+        // --- SISTEMA DE KEEP-ALIVE (ANTIOSCIOSIDADE) ---
+        this.inactivityTimer = null;
+        this._onDataKeepAliveListener = null;
         
         this.notificationQueue = [];
         this.isNotificationVisible = false;
@@ -234,25 +236,63 @@ export class TerminalModule {
         }
     }
 
+    // --- NOVA LÓGICA DE KEEP-ALIVE (OCIOSIDADE) ---
     _startKeepAlive() {
-        if (this.keepAliveInterval) {
-            clearInterval(this.keepAliveInterval);
+        this._stopKeepAlive(); // Limpa timer antigo se existir
+
+        const resetIdleTimer = () => {
+            if (this.loginFlowActive || this.rotinaState === 'running') return;
+            if (this.inactivityTimer) clearTimeout(this.inactivityTimer);
+            
+            // Define o timer para 4 minutos
+            this.inactivityTimer = setTimeout(() => {
+                this._sendKeepAliveCommand();
+            }, 3 * 60 * 1000); 
+        };
+
+        // Escuta interações naturais na página
+        ['mousemove', 'keydown', 'click', 'wheel'].forEach(event => {
+            document.addEventListener(event, resetIdleTimer, { passive: true });
+        });
+
+        // Escuta interação direta com o terminal
+        if (this.term && !this._onDataKeepAliveListener) {
+            this._onDataKeepAliveListener = this.term.onData(() => resetIdleTimer());
         }
-        this.keepAliveInterval = setInterval(() => {
-            if (this.isLoggedIn) {
-                console.log('SisPMG+ [KeepAlive]: Enviando pulso para manter a sessão ativa.');
-                this.term._core._onData.fire('\x00');
-            }
-        }, 120000);
+
+        resetIdleTimer(); // Inicia a contagem
+        console.log('SisPMG+ [KeepAlive]: Monitoramento inteligente de ociosidade ativado.');
+    }
+
+    _sendKeepAliveCommand() {
+        if (this.rotinaState === 'stopped' && !this.loginFlowActive && this.isLoggedIn && this.term && this.term._core) {
+            console.log('SisPMG+ [KeepAlive]: Ociosidade detectada. Enviando comando (DESCER/SUBIR) para manter sessão ativa.');
+            
+            // Envia um comando de tecla para mover o cursor abaixo
+            this.term._core._onData.fire(this.keyMap['TAB']);
+            
+            // Retorna imediatamente o cursor para cima para não estragar a tela
+            setTimeout(() => {
+                if (this.term && this.term._core) {
+                    this.term._core._onData.fire(this.keyMap['BACKTAB']);
+                }
+            }, 150);
+        }
+        
+        // Garante que o timer reinicie após a ação
+        if (this.isLoggedIn) {
+            this._startKeepAlive();
+        }
     }
 
     _stopKeepAlive() {
-        if (this.keepAliveInterval) {
-            clearInterval(this.keepAliveInterval);
-            this.keepAliveInterval = null;
-            console.log('SisPMG+ [KeepAlive]: Pulso de sessão interrompido.');
+        if (this.inactivityTimer) {
+            clearTimeout(this.inactivityTimer);
+            this.inactivityTimer = null;
+            console.log('SisPMG+ [KeepAlive]: Monitoramento de ociosidade interrompido.');
         }
     }
+    // --- FIM DA LÓGICA DE KEEP-ALIVE ---
 
     openUiBuilder(textareaElement) {
         const builder = new UiBuilder(this, textareaElement);
@@ -276,62 +316,66 @@ export class TerminalModule {
     }
 
     setupResponseListener() {
-        // Responses geradas por requisições locais (getStorage, etc)
-        document.addEventListener('SisPMG+:Response', (event) => {
-            const { response, messageId } = event.detail;
-            if (this.messageCallbacks.has(messageId)) {
-                this.messageCallbacks.get(messageId)(response);
-                this.messageCallbacks.delete(messageId);
+        window.addEventListener('message', (event) => {
+            if (!event.data || typeof event.data !== 'object') return;
+
+            // Responses geradas por requisições locais (getStorage, etc)
+            if (event.data.type === 'SisPMG+:Response') {
+                const { response, messageId } = event.data;
+                if (this.messageCallbacks.has(messageId)) {
+                    this.messageCallbacks.get(messageId)(response);
+                    this.messageCallbacks.delete(messageId);
+                }
             }
-        });
 
-        // Comandos roteados do background (Inter-Abas)
-        document.addEventListener('SisPMG+:FromBackground', (event) => {
-            const message = event.detail;
+            // Comandos roteados do background (Inter-Abas)
+            if (event.data.type === 'SisPMG+:FromBackground') {
+                const { message } = event.data;
 
-            if (message.type === 'EXECUTE_ROUTINE') {
-                console.log(`SisPMG+ [Terminal]: Recebida requisição da aba [${message.sourceAlias}] para rotina '${message.routineName}'. Aguardando terminal ficar pronto...`);
-                
-                // Impede falha por acionamento precoce em abas recém-criadas
-                this.waitForSystemReady().then(async () => {
-                    console.log(`SisPMG+ [Terminal]: Sistema pronto. Executando rotina '${message.routineName}'.`);
-                    this.executionReturnValue = undefined; // Reseta o valor de retorno
-                    this.isRemoteExecution = true;
-                    this.closeRequestedDuringRemote = false;
+                if (message.type === 'EXECUTE_ROUTINE') {
+                    console.log(`SisPMG+ [Terminal]: Recebida requisição da aba [${message.sourceAlias}] para rotina '${message.routineName}'. Aguardando terminal ficar pronto...`);
+                    
+                    // Impede falha por acionamento precoce em abas recém-criadas
+                    this.waitForSystemReady().then(async () => {
+                        console.log(`SisPMG+ [Terminal]: Sistema pronto. Executando rotina '${message.routineName}'.`);
+                        this.executionReturnValue = undefined; // Reseta o valor de retorno
+                        this.isRemoteExecution = true;
+                        this.closeRequestedDuringRemote = false;
 
-                    try {
-                        // Executa a rotina internamente passando o customCode (se existir). 
-                        // CÓDIGO CORRIGIDO AQUI: message.routineName é o nome ('Rotina_Dinamica_Remota' ou o caminho), message.customCode é o script literal puro.
-                        await this.executarRotina(message.routineName, false, message.customCode, false);
-                        
-                        // Notifica sucesso de volta para o Background rotear, incluindo dados caso o usuário tenha chamado retornar()
-                        await this.sendMessagePromise('relayExecutionResult', {
-                            targetAlias: message.sourceAlias,
-                            messageId: message.messageId,
-                            result: { success: true, data: this.executionReturnValue }
-                        });
-                    } catch (error) {
-                        // Notifica erro
-                        await this.sendMessagePromise('relayExecutionResult', {
-                            targetAlias: message.sourceAlias,
-                            messageId: message.messageId,
-                            result: { success: false, error: error.message }
-                        });
-                    } finally {
-                        this.isRemoteExecution = false;
-                        if (this.closeRequestedDuringRemote) {
-                            this.closeRequestedDuringRemote = false;
-                            this.sendMessage('closeTab', { targetAlias: null });
+                        try {
+                            // Executa a rotina internamente passando o customCode (se existir). 
+                            // message.routineName é o nome ('Rotina_Dinamica_Remota' ou o caminho), message.customCode é o script literal puro.
+                            await this.executarRotina(message.routineName, false, message.customCode, false);
+                            
+                            // Notifica sucesso de volta para o Background rotear, incluindo dados caso o usuário tenha chamado retornar()
+                            await this.sendMessagePromise('relayExecutionResult', {
+                                targetAlias: message.sourceAlias,
+                                messageId: message.messageId,
+                                result: { success: true, data: this.executionReturnValue }
+                            });
+                        } catch (error) {
+                            // Notifica erro
+                            await this.sendMessagePromise('relayExecutionResult', {
+                                targetAlias: message.sourceAlias,
+                                messageId: message.messageId,
+                                result: { success: false, error: error.message }
+                            });
+                        } finally {
+                            this.isRemoteExecution = false;
+                            if (this.closeRequestedDuringRemote) {
+                                this.closeRequestedDuringRemote = false;
+                                this.sendMessage('closeTab', { targetAlias: null });
+                            }
                         }
-                    }
-                });
+                    });
 
-            } else if (message.type === 'EXECUTION_RESULT') {
-                // Resolve a Promise local do roteamento Inter-Abas
-                const resolver = this.pendingCrossTabExecutions.get(message.messageId);
-                if (resolver) {
-                    resolver(message.result);
-                    this.pendingCrossTabExecutions.delete(message.messageId);
+                } else if (message.type === 'EXECUTION_RESULT') {
+                    // Resolve a Promise local do roteamento Inter-Abas
+                    const resolver = this.pendingCrossTabExecutions.get(message.messageId);
+                    if (resolver) {
+                        resolver(message.result);
+                        this.pendingCrossTabExecutions.delete(message.messageId);
+                    }
                 }
             }
         });
