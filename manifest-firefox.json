@@ -31,8 +31,7 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "sispmgplus@cleriston.tameirao",
-      "strict_min_version": "112.0",
-      "update_url": "https://raw.githubusercontent.com/cleristontameirao/SisPMGplus/master/updates.json"
+      "strict_min_version": "112.0"
     }
   },
   "content_scripts": [
