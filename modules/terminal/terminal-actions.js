@@ -7,6 +7,7 @@
  * Decodifica um token JWT para extrair seu payload.
  * @param {string} token O token JWT.
  * @returns {object|null} O payload do token ou null se a decodificação falhar.
+ * @example const dados = decodeJwt(meuToken);
  */
 function decodeJwt(token) { 
     try { 
@@ -21,6 +22,7 @@ function decodeJwt(token) {
  * Obtém o valor de um cookie a partir do seu nome.
  * @param {string} name O nome do cookie.
  * @returns {string|undefined} O valor do cookie ou undefined se não for encontrado.
+ * @example const token = getCookie('tokiuz');
  */
 function getCookie(name) { 
     const v = `; ${document.cookie}`; 
@@ -110,6 +112,25 @@ export function initActions(prototype) {
         }
     };
 
+    /**
+     * Aguarda até que um texto ou padrão (RegExp) apareça na tela do terminal.
+     * @param {string|Array<string>|RegExp} alvo Texto ou array de textos ou RegExp a procurar.
+     * @param {object} [options] Opções de busca.
+     * @param {number} [options.esperar=5] Tempo máximo de espera em segundos. Use 0 para verificação instantânea.
+     * @param {boolean} [options.lancarErro=false] Se verdadeiro, lança um erro caso o texto não seja encontrado no tempo limite.
+     * @param {boolean} [options.caseSensitive=false] Se verdadeiro, a busca diferenciará maiúsculas de minúsculas.
+     * @param {object} [options.area] Define uma área específica para a busca.
+     * @param {number} [options.area.linha] Busca apenas nesta linha específica.
+     * @param {number} [options.area.linhaInicial] Linha inicial do bloco de busca.
+     * @param {number} [options.area.linhaFinal] Linha final do bloco de busca.
+     * @param {number} [options.area.colunaInicial] Coluna inicial do bloco de busca.
+     * @param {number} [options.area.colunaFinal] Coluna final do bloco de busca.
+     * @param {boolean} [options.area.apenasCamposDigitaveis] Se verdadeiro, busca apenas dentro dos campos editáveis da tela.
+     * @param {boolean|string} [options.dialogoFalha=false] Se verdadeiro ou string, exibe um modal de confirmação em caso de falha.
+     * @returns {Promise<boolean>} Retorna true se o texto foi encontrado, false caso contrário.
+     * @example await localizarTexto('SUCESSO', { esperar: 10, lancarErro: true });
+     * @example await localizarTexto(/PROTOCOLO: \d+/, { area: { linha: 5 } });
+     */
     prototype.localizarTexto = async function(alvo, options = {}) {
         await this._checkRotinaState();
         
@@ -234,11 +255,21 @@ export function initActions(prototype) {
         });
     };
 
+    /**
+     * Define a velocidade global de execução da rotina.
+     * @param {number} segundos Tempo de pausa padrão entre cada passo da rotina em segundos.
+     * @example velocidade(0.5); // Pausa 500ms entre comandos.
+     */
     prototype.velocidade = function(segundos) { 
         this.rotinaStepDelay = parseFloat(segundos);
         if (isNaN(this.rotinaStepDelay) || this.rotinaStepDelay < 0) this.rotinaStepDelay = 0.25;
     };
     
+    /**
+     * Aguarda até que o terminal pare de processar dados (fique ocioso).
+     * @param {number} [timeout=20000] Tempo limite em milissegundos para considerar o terminal travado.
+     * @returns {Promise<void>}
+     */
     prototype.waitForTerminalReady = async function(timeout = 20000) {
         while (true) {
             await this._checkRotinaState();
@@ -312,6 +343,11 @@ export function initActions(prototype) {
         }
     };
     
+    /**
+     * Cola o conteúdo da área de transferência na posição atual do cursor no terminal.
+     * @returns {Promise<void>}
+     * @example await colar();
+     */
     prototype.colar = async function() {
         await this._checkRotinaState();
         try {
@@ -325,7 +361,14 @@ export function initActions(prototype) {
         }
     };
     
-    // --- LÓGICA DE REPETIÇÃO INCLUÍDA NA AÇÃO DE TECLAR ---
+    /**
+     * Pressiona uma tecla especial do terminal, com suporte a repetições.
+     * @param {string} nomeTecla Nome da tecla (ENTER, F1-F24, TAB, BACKTAB, SUBIR, DESCER, etc).
+     * @param {string|number} [repeticoes='x1'] Quantidade de vezes a repetir a tecla (ex: 'x3' ou 3).
+     * @returns {Promise<void>}
+     * @example await teclar('ENTER');
+     * @example await teclar('TAB', 'x5');
+     */
     prototype.teclar = async function(nomeTecla, repeticoes = 'x1') {
         await this._checkRotinaState();
         const upperCaseKey = String(nomeTecla).toUpperCase();
@@ -349,7 +392,15 @@ export function initActions(prototype) {
         }
     };
     
-     prototype.digitar = async function(texto, verify = true) {
+    /**
+     * Digita um texto no terminal.
+     * @param {string|number} texto O texto a ser digitado.
+     * @param {boolean} [verify=true] Se verdadeiro, verifica se o texto apareceu na tela após a digitação.
+     * @returns {Promise<void>}
+     * @example await digitar('123456');
+     * @example await digitar('senha_secreta', false); // Digita sem verificar se apareceu (para campos de senha).
+     */
+    prototype.digitar = async function(texto, verify = true) {
         const textToType = String(texto);
         await this._checkRotinaState();
         if (textToType.length === 0) return;
@@ -376,6 +427,13 @@ export function initActions(prototype) {
         }
     };
 
+    /**
+     * Simula um clique de mouse em uma coordenada específica da tela.
+     * @param {number} linha Número da linha (1-base).
+     * @param {number} coluna Número da coluna (1-base).
+     * @returns {Promise<void>}
+     * @example await clicar(5, 10);
+     */
     prototype.clicar = async function(linha, coluna) {
         await this._checkRotinaState();
         if (typeof linha !== 'number' || typeof coluna !== 'number' || linha < 1 || coluna < 1) {
@@ -387,6 +445,12 @@ export function initActions(prototype) {
         await this.waitForTerminalReady();
     };
     
+    /**
+     * Pausa a execução da rotina por um tempo determinado.
+     * @param {number} [segundos] Tempo em segundos. Se omitido, utiliza o valor definido em velocidade().
+     * @returns {Promise<void>}
+     * @example await esperar(2); // Espera 2 segundos.
+     */
     prototype.esperar = async function(segundos) {
         let delayInSeconds = (segundos === undefined) ? this.rotinaStepDelay : parseFloat(segundos);
         if (isNaN(delayInSeconds) || delayInSeconds < 0) {
@@ -400,9 +464,20 @@ export function initActions(prototype) {
         }
     };
 
+    /**
+     * Localiza um rótulo na tela e move o cursor para o campo de entrada associado.
+     * @param {string} rotulo O texto que serve como âncora (ex: "CPF:", "NOME:").
+     * @param {object} [options] Opções de posicionamento.
+     * @param {number} [options.offset=0] Quantidade de TABs adicionais a pressionar.
+     * @param {string} [options.direcao='depois'] Direção em relação ao rótulo: 'depois', 'antes', 'acima', 'abaixo'.
+     * @param {boolean} [options.caseSensitive=false] Diferenciar maiúsculas/minúsculas na busca do rótulo.
+     * @returns {Promise<boolean>}
+     * @example await posicionar('CPF:');
+     * @example await posicionar('Nome:', { direcao: 'abaixo' });
+     */
     prototype.posicionar = async function(rotulo, options = {}) {
         await this._checkRotinaState();
-        const { offset = 0, direcao = 'apos', caseSensitive = false } = options;
+        const { offset = 0, direcao = 'depois', caseSensitive = false } = options;
     
         const findLabel = () => {
             const buffer = this.term.buffer?.active;
@@ -465,12 +540,28 @@ export function initActions(prototype) {
         throw new Error(`Rótulo "${rotulo}" não foi encontrado na tela.`);
     };
     
+    /**
+     * Retorna o conteúdo textual de toda a tela do terminal.
+     * @param {boolean} [toUpperCase=false] Se verdadeiro, retorna o texto em maiúsculas.
+     * @returns {string} O texto da tela.
+     */
     prototype.getFullScreenText = function(toUpperCase = false) {
         const buffer = this.term.buffer.active;
         let fullScreenText = Array.from({ length: buffer.length }, (_, i) => buffer.getLine(i).translateToString(true)).join('\n');
         return toUpperCase ? fullScreenText.toUpperCase() : fullScreenText;
     };
     
+    /**
+     * Obtém o texto de uma área específica da tela.
+     * @param {number} [linhaInicial] Linha inicial (se omitido, pega a tela inteira).
+     * @param {number} [colunaInicial] Coluna inicial.
+     * @param {number} [linhaFinal] Linha final.
+     * @param {number} [colunaFinal] Coluna final.
+     * @returns {string} O texto extraído.
+     * @example const tela = obterTexto();
+     * @example const linha5 = obterTexto(5);
+     * @example const bloco = obterTexto(5, 10, 8, 40);
+     */
     prototype.obterTexto = function(linhaInicial, colunaInicial, linhaFinal, colunaFinal) {
         switch (arguments.length) {
             case 0:
@@ -486,6 +577,11 @@ export function initActions(prototype) {
         }
     };
 
+    /**
+     * Obtém o texto de uma linha específica.
+     * @param {number} [lineNumber=-1] Número da linha (1-base). Se -1, utiliza a linha atual do cursor.
+     * @returns {string} O texto da linha.
+     */
     prototype.obterTextoLinha = function(lineNumber = -1) {
         const y = lineNumber === -1 ? this.term.buffer.active.cursorY : lineNumber - 1;
         if (y < 0 || y >= this.term.rows) {
@@ -494,6 +590,10 @@ export function initActions(prototype) {
         return this.getBlockText(y, y, 0, this.term.cols);
     };
 
+    /**
+     * Retorna as coordenadas atuais do cursor (y, x).
+     * @returns {object} { y, x }
+     */
     prototype.obterPosicaoCursor = function() {
         return {
             y: this.term.buffer.active.cursorY + 1,
@@ -501,6 +601,15 @@ export function initActions(prototype) {
         };
     };
 
+    /**
+     * Copia o texto de uma área da tela para a área de transferência do sistema.
+     * @param {number} [linhaInicial]
+     * @param {number} [colunaInicial]
+     * @param {number} [linhaFinal]
+     * @param {number} [colunaFinal]
+     * @example await copiar(10); // Copia a linha 10.
+     * @example await copiar(5, 1, 5, 20); // Copia parte da linha 5.
+     */
     prototype.copiar = async function(linhaInicial, colunaInicial, linhaFinal, colunaFinal) {
         await this._checkRotinaState();
         let textToCopy = '';
@@ -534,6 +643,11 @@ export function initActions(prototype) {
         }
     };
 
+    /**
+     * Aguarda por um clique de mouse no terminal e retorna as coordenadas.
+     * @param {number} [timeout=15000] Tempo limite em milissegundos.
+     * @returns {Promise<object|null>} { x, y } ou null se houver timeout.
+     */
     prototype.waitForMouseClick = function(timeout = 15000) {
         return new Promise(resolve => {
             const listener = this.term.onData(data => {
@@ -548,6 +662,10 @@ export function initActions(prototype) {
         });
     };
 
+    /**
+     * Modo interativo para obter coordenadas de um clique do usuário.
+     * @returns {Promise<void>}
+     */
     prototype.getCoordsFromClick = async function() {
         this.saveCursorPosition();
         await this.createInstructionalModal("Obter Coordenadas", "Clique em qualquer ponto do terminal para obter as coordenadas.");
@@ -565,6 +683,11 @@ export function initActions(prototype) {
         }
     };
 
+    /**
+     * Modo interativo que permite ao usuário selecionar uma área da tela com dois cliques.
+     * @param {boolean} [showModals=true] Se deve exibir modais de instrução.
+     * @returns {Promise<object|null>} Objeto com { text, coords } ou null.
+     */
     prototype.lerTela = function(showModals = true) {
         return new Promise(async (resolve) => {
             await this._checkRotinaState();
@@ -594,6 +717,14 @@ export function initActions(prototype) {
         });
     };
 
+    /**
+     * Retorna o texto de um bloco retangular (coordenadas 0-base, internas).
+     * @param {number} startY
+     * @param {number} endY
+     * @param {number} startX
+     * @param {number} endX
+     * @returns {string}
+     */
     prototype.getBlockText = function(startY, endY, startX, endX) {
         let text = '';
         const buffer = this.term.buffer.active;
@@ -607,22 +738,45 @@ export function initActions(prototype) {
     };
     
     // --- FUNÇÕES AUXILIARES DE EXTRAÇÃO DE DADOS ---
+    
+    /**
+     * Tenta extrair um CPF de um texto.
+     * @param {string} texto
+     * @returns {string|null} O CPF formatado ou null.
+     */
     prototype.extrairCPF = function(texto) {
         const match = String(texto).match(/\d{3}\.\d{3}\.\d{3}-\d{2}/);
         return match ? match[0] : null;
     };
     
+    /**
+     * Tenta extrair uma data (DD/MM/AAAA) de um texto.
+     * @param {string} texto
+     * @returns {string|null} A data encontrada ou null.
+     */
     prototype.extrairData = function(texto) {
         const match = String(texto).match(/\d{2}\/\d{2}\/\d{4}/);
         return match ? match[0] : null;
     };
 
+    /**
+     * Tenta extrair um número de protocolo após o rótulo "Protocolo:".
+     * @param {string} texto
+     * @returns {string|null} O número do protocolo ou null.
+     */
     prototype.extrairProtocolo = function(texto) {
         const match = String(texto).match(/Protocolo:\s*(\d+)/i);
         return match ? match[1] : null;
     };
     
     // --- PROCESSAMENTO DE ARQUIVOS E PLANILHAS ---
+
+    /**
+     * Lê um arquivo linha por linha e executa uma função para cada uma.
+     * @param {string} nomeArquivo Nome do arquivo no diretório selecionado.
+     * @param {function} callback Função (linha, indice, todasAsLinhas) => { ... }
+     * @returns {Promise<void>}
+     */
     prototype.processarLinhas = async function(nomeArquivo, callback) {
         await this._checkRotinaState();
         try {
@@ -639,10 +793,21 @@ export function initActions(prototype) {
         }
     };
 
+    /**
+     * Retorna a lista de campos digitáveis da tela atual.
+     * @returns {Array<object>}
+     */
     prototype.obterCamposDigitaveis = function() {
         return getDigitableFields(this.term);
     };
     
+    /**
+     * Envia um array de dados para uma planilha Google via Google Apps Script.
+     * @param {string} scriptId ID da publicação do script.
+     * @param {string} sheetName Nome da aba na planilha.
+     * @param {Array<Array>} data Matriz de dados [[col1, col2], [col1, col2]].
+     * @returns {Promise<void>}
+     */
     prototype.enviarParaPlanilha = async function(scriptId, sheetName, data) {
         await this._checkRotinaState();
         if (!scriptId || !sheetName || !Array.isArray(data)) {
@@ -660,6 +825,13 @@ export function initActions(prototype) {
         }
     };
 
+    /**
+     * Lê os dados de uma planilha Google pública.
+     * @param {string} sheetId ID da planilha.
+     * @param {string} [sheetName=''] Nome da aba.
+     * @param {string} [query=''] Consulta SQL-like (ex: "SELECT A, B WHERE C > 10").
+     * @returns {Promise<Array<Array>>} Matriz de dados.
+     */
     prototype.lerPlanilha = async function(sheetId, sheetName = '', query = '') {
         await this._checkRotinaState();
         if (!sheetId) throw new Error("lerPlanilha: O ID da planilha (sheetId) é obrigatório.");
@@ -677,6 +849,13 @@ export function initActions(prototype) {
         }
     };
 
+    /**
+     * Itera sobre dados de uma planilha (matriz) e executa um callback para cada linha.
+     * @param {Array<Array>} data Matriz retornada por lerPlanilha.
+     * @param {function} callback Função (linha, indice) => { ... }
+     * @param {boolean} [ignoreHeader=true] Pular a primeira linha (cabeçalho).
+     * @returns {Promise<void>}
+     */
     prototype.processarPlanilha = async function(data, callback, ignoreHeader = true) {
         await this._checkRotinaState();
         if (!Array.isArray(data) || data.length === 0) {
@@ -703,6 +882,10 @@ export function initActions(prototype) {
         }
     };
 
+    /**
+     * Retorna dados básicos do usuário logado (extraídos do token).
+     * @returns {Promise<object|null>}
+     */
     prototype.obterDadosUsuario = async function() {
         await this._checkRotinaState();
         const token = getCookie('tokiuz');
@@ -729,6 +912,15 @@ export function initActions(prototype) {
     };
     
     // --- LÓGICA INTER-ABAS ---
+
+    /**
+     * Executa uma rotina ou código em outra aba do terminal.
+     * @param {string} rotinaOuCodigo Nome da rotina salva ou código JS literal.
+     * @param {string} [aliasDestino=null] Alias da aba destino. Se nulo, abre uma nova aba.
+     * @param {string} [sistemaDestino=null] Sistema para auto-login na nova aba.
+     * @returns {Promise<any>} O valor retornado pela aba remota via retornar().
+     * @example const res = await executarRotinaEm('MinhaRotina', 'ABA_1');
+     */
     prototype.executarRotinaEm = function(rotinaOuCodigo, aliasDestino = null, sistemaDestino = null) {
         return new Promise(async (resolve, reject) => {
             await this._checkRotinaState();
@@ -773,10 +965,20 @@ export function initActions(prototype) {
         });
     };
 
+    /**
+     * Define o valor a ser retornado para a aba que solicitou a execução desta rotina remotamente.
+     * @param {any} valor
+     * @example retornar({ sucesso: true, id: 123 });
+     */
     prototype.retornar = function(valor) {
         this.executionReturnValue = valor;
     };
 
+    /**
+     * Fecha a aba atual ou uma aba remota pelo seu alias.
+     * @param {string} [aliasDestino=null] Alias da aba a ser fechada. Se nulo, fecha a própria aba.
+     * @returns {Promise<void>}
+     */
     prototype.fechar = async function(aliasDestino = null) {
         await this._checkRotinaState();
         
@@ -804,6 +1006,11 @@ export function initActions(prototype) {
         }
     };
 
+    /**
+     * Exibe dados no console de debug da rotina (janela flutuante).
+     * @param  {...any} args Dados a serem exibidos.
+     * @example debug('Valor extraído:', valor);
+     */
     prototype.debug = function(...args) {
         console.log('[DEBUG ROTINA]', ...args);
     
@@ -896,7 +1103,12 @@ export function initActions(prototype) {
     // ============================================================================
 
     /**
-     * Lê a planilha e converte os dados em um Array de Objetos JSON usando a 1ª linha como chave.
+     * Lê uma planilha Google e converte os dados em um Array de Objetos JSON usando a 1ª linha como chaves.
+     * @param {string} sheetId ID da planilha.
+     * @param {string} [sheetName=''] Nome da aba.
+     * @param {string} [query=''] Consulta SQL-like.
+     * @returns {Promise<Array<object>>}
+     * @example const itens = await lerPlanilhaObjetos('ID_PLANILHA');
      */
     prototype.lerPlanilhaObjetos = async function(sheetId, sheetName = '', query = '') {
         const dadosArray = await this.lerPlanilha(sheetId, sheetName, query);
@@ -914,7 +1126,14 @@ export function initActions(prototype) {
     };
 
     /**
-     * Utilitário visual para seleção de itens usando modal HTML dinâmica.
+     * Utilitário visual para seleção de itens usando uma tabela em modal HTML.
+     * @param {string} titulo Título do modal.
+     * @param {string} descricao Texto explicativo acima da tabela.
+     * @param {Array<string>} colunas Array com os nomes das colunas.
+     * @param {Array<any>} dados Array de dados a serem exibidos.
+     * @param {function} renderRowFn Função que recebe um item e retorna as <td>s da linha.
+     * @returns {Promise<any|null>} Retorna o item selecionado ou null se cancelar.
+     * @example const item = await selecionarEmTabela('Selecione', '...', ['ID', 'Nome'], lista, i => `<td>${i.id}</td><td>${i.nome}</td>`);
      */
     prototype.selecionarEmTabela = function(titulo, descricao, colunas, dados, renderRowFn) {
         return new Promise(async (resolve) => {
@@ -958,7 +1177,12 @@ export function initActions(prototype) {
     };
 
     /**
-     * NOVO: Pede uma informação diretamente ao usuário com campo de digitação
+     * Pede uma informação diretamente ao usuário com campo de digitação em modal.
+     * @param {string} titulo
+     * @param {string} mensagem
+     * @param {string} [placeholder='']
+     * @returns {Promise<string|null>} Retorna o valor digitado ou null se cancelar.
+     * @example const nome = await solicitarEntrada('Identificação', 'Digite seu nome:');
      */
     prototype.solicitarEntrada = function(titulo, mensagem, placeholder = '') {
         return new Promise(async (resolve) => {
@@ -985,7 +1209,11 @@ export function initActions(prototype) {
     };
 
     /**
-     * NOVO: Aguarda que UM dentre VÁRIOS textos apareça na tela e retorna qual foi. 
+     * Aguarda que UM dentre VÁRIOS textos/padrões apareça na tela e retorna qual foi o encontrado. 
+     * @param {Array<string|RegExp>} alvosArray Lista de strings ou expressões regulares.
+     * @param {object} [options] Ver as opções de localizarTexto.
+     * @returns {Promise<string|RegExp|null>} O alvo encontrado ou null em caso de timeout.
+     * @example const qual = await localizarQualquerTexto(['SUCESSO', 'ERRO', /FALHA NO SISTEMA/i]);
      */
     prototype.localizarQualquerTexto = async function(alvosArray, options = {}) {
         await this._checkRotinaState();
@@ -1050,7 +1278,76 @@ export function initActions(prototype) {
     };
 
     /**
-     * NOVO: Agrupa um Array de Objetos por uma chave específica (ex: agrupar itens por "convenio")
+     * Aguarda até que um texto ou padrão DESAPAREÇA da tela do terminal.
+     * @param {string|RegExp} alvo Texto ou padrão a aguardar o desaparecimento.
+     * @param {object} [options] Opções.
+     * @param {number} [options.esperar=15] Tempo limite de espera em segundos.
+     * @returns {Promise<boolean>} True se sumiu, False se timeout.
+     * @example await esperarTextoSumir('CARREGANDO...');
+     */
+    prototype.esperarTextoSumir = async function(alvo, options = {}) {
+        await this._checkRotinaState();
+        const config = { esperar: 15, caseSensitive: false, ...options };
+        
+        const isPresent = () => {
+            let screenText = this.getFullScreenText();
+            if (alvo instanceof RegExp) {
+                const flags = config.caseSensitive ? alvo.flags.replace('i', '') : alvo.flags.includes('i') ? alvo.flags : alvo.flags + 'i';
+                return new RegExp(alvo.source, flags).test(screenText);
+            }
+            if (!config.caseSensitive) {
+                screenText = screenText.toUpperCase();
+                return screenText.includes(String(alvo).toUpperCase());
+            }
+            return screenText.includes(String(alvo));
+        };
+
+        if (!isPresent()) return true;
+
+        return new Promise(resolve => {
+            let watcher, poller;
+            const startTime = Date.now();
+            const timeoutMs = config.esperar * 1000;
+
+            const cleanup = () => {
+                clearTimeout(poller);
+                watcher?.dispose();
+            };
+
+            watcher = this.term.onWriteParsed(() => {
+                if (!isPresent()) { cleanup(); resolve(true); }
+            });
+
+            const poll = async () => {
+                try {
+                    await this._checkRotinaState();
+                    if (!isPresent()) { cleanup(); resolve(true); return; }
+                    if (Date.now() - startTime > timeoutMs) { cleanup(); resolve(false); return; }
+                    poller = setTimeout(poll, 250);
+                } catch (e) { cleanup(); resolve(false); }
+            };
+            poll();
+        });
+    };
+
+    /**
+     * Limpa o conteúdo do campo onde o cursor está posicionado no momento.
+     * @param {number} [tamanhoMaximo=60] Quantidade de caracteres a limpar (via Backspaces).
+     * @returns {Promise<void>}
+     * @example await limparCampo();
+     */
+    prototype.limparCampo = async function(tamanhoMaximo = 60) {
+        await this._checkRotinaState();
+        // Envia uma sequência de BACKSPACEs para garantir que o campo esteja vazio
+        await this.teclar('BACKSPACE', tamanhoMaximo);
+    };
+
+    /**
+     * Agrupa um Array de Objetos por uma chave específica.
+     * @param {Array<object>} arrayDeObjetos
+     * @param {string} chave Nome da propriedade usada para o agrupamento.
+     * @returns {object} Objeto onde as chaves são os valores agrupados.
+     * @example const grupos = agruparDados(lista, 'cidade');
      */
     prototype.agruparDados = function(arrayDeObjetos, chave) {
         if (!Array.isArray(arrayDeObjetos)) return {};
@@ -1064,7 +1361,10 @@ export function initActions(prototype) {
     };
 
     /**
-     * NOVO: Formatação Inteligente de Data
+     * Utilitário para formatação de datas.
+     * @param {string|Date} dataOriginal Data em formato string (DD/MM/AAAA ou YYYY-MM-DD) ou objeto Date.
+     * @param {string} [formatoDestino='DDMMAAAA'] Formatos suportados: 'DDMMAAAA', 'DD/MM/AAAA', 'YYYY-MM-DD'.
+     * @returns {string} Data formatada.
      */
     prototype.formatarData = function(dataOriginal, formatoDestino = 'DDMMAAAA') {
         if (!dataOriginal) return '';
@@ -1076,6 +1376,8 @@ export function initActions(prototype) {
             dataObj = new Date(`${partes[2]}-${partes[1]}-${partes[0]}T12:00:00`);
         } else if (str.includes('-')) {
             dataObj = new Date(str.split(' ')[0] + "T12:00:00");
+        } else if (dataOriginal instanceof Date) {
+            dataObj = dataOriginal;
         } else {
             return str; 
         }
@@ -1094,11 +1396,21 @@ export function initActions(prototype) {
         }
     };
 
+    /**
+     * Remove todos os caracteres não numéricos de uma string.
+     * @param {string} texto
+     * @returns {string} String contendo apenas números.
+     */
     prototype.extrairNumeros = function(texto) {
         if (!texto) return '';
         return String(texto).replace(/\D/g, '');
     };
 
+    /**
+     * Converte uma string de moeda (ex: "R$ 1.250,50") em um número float (ex: 1250.5).
+     * @param {string} texto
+     * @returns {number}
+     */
     prototype.converterMoeda = function(texto) {
         if (!texto) return 0;
         return parseFloat(String(texto).replace(/[R$\s\.]/g, '').replace(',', '.')) || 0;

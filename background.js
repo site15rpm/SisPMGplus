@@ -35,6 +35,12 @@ const messageHandlers = [
 // Este listener central orquestra a passagem de mensagens para os módulos corretos.
 // Ele retorna uma Promise, o que é essencial no Manifest V3 para lidar com respostas assíncronas.
 browser.runtime.onMessage.addListener((request, sender) => {
+    // IMPORTANTE: Se a mensagem for direcionada ao 'offscreen', ignoramos aqui
+    // para permitir que o listener no offscreen.js (ou no iframe fallback) a processe.
+    if (request.target === 'offscreen') {
+        return false;
+    }
+
     const { action, payload } = request;
 
     return (async () => {
@@ -45,7 +51,6 @@ browser.runtime.onMessage.addListener((request, sender) => {
                 // Se um handler processou a mensagem e retornou uma resposta,
                 // a retornamos imediatamente.
                 if (response != null) {
-                    console.log(`SisPMG+ [Background]: Ação '${action}' tratada por um módulo. Retornando:`, response);
                     return response;
                 }
             }

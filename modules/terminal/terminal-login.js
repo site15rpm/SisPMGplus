@@ -383,18 +383,19 @@ export function initLogin(prototype) {
             await this.digitar(password, false);
             
             await this.teclar('ENTER');
-            
             await this.localizarTexto("Logon executado com sucesso", { esperar: 20, lancarErro: true }); 
             
             this.isLoggedIn = true;
             this.resumeScreenMonitoring();
             this.createFullMenu(); 
             
+            await this.executePostLoginActions();
+            this.exibirNotificacao("Login concluído com sucesso!", true);
+            
+            // Carrega rotinas por último para não atrasar a entrada no sistema
             await this.loadRotinasFromCache();
             this.isTerminalReadyForRoutines = true; // Libera execução Inter-Abas
             
-            await this.executePostLoginActions();
-            this.exibirNotificacao("Login concluído com sucesso!", true);
             await this.processSuccessfulLogin(tokenData, password, terminalUser, autoLoginChecked);
         } catch (error) {
             // ### INÍCIO DA MODIFICAÇÃO: Verifica "Senha incorreta" ###

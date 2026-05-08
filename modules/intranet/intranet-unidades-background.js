@@ -44,20 +44,36 @@ const addUnidadesLog = async (message, system = 'UNIDADES', type = 'info') => {
 // --- FUNÇÕES OFFSCREEN ---
 async function setupOffscreenDocument(path) {
     try {
-        const existingContexts = await browser.runtime.getContexts({
-            contextTypes: ['OFFSCREEN_DOCUMENT'],
-            documentUrls: [browser.runtime.getURL(path)]
-        });
+        if (typeof browser.offscreen !== 'undefined') {
+            let existingContexts = [];
+            try {
+                if (typeof browser.runtime.getContexts === 'function') {
+                    existingContexts = await browser.runtime.getContexts({
+                        contextTypes: ['OFFSCREEN_DOCUMENT'],
+                        documentUrls: [browser.runtime.getURL(path)]
+                    });
+                }
+            } catch (e) { /* ignore */ }
 
-        if (existingContexts.length > 0) return;
+            if (existingContexts.length > 0) return;
 
-        await browser.offscreen.createDocument({
-            url: path,
-            reasons: [browser.offscreen.Reason.DOM_PARSER],
-            justification: 'Parse HTML content',
-        });
+            await browser.offscreen.createDocument({
+                url: path,
+                reasons: [browser.offscreen.Reason.DOM_PARSER],
+                justification: 'Parse HTML content',
+            });
+        } else {
+            // Fallback Firefox
+            if (document.getElementById('sispmg-offscreen-iframe')) return;
+            const iframe = document.createElement('iframe');
+            iframe.id = 'sispmg-offscreen-iframe';
+            iframe.src = browser.runtime.getURL(path);
+            iframe.style.display = 'none';
+            document.body.appendChild(iframe);
+            await new Promise(resolve => { iframe.onload = () => setTimeout(resolve, 300); });
+        }
     } catch (e) {
-        if (!e.message.includes('Only a single offscreen document may be created.')) {
+        if (e.message && !e.message.includes('Only a single offscreen document may be created.')) {
             console.error("SisPMG+ [Offscreen]: Erro ao configurar documento offscreen.", e);
             throw e;
         }
@@ -81,8 +97,13 @@ async function sendMsgToOffscreen(action, data) {
 
 async function closeOffscreenDocument() {
     try {
-        if ((await browser.runtime.getContexts({ contextTypes: ['OFFSCREEN_DOCUMENT'] })).length > 0) {
-            await browser.offscreen.closeDocument();
+        if (typeof browser.offscreen !== 'undefined') {
+            const contexts = await browser.runtime.getContexts({ contextTypes: ['OFFSCREEN_DOCUMENT'] });
+            if (contexts.length > 0) {
+                await browser.offscreen.closeDocument();
+            }
+        } else {
+            document.getElementById('sispmg-offscreen-iframe')?.remove();
         }
     } catch (closeError) {
         // Ignora erros se o documento já foi fechado

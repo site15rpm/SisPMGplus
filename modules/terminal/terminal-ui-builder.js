@@ -1,5 +1,5 @@
 // Arquivo: modules/terminal/terminal-ui-builder.js
-// Módulo para construir la interfaz del asistente de código, documentar funções e inserir exemplos.
+// Módulo para construir a interface do assistente de código, documentar funções e inserir exemplos.
 
 export class UiBuilder {
     constructor(context, cmInstance) {
@@ -196,414 +196,256 @@ export class UiBuilder {
      */
     getFeatures() {
         return [
-            // Categoria: Comunicação Avançada (Inter-Abas)
-            {
-                type: 'executar-em', title: 'executarRotinaEm(rotinaOuCodigo, aliasDestino, sistema)', category: 'Comunicação Avançada', icon: 'fa-solid fa-network-wired',
-                description: 'Executa uma rotina ou código em outra aba. Se nenhum alias for informado, abre uma nova aba. A aba de destino fará login automático no sistema da aba atual ou no sistema especificado. A rotina atual ficará pausada aguardando o retorno.',
-                args: [
-                    { name: 'rotinaOuCodigo', type: 'string', description: 'O caminho de uma rotina salva OU um bloco de código JavaScript válido e literal.', optional: false },
-                    { name: 'aliasDestino', type: 'string', description: 'A identificação da aba de destino (ex: "B"). Se omitido, cria uma nova aba autônoma.', optional: true },
-                    { name: 'sistema', type: 'string', description: 'A sigla do sistema para auto-login (ex: "BPM", "SIRH"). Se omitido, herda o sistema da aba atual.', optional: true }
-                ],
-                examples: [
-                    {
-                        description: 'Nova Aba (Mais simples): Abre uma nova aba, faz login no sistema atual e executa a rotina.',
-                        code: 'exibirNotificacao("Abrindo nova aba...");\nconst resultado = executarRotinaEm("Utilitarios/Extrair_Dados");\nexibirNotificacao("Retorno da nova aba: " + resultado);'
-                    },
-                    {
-                        description: 'Aba Específica (Alias): Executa uma rotina na aba identificada como "B".',
-                        code: 'const resultado = executarRotinaEm("Utilitarios/Extrair_Dados", "B");\nexibirNotificacao("Aba B terminou. Retorno: " + resultado);'
-                    },
-                    {
-                        description: 'Injeção Dinâmica + Sistema: Envia código puro para a Aba B, forçando login no BPM.',
-                        code: 'const codigoRemoto = `\n    exibirNotificacao("Aba B: Iniciando captura...");\n    esperar(1);\n    const linhaDados = obterTextoLinha(5);\n    retornar(linhaDados);\n`;\n\nconst retornoDaAbaB = executarRotinaEm(codigoRemoto, "B", "BPM");\ndebug("Capturado via Injeção na Aba B:", retornoDaAbaB);'
-                    }
-                ]
-            },
-            {
-                type: 'retornar', title: 'retornar(valor)', category: 'Comunicação Avançada', icon: 'fa-solid fa-reply-all',
-                description: 'Envia um dado (texto, número, array ou objeto) de volta para a aba que acionou esta rotina remotamente. É projetada para funcionar em conjunto com a função `executarRotinaEm()`.',
-                args: [{ name: 'valor', type: 'any', description: 'O dado que será retornado para resolver a Promise na aba de origem.', optional: false }],
-                examples: [
-                    { description: 'Retornar um texto fixo atestando o sucesso da execução remota.', code: 'retornar("PROCESSO_CONCLUIDO_COM_SUCESSO");' },
-                    { description: 'Capturar o texto de uma linha específica e retornar para a origem.', code: 'const numProtocolo = obterTextoLinha(5);\nretornar(numProtocolo);' }
-                ]
-            },
-            {
-                type: 'fechar', title: 'fechar(aliasDestino)', category: 'Comunicação Avançada', icon: 'fa-solid fa-rectangle-xmark',
-                description: 'Fecha uma aba do terminal. Se chamada sem argumentos, fecha a aba atual (interrompendo o script). Se um alias for fornecido (ex: "B"), fecha a aba correspondente remotamente.',
-                args: [
-                    { name: 'aliasDestino', type: 'string', description: 'A letra/alias da aba a ser fechada (ex: "B"). Se omitido, fecha a própria aba em execução.', optional: true }
-                ],
-                examples: [
-                    { description: 'Fechar a aba atual após concluir uma tarefa em cascata.', code: 'exibirNotificacao("Finalizando este nó...");\nfechar();' },
-                    { description: 'Fechar a Aba B após extrair os dados necessários dela.', code: 'fechar("B");\nexibirNotificacao("Aba B encerrada com sucesso.");' }
-                ]
-            },
-
-            // Categoria: Configuração e Controle
-            { 
-                type: 'auto-executar', title: 'autoExecutar(texto, opcoes)', category: 'Configuração e Controle', icon: 'fa-solid fa-robot',
-                description: 'Define um gatilho para executar a rotina automaticamente. Quando o `texto` especificado é detectado em qualquer lugar da tela, a rotina inicia. Após a execução, a rotina fica em espera até que o usuário pressione a tecla definida em `on` (padrão: ENTER).',
-                args: [
-                    { name: 'texto', type: 'string', description: 'O texto que, ao aparecer na tela, acionará a rotina.', optional: false },
-                    { name: 'opcoes', type: 'object', description: 'Configurações para o gatilho de reativação.', optional: true }
-                ],
-                options: [
-                    { name: 'on', type: 'string', default: "'ENTER'", description: "A tecla que reativará o gatilho após a execução. Pode ser `'ENTER'` ou `'ANY_KEY'` para qualquer tecla." }
-                ],
-                examples: [
-                    { description: 'Executar a rotina sempre que "NOVO REGISTRO" aparecer. A rotina será reativada após o usuário pressionar ENTER.', code: 'autoExecutar("NOVO REGISTRO");' },
-                    { description: 'Executar quando "CONSULTA" for detectado e reativar com qualquer tecla.', code: 'autoExecutar("CONSULTA", { on: \'ANY_KEY\' });' }
-                ]
-            },
-            { 
-                type: 'velocidade', title: 'velocidade(segundos)', category: 'Configuração e Controle', icon: 'fa-solid fa-gauge-high',
-                description: 'Altera o intervalo de tempo padrão (em segundos) entre cada comando da rotina. Útil para ajustar a velocidade de execução em telas mais lentas ou rápidas.',
-                args: [{ name: 'segundos', type: 'number', description: 'O tempo de espera em segundos. Use decimais para frações (ex: 0.5).', optional: false }],
-                examples: [
-                    { description: 'Definir a rotina para executar com um intervalo de meio segundo entre cada passo.', code: 'velocidade(0.5);' },
-                    { description: 'Executar os comandos o mais rápido possível (sem delay).', code: 'velocidade(0);' }
-                ]
-            },
-            { 
-                type: 'esperar', title: 'esperar(segundos)', category: 'Configuração e Controle', icon: 'fa-solid fa-clock',
-                description: 'Pausa a execução da rotina pelo número de segundos especificado.',
-                args: [{ name: 'segundos', type: 'number', description: 'O tempo de espera em segundos.', optional: true }],
-                examples: [
-                    { description: 'Fazer uma pausa de 3 segundos.', code: 'esperar(3);' },
-                    { description: 'Fazer uma pausa padrão (definida por `velocidade()`).', code: 'esperar();' }
-                ]
-            },
-             { 
-                type: 'executar-rotina', title: 'executarRotina(nomeDaRotina)', category: 'Configuração e Controle', icon: 'fa-solid fa-diagram-project',
-                description: 'Chama e executa localmente outra rotina salva na sua lista. Útil para modularizar e reutilizar blocos de código grandes.',
-                args: [{ name: 'nomeDaRotina', type: 'string', description: 'O nome completo da rotina a ser executada, incluindo o caminho da pasta (ex: "pasta/minha_sub_rotina").', optional: false }],
-                examples: [{ description: 'Executar uma rotina chamada "Limpar_Cache" que está salva na pasta "utilidades".', code: 'executarRotina("utilidades/Limpar_Cache");' }]
-            },
-            
-            // Categoria: Interfaces de Usuário (Modais)
-            { 
-                type: 'show-notification', title: 'exibirNotificacao(mensagem, sucesso, duracao)', category: 'Interfaces de Usuário (Modais)', icon: 'fa-solid fa-bell',
-                description: 'Exibe uma notificação flutuante e temporária no topo da tela.',
-                args: [
-                    { name: 'mensagem', type: 'string', description: 'O texto a ser exibido.', optional: false },
-                    { name: 'sucesso', type: 'boolean', description: 'Se `true`, a notificação será verde (sucesso). Se `false`, será vermelha (erro). Padrão `true`.', optional: true },
-                    { name: 'duracao', type: 'number', description: 'Tempo em segundos que a notificação ficará visível. Padrão `2`.', optional: true }
-                ],
-                examples: [
-                    { description: 'Exibir uma mensagem de sucesso.', code: 'exibirNotificacao("Processo concluído!");' },
-                    { description: 'Exibir uma mensagem de erro que dura 5 segundos.', code: 'exibirNotificacao("Falha ao salvar.", false, 5);' }
-                ]
-            },
-            { 
-                type: 'criarModal', title: 'criarModal(configuracao)', category: 'Interfaces de Usuário (Modais)', icon: 'fa-solid fa-window-maximize',
-                description: 'Cria um modal interativo para coletar dados do usuário no meio de uma rotina. A função pausa a execução e retorna uma promessa que resolve com os dados inseridos.',
-                args: [{ name: 'configuracao', type: 'object', description: 'Objeto de configuração do modal.', optional: false }],
-                options: [
-                    { name: 'title', type: 'string', default: "'Interação Necessária'", description: 'O título da janela modal.'},
-                    { name: 'elements', type: 'array', default: '[]', description: 'Uma lista de objetos, cada um definindo um elemento da interface (input, select, checkbox, etc.).'},
-                    { name: 'buttons', type: 'array', default: '[]', description: 'Uma lista de objetos para definir os botões de ação do modal.'},
-                    { name: 'modalClass', type: 'string', default: "''", description: 'Classe CSS customizada para aplicar ao conteúdo do modal.' },
-                    { name: 'style', type: 'object', default: '{}', description: 'Objeto com estilos CSS a serem aplicados inline ao modal.' }
-                ],
-                examples: [
-                    {
-                        description: 'Criar um modal pedindo um nome e um setor, e depois usar os dados inseridos na tela.',
-                        code: `const resultado = criarModal({\n    title: 'Coleta de Dados',\n    elements: [\n        { type: 'title', text: 'Informações Adicionais' },\n        { type: 'text', text: 'Por favor, insira os dados abaixo:' },\n        { type: 'input', id: 'nome_usuario', label: 'Nome Completo:', defaultValue: 'Fulano' },\n        { type: 'select', id: 'setor', label: 'Setor:', options: [\n            { value: 'rh', text: 'Recursos Humanos' },\n            { value: 'ti', text: 'Tecnologia' }\n        ]},\n        { type: 'checkbox', id: 'urgente', label: 'Marcar como urgente', checked: true }\n    ],\n    buttons: [\n        { text: 'Cancelar', action: 'cancel' },\n        { text: 'Confirmar', action: 'confirm' }\n    ]\n});\n\nif (resultado && resultado.action === 'confirm') {\n    posicionar("Nome:");\n    digitar(resultado.formData.nome_usuario);\n    posicionar("Setor:");\n    digitar(resultado.formData.setor);\n    if(resultado.formData.urgente){\n        posicionar("Urgente:");\n        digitar("SIM");\n    }\n}`
-                    }
-                ]
-            },
-            
-            // Categoria: Estruturas de Código
-            { 
-                type: 'if-else', title: 'if / else', category: 'Estruturas de Código', icon: 'fa-solid fa-code-branch',
-                description: 'Executa um bloco de código se uma condição for verdadeira, e outro bloco (opcional) se for falsa. A função `localizarTexto` é comumente usada como condição.',
-                examples: [
-                    { description: 'Executar uma ação somente se um texto específico estiver na tela.', code: 'if (localizarTexto("SUCESSO", { esperar: 0 })) {\n    exibirNotificacao("Operação bem-sucedida!");\n}' },
-                    { description: 'Executar uma ação ou outra, dependendo do que está na tela.', code: 'if (localizarTexto("MENU PRINCIPAL", { esperar: 0 })) {\n    // Ações para o menu principal\n} else {\n    // Ações para outras telas\n    teclar("ESCAPE");\n}' }
-                ]
-            },
-            { 
-                type: 'try-catch', title: 'try / catch', category: 'Estruturas de Código', icon: 'fa-solid fa-triangle-exclamation',
-                description: 'Tenta executar um bloco de código (`try`). Se ocorrer um erro (ex: `posicionar` não encontra um campo), executa o bloco `catch` em vez de parar a rotina.',
-                examples: [
-                    { description: 'Tentar posicionar em um campo opcional e, se não encontrar, apenas notificar sem parar a rotina.', code: 'try {\n    posicionar("CAMPO OPCIONAL:");\n    digitar("Valor Opcional");\n} catch (e) {\n    exibirNotificacao("Campo opcional não encontrado, continuando...");\n}' }
-                ]
-            },
-            { 
-                type: 'for-of-loop', title: 'for...of (Loop em Lista)', category: 'Estruturas de Código', icon: 'fa-solid fa-list-ol',
-                description: 'Percorre todos os itens de uma lista (array) e executa um bloco de código para cada item.',
-                examples: [
-                    { description: 'Digitar uma lista de nomes, pressionando ENTER após cada um.', code: 'const nomes = ["CLERISTON", "JOAO", "MARIA"];\nfor (const nome of nomes) {\n    digitar(nome);\n    teclar("ENTER");\n    esperar(1);\n}' }
-                ]
-            },
-            { 
-                type: 'while-loop', title: 'while (Loop com Condição)', category: 'Estruturas de Código', icon: 'fa-solid fa-infinity',
-                description: 'Repete um bloco de código enquanto uma condição for verdadeira. Cuidado para não criar loops infinitos sem uma pausa.',
-                examples: [
-                    { description: 'Pressionar "DESCER" repetidamente enquanto o texto "Mais..." for visível na tela.', code: 'while (localizarTexto("Mais...", { esperar: 0 })) {\n    teclar("DESCER");\n    esperar(0.5);\n}' }
-                ]
-            },
-            
             // Categoria: Interação com a Tela
-            { 
-                type: 'localizar-texto', title: 'localizarTexto(alvo, opcoes)', category: 'Interação com a Tela', icon: 'fa-solid fa-magnifying-glass',
-                description: 'Função unificada para encontrar ou esperar por um ou mais textos/padrões (Regex) na tela. É uma das funções mais poderosas para controlar o fluxo da automação.',
-                args: [
-                    { name: 'alvo', type: 'string | RegExp | array', description: 'O texto, padrão Regex, ou array de textos/Regex a ser procurado.', optional: false },
-                    { name: 'opcoes', type: 'object', description: 'Um objeto com opções para customizar a busca.', optional: true }
-                ],
-                options: [
-                    { name: 'esperar', type: 'number', default: '5', description: 'Tempo máximo em segundos para esperar pelo texto. Se for `0`, verifica apenas uma vez e retorna imediatamente o booleano.' },
-                    { name: 'lancarErro', type: 'boolean', default: 'false', description: 'Se `true`, a rotina irá parar bruscamente com um erro se o texto não for encontrado.' },
-                    { name: 'caseSensitive', type: 'boolean', default: 'false', description: 'Se `true`, a busca diferenciará letras maiúsculas de minúsculas.' },
-                    { name: 'area', type: 'object', default: 'null', description: 'Restringe a busca a uma área específica da tela (veja exemplos).' },
-                    { name: 'dialogoFalha', type: 'boolean | string', default: 'false', description: 'Se `true`, exibe um diálogo interativo permitindo que o usuário decida se continua a rotina ignorando a falha.' }
-                ],
-                examples: [
-                    { description: 'Verificar imediatamente se um texto existe (ideal para laços `if`).', code: 'if (localizarTexto("Sucesso", { esperar: 0 })) {\n    exibirNotificacao("Encontrado!");\n}' },
-                    { description: 'Esperar até 10 segundos por um texto. Se não encontrar, a rotina aborta com erro.', code: 'localizarTexto("Comando concluído", { esperar: 10, lancarErro: true });' },
-                    { description: 'Esperar por um número de protocolo usando Regex, sem abortar a rotina se falhar.', code: 'const achou = localizarTexto(/Protocolo: \\d+/, { esperar: 10, lancarErro: false });\nif (!achou) {\n    exibirNotificacao("Protocolo não localizado!", false);\n}' },
-                    { description: 'Procurar um texto apenas na linha 5.', code: 'localizarTexto("TOTAL", { area: { linha: 5 } });' },
-                    { description: 'Mostrar um diálogo permitindo intervenção humana se "MENU PRINCIPAL" não for encontrado na primeira linha.', code: 'localizarTexto("MENU PRINCIPAL", { area: { linha: 1 }, dialogoFalha: true });' }
-                ]
-            },
-            {
-                type: 'posicionar', title: 'posicionar(rotulo, opcoes)', category: 'Interação com a Tela', icon: 'fa-solid fa-crosshairs',
-                description: 'Procura um `rotulo` na tela, posiciona o cursor no campo de texto digitável adjacente e, opcionalmente, move o cursor via TAB.',
-                args: [
-                    { name: 'rotulo', type: 'string', description: 'O texto/rótulo que antecede o campo desejado.', optional: false },
-                    { name: 'opcoes', type: 'object', description: 'Um objeto com opções para customizar o posicionamento.', optional: true }
-                ],
-                options: [
-                    { name: 'offset', type: 'number', default: '0', description: 'Número de campos para pular (usando TAB) após encontrar o campo adjacente ao rótulo.' },
-                    { name: 'direcao', type: 'string', default: "'apos'", description: "A relação de busca. Valores válidos: `'apos'`, `'antes'`, `'acima'`, `'abaixo'`." },
-                    { name: 'caseSensitive', type: 'boolean', default: 'false', description: 'Se `true`, diferencia maiúsculas de minúsculas no rótulo.' }
-                ],
-                examples: [
-                    { description: 'Encontrar o rótulo "NOME:" e deixar o cursor piscando no campo logo após ele.', code: 'posicionar("NOME:");' },
-                    { description: 'Encontrar "NOME:", pular 2 campos usando TAB para a direita.', code: 'posicionar("NOME:", { offset: 2 });' },
-                    { description: 'Encontrar o rótulo "TOTAL:" e buscar o campo editável mais próximo na linha logo acima.', code: 'posicionar("TOTAL:", { direcao: \'acima\' });' }
-                ]
-            },
-            { 
-                type: 'teclar', title: 'teclar(nomeTecla)', category: 'Interação com a Tela', icon: 'fa-solid fa-keyboard', 
-                description: 'Simula o acionamento de uma tecla especial de função ou mapeada no mainframe (ENTER, TAB, LIMPAR, PF1 a PF24).',
-                args: [{ name: 'nomeTecla', type: 'string', description: "Nome válido mapeado. Ex: 'ENTER', 'TAB', 'LIMPAR', 'ESCAPE', 'SUBIR', 'DESCER', 'DIREITA', 'ESQUERDA', 'HOME', 'PF1', etc.", optional: false }],
-                examples: [
-                    { description: 'Simular o pressionamento do ENTER.', code: 'teclar("ENTER");' },
-                    { description: 'Simular um TAB para pular de campo.', code: 'teclar("TAB");' },
-                    { description: 'Apagar o conteúdo da tela (simula a tecla Limpar / Ctrl+U).', code: 'teclar("LIMPAR");' }
-                ]
-            },
             { 
                 type: 'digitar', title: 'digitar(texto, verificar)', category: 'Interação com a Tela', icon: 'fa-solid fa-font', 
                 description: 'Envia uma sequência de caracteres de texto para a posição atual do cursor no terminal.',
                 args: [
-                    { name: 'texto', type: 'string', description: 'O texto literal a ser preenchido.', optional: false },
+                    { name: 'texto', type: 'string | number', description: 'O texto literal a ser preenchido.', optional: false },
                     { name: 'verificar', type: 'boolean', description: 'Se `true` (padrão), o sistema faz uma leitura pós-inserção garantindo que o texto foi de fato digitado, lançando um erro se não constar.', optional: true }
                 ],
                 examples: [
                     { description: 'Digitar um nome e deixar o sistema conferir se a digitação ocorreu com sucesso.', code: 'digitar("JOÃO DA SILVA");' },
-                    { description: 'Digitar de forma veloz e "cega", sem verificação (ideal para senhas, que não aparecem na tela, ou campos muito curtos).', code: 'digitar("minhaSenhaSecreta", false);' }
+                    { description: 'Digitar de forma veloz e "cega", sem verificação (ideal para senhas ou campos que ocultam o texto).', code: 'digitar("minhaSenhaSecreta", false);' }
+                ]
+            },
+            { 
+                type: 'teclar', title: 'teclar(nomeTecla, repeticoes)', category: 'Interação com a Tela', icon: 'fa-solid fa-keyboard', 
+                description: 'Simula o acionamento de uma tecla especial de função ou mapeada no mainframe (ENTER, TAB, LIMPAR, PF1 a PF24, etc).',
+                args: [
+                    { name: 'nomeTecla', type: 'string', description: "Nome válido mapeado. Ex: 'ENTER', 'TAB', 'LIMPAR', 'ESCAPE', 'SUBIR', 'DESCER', 'DIREITA', 'ESQUERDA', 'HOME', 'PF1', etc.", optional: false },
+                    { name: 'repeticoes', type: 'string | number', description: "Quantidade de vezes a repetir a tecla. Ex: 'x5' ou 5.", optional: true }
+                ],
+                examples: [
+                    { description: 'Simular o pressionamento do ENTER.', code: 'teclar("ENTER");' },
+                    { description: 'Simular 5 pressionamentos de TAB para pular vários campos.', code: 'teclar("TAB", "x5");' },
+                    { description: 'Pressionar a tecla PF3.', code: 'teclar("PF3");' }
+                ]
+            },
+            { 
+                type: 'limpar-campo', title: 'limparCampo(tamanho)', category: 'Interação com a Tela', icon: 'fa-solid fa-eraser', 
+                description: 'Apaga o conteúdo do campo onde o cursor está posicionado, enviando uma sequência de Backspaces.',
+                args: [
+                    { name: 'tamanho', type: 'number', description: 'Quantidade de caracteres a apagar (Backspaces). Padrão: 60.', optional: true }
+                ],
+                examples: [
+                    { description: 'Limpar o campo atual antes de digitar um novo valor.', code: 'limparCampo();\ndigitar("Novo Valor");' }
                 ]
             },
             { 
                 type: 'clicar', title: 'clicar(linha, coluna)', category: 'Interação com a Tela', icon: 'fa-solid fa-hand-pointer', 
-                description: 'Envia um pulso para o terminal simulando um clique físico do botão esquerdo do mouse numa coordenada específica.',
+                description: 'Simula um clique físico do mouse numa coordenada específica da tela do terminal.',
                 args: [
-                    { name: 'linha', type: 'number', description: 'O número da linha alvo (1 a 31).', optional: false },
+                    { name: 'linha', type: 'number', description: 'O número da linha alvo (1 a 24).', optional: false },
                     { name: 'coluna', type: 'number', description: 'O número da coluna alvo (1 a 80).', optional: false }
                 ],
-                examples: [{ description: 'Clicar no canto inferior direito, na mesma posição visual da tecla PF12 (L22, C76).', code: 'clicar(22, 76);' }]
+                examples: [{ description: 'Clicar na posição L10xC5.', code: 'clicar(10, 5);' }]
             },
-            {
-                type: 'obterTexto', title: 'obterTexto(linha, coluna, linhaFinal, colunaFinal)', category: 'Interação com a Tela', icon: 'fa-solid fa-file-alt',
-                description: 'Lê o buffer de vídeo do emulador e retorna o conteúdo textual puro da tela.',
+            { 
+                type: 'localizar-texto', title: 'localizarTexto(alvo, opcoes)', category: 'Interação com a Tela', icon: 'fa-solid fa-magnifying-glass',
+                description: 'Aguarda até que um ou mais textos/padrões (Regex) apareçam na tela. Fundamental para controle de fluxo.',
                 args: [
-                    { name: 'linha', type: 'number', description: 'O número da linha a ser lida.', optional: true },
-                    { name: 'coluna', type: 'number', description: 'A coluna inicial da leitura.', optional: true },
-                    { name: 'linhaFinal', type: 'number', description: 'A linha final da caixa de leitura.', optional: true },
-                    { name: 'colunaFinal', type: 'number', description: 'A coluna final da caixa de leitura.', optional: true }
+                    { name: 'alvo', type: 'string | RegExp | array', description: 'O texto, padrão Regex, ou array de textos a serem procurados.', optional: false },
+                    { name: 'opcoes', type: 'object', description: 'Configurações de busca.', optional: true }
+                ],
+                options: [
+                    { name: 'esperar', type: 'number', default: '5', description: 'Tempo máximo em segundos. Se `0`, verifica instantaneamente.' },
+                    { name: 'lancarErro', type: 'boolean', default: 'false', description: 'Interrompe a rotina se não encontrar o texto.' },
+                    { name: 'caseSensitive', type: 'boolean', default: 'false', description: 'Diferencia maiúsculas/minúsculas.' },
+                    { name: 'area', type: 'object', default: 'null', description: 'Restringe a busca a `{linha}`, ou bloco `{linhaInicial, colunaInicial, linhaFinal, colunaFinal}`.' },
+                    { name: 'area.apenasCamposDigitaveis', type: 'boolean', default: 'false', description: 'Busca apenas dentro de campos editáveis.' },
+                    { name: 'dialogoFalha', type: 'boolean | string', default: 'false', description: 'Exibe popup de erro com opção de continuar.' }
                 ],
                 examples: [
-                    { description: 'Extrair a matriz inteira de texto presente na tela atual.', code: 'const tela = obterTexto();' },
-                    { description: 'Extrair o conteúdo estrito da linha 10.', code: 'const linhaDez = obterTexto(10);' },
-                    { description: 'Extrair o texto da linha 10, começando a partir da coluna 5.', code: 'const parteDaLinha = obterTexto(10, 5);' },
-                    { description: 'Extrair um bloco quadrangular cruzando das L5xC10 até L8xC40.', code: 'const bloco = obterTexto(5, 10, 8, 40);' }
+                    { description: 'Esperar 10s por uma mensagem de sucesso.', code: 'localizarTexto("OPERACAO REALIZADA", { esperar: 10, lancarErro: true });' },
+                    { description: 'Verificar se o cursor está na linha de erro.', code: 'if (localizarTexto("ERRO:", { esperar: 0, area: { linha: 24 } })) {\n    exibirNotificacao("Ocorreu um erro no sistema", false);\n}' }
                 ]
             },
             { 
-                type: 'ler-tela', title: 'lerTela()', category: 'Interação com a Tela', icon: 'fa-solid fa-highlighter', 
-                description: 'Exibe instruções e pausa a rotina aguardando que o usuário selecione uma área retangular com o clique do mouse, capturando e devolvendo o texto destacado.',
-                examples: [
-                    { description: 'Pedir ao operador humano para desenhar o quadrado de seleção em cima do dado, salvando-o.', code: 'const selecao = lerTela();\nif (selecao) {\n    criarArquivo("copia_manual.txt", selecao.text);\n}' }
-                ]
-            },
-            {
-                type: 'copiar', title: 'copiar(linha, coluna, linhaFinal, colunaFinal)', category: 'Interação com a Tela', icon: 'fa-solid fa-copy',
-                description: 'Lê dados da tela e os insere diretamente na Área de Transferência (Clipboard) do sistema operacional, prontos para um Ctrl+V.',
+                type: 'localizar-qualquer-texto', title: 'localizarQualquerTexto(alvosArray, opcoes)', category: 'Interação com a Tela', icon: 'fa-solid fa-masks-theater',
+                description: 'Aguarda que QUALQUER um dos textos da lista apareça na tela e retorna qual foi o encontrado.',
                 args: [
-                    { name: 'linha', type: 'number', description: 'O número da linha a ser copiada.', optional: true },
-                    { name: 'coluna', type: 'number', description: 'A coluna inicial da cópia.', optional: true },
-                    { name: 'linhaFinal', type: 'number', description: 'A linha final da cópia.', optional: true },
-                    { name: 'colunaFinal', type: 'number', description: 'A coluna final da cópia.', optional: true }
+                    { name: 'alvosArray', type: 'array', description: 'Lista de strings ou Regex para monitorar.', optional: false },
+                    { name: 'opcoes', type: 'object', description: 'Mesmas opções do localizarTexto.', optional: true }
                 ],
                 examples: [
-                    { description: 'Mandar toda a visualização da tela para o seu Ctrl+V.', code: 'copiar();' },
-                    { description: 'Copiar apenas o que estiver escrito na linha 10 para a área de transferência.', code: 'copiar(10);' }
+                    { description: 'Tratar diferentes respostas do sistema.', code: 'const res = localizarQualquerTexto(["CONCLUIDO", "FALHA", "DUPLICIDADE"]);\nif (res === "CONCLUIDO") {\n    teclar("ENTER");\n} else {\n    debug("Resultado inesperado:", res);\n}' }
                 ]
             },
             { 
-                type: 'colar', title: 'colar()', category: 'Interação com a Tela', icon: 'fa-solid fa-paste', 
-                description: 'Faz a leitura da Área de Transferência do sistema operacional e digita aquele conteúdo direto na posição do cursor.',
-                examples: [{ description: 'Esvaziar o conteúdo atual do clipboard na tela do mainframe.', code: 'colar();' }]
+                type: 'esperar-texto-sumir', title: 'esperarTextoSumir(alvo, opcoes)', category: 'Interação com a Tela', icon: 'fa-solid fa-eye-slash',
+                description: 'Pausa a rotina até que um texto ou padrão DESAPAREÇA da tela. Ideal para telas de "Processando...".',
+                args: [
+                    { name: 'alvo', type: 'string | RegExp', description: 'O texto que deve sumir.', optional: false },
+                    { name: 'opcoes', type: 'object', description: 'Configurações de timeout.', optional: true }
+                ],
+                options: [
+                    { name: 'esperar', type: 'number', default: '15', description: 'Tempo máximo de espera em segundos.' }
+                ],
+                examples: [
+                    { description: 'Aguardar o fim de um processamento.', code: 'teclar("ENTER");\nesperarTextoSumir("AGUARDE...");\nlocalizarTexto("RESULTADO:");' }
+                ]
             },
             {
-                type: 'obterTextoLinha', title: 'obterTextoLinha(numeroLinha)', category: 'Interação com a Tela', icon: 'fa-solid fa-ruler-horizontal',
-                description: 'Um atalho simplificado para o `obterTexto` focado em capturar aspas integrais de uma única linha. Se chamada vazia, extrai a linha do cursor.',
-                args: [{ name: 'numeroLinha', type: 'number', description: 'O número da linha desejada (de 1 a 31).', optional: true }],
+                type: 'posicionar', title: 'posicionar(rotulo, opcoes)', category: 'Interação com a Tela', icon: 'fa-solid fa-crosshairs',
+                description: 'Localiza um rótulo (texto fixo) e move o cursor para o campo editável associado.',
+                args: [
+                    { name: 'rotulo', type: 'string', description: 'O texto que serve de âncora.', optional: false },
+                    { name: 'opcoes', type: 'object', description: 'Opções de navegação.', optional: true }
+                ],
+                options: [
+                    { name: 'direcao', type: 'string', default: "'depois'", description: "Onde buscar o campo: `'depois'`, `'antes'`, `'acima'`, `'abaixo'`." },
+                    { name: 'offset', type: 'number', default: '0', description: 'Número de TABs extras a pressionar após posicionar.' },
+                    { name: 'caseSensitive', type: 'boolean', default: 'false', description: 'Diferencia maiúsculas no rótulo.' }
+                ],
                 examples: [
-                    { description: 'Capturar e armazenar o texto extenso da décima linha.', code: 'const conteudo = obterTextoLinha(10);' },
-                    { description: 'Capturar toda a linha onde o marcador verde (cursor) estiver piscando.', code: 'const contexto = obterTextoLinha();' }
+                    { description: 'Preencher o campo CPF.', code: 'posicionar("CPF:");\ndigitar("12345678901");' },
+                    { description: 'Posicionar no campo que está ABAIXO do rótulo "Endereço".', code: 'posicionar("Endereço", { direcao: "abaixo" });' }
                 ]
             },
-            { 
-                type: 'obterPosicaoCursor', title: 'obterPosicaoCursor()', category: 'Interação com a Tela', icon: 'fa-solid fa-location-crosshairs',
-                description: 'Verifica no emulador xterm e retorna os eixos {x, y} de onde o cursor (underscore) encontra-se estacionado.',
-                examples: [{ description: 'Notificar ao desenvolvedor as coordenadas X e Y.', code: 'const pos = obterPosicaoCursor();\nexibirNotificacao(`Você está em Linha ${pos.y}, Coluna ${pos.x}`);' }]
-            },
-            { 
-                type: 'obter-campos-digitaveis', title: 'obterCamposDigitaveis()', category: 'Interação com a Tela', icon: 'fa-solid fa-list-check', 
-                description: 'Inspeciona visualmente as cores das células na tela para retornar um Array contendo cada campo Input desprotegido, sua posição e os dados atuais nele grafados.',
-                examples: [{ description: 'Encontrar dinamicamente todos os sub-blocos verdes ou brancos de edição da tela ativa.', code: 'const arrayDeCampos = obterCamposDigitaveis();\nfor (const input of arrayDeCampos) {\n    debug(`Campo detectado L${input.linha}xC${input.coluna} = "${input.texto}"`);\n}' }]
+            {
+                type: 'obterTexto', title: 'obterTexto(L1, C1, L2, C2)', category: 'Interação com a Tela', icon: 'fa-solid fa-file-alt',
+                description: 'Lê o conteúdo textual da tela. Pode ler a tela toda, uma linha ou um bloco.',
+                args: [
+                    { name: 'L1', type: 'number', description: 'Linha inicial.', optional: true },
+                    { name: 'C1', type: 'number', description: 'Coluna inicial.', optional: true },
+                    { name: 'L2', type: 'number', description: 'Linha final.', optional: true },
+                    { name: 'C2', type: 'number', description: 'Coluna final.', optional: true }
+                ],
+                examples: [
+                    { description: 'Ler a tela toda.', code: 'const tela = obterTexto();' },
+                    { description: 'Ler apenas a linha 5.', code: 'const linha = obterTexto(5);' },
+                    { description: 'Ler um campo específico (L5C10 até L5C20).', code: 'const valor = obterTexto(5, 10, 5, 20);' }
+                ]
             },
 
-            // Categoria: Extração de Dados
-            {
-                type: 'extrair-cpf', title: 'extrairCPF(texto)', category: 'Extração de Dados', icon: 'fa-solid fa-id-card',
-                description: 'Filtro que recebe um texto robusto e isola o primeiro bloco que faça correspondência matemática com formato de CPF (xxx.xxx.xxx-xx).',
-                args: [{ name: 'texto', type: 'string', description: 'A massa de texto bruta.', optional: false }],
-                examples: [{ description: 'Bater o olho na tela toda, isolar o CPF e preenchê-lo em um campo.', code: 'const bufferTexto = obterTexto();\nconst cpf = extrairCPF(bufferTexto);\nif (cpf) {\n    digitar(cpf);\n}' }]
+            // Categoria: Interfaces de Usuário (Modais)
+            { 
+                type: 'criarModal', title: 'criarModal(config)', category: 'Interfaces de Usuário (Modais)', icon: 'fa-solid fa-window-maximize',
+                description: 'Cria um formulário modal complexo para interação com o usuário.',
+                args: [{ name: 'config', type: 'object', description: 'Objeto com title, elements e buttons.', optional: false }],
+                examples: [
+                    {
+                        description: 'Modal de configuração simples.',
+                        code: `const res = criarModal({\n    title: "Dados da Consulta",\n    elements: [\n        { type: "input", id: "cpf", label: "Digite o CPF:", defaultValue: "" },\n        { type: "checkbox", id: "completo", label: "Consulta Completa?", checked: true }\n    ],\n    buttons: [\n        { text: "Cancelar", action: "cancel" },\n        { text: "Iniciar", action: "confirm" }\n    ]\n});\n\nif (res && res.action === "confirm") {\n    debug("CPF digitado:", res.formData.cpf);\n}`
+                    }
+                ]
             },
-            {
-                type: 'extrair-data', title: 'extrairData(texto)', category: 'Extração de Dados', icon: 'fa-solid fa-calendar-days',
-                description: 'Isola e retorna a primeira porção que se assimila a datas brasileiras curtas (dd/mm/aaaa).',
-                args: [{ name: 'texto', type: 'string', description: 'O alvo da mineração textual.', optional: false }],
-                examples: [{ description: 'Achar e inserir data extraída globalmente.', code: 'const tela = obterTexto();\nconst validade = extrairData(tela);\nif (validade) {\n    digitar(validade);\n}' }]
+            { 
+                type: 'solicitar-entrada', title: 'solicitarEntrada(titulo, mensagem, placeholder)', category: 'Interfaces de Usuário (Modais)', icon: 'fa-solid fa-comment-dots',
+                description: 'Exibe um prompt simples para o usuário digitar uma informação.',
+                args: [
+                    { name: 'titulo', type: 'string', description: 'Título do modal.', optional: false },
+                    { name: 'mensagem', type: 'string', description: 'Texto de instrução.', optional: false },
+                    { name: 'placeholder', type: 'string', description: 'Dica dentro do campo.', optional: true }
+                ],
+                examples: [
+                    { description: 'Pedir um número de lote.', code: 'const lote = solicitarEntrada("Processamento", "Informe o número do lote:");\nif (lote) {\n    posicionar("Lote:");\n    digitar(lote);\n}' }
+                ]
             },
-            {
-                type: 'extrair-protocolo', title: 'extrairProtocolo(texto)', category: 'Extração de Dados', icon: 'fa-solid fa-hashtag',
-                description: 'Rotina de mineração clássica focada na string "Protocolo:" ou similares, isolando as credenciais numéricas aderidas.',
-                args: [{ name: 'texto', type: 'string', description: 'A string alvo da mineração.', optional: false }],
-                examples: [{ description: 'Rastrear a palavra Protocolo seguida de ID.', code: 'const tela = obterTexto();\nconst identificador = extrairProtocolo(tela);\nif (identificador) {\n    exibirNotificacao("Protocolo emitido: " + identificador);\n}' }]
+            { 
+                type: 'selecionar-em-tabela', title: 'selecionarEmTabela(titulo, desc, colunas, dados, renderFn)', category: 'Interfaces de Usuário (Modais)', icon: 'fa-solid fa-table-list',
+                description: 'Exibe uma lista de itens em uma tabela para o usuário selecionar um deles clicando na linha.',
+                args: [
+                    { name: 'titulo', type: 'string', description: 'Título.', optional: false },
+                    { name: 'desc', type: 'string', description: 'Descrição.', optional: false },
+                    { name: 'colunas', type: 'array', description: 'Nomes das colunas (Ex: ["ID", "Nome"]).', optional: false },
+                    { name: 'dados', type: 'array', description: 'Array de objetos com os dados.', optional: false },
+                    { name: 'renderFn', type: 'function', description: 'Função que retorna as <td>s da linha.', optional: false }
+                ],
+                examples: [
+                    { description: 'Selecionar um usuário de uma lista JSON.', code: 'const lista = [{id: 1, nome: "Admin"}, {id: 2, nome: "User"}];\nconst sel = selecionarEmTabela("Usuários", "Escolha um:", ["ID", "Nome"], lista, item => `<td>${item.id}</td><td>${item.nome}</td>`);\nif (sel) debug("Selecionado:", sel.nome);' }
+                ]
+            },
+
+            // Categoria: Integrações Externas
+            { 
+                type: 'ler-planilha', title: 'lerPlanilha(id, aba, query)', category: 'Integrações Externas', icon: 'fa-solid fa-file-excel',
+                description: 'Lê dados de uma Planilha Google pública. Retorna uma matriz 2D.',
+                args: [
+                    { name: 'id', type: 'string', description: 'ID da planilha na URL.', optional: false },
+                    { name: 'aba', type: 'string', description: 'Nome da página.', optional: true },
+                    { name: 'query', type: 'string', description: 'Consulta SQL-like.', optional: true }
+                ],
+                examples: [{ description: 'Ler planilha.', code: 'const matriz = lerPlanilha("ID_PLANILHA");' }]
+            },
+            { 
+                type: 'ler-planilha-objetos', title: 'lerPlanilhaObjetos(id, aba, query)', category: 'Integrações Externas', icon: 'fa-solid fa-table-cells',
+                description: 'Lê planilha e converte em Array de Objetos, usando a primeira linha como chaves das propriedades.',
+                args: [{ name: 'id', type: 'string', description: 'ID da planilha.', optional: false }],
+                examples: [{ description: 'Ler e usar dados JSON.', code: 'const itens = lerPlanilhaObjetos("ID_PLANILHA");\nfor(const item of itens) {\n    debug("Nome:", item.Nome);\n}' }]
+            },
+            { 
+                type: 'processar-planilha', title: 'processarPlanilha(dados, callback, pularCabecalho)', category: 'Integrações Externas', icon: 'fa-solid fa-arrows-spin',
+                description: 'Itera sobre os dados de uma planilha de forma facilitada.',
+                args: [
+                    { name: 'dados', type: 'array', description: 'A matriz de dados retornada por lerPlanilha.', optional: false },
+                    { name: 'callback', type: 'function', description: 'Função (linha, indice) => {}.', optional: false }
+                ],
+                examples: [{ code: 'processarPlanilha(matriz, (linha) => {\n    digitar(linha[0]);\n    teclar("ENTER");\n});' }]
             },
 
             // Categoria: Arquivos (Sistema Local)
             { 
-                type: 'processar-linhas', title: 'processarLinhas(arquivo, callback)', category: 'Arquivos (Sistema Local)', icon: 'fa-solid fa-file-csv',
-                description: 'Abre o manipulador de diretório para leitura estrita, importa as quebras textuais de arquivo e despacha iterativamente linha a linha para execução callback em lote.',
-                args: [
-                    { name: 'arquivo', type: 'string', description: 'Nome exato do arquivo com extensão a ser carregado da sua máquina.', optional: false },
-                    { name: 'callback', type: 'function', description: 'Função engatilhada a cada registro isolado `(linhaConteudo, indexRow, arrayFull) => {}`.', optional: false }
-                ],
-                examples: [{
-                    description: 'Abrir CSV local, fragmentar vírgulas em arrays de propriedades e automatizar repetições de tela cadastradas por linha.',
-                    code: 'processarLinhas("boletins.csv", (linha, indice) => {\n    const [codigo, infracao] = linha.split(",");\n    posicionar("Código de Busca:");\n    digitar(codigo);\n    teclar("ENTER");\n    localizarTexto("Detalhes:");\n    posicionar("Despacho:");\n    digitar(infracao);\n    teclar("PF3");\n});'
-                }]
-            },
-            { 
-                type: 'ler-arquivo', title: 'lerArquivo(caminho)', category: 'Arquivos (Sistema Local)', icon: 'fa-solid fa-file-lines',
-                description: 'Instância do File API, resgata a raiz texturizada completa do caminho físico indicado.',
-                args: [{ name: 'caminho', type: 'string', description: 'Extensão relativa em arvore do File System nativo.', optional: false }],
-                examples: [{ description: 'Buscar o modelo pré-formatado de preenchimento.', code: 'const payloadTxT = lerArquivo("formularios/matriz_descritiva.txt");\nif (payloadTxT) {\n    digitar(payloadTxT);\n}' }]
-            },
-            { 
                 type: 'criar-arquivo', title: 'criarArquivo(caminho, conteudo)', category: 'Arquivos (Sistema Local)', icon: 'fa-solid fa-floppy-disk',
-                description: 'Promove descida à API de arquivos em sua máquina, gerando novo blob texturizado de extensão explícita (sobrescrevendo homônimos).',
+                description: 'Grava um arquivo no diretório selecionado.',
                 args: [
-                    { name: 'caminho', type: 'string', description: 'Nome descritivo e extensão de destino.', optional: false },
-                    { name: 'conteudo', type: 'string', description: 'O Buffer massivo de bytes de texto a consolidar.', optional: false }
+                    { name: 'caminho', type: 'string', description: 'Ex: "logs/hoje.txt"', optional: false },
+                    { name: 'conteudo', type: 'string', description: 'Texto do arquivo.', optional: false }
                 ],
-                examples: [{ description: 'Criar backup visual persistente.', code: 'const matrizRenderizada = obterTexto();\ncriarArquivo("Auditoria_Transacional.txt", matrizRenderizada);' }]
+                examples: [{ code: 'criarArquivo("resultado.txt", obterTexto());' }]
             },
             { 
-                type: 'anexar-arquivo', title: 'anexarNoArquivo(caminho, conteudo)', category: 'Arquivos (Sistema Local)', icon: 'fa-solid fa-file-circle-plus',
-                description: 'Ao invés de sobrescrever um Blob nativo existente, extrai, amalgama à nova cadeia literal textual e reescreve de forma combinada.',
-                args: [
-                    { name: 'caminho', type: 'string', description: 'Destino base já estabelecido ou novo.', optional: false },
-                    { name: 'conteudo', type: 'string', description: 'Buffer textual cumulativo final.', optional: false }
-                ],
-                examples: [{ description: 'Consolidação periódica de Logs transacionais de operação rotineira.', code: 'const timeStamp = "\\n[" + new Date().toLocaleString() + "] ";\nanexarNoArquivo("registro_historico_lotes.log", timeStamp + "Baixado sucesso.");' }]
+                type: 'ler-arquivo', title: 'lerArquivo(caminho)', category: 'Arquivos (Sistema Local)', icon: 'fa-solid fa-file-import',
+                description: 'Lê o conteúdo de um arquivo local.',
+                args: [{ name: 'caminho', type: 'string', description: 'Caminho do arquivo.', optional: false }],
+                examples: [{ code: 'const txt = lerArquivo("input.txt");' }]
+            },
+
+            // Categoria: Extração de Dados
+            { 
+                type: 'extrair-numeros', title: 'extrairNumeros(texto)', category: 'Extração de Dados', icon: 'fa-solid fa-arrow-up-1-9',
+                description: 'Remove todos os caracteres que não sejam números.',
+                args: [{ name: 'texto', type: 'string', description: 'Texto bruto.', optional: false }],
+                examples: [{ code: 'const apenasNum = extrairNumeros("Lote: 123-ABC"); // "123"' }]
             },
             { 
-                type: 'excluir-arquivo', title: 'excluirArquivo(caminho)', category: 'Arquivos (Sistema Local)', icon: 'fa-solid fa-file-circle-xmark',
-                description: 'Exige credenciamento ao File System e deleta silenciosamente o alvo correspondente.',
-                args: [{ name: 'caminho', type: 'string', description: 'Referência nomeada explícita.', optional: false }],
-                examples: [{ description: 'Limpeza e descarte higiênico local de temporários de automação em massa.', code: 'excluirArquivo("memoria_temporaria_v1.txt");' }]
-            },
-            
-            // Categoria: Integrações Externas
-            { 
-                type: 'ler-planilha', title: 'lerPlanilha(idPlanilha, nomeAba, consulta)', category: 'Integrações Externas', icon: 'fa-solid fa-file-excel',
-                description: 'Extração direta de dados de Planilhas Google públicas via API gviz. Retorna uma matriz bidimensional (Array de Arrays).',
-                args: [
-                    { name: 'idPlanilha', type: 'string', description: 'ID da planilha (presente na URL entre /d/ e /edit).', optional: false },
-                    { name: 'nomeAba', type: 'string', description: 'Nome da aba (página) da planilha. Opcional.', optional: true },
-                    { name: 'consulta', type: 'string', description: 'Consulta SQL-like (ex: "SELECT A, B WHERE C > 10"). Opcional.', optional: true }
-                ],
-                examples: [{ description: 'Ler dados de uma planilha de consulta de CPFs.', code: 'const dados = lerPlanilha("ID_DA_SUA_PLANILHA", "ListaCPFs");\nif (dados && dados.length > 0) {\n    exibirNotificacao("Total de registros lidos: " + dados.length);\n}' }]
+                type: 'converter-moeda', title: 'converterMoeda(texto)', category: 'Extração de Dados', icon: 'fa-solid fa-brazilian-real-sign',
+                description: 'Converte uma string de moeda (Ex: "R$ 1.250,50") em um número Float (1250.5).',
+                args: [{ name: 'texto', type: 'string', description: 'String de valor.', optional: false }],
+                examples: [{ code: 'const valor = converterMoeda(obterTexto(10, 20, 10, 30));' }]
             },
             { 
-                type: 'processar-planilha', title: 'processarPlanilha(dados, callback, pularCabecalho)', category: 'Integrações Externas', icon: 'fa-solid fa-list-check',
-                description: 'Itera automaticamente sobre a matriz de dados de uma planilha, executando a lógica definida para cada linha.',
+                type: 'formatar-data', title: 'formatarData(data, formato)', category: 'Extração de Dados', icon: 'fa-solid fa-calendar-check',
+                description: 'Converte datas para formatos específicos.',
                 args: [
-                    { name: 'dados', type: 'array', description: 'A matriz de dados retornada por lerPlanilha().', optional: false },
-                    { name: 'callback', type: 'function', description: 'Função engatilhada para cada linha `(linha, indice) => {}`.', optional: false },
-                    { name: 'pularCabecalho', type: 'boolean', description: 'Se deve ignorar a primeira linha (cabeçalho). Padrão: true.', optional: true }
+                    { name: 'data', type: 'string | Date', description: 'Data original.', optional: false },
+                    { name: 'formato', type: 'string', description: "'DDMMAAAA', 'DD/MM/AAAA' ou 'YYYY-MM-DD'.", optional: true }
                 ],
-                examples: [{ 
-                    description: 'Ler planilha e processar cada linha digitando o CPF no terminal.', 
-                    code: 'const dados = lerPlanilha("ID_DA_PLANILHA", "Sheet1");\nprocessarPlanilha(dados, (linha) => {\n    const cpf = linha[0]; // Assume que o CPF está na primeira coluna (A)\n    posicionar("CPF:");\n    digitar(cpf);\n    teclar("ENTER");\n    localizarTexto("Concluído");\n    teclar("F3");\n});' 
-                }]
+                examples: [{ code: 'const d = formatarData("2023-12-31", "DD/MM/AAAA"); // "31/12/2023"' }]
             },
+
+            // Categoria: Comunicação Avançada
             { 
-                type: 'enviar-planilha', title: 'enviarParaPlanilha(idScript, nomeAba, dados)', category: 'Integrações Externas', icon: 'fa-solid fa-sheet-plastic',
-                description: 'Integração REST com Google AppScripts (Planilhas Google). Pousa matrizes JS em linhas bidimensionais diretas das pastas da G-Suite.',
+                type: 'executar-em', title: 'executarRotinaEm(rotina, alias, sistema)', category: 'Comunicação Avançada', icon: 'fa-solid fa-network-wired',
+                description: 'Executa código em outra aba. Permite automação multi-tarefa.',
                 args: [
-                    { name: 'idScript', type: 'string', description: 'ID API (Aba Implantações > Extensões do Google Script WebApp).', optional: false },
-                    { name: 'nomeAba', type: 'string', description: 'Nome exato do sub-separador na planilha alvo (Página).', optional: false },
-                    { name: 'dados', type: 'array', description: 'Matriz bidimensional (Array aninhado) mapeando as [Linhas e [Colunas]].', optional: false }
+                    { name: 'rotina', type: 'string', description: 'Nome da rotina ou código JS.', optional: false },
+                    { name: 'alias', type: 'string', description: 'Nome da aba (opcional).', optional: true }
                 ],
-                examples: [{ description: 'Montar e postar metadados em nuvem remota corporativa de auditoria.', code: `const matricula_alvo = obterTexto(2, 5, 2, 12);\nconst status_op = obterTexto(2, 20, 2, 40);\n\nenviarParaPlanilha("SEU_MACRO_ID_HASH", "PainelGeral", [\n    [ new Date().toLocaleString(), matricula_alvo, status_op ]\n]);\n\nexibirNotificacao("Enviado para sincronia com o Google!");` }]
+                examples: [{ code: 'const res = executarRotinaEm("Consultar_Dados", "ABA_2");' }]
             },
 
             // Categoria: Utilitários
-            {
-                type: 'debug', title: 'debug(...dados)', category: 'Utilitários', icon: 'fa-solid fa-bug',
-                description: 'Abre um painel de console flutuante nativo no topo da interface do terminal e exibe os dados passados em formato inspecionável. Ideal para verificar valores estruturados ou debuggar estados de variáveis sem travar e poluir tudo com `exibirNotificacao`.',
-                args: [{ name: '...dados', type: 'any', description: 'Você pode passar qualquer quantidade de propriedades mescladas: string, número, array ou objetos puros.', optional: false }],
-                examples: [
-                    { description: 'Imprimir o valor transacional estático rastreado num loop.', code: 'const loteID = "L-3419";\ndebug("Lote interceptado na tela:", loteID);' },
-                    { description: 'Exibir a estrutura bruta serializada de um objeto complexo retornado.', code: 'const meusDados = obterDadosUsuario();\ndebug("Perfil Policial Injetado no Contexto:", meusDados);' }
-                ]
-            },
-
-            // Categoria: Informações do Usuário
             { 
-                type: 'obter-dados-usuario', title: 'obterDadosUsuario()', category: 'Informações do Usuário', icon: 'fa-solid fa-user',
-                description: 'Decodifica a chave orgânica JWT (Extrato de credenciais persistentes - Cookie "tokiuz") devolvendo num objeto descritivo para injetar no script comportamental atual o profile da autoridade PM conectada.',
-                examples: [{ description: 'Coleta explícita e abertura dinâmica do modal com detalhamento militar formatado em DOM de apresentação.', code: `const poli = obterDadosUsuario();
-                if (poli) {
-                    let formatedBlock = \`MasPM: \${poli.numeroPM}\\n\`;
-                    formatedBlock += \`Policial: \${poli.nomeCompleto}\\n\`;
-                    formatedBlock += \`Hierarquia: \${poli.postoGraduacao}\\n\`;
-                    formatedBlock += \`Alocação: \${poli.fracaoSecao} / \${poli.regiao}\\n\`;
-                    
-                    debug("Objeto Descripto", poli);
-                    criarModal({ title: 'Diagnóstico Operador', elements: [{ type: 'text', text: formatedBlock.replace(/\\n/g, '<br>') }]});
-                }` }]
+                type: 'debug', title: 'debug(...args)', category: 'Utilitários', icon: 'fa-solid fa-bug',
+                description: 'Exibe informações no console de debug flutuante.',
+                examples: [{ code: 'debug("Valor da variável X:", minhaVar);' }]
+            },
+            { 
+                type: 'obter-dados-usuario', title: 'obterDadosUsuario()', category: 'Informações do Usuário', icon: 'fa-solid fa-user-shield',
+                description: 'Retorna informações do militar logado (MasPM, Nome, Unidade, etc).',
+                examples: [{ code: 'const pm = obterDadosUsuario();\nexibirNotificacao("Olá, " + pm.nomeCompleto);' }]
             }
         ];
     }

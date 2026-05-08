@@ -9,23 +9,43 @@ const OFFSCREEN_DOCUMENT_PATH = '/offscreen.html';
  */
 async function setupOffscreenDocument() {
     try {
-        const existingContexts = await browser.runtime.getContexts({
-            contextTypes: ['OFFSCREEN_DOCUMENT'],
-            documentUrls: [browser.runtime.getURL(OFFSCREEN_DOCUMENT_PATH)]
-        });
+        // 1. Verifica se a API Offscreen existe (Chrome)
+        if (typeof browser.offscreen !== 'undefined') {
+            let existingContexts = [];
+            try {
+                if (typeof browser.runtime.getContexts === 'function') {
+                    existingContexts = await browser.runtime.getContexts({
+                        contextTypes: ['OFFSCREEN_DOCUMENT'],
+                        documentUrls: [browser.runtime.getURL(OFFSCREEN_DOCUMENT_PATH)]
+                    });
+                }
+            } catch (e) { /* ignore */ }
 
-        if (existingContexts.length > 0) {
-            return;
+            if (existingContexts.length > 0) return;
+
+            await browser.offscreen.createDocument({
+                url: OFFSCREEN_DOCUMENT_PATH,
+                reasons: [browser.offscreen.Reason.DOM_PARSER],
+                justification: 'Parsear HTML para extração de dados da agenda e unidades.',
+            });
+        } else {
+            // 2. Fallback para Firefox (Iframe Oculto no Background Page)
+            if (document.getElementById('sispmg-offscreen-iframe')) return;
+
+            const iframe = document.createElement('iframe');
+            iframe.id = 'sispmg-offscreen-iframe';
+            iframe.src = browser.runtime.getURL(OFFSCREEN_DOCUMENT_PATH);
+            iframe.style.display = 'none';
+            document.body.appendChild(iframe);
+
+            // Aguarda o carregamento do script interno do offscreen
+            await new Promise(resolve => {
+                iframe.onload = () => setTimeout(resolve, 300);
+            });
         }
-
-        await browser.offscreen.createDocument({
-            url: OFFSCREEN_DOCUMENT_PATH,
-            reasons: [browser.offscreen.Reason.DOM_PARSER],
-            justification: 'Parsear HTML para extração de dados da agenda e unidades.',
-        });
     } catch (e) {
         // Ignora o erro se o documento já foi criado por outra operação.
-        if (!e.message.includes('Only a single offscreen document may be created.')) {
+        if (e.message && !e.message.includes('Only a single offscreen document may be created.')) {
             console.error("SisPMG+ [Agenda Offscreen]: Erro ao configurar documento offscreen.", e);
             throw e;
         }
@@ -59,9 +79,14 @@ export async function sendMessageToOffscreen(action, data) {
  */
 export async function closeOffscreenDocument() {
     try {
-        const contexts = await browser.runtime.getContexts({ contextTypes: ['OFFSCREEN_DOCUMENT'] });
-        if (contexts.length > 0) {
-            await browser.offscreen.closeDocument();
+        if (typeof browser.offscreen !== 'undefined') {
+            const contexts = await browser.runtime.getContexts({ contextTypes: ['OFFSCREEN_DOCUMENT'] });
+            if (contexts.length > 0) {
+                await browser.offscreen.closeDocument();
+            }
+        } else {
+            // Fallback Firefox
+            document.getElementById('sispmg-offscreen-iframe')?.remove();
         }
     } catch (closeError) {
         // Ignora erros se o documento já foi fechado por outra operação.

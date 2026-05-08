@@ -14,6 +14,11 @@ export function initFileSystem(prototype) {
         return await currentDir.getFileHandle(fileName, options);
     }
 
+    /**
+     * Obtém o handle do diretório de trabalho do usuário. Solicita permissão se necessário.
+     * @param {boolean} [forceNew=false] Se verdadeiro, força o usuário a selecionar um novo diretório.
+     * @returns {Promise<FileSystemDirectoryHandle|null>}
+     */
     prototype.getDirectoryHandle = async function(forceNew = false) {
         await this._checkRotinaState();
         if (!this.directoryHandle || forceNew) {
@@ -28,6 +33,13 @@ export function initFileSystem(prototype) {
         return this.directoryHandle;
     };
 
+    /**
+     * Cria ou sobrescreve um arquivo no sistema de arquivos local.
+     * @param {string} path Caminho relativo do arquivo (ex: "relatorios/vendas.txt").
+     * @param {string|Blob} content Conteúdo a ser gravado no arquivo.
+     * @returns {Promise<void>}
+     * @example await criarArquivo('resultado.txt', 'Conteúdo do arquivo...');
+     */
     prototype.criarArquivo = async function(path, content) {
         await this._checkRotinaState();
         const handle = await this.getDirectoryHandle();
@@ -43,6 +55,12 @@ export function initFileSystem(prototype) {
         }
     };
 
+    /**
+     * Lê o conteúdo de um arquivo de texto local.
+     * @param {string} path Caminho relativo do arquivo.
+     * @returns {Promise<string|null>} Conteúdo do arquivo ou null se não for encontrado.
+     * @example const texto = await lerArquivo('config.json');
+     */
     prototype.lerArquivo = async function(path) {
         await this._checkRotinaState();
         let handle = await this.getDirectoryHandle();
@@ -65,6 +83,13 @@ export function initFileSystem(prototype) {
         }
     };
 
+    /**
+     * Adiciona conteúdo ao final de um arquivo existente ou cria um novo se não existir.
+     * @param {string} path Caminho relativo do arquivo.
+     * @param {string} contentToAppend Texto a ser anexado.
+     * @returns {Promise<void>}
+     * @example await anexarNoArquivo('log.txt', 'Nova linha de log\n');
+     */
     prototype.anexarNoArquivo = async function(path, contentToAppend) {
         await this._checkRotinaState();
         const handle = await this.getDirectoryHandle();
@@ -93,6 +118,12 @@ export function initFileSystem(prototype) {
         }
     };
 
+    /**
+     * Exclui um arquivo do sistema de arquivos local.
+     * @param {string} path Caminho relativo do arquivo.
+     * @returns {Promise<void>}
+     * @example await excluirArquivo('temp.txt');
+     */
     prototype.excluirArquivo = async function(path) {
         await this._checkRotinaState();
         let handle = await this.getDirectoryHandle();
@@ -119,6 +150,35 @@ export function initFileSystem(prototype) {
         }
     };
 
+    /**
+     * Cria um modal interativo complexo com diversos tipos de campos (input, checkbox, select).
+     * @param {object} config Configurações do modal.
+     * @param {string} config.title Título do modal.
+     * @param {Array<object>} config.elements Lista de elementos do formulário.
+     * @param {string} config.elements[].type Tipo do elemento: 'title', 'text', 'input', 'checkbox', 'select'.
+     * @param {string} [config.elements[].id] ID único para o campo (usado no retorno dos dados).
+     * @param {string} [config.elements[].label] Rótulo do campo.
+     * @param {string} [config.elements[].defaultValue] Valor inicial para inputs.
+     * @param {boolean} [config.elements[].checked] Estado inicial para checkboxes.
+     * @param {Array<object>} [config.elements[].options] Opções para selects: [{ value: 'v1', text: 'Opção 1', selected: true }].
+     * @param {Array<object>} config.buttons Lista de botões do rodapé.
+     * @param {string} config.buttons[].text Texto do botão.
+     * @param {string} config.buttons[].action Ação retornada ('confirm', 'cancel', ou custom).
+     * @param {string} [config.buttons[].className] Classe CSS para estilização do botão.
+     * @returns {Promise<object|null>} Objeto { action, formData } onde formData contém os valores dos IDs, ou null se cancelado.
+     * @example 
+     * const res = await criarModal({
+     *   title: 'Configurações',
+     *   elements: [
+     *     { type: 'input', id: 'nome', label: 'Nome:', defaultValue: 'Teste' },
+     *     { type: 'checkbox', id: 'ativo', label: 'Ativar?', checked: true }
+     *   ],
+     *   buttons: [
+     *     { text: 'Salvar', action: 'confirm' },
+     *     { text: 'Sair', action: 'cancel' }
+     *   ]
+     * });
+     */
     prototype.criarModal = async function(config) {
         await this._checkRotinaState();
         return new Promise(resolve => {

@@ -51,319 +51,184 @@ A extensão automatiza completamente o processo de login no terminal.
     -   As rotinas salvas aparecem no menu da extensão e podem ser executadas com um clique.
     -   Durante a execução, um painel de controle aparece, permitindo **Pausar**, **Continuar** ou **Parar** a rotina a qualquer momento.
 
-##### **1.2.2. Referência de Comandos (API)**
+##### **1.2.2. Referência Completa de Comandos (API de Rotinas)**
 
-Estes são todos os comandos que você pode usar para escrever suas próprias rotinas no editor.
+Esta seção detalha todos os comandos disponíveis para a criação de rotinas. Note que, ao escrever no editor, você **não precisa** usar `await` antes desses comandos; o sistema os insere automaticamente.
 
 ---
-**Comandos de Interação Básica**
+**Comandos de Interação e Controle**
 ---
 
 #### `digitar(texto, [verificar])`
-Digita uma sequência de caracteres no terminal.
-
+Digita um texto no terminal.
 -   **Argumentos:**
-    -   `texto` (String): O texto a ser digitado.
-    -   `verificar` (Boolean, Opcional, Padrão: `true`): Se `true`, a rotina irá pausar e verificar se o texto digitado realmente apareceu na tela, lançando um erro se não encontrar. Se `false`, apenas digita sem verificação.
+    -   `texto` (String | Number): O texto a ser digitado.
+    -   `verificar` (Boolean, Padrão: `true`): Se `true`, aguarda 2-3 segundos para confirmar se o texto apareceu na tela (em campos editáveis). Lança erro se não encontrar.
+-   **Exemplo:** `digitar('123456', false); // Digita sem verificar (ex: senhas)`
 
--   **Exemplo:**
-    ```javascript
-    // Digita o CPF e verifica se ele apareceu na tela
-    digitar('123.456.789-00');
-
-    // Digita uma senha, sem verificar (útil para campos que não mostram o texto)
-    digitar('minhaSenhaSuperSecreta', false);
-    ```
-
----
-
-#### `teclar(nomeDaTecla)`
-Simula o pressionamento de uma tecla especial.
-
+#### `teclar(nomeDaTecla, [repeticoes])`
+Simula o pressionamento de teclas especiais.
 -   **Argumentos:**
-    -   `nomeDaTecla` (String): O nome da tecla a ser pressionada. O valor não é case-sensitive.
-    -   **Valores Possíveis:** `'ENTER'`, `'F1'`, `'F2'`, `'F3'`, `'F4'`, `'F5'`, `'F6'`, `'F7'`, `'F8'`, `'F9'`, `'F10'`, `'F11'`, `'F12'`, `'TAB'`, `'BACKTAB'`, `'PAGEUP'`, `'PAGEDOWN'`, `'HOME'`, `'END'`, `'INSERT'`, `'DELETE'`.
-
--   **Exemplo:**
-    ```javascript
-    // Navega para o próximo campo e confirma
-    teclar('TAB');
-    teclar('ENTER');
-    ```
-
----
+    -   `nomeDaTecla` (String): Nome da tecla (Ex: `'ENTER'`, `'TAB'`, `'BACKTAB'`, `'F1'` a `'F24'`, `'SUBIR'`, `'DESCER'`, `'PAGEUP'`, `'PAGEDOWN'`, `'HOME'`, `'END'`, `'ESCAPE'`).
+    -   `repeticoes` (String | Number, Padrão: `'x1'`): Quantidade de vezes (Ex: `'x5'` ou `5`).
+-   **Exemplo:** `teclar('TAB', 'x3'); // Pressiona TAB 3 vezes`
 
 #### `clicar(linha, coluna)`
-Simula um clique de mouse em uma coordenada específica da tela do terminal.
-
+Simula um clique de mouse em coordenadas específicas.
 -   **Argumentos:**
-    -   `linha` (Number): O número da linha onde clicar (começando em 1).
-    -   `coluna` (Number): O número da coluna onde clicar (começando em 1).
-
--   **Exemplo:**
-    ```javascript
-    // Clica na opção "2. Consultar" que está na linha 5, coluna 10
-    clicar(5, 10);
-    ```
-
----
+    -   `linha` (Number): Linha (1-base).
+    -   `coluna` (Number): Coluna (1-base).
+-   **Exemplo:** `clicar(10, 5);`
 
 #### `esperar(segundos)`
-Pausa a execução da rotina por um determinado tempo.
-
+Pausa a execução da rotina.
 -   **Argumentos:**
-    -   `segundos` (Number, Opcional): O tempo em segundos para esperar. Pode ser um número decimal (ex: `0.5`). Se não for fornecido, usará a velocidade padrão da rotina (definida por `velocidade()`).
-
--   **Exemplo:**
-    ```javascript
-    // Espera 2.5 segundos para o sistema processar
-    esperar(2.5);
-    ```
-
----
+    -   `segundos` (Number, Opcional): Tempo em segundos. Se omitido, usa a velocidade padrão.
+-   **Exemplo:** `esperar(1.5);`
 
 #### `velocidade(segundos)`
-Define a velocidade padrão de pausa entre os passos da rotina.
-
+Define o atraso padrão entre os comandos da rotina.
 -   **Argumentos:**
-    -   `segundos` (Number): O tempo de pausa padrão em segundos.
+    -   `segundos` (Number): Tempo em segundos (Ex: `0.2`).
+-   **Exemplo:** `velocidade(0.1); // Torna a rotina muito rápida`
 
--   **Exemplo:**
-    ```javascript
-    // Define a rotina para ser mais lenta, esperando 1 segundo entre cada passo
-    velocidade(1);
-    digitar('texto'); // vai esperar 1s antes de digitar
-    teclar('ENTER');  // vai esperar 1s antes de teclar
-    ```
+#### `limparCampo([tamanho])`
+Apaga o conteúdo do campo onde o cursor está posicionado.
+-   **Argumentos:**
+    -   `tamanho` (Number, Padrão: `60`): Quantidade de backspaces a enviar.
+-   **Exemplo:** `limparCampo();`
+
+#### `colar()`
+Cola o conteúdo da área de transferência na posição atual do cursor.
 
 ---
-**Comandos de Leitura e Validação**
+**Comandos de Localização e Leitura**
 ---
 
 #### `localizarTexto(alvo, [opcoes])`
-A função mais importante para controle de fluxo. Espera até que um texto (ou múltiplos textos) apareça na tela.
-
+Aguarda até que um texto ou padrão apareça na tela.
 -   **Argumentos:**
-    -   `alvo` (String | Array<String> | RegExp): O texto que a função deve procurar. Pode ser uma string simples, um array de strings (procurará por todas), ou uma Expressão Regular.
-    -   `opcoes` (Object, Opcional): Um objeto para configurar o comportamento da busca.
-        -   `esperar` (Number, Padrão: `5`): Tempo máximo em segundos para esperar pelo texto.
-        -   `lancarErro` (Boolean, Padrão: `false`): Se `true`, a rotina para com um erro se o texto não for encontrado. Se `false`, a função apenas retorna `false`.
-        -   `caseSensitive` (Boolean, Padrão: `false`): Se `true`, diferencia maiúsculas de minúsculas.
-        -   `area` (Object, Padrão: `null`): Define uma área retangular para a busca (ex: `{linhaInicial: 10, colunaInicial: 5, linhaFinal: 15, colunaFinal: 40}`).
-        -   `dialogoFalha` (Boolean | String, Padrão: `false`): Se `true`, exibe um popup perguntando se o usuário deseja parar ou continuar a rotina em caso de falha. Se for uma string, usa esse texto na mensagem do popup.
+    -   `alvo` (String | Array<String> | RegExp): O que procurar.
+    -   `opcoes` (Object):
+        -   `esperar` (Number, Padrão: `5`): Timeout em segundos.
+        -   `lancarErro` (Boolean, Padrão: `false`): Interrompe se não encontrar.
+        -   `caseSensitive` (Boolean, Padrão: `false`): Diferencia maiúsculas.
+        -   `area` (Object): Restringe a busca a um retângulo `{linhaInicial, colunaInicial, linhaFinal, colunaFinal}` ou apenas uma `{linha}`.
+        -   `area.apenasCamposDigitaveis` (Boolean): Busca apenas dentro de campos editáveis.
+        -   `dialogoFalha` (Boolean | String): Exibe popup de confirmação em caso de erro.
+-   **Retorno:** `Boolean` - `true` se encontrado.
+-   **Exemplo:** `localizarTexto('SUCESSO', { esperar: 10, area: { linha: 24 } });`
 
--   **Retorna:** `Boolean` - `true` se encontrou o texto, `false` caso contrário (a menos que `lancarErro` seja `true`).
+#### `localizarQualquerTexto(alvosArray, [opcoes])`
+Aguarda o primeiro texto de uma lista aparecer.
+-   **Argumentos:**
+    -   `alvosArray` (Array<String | RegExp>): Lista de alvos.
+-   **Retorno:** O item do array que foi encontrado primeiro, ou `null`.
+-   **Exemplo:** `const res = localizarQualquerTexto(['OK', 'ERRO']);`
 
--   **Exemplo:**
-    ```javascript
-    // Espera até 10 segundos pela tela de sucesso, e para a rotina se não encontrar
-    localizarTexto('Operacao realizada com sucesso', { esperar: 10, lancarErro: true });
-
-    // Verifica se a tela de login está presente (contém "Usuario" e "Senha")
-    if (localizarTexto(['Usuario:', 'Senha:'])) {
-      // Faz o login...
-    }
-    ```
-
----
-
-#### `obterTexto(linhaInicial, [colunaInicial], [linhaFinal], [colunaFinal])`
-Lê e retorna o texto de uma área específica da tela.
-
--   **Argumentos (Sobrecarga):**
-    -   `obterTexto()`: Retorna o texto da tela inteira.
-    -   `obterTexto(linha)`: Retorna o texto de uma linha específica.
-    -   `obterTexto(linha, coluna)`: Retorna o texto de uma linha a partir de uma coluna.
-    -   `obterTexto(linhaIni, colIni, linhaFim, colFim)`: Retorna o texto de uma área retangular.
-
--   **Retorna:** `String` - O texto extraído.
-
--   **Exemplo:**
-    ```javascript
-    // Pega o número de protocolo que está na linha 7, a partir da coluna 12
-    const protocolo = obterTexto(7, 12);
-    ```
-
----
-
-#### `copiar(linhaInicial, [colunaInicial], [linhaFinal], [colunaFinal])`
-Copia o texto de uma área da tela para a área de transferência do sistema. Usa a mesma lógica de argumentos do `obterTexto`.
-
--   **Exemplo:**
-    ```javascript
-    // Copia o conteúdo da linha 3 para o clipboard
-    copiar(3);
-    ```
-
----
-
-#### `colar()`
-Cola o conteúdo da área de transferência do sistema na posição atual do cursor no terminal.
-
--   **Exemplo:**
-    ```javascript
-    // Posiciona em um campo e cola um valor copiado de outro lugar
-    posicionar('Nome:');
-    colar();
-    ```
-
----
-
-#### `lerTela()`
-Função interativa que permite ao usuário selecionar uma área da tela com dois cliques para extrair o texto.
-
--   **Retorna:** `Object` - Um objeto contendo o texto (`{text: '...'}`) ou `null` se a operação for cancelada.
-
--   **Exemplo:**
-    ```javascript
-    // Pede para o usuário selecionar uma área
-    const selecao = lerTela();
-    if (selecao) {
-      digitar(selecao.text);
-    }
-    ```
-
----
-**Comandos Avançados e de Navegação**
----
+#### `esperarTextoSumir(alvo, [options])`
+Aguarda até que um texto desapareça da tela.
+-   **Argumentos:**
+    -   `alvo` (String | RegExp): Texto a aguardar sumir.
+    -   `options.esperar` (Number, Padrão: `15`): Timeout.
+-   **Retorno:** `Boolean` - `true` se sumiu.
 
 #### `posicionar(rotulo, [opcoes])`
-Move o cursor para o campo de texto mais próximo de um "rótulo" (um texto fixo na tela). Essencial para navegar em formulários.
-
+Localiza um texto e move o cursor para o campo próximo.
 -   **Argumentos:**
-    -   `rotulo` (String): O texto que serve como âncora.
-    -   `opcoes` (Object, Opcional):
-        -   `direcao` (String, Padrão: `'apos'`): Para onde ir a partir do rótulo. Valores: `'apos'`, `'antes'`, `'acima'`, `'abaixo'`.
-        -   `offset` (Number, Padrão: `0`): Quantos 'TAB's adicionais pressionar após posicionar (apenas para `direcao` 'antes' ou 'apos').
+    -   `rotulo` (String): Texto âncora.
+    -   `opcoes.direcao` (String, Padrão: `'depois'`): `'antes'`, `'depois'`, `'acima'`, `'abaixo'`.
+    -   `opcoes.offset` (Number): TABs adicionais (para antes/depois).
+-   **Exemplo:** `posicionar('CPF:', { direcao: 'depois' });`
 
--   **Exemplo:**
-    ```javascript
-    // Encontra o texto "CPF:" e posiciona o cursor no campo à frente dele
-    posicionar('CPF:');
-    digitar('111.222.333-44');
+#### `obterTexto([L1], [C1], [L2], [C2])`
+Lê texto da tela.
+-   **Sobrecargas:**
+    -   `obterTexto()`: Tela inteira.
+    -   `obterTexto(Linha)`: Uma linha inteira.
+    -   `obterTexto(L1, C1, L2, C2)`: Bloco específico.
 
-    // Encontra o texto "Nome:" e posiciona no campo de cima
-    posicionar('Nome:', { direcao: 'acima' });
-    ```
+#### `obterPosicaoCursor()`
+Retorna `{ y, x }` do cursor.
 
----
+#### `copiar([L1], [C1], [L2], [C2])`
+Copia área da tela para o clipboard. Mesma lógica do `obterTexto`.
 
-#### `processarLinhas(nomeArquivo, (linha, indice, todasAsLinhas) => { ... })`
-Lê um arquivo do sistema de arquivos da extensão, linha por linha, e executa uma função de callback para cada linha.
-
--   **Argumentos:**
-    -   `nomeArquivo` (String): O nome do arquivo a ser lido.
-    -   `callback` (Function): A função a ser executada para cada linha. Ela recebe três argumentos:
-        -   `linha` (String): O conteúdo da linha atual.
-        -   `indice` (Number): O número da linha (começando em 0).
-        -   `todasAsLinhas` (Array<String>): Um array com todas as linhas do arquivo.
-
--   **Exemplo:**
-    ```javascript
-    // Lê uma lista de CPFs do arquivo 'cpfs.txt' e consulta cada um
-    processarLinhas('cpfs.txt', (cpf) => {
-      posicionar('CPF:');
-      digitar(cpf);
-      teclar('F5');
-      localizarTexto('Consulta concluida');
-      // ... extrair dados ...
-      teclar('F3'); // Volta para a tela de consulta
-    });
-    ```
+#### `lerTela([showModals])`
+Inicia modo de captura de tela por clique.
 
 ---
-
-#### `executarRotina(nomeDaRotina)`
-Executa outra rotina salva, permitindo reutilizar e modularizar código.
-
--   **Argumentos:**
-    -   `nomeDaRotina` (String): O nome completo (incluindo pastas, ex: `'Consultas/Consultar CPF'`) da rotina a ser executada.
-
--   **Exemplo:**
-    ```javascript
-    // Executa uma rotina de login antes de continuar
-    executarRotina('Comuns/Login no Sistema');
-    // Continua com as tarefas específicas desta rotina
-    digitar('MINHA_TAREFA_ESPECIFICA');
-    ```
-
+**Comandos de Dados e Planilhas**
 ---
 
-#### `autoExecutar(textoDeGatilho)`
-Define um "gatilho" para a rotina. A rotina será executada automaticamente assim que o `textoDeGatilho` for identificado em qualquer lugar da tela do terminal.
+#### `lerPlanilha(sheetId, [nomeAba], [query])`
+Lê dados de uma planilha Google pública.
+-   **Retorno:** Matriz 2D de dados.
 
--   **Argumentos:**
-    -   `textoDeGatilho` (String): O texto que, ao aparecer na tela, dispara a execução da rotina.
+#### `lerPlanilhaObjetos(sheetId, [nomeAba], [query])`
+Lê planilha e converte em Array de Objetos (usa 1ª linha como chaves).
+-   **Exemplo:** `const usuarios = lerPlanilhaObjetos('ID'); console.log(usuarios[0].Nome);`
 
--   **Exemplo (Colocado no início de uma rotina):**
-    ```javascript
-    // Esta rotina irá rodar sozinha sempre que a tela principal do sistema aparecer
-    autoExecutar('TELA PRINCIPAL DO SIAF');
+#### `enviarParaPlanilha(scriptId, nomeAba, dados)`
+Envia dados para planilha via Google Apps Script.
+-   **Argumentos:** `dados` deve ser um Array de Arrays (matriz).
 
-    // O resto da rotina
-    clicar(10, 15); // Clica na opção "Relatórios"
-    // ...
-    ```
+#### `processarPlanilha(dados, callback, [pularCabecalho])`
+Loop facilitado para matrizes de planilha.
+-   **Exemplo:** `processarPlanilha(minhaPlanilha, (linha) => { digitar(linha[0]); });`
 
----
-**Comandos de Integração e Sistema de Arquivos**
----
+#### `agruparDados(arrayDeObjetos, chave)`
+Utilitário para agrupar JSON por uma propriedade.
 
-#### `criarArquivo(nome, conteudo)`
-Cria um arquivo de texto no sistema de arquivos virtual da extensão. Se o arquivo já existir, ele será **sobrescrito**.
+#### `formatarData(data, [formato])`
+Converte datas para `'DDMMAAAA'`, `'DD/MM/AAAA'` ou `'YYYY-MM-DD'`.
 
----
-
-#### `lerArquivo(nome)`
-Lê e retorna o conteúdo de um arquivo de texto.
+#### `extrairCPF(texto)`, `extrairData(texto)`, `extrairProtocolo(texto)`, `extrairNumeros(texto)`, `converterMoeda(texto)`
+Funções de extração de padrões e conversão de valores.
 
 ---
-
-#### `anexarNoArquivo(nome, conteudo)`
-Adiciona conteúdo ao final de um arquivo de texto. Se o arquivo não existir, ele será criado.
-
+**Comandos de Arquivos e Modais**
 ---
 
-#### `excluirArquivo(nome)`
-Exclui um arquivo do sistema de arquivos da extensão.
+#### `criarArquivo(caminho, conteudo)`, `lerArquivo(caminho)`, `anexarNoArquivo(caminho, conteudo)`, `excluirArquivo(caminho)`
+Operações no sistema de arquivos local (diretório selecionado).
+
+#### `criarModal(config)`
+Cria um formulário modal complexo.
+-   **Config:** `{ title, elements: [{ type, id, label, defaultValue, options... }], buttons: [{ text, action, className }] }`
+-   **Retorno:** `{ action, formData: { id1: valor, id2: valor } }`
+
+#### `solicitarEntrada(titulo, mensagem, [placeholder])`
+Prompt simples para entrada de texto.
+
+#### `selecionarEmTabela(titulo, desc, colunas, dados, renderRowFn)`
+Modal com tabela selecionável. Retorna o objeto da linha clicada.
 
 ---
-
-#### `lerPlanilha(idPlanilha, nomeAba, consulta)`
-Lê dados de uma planilha pública do Google Sheets.
-
--   **Argumentos:**
-    -   `idPlanilha` (String): O ID da planilha (encontrado na URL).
-    -   `nomeAba` (String, opcional): O nome da aba (página) da planilha.
-    -   `consulta` (String, opcional): Uma consulta SQL-like (ex: "SELECT A, B WHERE C > 10").
--   **Retorno:** Promessa que resolve em uma matriz bidimensional `[[col1, col2, ...], [linha2...]]`.
-
+**Comandos de Sistema e Debug**
 ---
 
-#### `processarPlanilha(dados, callback, pularCabecalho)`
-Itera sobre os dados de uma planilha, facilitando a execução de tarefas em loop.
+#### `executarRotina(caminho)`
+Chama outra rotina salva.
 
--   **Argumentos:**
-    -   `dados` (Array): A matriz retornada por `lerPlanilha`.
-    -   `callback` (Função): Função executada para cada linha: `(linha, indice) => { ... }`.
-    -   `pularCabecalho` (Boolean, opcional): Se deve ignorar a primeira linha. Padrão: `true`.
+#### `executarRotinaEm(rotina, [alias], [sistema])`
+Executa código em outra aba (Inter-Abas). Abre nova aba se alias for nulo.
 
----
+#### `retornar(valor)`
+Define o valor de resposta para uma chamada `executarRotinaEm`.
 
-#### `enviarParaPlanilha(idDoScript, nomeDaAba, dados)`
-Envia dados diretamente para uma Planilha Google. Requer a configuração prévia de um Google Apps Script.
+#### `fechar([alias])`
+Fecha a aba atual ou uma aba remota.
 
--   **Argumentos:**
-    -   `idDoScript` (String): O ID da publicação do seu Google Apps Script.
-    -   `nomeDaAba` (String): O nome da aba na planilha que deve receber os dados.
-    -   `dados` (Array<Array<String>>): Um array de arrays, onde cada array interno representa uma linha a ser inserida na planilha.
-
----
+#### `debug(...args)`
+Exibe informações no console de debug flutuante da rotina.
 
 #### `obterDadosUsuario()`
-Retorna um objeto com as informações do usuário atualmente logado na Intranet (extraídas do token).
+Retorna `{ numeroPM, nomeCompleto, postoGraduacao, codigoRegiao, ... }`.
 
--   **Retorna:** `Object` - Ex: `{ numeroPM: '1234567', nomeCompleto: 'NOME DO USUARIO', ... }`
+#### `autoExecutar(gatilho, [opcoes])`
+Configura a rotina para disparar sozinha ao encontrar o texto de gatilho.
+-   **Opções:** `{ on: 'ENTER' }` (Padrão: ENTER, ou 'ANY_KEY', 'F1', etc).
 
 ---
 **1.2.3. Exemplos Práticos (Receitas)**

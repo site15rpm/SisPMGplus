@@ -206,69 +206,65 @@ async function runProcess(gasUrl, todayDateStr) {
 }
 
 // --- HANDLER DE MENSAGENS ---
-export function handleSirconvConveniosMessages(request, sender, sendResponse) {
+export async function handleSirconvConveniosMessages(request, sender) {
     const { action, payload } = request;
 
     switch (action) {
-        case 'sirconv-convenios-get-settings':
-            getSettings().then(settings => sendResponse({ success: true, settings }));
-            return true;
+        case 'sirconv-convenios-get-settings': {
+            const settings = await getSettings();
+            return { success: true, settings };
+        }
 
         case 'sirconv-convenios-save-settings':
-            browser.storage.local.set({ [SETTINGS_KEY]: payload })
-                .then(() => {
-                    addLog('Configurações atualizadas pelo usuário.', 'info');
-                    sendResponse({ success: true });
-                })
-                .catch(err => sendResponse({ success: false, error: err.message }));
-            return true;
+            try {
+                await browser.storage.local.set({ [SETTINGS_KEY]: payload });
+                await addLog('Configurações atualizadas pelo usuário.', 'info');
+                return { success: true };
+            } catch (err) {
+                return { success: false, error: err.message };
+            }
         
-        case 'sirconv-convenios-get-logs':
-            browser.storage.local.get(LOGS_KEY).then(res => {
-                sendResponse({ success: true, logs: res[LOGS_KEY] || [] });
-            });
-            return true;
+        case 'sirconv-convenios-get-logs': {
+            const res = await browser.storage.local.get(LOGS_KEY);
+            return { success: true, logs: res[LOGS_KEY] || [] };
+        }
 
         case 'sirconv-convenios-clear-logs':
-            browser.storage.local.set({ [LOGS_KEY]: [] })
-                .then(() => {
-                    sendResponse({ success: true });
-                    // Notifica sobre a limpeza
-                    browser.tabs.query({}, (tabs) => {
-                        tabs.forEach(tab => {
-                            browser.tabs.sendMessage(tab.id, { 
-                                action: 'sirconv-convenios-logs-updated', 
-                                logs: [] 
-                            }).catch(() => {});
-                        });
-                    });
-                })
-                .catch(err => sendResponse({ success: false, error: err.message }));
-            return true;
+            try {
+                await browser.storage.local.set({ [LOGS_KEY]: [] });
+                // Notifica sobre a limpeza
+                const tabs = await browser.tabs.query({});
+                for (const tab of tabs) {
+                    browser.tabs.sendMessage(tab.id, { 
+                        action: 'sirconv-convenios-logs-updated', 
+                        logs: [] 
+                    }).catch(() => {});
+                }
+                return { success: true, logs: [] };
+            } catch (err) {
+                return { success: false, error: err.message };
+            }
 
         case 'sirconv-convenios-manual-run':
-            (async () => {
-                try {
-                    const settings = await getSettings();
-                    if(!settings.gasUrl) throw new Error("URL do GAS não configurada.");
-                    
-                    await addLog('Execução manual iniciada pelo usuário.', 'start');
-                    await runProcess(settings.gasUrl, null); // Null para não travar a execução diária
-                    sendResponse({ success: true });
-                } catch (e) {
-                    sendResponse({ success: false, error: e.message });
-                }
-            })();
-            return true;
+            try {
+                const settings = await getSettings();
+                if(!settings.gasUrl) throw new Error("URL do GAS não configurada.");
+                
+                await addLog('Execução manual iniciada pelo usuário.', 'start');
+                await runProcess(settings.gasUrl, null); // Null para não travar a execução diária
+                return { success: true };
+            } catch (e) {
+                return { success: false, error: e.message };
+            }
 
         case 'intranet-user-identified':
             if (payload?.system === 'SIRCONV') {
                 checkTrigger(payload);
             }
-            return false; // Continua a propagação para outros listeners se necessário
+            return; // Continua a propagação para outros listeners se necessário
 
         default:
-            return false;
+            return;
     }
 }
 

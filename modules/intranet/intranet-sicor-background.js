@@ -86,58 +86,41 @@ function _getScheduledDateRange(settings) {
 
 
 // --- FUNÇÕES OFFSCREEN ---
-// (Mantidas como no código original - setupOffscreenDocument, sendMsgToOffscreen, blobToDataURL, closeOffscreenDocument)
 async function setupOffscreenDocument(path) {
     try {
-        const existingContexts = await browser.runtime.getContexts({
-            contextTypes: ['OFFSCREEN_DOCUMENT'],
-            documentUrls: [browser.runtime.getURL(path)]
-        });
+        if (typeof browser.offscreen !== 'undefined') {
+            let existingContexts = [];
+            try {
+                if (typeof browser.runtime.getContexts === 'function') {
+                    existingContexts = await browser.runtime.getContexts({
+                        contextTypes: ['OFFSCREEN_DOCUMENT'],
+                        documentUrls: [browser.runtime.getURL(path)]
+                    });
+                }
+            } catch (e) { /* ignore */ }
 
-        if (existingContexts.length > 0) return;
+            if (existingContexts.length > 0) return;
 
-        const allContexts = await browser.runtime.getContexts({ contextTypes: ['OFFSCREEN_DOCUMENT'] });
-        if (allContexts.length > 0) {
-             console.warn("SisPMG+ [Offscreen]: Outro documento offscreen encontrado. Tentando fechar...");
-             const currentOffscreenUrl = allContexts[0].documentUrl;
-             const targetUrl = browser.runtime.getURL(path);
-             if (currentOffscreenUrl !== targetUrl) {
-                 await browser.offscreen.closeDocument();
-                 console.log("SisPMG+ [Offscreen]: Documento offscreen anterior fechado.");
-             } else {
-                 console.log("SisPMG+ [Offscreen]: Documento offscreen correto já existe.");
-                 return;
-             }
+            await browser.offscreen.createDocument({
+                url: path,
+                reasons: [browser.offscreen.Reason.DOM_PARSER],
+                justification: 'Parse HTML content',
+            });
+        } else {
+            // Fallback Firefox
+            if (document.getElementById('sispmg-offscreen-iframe')) return;
+            const iframe = document.createElement('iframe');
+            iframe.id = 'sispmg-offscreen-iframe';
+            iframe.src = browser.runtime.getURL(path);
+            iframe.style.display = 'none';
+            document.body.appendChild(iframe);
+            await new Promise(resolve => { iframe.onload = () => setTimeout(resolve, 300); });
         }
-
-        await new Promise(resolve => setTimeout(resolve, 100));
-
-        await browser.offscreen.createDocument({
-            url: path,
-            reasons: [browser.offscreen.Reason.DOM_PARSER],
-            justification: 'Parse HTML content',
-        });
-        console.log("SisPMG+ [Offscreen]: Documento offscreen criado:", path);
     } catch (e) {
-         console.error("SisPMG+ [Offscreen]: Erro ao configurar documento offscreen.", path, e);
-         if (e.message && e.message.toLowerCase().includes('already has an active offscreen document')) {
-              console.warn("SisPMG+ [Offscreen]: Erro 'already has...' recebido. Tentando fechar e recriar.");
-              try {
-                  await browser.offscreen.closeDocument();
-                  await new Promise(resolve => setTimeout(resolve, 150));
-                  await browser.offscreen.createDocument({
-                      url: path,
-                      reasons: [browser.offscreen.Reason.DOM_PARSER],
-                      justification: 'Parse HTML content (retry)',
-                  });
-                   console.log("SisPMG+ [Offscreen]: Documento offscreen recriado com sucesso:", path);
-              } catch (retryError) {
-                   console.error("SisPMG+ [Offscreen]: Falha ao recriar documento offscreen após erro:", retryError);
-                   throw new Error(`Falha crítica ao configurar offscreen (${path}): ${retryError.message}`);
-              }
-         } else {
-            throw new Error(`Falha ao configurar offscreen (${path}): ${e.message}`);
-         }
+        if (e.message && !e.message.includes('Only a single offscreen document may be created.')) {
+            console.error("SisPMG+ [Offscreen]: Erro ao configurar documento offscreen.", e);
+            throw e;
+        }
     }
 }
 async function sendMsgToOffscreen(action, data) {
@@ -152,9 +135,7 @@ async function sendMsgToOffscreen(action, data) {
             new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout esperando resposta do offscreen')), 10000))
         ]);
 
-        if (response && response.error && typeof response.error === 'string' && response.error.startsWith('Falha na comunicação com offscreen')) {
-             console.warn(`SisPMG+ [Offscreen]: Erro de comunicação detectado (${action}). Detalhes: ${response.error}`);
-        } else if (response && response.error) {
+        if (response && response.error) {
              console.error(`SisPMG+ [Offscreen]: Erro retornado pelo offscreen (${action}): ${response.error}`);
         }
         return response;
@@ -173,9 +154,13 @@ function blobToDataURL(blob) {
 }
 async function closeOffscreenDocument() {
     try {
-        const contexts = await browser.runtime.getContexts({ contextTypes: ['OFFSCREEN_DOCUMENT'] });
-        if (contexts.length > 0) {
-            await browser.offscreen.closeDocument();
+        if (typeof browser.offscreen !== 'undefined') {
+            const contexts = await browser.runtime.getContexts({ contextTypes: ['OFFSCREEN_DOCUMENT'] });
+            if (contexts.length > 0) {
+                await browser.offscreen.closeDocument();
+            }
+        } else {
+            document.getElementById('sispmg-offscreen-iframe')?.remove();
         }
     } catch (closeError) {
          if (closeError.message && !closeError.message.includes("No current offscreen document")) {

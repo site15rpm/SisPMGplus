@@ -236,7 +236,7 @@ export class TerminalModule {
         }
     }
 
-    // --- NOVA LÓGICA DE KEEP-ALIVE (OCIOSIDADE) ---
+    // --- NOVA LÓGICA DE KEEP-ALIVE (OCIOSIDADE EM MODO BLOCO TN3270) ---
     _startKeepAlive() {
         this._stopKeepAlive(); // Limpa timer antigo se existir
 
@@ -244,10 +244,10 @@ export class TerminalModule {
             if (this.loginFlowActive || this.rotinaState === 'running') return;
             if (this.inactivityTimer) clearTimeout(this.inactivityTimer);
             
-            // Define o timer para 4 minutos
+            // Define o timer para 3 minutos (Evita os picos de descarte TCP/background throttling)
             this.inactivityTimer = setTimeout(() => {
                 this._sendKeepAliveCommand();
-            }, 3 * 60 * 1000); 
+            }, 1 * 60 * 1000); 
         };
 
         // Escuta interações naturais na página
@@ -255,28 +255,24 @@ export class TerminalModule {
             document.addEventListener(event, resetIdleTimer, { passive: true });
         });
 
-        // Escuta interação direta com o terminal
+        // Escuta interação direta com o emulador do terminal
         if (this.term && !this._onDataKeepAliveListener) {
             this._onDataKeepAliveListener = this.term.onData(() => resetIdleTimer());
         }
 
         resetIdleTimer(); // Inicia a contagem
-        console.log('SisPMG+ [KeepAlive]: Monitoramento inteligente de ociosidade ativado.');
+        console.log('SisPMG+ [KeepAlive]: Monitoramento inteligente de ociosidade TN3270 ativado.');
     }
 
     _sendKeepAliveCommand() {
         if (this.rotinaState === 'stopped' && !this.loginFlowActive && this.isLoggedIn && this.term && this.term._core) {
-            console.log('SisPMG+ [KeepAlive]: Ociosidade detectada. Enviando comando (DESCER/SUBIR) para manter sessão ativa.');
+            console.log('SisPMG+ [KeepAlive]: Ociosidade detectada. Enviando tecla neutra AID (PA2) para gerar pacote de rede no mainframe.');
             
-            // Envia um comando de tecla para mover o cursor abaixo
-            this.term._core._onData.fire(this.keyMap['TAB']);
-            
-            // Retorna imediatamente o cursor para cima para não estragar a tela
-            setTimeout(() => {
-                if (this.term && this.term._core) {
-                    this.term._core._onData.fire(this.keyMap['BACKTAB']);
-                }
-            }, 150);
+            // Em arquitetura IBM 3270 (Modo Bloco), teclas direcionais (Setas, Tab) afetam apenas o buffer 
+            // JavaScript/HTML local. Para resetar o timer do mainframe, é OBRIGATÓRIO disparar uma tecla AID
+            // (Attention Identifier). Utilizamos PA2 (Program Attention 2) pois ela atua convencionalmente 
+            // como \"Refresh/Redraw\" no CICS/Natural e não submete os dados preenchidos localmente pelo usuário.
+            this.term._core._onData.fire(this.keyMap['PA1']);
         }
         
         // Garante que o timer reinicie após a ação
@@ -400,7 +396,23 @@ export class TerminalModule {
     }
     
     reloadPage() {
+        console.log("SisPMG+: Forçando recarregamento da página e neutralizando alertas...");
+        
+        // 1. Limpa ouvintes antigos legados do objeto window
         window.onbeforeunload = null;
+        
+        // 2. Intercepta eventos criados por addEventListener de forma agressiva usando a Fase de Captura (capture: true)
+        // Isso executa nossa função antes de qualquer script do próprio emulador/site.
+        const bypassUnload = (e) => {
+            e.stopImmediatePropagation(); // Evita que outros ouvintes processem o evento
+            e.stopPropagation();
+            e.preventDefault();
+            delete e.returnValue; // Chrome exige que returnValue seja inexistente para não exibir alerta
+        };
+        
+        window.addEventListener('beforeunload', bypassUnload, { capture: true });
+        
+        // 3. Efetua o recarregamento blindado
         window.location.reload();
     }
 

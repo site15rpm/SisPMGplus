@@ -606,11 +606,8 @@ export function initUI(prototype) {
     };
 
     prototype.createInstructionalModal = function(title, message) {
-        return new Promise(resolve => {
-            this.createModal(title, `<p>${message}</p>`, null, [
-                { text: 'OK', className: 'rotina-modal-save-btn', action: (m) => { this.closeModalAndFocus(m); resolve(true); } }
-            ], { stack: true });
-        });
+        this.exibirNotificacao(`${title}: ${message}`, true, 5);
+        return Promise.resolve(true);
     };
 
     prototype.createPromiseConfirmationModal = function(title, message, { confirmText = 'Confirmar', cancelText = 'Cancelar' } = {}) {

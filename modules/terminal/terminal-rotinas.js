@@ -32,7 +32,7 @@ class RotinaProcessor {
             'excluirArquivo', 'anexarNoArquivo', 'processarLinhas', 'lerPlanilha', 'processarPlanilha',
             'enviarParaPlanilha', 'obterDadosUsuario', 'executarRotinaEm', 'retornar', 'debug', 'fechar',
             'lerPlanilhaObjetos', 'selecionarEmTabela',
-            'solicitarEntrada', 'localizarQualquerTexto'
+            'solicitarEntrada', 'localizarQualquerTexto', 'esperarTextoSumir', 'limparCampo'
         ];
         
         let processedCode = this.code;
