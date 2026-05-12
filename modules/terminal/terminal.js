@@ -264,7 +264,7 @@ export class TerminalModule {
             
             if (this.inactivityTimer) clearTimeout(this.inactivityTimer);
             
-            // Define o intervalo para 3 minutos (180.000 ms)
+            // Define o intervalo para 15 segundos (15.000 ms) para evitar timeout do proxy/websocket
             this.inactivityTimer = setTimeout(() => {
                 this._sendKeepAliveCommand();
             }, 15000); 
@@ -282,11 +282,16 @@ export class TerminalModule {
     }
 
     _sendKeepAliveCommand() {
-        // Envia o PA1 incondicionalmente se houver ociosidade (e se não houver rotina rodando)
+        // Envia um ping incondicionalmente se houver ociosidade (e se não houver rotina rodando)
         if (this.rotinaState === 'stopped' && this.term && this.term._core) {
-            console.log('SisPMG+ [KeepAlive]: Ociosidade no emulador detectada. Enviando Ping (PA1+ENTER).');
-            this.term._core._onData.fire(this.keyMap['PA1']);
-            this.term._core._onData.fire(this.keyMap['ENTER']);
+            console.log('SisPMG+ [KeepAlive]: Ociosidade no emulador detectada. Enviando Ping (Reset Local).');
+            
+            // Solução: Envia Ctrl+A (0x01) seguido de 'r' (Reset).
+            // O comando Reset() é nativo do c3270. Ele gera tráfego de rede e mantém
+            // a conexão TCP/WebSocket aberta no lado do proxy/firewall, porém
+            // é tratado inteiramente de forma local pelo emulador, nunca enviando um
+            // AID ao mainframe. Assim, a digitação em andamento é totalmente preservada.
+            this.term._core._onData.fire('\x01r');
         }
         
         // Rearma o timer para o próximo ciclo de inatividade
@@ -352,7 +357,7 @@ export class TerminalModule {
                         try {
                             // Executa a rotina internamente passando o customCode (se existir). 
                             // message.routineName é o nome ('Rotina_Dinamica_Remota' ou o caminho), message.customCode é o script literal puro.
-                            await this.executarRotina(message.routineName, false, message.customCode, false);
+                            await this.executarRotina(message.routineName, false, message.customCode, false, message.parametros);
                             
                             // Notifica sucesso de volta para o Background rotear, incluindo dados caso o usuário tenha chamado retornar()
                             await this.sendMessagePromise('relayExecutionResult', {

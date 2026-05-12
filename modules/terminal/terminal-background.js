@@ -184,12 +184,12 @@ export async function handleTerminalMessages(request, sender) {
         }
 
         case 'executeInTab': {
-            const { targetAlias, sourceAlias, routineName, customCode, messageId, targetSystem } = payload;
+            const { targetAlias, sourceAlias, routineName, customCode, messageId, targetSystem, parametros } = payload;
             const state = await getSessionState();
             let targetTabId = state.reverseAliasMap[targetAlias];
 
             // Payload que será injetado na aba de destino agora contém customCode se fornecido.
-            const executeMsg = { type: 'EXECUTE_ROUTINE', routineName, customCode, sourceAlias, messageId, targetAlias };
+            const executeMsg = { type: 'EXECUTE_ROUTINE', routineName, customCode, sourceAlias, messageId, targetAlias, parametros };
 
             if (targetTabId) {
                 try {

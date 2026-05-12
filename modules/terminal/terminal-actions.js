@@ -112,11 +112,17 @@ export function initActions(prototype) {
 
     /**
      * Registra uma função (hook) para ser executada automaticamente após cada tecla de ação.
-     * @param {function|null} callback Função a ser executada ou nulo para desativar.
+     * @param {string|Array|RegExp} alvo O texto a ser monitorado.
+     * @param {function} callback Função a ser executada se o alvo for achado.
+     * @param {object} [options] Opções extras para o localizarTexto do hook.
      */
-    prototype.verificarSempre = async function(callback) {
+    prototype.verificarSempre = async function(alvo, callback, options = {}) {
         await this._checkRotinaState();
-        this.verificacaoHook = callback;
+        if (typeof alvo === 'function') {
+            this.verificacaoHook = { alvo: null, callback: alvo, options: callback || {} };
+        } else {
+            this.verificacaoHook = { alvo, callback, options };
+        }
     };
 
     /**
@@ -832,7 +838,8 @@ export function initActions(prototype) {
     
     // --- LÓGICA INTER-ABAS ---
 
-    prototype.executarRotinaEm = function(rotinaOuCodigo, aliasDestino = null, sistemaDestino = null) {
+    prototype.executarRotinaEm = function(rotinaOuCodigo, options = {}) {
+        const { aliasDestino = null, sistemaDestino = null, parametros = null } = options;
         return new Promise(async (resolve, reject) => {
             await this._checkRotinaState();
 
@@ -871,7 +878,8 @@ export function initActions(prototype) {
                 routineName: routineName,
                 customCode: customCode,
                 messageId: messageId,
-                targetSystem: systemTarget
+                targetSystem: systemTarget,
+                parametros: parametros
             });
         });
     };

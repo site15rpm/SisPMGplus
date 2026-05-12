@@ -3,9 +3,10 @@
 
 // O RotinaProcessor é o motor que interpreta e executa o código da rotina.
 class RotinaProcessor {
-    constructor(rotinaCode, context) {
+    constructor(rotinaCode, context, parametros = null) {
         this.context = context;
         this.code = rotinaCode;
+        this.parametros = parametros;
     }
 
     // O método run é o coração do executor. Ele pega o código da rotina,
@@ -19,6 +20,16 @@ class RotinaProcessor {
         for (const key in this.context) {
             if (typeof this.context[key] === 'function' && key !== 'constructor' && !specialFunctions.includes(key)) {
                 commandNames.push(key);
+            }
+        }
+
+        // --- INJEÇÃO DE PARÂMETROS DINÂMICOS ---
+        let paramNames = [];
+        let paramValues = [];
+        if (this.parametros && typeof this.parametros === 'object') {
+            for (const key in this.parametros) {
+                paramNames.push(key);
+                paramValues.push(this.parametros[key]);
             }
         }
         
@@ -36,6 +47,7 @@ class RotinaProcessor {
         
         let processedCode = this.code;
 
+        // --- CORREÇÃO: Linha responsável pelo auto-await restaurada ---
         const regex = new RegExp(`(?<!await\\s+)(${asyncCommandNames.join('|')})\\b\\s*\\(`, 'g');
         processedCode = processedCode.replace(regex, 'await $1(');
 
@@ -50,7 +62,7 @@ class RotinaProcessor {
             }
         );
 
-        const fullCommandNames = [...commandNames, ...specialFunctions];
+        const fullCommandNames = [...commandNames, ...specialFunctions, ...paramNames];
         
         let rotinaExecutor;
         try {
@@ -67,7 +79,7 @@ class RotinaProcessor {
             }
         });
         
-        await rotinaExecutor.apply(this.context, boundCommands);
+        await rotinaExecutor.apply(this.context, [...boundCommands, ...paramValues]);
     }
 }
 
@@ -489,7 +501,7 @@ export function initRotinas(prototype) {
         return typeof content === 'string' ? content : null;
     };
 
-    prototype.executarRotina = async function(name, isAutoRun = false, customCode = null, isTestRun = false) {
+    prototype.executarRotina = async function(name, isAutoRun = false, customCode = null, isTestRun = false, parametros = null) {
         if ((this.rotinaState === 'running' || this.rotinaState === 'paused') && !isTestRun && !isAutoRun) {
             const subRotinaText = customCode ?? this.getRotinaContent(name);
             if (subRotinaText === null) {
@@ -498,7 +510,7 @@ export function initRotinas(prototype) {
             }
 
             this.exibirNotificacao(`Executando sub-rotina: "${name}"...`, true);
-            const subProcessor = new RotinaProcessor(subRotinaText, this);
+            const subProcessor = new RotinaProcessor(subRotinaText, this, parametros);
             try {
                 await subProcessor.run();
                 this.exibirNotificacao(`Sub-rotina "${name}" concluída.`, true);
@@ -532,7 +544,7 @@ export function initRotinas(prototype) {
         this.verificacaoHook = null;
         this.isExecutingHook = false;
 
-        this.currentRotinaProcessor = new RotinaProcessor(rotinaText, this);
+        this.currentRotinaProcessor = new RotinaProcessor(rotinaText, this, parametros);
         this.showRotinaExecutionControls(isTestRun);
         
         try {

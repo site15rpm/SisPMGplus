@@ -411,7 +411,7 @@ input:checked + .slider:before { transform: translateX(22px); }
 .feature-examples .example-item { margin-bottom: 20px; border: 1px solid var(--theme-border); border-radius: 5px; background-color: #fff; }
 .feature-examples .example-item > p { font-size: 13px; color: #444; margin: 0; padding: 10px; background-color: var(--theme-pastel-bg); border-bottom: 1px solid var(--theme-border); border-radius: 4px 4px 0 0; }
 .code-example { background-color: #2b2b2b; color: #d2d2d2; padding: 15px; border-radius: 0; margin: 0; white-space: pre-wrap; word-break: break-all; font-size: 13px; }
-.insert-example-btn { display: block; width: 100%; text-align: center; background-color: var(--theme-green); color: white; border: none; padding: 10px; cursor: pointer; border-radius: 0 0 4px 4px; font-weight: bold; }
+.insert-example-btn { display: block; text-align: center; background-color: var(--theme-green); color: white; border: none; padding: 10px; cursor: pointer; border-radius: 0 0 4px 4px; font-weight: bold; }
 .insert-example-btn:hover { background-color: var(--theme-green-hover); }
 
 /* --- 6. Estilos para o Overlay de Carregamento --- */
