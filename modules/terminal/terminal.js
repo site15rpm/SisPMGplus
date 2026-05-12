@@ -58,9 +58,9 @@ export class TerminalModule {
         this.timedDisabledAutoRun = {};
         this.waitingForAutoRunTrigger = [];
 
-        // --- SISTEMA DE KEEP-ALIVE (ANTIOSCIOSIDADE) ---
+        // --- SISTEMA DE KEEP-ALIVE ---
         this.inactivityTimer = null;
-        this._onDataKeepAliveListener = null;
+        this._keepAliveEventsAttached = false;
         
         this.notificationQueue = [];
         this.isNotificationVisible = false;
@@ -119,6 +119,10 @@ export class TerminalModule {
                 this.screenMonitorInterval = setInterval(() => this.processScreenState(), 1000);
                 this.term.onData(this.handleAutoRunTrigger.bind(this));
                 this._setupCustomKeyHandlers();
+                
+                // Inicia o Keep-Alive globalmente assim que o emulador renderizar
+                this._startKeepAlive();
+                
                 this.processScreenState();
             }
         }, 250);
@@ -187,7 +191,9 @@ export class TerminalModule {
                 this.createFullMenu();
                 await this.loadRotinasFromCache();
                 this.isTerminalReadyForRoutines = true; // Libera execuções pendentes Inter-Abas
-                this._startKeepAlive();
+                
+                if (!this.inactivityTimer) this._startKeepAlive();
+                
                 this.resumeScreenMonitoring();
             }
             return;
@@ -231,61 +237,66 @@ export class TerminalModule {
         }
 
         const isLoginState = await this.handleLoginScreen();
+
+        // Garante que o Keep-Alive inicie/reinicie corretamente
+        if (!this.inactivityTimer && this.rotinaState === 'stopped') {
+            this._startKeepAlive();
+        }
+
         if (!isLoginState && this.isLoggedIn) {
             await this.checkForAutoExecutarRotinas();
         }
     }
 
-    // --- NOVA LÓGICA DE KEEP-ALIVE (OCIOSIDADE EM MODO BLOCO TN3270) ---
+    // --- NOVA LÓGICA DE KEEP-ALIVE ---
     _startKeepAlive() {
-        this._stopKeepAlive(); // Limpa timer antigo se existir
+        this._stopKeepAlive(); 
 
         const resetIdleTimer = () => {
-            if (this.loginFlowActive || this.rotinaState === 'running') return;
+            // Se uma rotina estiver rodando, paralisa o temporizador para não interferir
+            if (this.rotinaState !== 'stopped') {
+                if (this.inactivityTimer) {
+                    clearTimeout(this.inactivityTimer);
+                    this.inactivityTimer = null;
+                }
+                return;
+            }
+            
             if (this.inactivityTimer) clearTimeout(this.inactivityTimer);
             
-            // Define o timer para 3 minutos (Evita os picos de descarte TCP/background throttling)
+            // Define o intervalo para 3 minutos (180.000 ms)
             this.inactivityTimer = setTimeout(() => {
                 this._sendKeepAliveCommand();
-            }, 1 * 60 * 1000); 
+            }, 15000); 
         };
 
-        // Escuta interações naturais na página
-        ['mousemove', 'keydown', 'click', 'wheel'].forEach(event => {
-            document.addEventListener(event, resetIdleTimer, { passive: true });
-        });
-
-        // Escuta interação direta com o emulador do terminal
-        if (this.term && !this._onDataKeepAliveListener) {
-            this._onDataKeepAliveListener = this.term.onData(() => resetIdleTimer());
+        if (!this._keepAliveEventsAttached) {
+            // O gatilho de inatividade agora é EXCLUSIVAMENTE vinculado ao evento de dados do Terminal
+            if (this.term) {
+                this.term.onData(() => resetIdleTimer());
+            }
+            this._keepAliveEventsAttached = true;
         }
 
-        resetIdleTimer(); // Inicia a contagem
-        console.log('SisPMG+ [KeepAlive]: Monitoramento inteligente de ociosidade TN3270 ativado.');
+        resetIdleTimer();
     }
 
     _sendKeepAliveCommand() {
-        if (this.rotinaState === 'stopped' && !this.loginFlowActive && this.isLoggedIn && this.term && this.term._core) {
-            console.log('SisPMG+ [KeepAlive]: Ociosidade detectada. Enviando tecla neutra AID (PA2) para gerar pacote de rede no mainframe.');
-            
-            // Em arquitetura IBM 3270 (Modo Bloco), teclas direcionais (Setas, Tab) afetam apenas o buffer 
-            // JavaScript/HTML local. Para resetar o timer do mainframe, é OBRIGATÓRIO disparar uma tecla AID
-            // (Attention Identifier). Utilizamos PA2 (Program Attention 2) pois ela atua convencionalmente 
-            // como \"Refresh/Redraw\" no CICS/Natural e não submete os dados preenchidos localmente pelo usuário.
+        // Envia o PA1 incondicionalmente se houver ociosidade (e se não houver rotina rodando)
+        if (this.rotinaState === 'stopped' && this.term && this.term._core) {
+            console.log('SisPMG+ [KeepAlive]: Ociosidade no emulador detectada. Enviando Ping (PA1+ENTER).');
             this.term._core._onData.fire(this.keyMap['PA1']);
+            this.term._core._onData.fire(this.keyMap['ENTER']);
         }
         
-        // Garante que o timer reinicie após a ação
-        if (this.isLoggedIn) {
-            this._startKeepAlive();
-        }
+        // Rearma o timer para o próximo ciclo de inatividade
+        this._startKeepAlive();
     }
 
     _stopKeepAlive() {
         if (this.inactivityTimer) {
             clearTimeout(this.inactivityTimer);
             this.inactivityTimer = null;
-            console.log('SisPMG+ [KeepAlive]: Monitoramento de ociosidade interrompido.');
         }
     }
     // --- FIM DA LÓGICA DE KEEP-ALIVE ---
@@ -395,25 +406,26 @@ export class TerminalModule {
         return this.sendMessagePromise('setStorage', dataObject).then(r => r.success);
     }
     
+    /**
+     * Recarrega a página de forma blindada, evitando o alerta nativo do navegador.
+     * Utiliza o Background Worker para forçar o reload com permissão de extensão (Bypass de CORS/CSP).
+     */
     reloadPage() {
-        console.log("SisPMG+: Forçando recarregamento da página e neutralizando alertas...");
+        console.log("SisPMG+: Solicitando recarregamento forçado ao Background Worker...");
         
-        // 1. Limpa ouvintes antigos legados do objeto window
-        window.onbeforeunload = null;
+        // Dispara uma mensagem assíncrona para o background script contornar a caixa de diálogo
+        window.postMessage({
+            type: 'FROM_APP',
+            action: 'forceBypassReload',
+            payload: {}
+        }, '*');
         
-        // 2. Intercepta eventos criados por addEventListener de forma agressiva usando a Fase de Captura (capture: true)
-        // Isso executa nossa função antes de qualquer script do próprio emulador/site.
-        const bypassUnload = (e) => {
-            e.stopImmediatePropagation(); // Evita que outros ouvintes processem o evento
-            e.stopPropagation();
-            e.preventDefault();
-            delete e.returnValue; // Chrome exige que returnValue seja inexistente para não exibir alerta
-        };
-        
-        window.addEventListener('beforeunload', bypassUnload, { capture: true });
-        
-        // 3. Efetua o recarregamento blindado
-        window.location.reload();
+        setTimeout(() => {
+            const script = document.createElement('script');
+            script.textContent = "window.onbeforeunload = null; window.location.href = window.location.href;";
+            (document.head || document.documentElement).appendChild(script);
+            script.remove();
+        }, 500);
     }
 
     escapeHtml(text) {

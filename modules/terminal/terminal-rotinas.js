@@ -23,16 +23,15 @@ class RotinaProcessor {
         }
         
         // IMPORTANTE: Padronização de Funções Assíncronas
-        // Para simplificar a escrita de rotinas, a extensão insere 'await'
-        // automaticamente antes de chamar qualquer função listada em 'asyncCommandNames'.
-        // Isso significa que o usuário NÃO PRECISA escrever 'await' em seu código.
+        // A exclusão da função "localizarQualquerTexto" foi refletida aqui.
         const asyncCommandNames = [
             'teclar', 'digitar', 'clicar', 'esperar', 'posicionar', 'localizarTexto',
             'colar', 'copiar', 'lerTela', 'criarModal', 'executarRotina', 'criarArquivo', 'lerArquivo',
             'excluirArquivo', 'anexarNoArquivo', 'processarLinhas', 'lerPlanilha', 'processarPlanilha',
             'enviarParaPlanilha', 'obterDadosUsuario', 'executarRotinaEm', 'retornar', 'debug', 'fechar',
             'lerPlanilhaObjetos', 'selecionarEmTabela',
-            'solicitarEntrada', 'localizarQualquerTexto', 'esperarTextoSumir', 'limparCampo'
+            'solicitarEntrada', 'esperarTextoSumir', 'limparCampo',
+            'verificarSempre' 
         ];
         
         let processedCode = this.code;
@@ -40,9 +39,15 @@ class RotinaProcessor {
         const regex = new RegExp(`(?<!await\\s+)(${asyncCommandNames.join('|')})\\b\\s*\\(`, 'g');
         processedCode = processedCode.replace(regex, 'await $1(');
 
+        // Tratamento Global e Dinâmico para Injeção de "async" em Callbacks.
+        // Cobre 'verificarSempre', 'processarLinhas' e 'processarPlanilha' de forma flexível.
         processedCode = processedCode.replace(
-            /(processarLinhas|processarPlanilha)\s*\(([^,]+),\s*\(([^)]*)\)\s*=>/g,
-            '$1($2, async ($3) =>'
+            /(processarLinhas|processarPlanilha|verificarSempre)\s*\(\s*(?:(.*?),\s*)?(?!async\s+)(?:\(\s*([^)]*)\s*\)|([a-zA-Z0-9_]+))\s*=>/g,
+            (match, p1, p2, p3, p4) => {
+                const argsBefore = p2 ? `${p2}, ` : '';
+                const arrowArgs = p3 !== undefined ? p3 : (p4 !== undefined ? p4 : '');
+                return `${p1}(${argsBefore}async (${arrowArgs}) =>`;
+            }
         );
 
         const fullCommandNames = [...commandNames, ...specialFunctions];
@@ -522,6 +527,11 @@ export function initRotinas(prototype) {
         this.exibirNotificacao(`Executando: "${name}"...`, true);
         this.rotinaState = 'running';
         this.editAfterTest = false; 
+        
+        // Zera hooks das sessões anteriores para evitar vazamentos
+        this.verificacaoHook = null;
+        this.isExecutingHook = false;
+
         this.currentRotinaProcessor = new RotinaProcessor(rotinaText, this);
         this.showRotinaExecutionControls(isTestRun);
         
@@ -613,17 +623,14 @@ export function initRotinas(prototype) {
                 if (mouseClickMatch && mouseClickMatch[3] === 'M') {
                      this.recordedActions.push(`clicar(${parseInt(mouseClickMatch[2])}, ${parseInt(mouseClickMatch[1])});`);
                 } else if (specialKeyName) {
-                    // Lógica de aglutinação de teclas
                     const lastIndex = this.recordedActions.length - 1;
                     const lastAction = lastIndex >= 0 ? this.recordedActions[lastIndex] : null;
                     const match = lastAction ? lastAction.match(/^teclar\('([^']+)'(?:,\s*'x(\d+)')?\);$/) : null;
 
                     if (match && match[1] === specialKeyName) {
-                        // Se a tecla anterior foi a mesma, incrementa o multiplicador
                         const count = match[2] ? parseInt(match[2], 10) + 1 : 2;
                         this.recordedActions[lastIndex] = `teclar('${specialKeyName}', 'x${count}');`;
                     } else {
-                        // Se foi uma tecla diferente, grava como uma nova ação
                         this.recordedActions.push(`teclar('${specialKeyName}');`);
                     }
                 }

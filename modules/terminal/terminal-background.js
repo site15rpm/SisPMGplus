@@ -73,13 +73,25 @@ async function fetchAndCacheRotinas(payload = {}) {
  * Manipula mensagens do browser.runtime que são específicas do módulo Terminal.
  * @param {object} request - O objeto da mensagem.
  * @param {object} sender - O remetente da mensagem.
- * @param {function} sendResponse - A função de callback para enviar uma resposta.
- * @returns {boolean} Retorna true se a mensagem foi manipulada de forma assíncrona.
+ * @returns {Promise<object>} Retorna a Promise com a resposta para o content script.
  */
 export async function handleTerminalMessages(request, sender) {
     const { action, payload } = request;
 
     switch (action) {
+        // --- INSERÇÃO PONTUAL: FORÇAR RECARREGAMENTO BLINDADO DE ABA ---
+        case 'forceBypassReload': {
+            const tabId = sender.tab.id;
+            console.log(`SisPMG+ [Background]: Recarregando aba [ID: ${tabId}] à força (Bypass OnBeforeUnload).`);
+            
+            const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
+            if (browserAPI && browserAPI.tabs) {
+                browserAPI.tabs.reload(tabId, { bypassCache: true })
+                    .catch(err => console.error("Falha ao forçar o reload da aba:", err));
+            }
+            return { success: true };
+        }
+
         case 'getRotinas': {
             const result = await browser.storage.local.get(['cachedRotinas']);
             if (result.cachedRotinas) {
@@ -272,32 +284,8 @@ export async function handleTerminalMessages(request, sender) {
     }
 }
 
-/**
- * Inicializa os listeners de eventos de background específicos do módulo Terminal.
- */
-export function initializeTerminalBackground() {
-    // --- INJETOR DE SCRIPT NEUTRALIZADOR ---
-    function neutralizeBeforeUnload() {
-        Object.defineProperty(window, 'onbeforeunload', {
-            get: () => null,
-            set: () => { console.log('SisPMG+ [Background]: Tentativa de definir onbeforeunload foi bloqueada.'); }
-        });
-        window.addEventListener('beforeunload', (event) => {
-            event.stopImmediatePropagation();
-        }, true);
-    }
-
-    browser.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-        if (changeInfo.status === 'loading' && tab.url && tab.url.startsWith('https://terminal.policiamilitar.mg.gov.br')) {
-            browser.scripting.executeScript({
-                target: { tabId: tabId },
-                func: neutralizeBeforeUnload,
-                world: 'MAIN'
-            }).catch(err => console.error('SisPMG+ [Background]: Falha ao injetar script neutralizador:', err));
-        }
-    });
-
-    // --- LIMPEZA DE CACHE NA INSTALAÇÃO/ATUALIZAÇÃO ---
+export function initBackgroundListeners() {
+    // --- LIMPEZA DE CACHE NA ATUALIZAÇÃO ---
     browser.runtime.onInstalled.addListener((details) => {
         if (details.reason === 'install' || details.reason === 'update') {
             browser.storage.local.remove(['cachedRotinas'])

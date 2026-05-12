@@ -3,7 +3,7 @@ import './common/browser-polyfill.js';
 // Este script atua como o ponto de entrada principal e delega a lógica para os módulos.
 
 import './common/browser-polyfill.js';
-import { handleTerminalMessages, initializeTerminalBackground } from './modules/terminal/terminal-background.js';
+import { handleTerminalMessages, initBackgroundListeners } from './modules/terminal/terminal-background.js';
 import { handleIntranetMessages } from './modules/intranet/intranet-background.js';
 import { handleAbastecimentosMessages, initializeAbastecimentosBackground } from './modules/abastecimentos/abastecimentos-background.js';
 import { handleSicorMessages, initializeSicorBackground } from './modules/intranet/intranet-sicor-background.js';
@@ -12,7 +12,7 @@ import { handleUnidadesMessages, initializeUnidadesBackground } from './modules/
 import { handleAgendaMessages, initializeAgendaBackground } from './modules/intranet/intranet-agenda-background.js';
 
 // Inicializa os listeners de cada módulo que precisam de configuração inicial.
-initializeTerminalBackground();
+initBackgroundListeners();
 initializeAbastecimentosBackground();
 initializeSicorBackground();
 initializeSirconvConveniosBackground();
