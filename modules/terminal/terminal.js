@@ -404,7 +404,7 @@ export class TerminalModule {
     }
 
     getStorage(keys) {
-        return this.sendMessagePromise('getStorage', { key: keys }).then(r => r.success ? r.value : {});
+        return this.sendMessagePromise('getStorage', { keys: keys }).then(r => r.success ? r.value : {});
     }
     
     setStorage(dataObject) {

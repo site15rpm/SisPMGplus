@@ -149,7 +149,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     const loadSettings = async () => {
-        const response = await browser.runtime.sendMessage({ action: 'getStorage', payload: { key: ['app-config', 'execution-logs'], storageType: 'local' } });
+        const response = await browser.runtime.sendMessage({ action: 'getStorage', payload: { keys: ['app-config', 'execution-logs'], storageType: 'local' } });
         if (response && response.success) {
             const result = response.value;
             let settings = result['app-config'];

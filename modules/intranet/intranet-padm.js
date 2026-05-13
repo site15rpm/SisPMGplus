@@ -32,7 +32,7 @@ export class PAdmModule {
             // Verifica se o formulário de escrita está visível e na URL correta
             if (document.querySelector('app-formulario-escrever') && window.location.hash.startsWith('#/escrever')) {
                 const keysToGet = ['recipientsForPA', 'birthdayMessagePayload'];
-                const storage = await sendMessageToBackground('getStorage', { key: keysToGet });
+                const storage = await sendMessageToBackground('getStorage', { keys: keysToGet });
                 
                 if (!storage.success) {
                     clearInterval(checkInterval);
@@ -116,7 +116,7 @@ export class PAdmModule {
     }
 
     async loadState() {
-        const result = await sendMessageToBackground('getStorage', { key: 'PAdm+Enabled' });
+        const result = await sendMessageToBackground('getStorage', { keys: ['PAdm+Enabled'] });
         if (result.success && typeof result.value['PAdm+Enabled'] !== 'undefined') {
             this.moduleEnabled = result.value['PAdm+Enabled'];
         } else {
@@ -630,4 +630,5 @@ export class PAdmModule {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 }
+
 

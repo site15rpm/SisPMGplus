@@ -413,7 +413,7 @@ class SicorModalHandler {
         const today = this._getCurrentDateInTimezone();
         const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
         const firstDayOfYear = new Date(today.getFullYear(), 0, 1);
-        const resp = await sendMessageToBackground('getStorage', { key: [SICOR_START_DATE_KEY], storageType: 'local' });
+        const resp = await sendMessageToBackground('getStorage', { keys: [SICOR_START_DATE_KEY], storageType: 'local' });
         const lastStartDate = resp?.success ? resp.value[SICOR_START_DATE_KEY] : null;
 
         document.getElementById('sicor-data-ini').value = lastStartDate || this._formatDate(firstDayOfYear);

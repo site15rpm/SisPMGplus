@@ -150,7 +150,7 @@ export class UIModule {
     }
     
     async loadState() {
-        const result = await sendMessageToBackground('getStorage', { key: 'intranetModuleEnabled' });
+        const result = await sendMessageToBackground('getStorage', { keys: ['intranetModuleEnabled'] });
         if (result.success && typeof result.value.intranetModuleEnabled !== 'undefined') {
             this.intranetModuleEnabled = result.value.intranetModuleEnabled;
         } else {
@@ -378,7 +378,7 @@ export class UIModule {
         const isPrincipalPage = window.location.hostname === 'principal.policiamilitar.mg.gov.br';
         const isSicorPage = window.location.pathname.startsWith('/SICOR/');
 
-        const settingsResult = await sendMessageToBackground('getStorage', { key: ['aniverModuleEnabled', 'agendaModuleEnabled'] });
+        const settingsResult = await sendMessageToBackground('getStorage', { keys: ['aniverModuleEnabled', 'agendaModuleEnabled'] });
         const aniverModuleEnabled = settingsResult.success ? (settingsResult.value.aniverModuleEnabled !== false) : true;
         const agendaModuleEnabled = settingsResult.success ? (settingsResult.value.agendaModuleEnabled !== false) : true;
         

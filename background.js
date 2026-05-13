@@ -59,19 +59,41 @@ browser.runtime.onMessage.addListener((request, sender) => {
             switch (action) {
                 case 'getSettings': // Adicionado alias para getStorage
                 case 'getStorage': {
-                    const storageArea = payload?.storageType === 'local' ? browser.storage.local : browser.storage.sync;
-                    const items = await storageArea.get(payload?.keys || null); // Corrigido com optional chaining
+                    const storageArea = payload?.storageType === 'sync' ? browser.storage.sync : browser.storage.local;
+                    
+                    // Normaliza as chaves para um array, aceitando 'key' ou 'keys' (string ou array)
+                    let requestedKeys = payload?.keys || payload?.key;
+                    if (requestedKeys && !Array.isArray(requestedKeys)) {
+                        requestedKeys = [requestedKeys];
+                    }
+                    
+                    let items = await storageArea.get(requestedKeys || null);
+
+                    // Migração automática de 'sync' para 'local' se necessário
+                    if (storageArea === browser.storage.local && requestedKeys) {
+                        const keysToMigrate = requestedKeys.filter(k => items[k] === undefined);
+                        if (keysToMigrate.length > 0) {
+                            const syncItems = await browser.storage.sync.get(keysToMigrate);
+                            const foundOnSync = Object.keys(syncItems).filter(k => syncItems[k] !== undefined);
+                            if (foundOnSync.length > 0) {
+                                console.log(`SisPMG+: Migrando chaves [${foundOnSync.join(', ')}] do sync para local.`);
+                                await browser.storage.local.set(syncItems);
+                                items = { ...items, ...syncItems };
+                            }
+                        }
+                    }
+
                     return { success: true, value: items };
                 }
                 case 'setStorage': {
-                    const storageArea = payload?.storageType === 'local' ? browser.storage.local : browser.storage.sync;
+                    const storageArea = payload?.storageType === 'sync' ? browser.storage.sync : browser.storage.local;
                     const dataToSet = { ...payload };
                     delete dataToSet.storageType; // Remove a chave de controle
                     await storageArea.set(dataToSet);
                     return { success: true };
                 }
                 case 'removeStorage': {
-                    const storageArea = payload?.storageType === 'local' ? browser.storage.local : browser.storage.sync;
+                    const storageArea = payload?.storageType === 'sync' ? browser.storage.sync : browser.storage.local;
                     await storageArea.remove(payload.keys);
                     return { success: true };
                 }

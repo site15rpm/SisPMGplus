@@ -135,5 +135,5 @@ function sendMessageToBackground(action, payload) {
 
 function getConfigFromStorage(key) {
     // A chave 'terminalModuleEnabled' é consultada aqui para decidir se o módulo deve ser carregado.
-    return sendMessageToBackground('getStorage', { key: [key] }).then(r => r.success ? r.value[key] : undefined);
+    return sendMessageToBackground('getStorage', { keys: [key] }).then(r => r.success ? r.value[key] : undefined);
 }

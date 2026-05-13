@@ -19,7 +19,7 @@ async function getBirthdaySettings() {
         bdayMessage: 'Prezado(a) [NOME],\n\nNesta data especial, desejo a você um feliz aniversário, com muita paz, saúde e sucesso!'
     };
 
-    const result = await sendMessageToBackground('getStorage', { key: ['birthdaySettings'] });
+    const result = await sendMessageToBackground('getStorage', { keys: ['birthdaySettings'] });
     const storedSettings = result.success && result.value.birthdaySettings ? result.value.birthdaySettings : {};
     
     // Define a unidade padrão do usuário se nenhuma estiver salva
@@ -44,7 +44,7 @@ export class BirthdayModule {
     }
 
     async checkUserSection() {
-        const result = await sendMessageToBackground('getStorage', { key: ['userSectionLastCheck'] });
+        const result = await sendMessageToBackground('getStorage', { keys: ['userSectionLastCheck'] });
         const lastCheck = result.success ? result.value.userSectionLastCheck : null;
         const oneWeek = 7 * 24 * 60 * 60 * 1000;
 
@@ -72,7 +72,7 @@ export class BirthdayModule {
         endDate.setDate(today.getDate() + settings.daysAhead);
         const todayStr = today.toISOString().split('T')[0];
         
-        const storedData = await sendMessageToBackground('getStorage', { key: ['birthdayLastCheck', 'birthdayData'] });
+        const storedData = await sendMessageToBackground('getStorage', { keys: ['birthdayLastCheck', 'birthdayData'] });
         const lastCheck = storedData.success ? storedData.value.birthdayLastCheck : null;
         let aniversariantes;
         let hasFailed = false; // Flag para rastrear falhas
@@ -141,7 +141,7 @@ export class BirthdayModule {
             let filteredBirthdays = settings.includeInactive ? aniversariantes : aniversariantes.filter(p => p.situacao === "A");
 
             if (settings.restrictToSection) {
-                const sectionResult = await sendMessageToBackground('getStorage', { key: ['userSection'] });
+                const sectionResult = await sendMessageToBackground('getStorage', { keys: ['userSection'] });
                 const userSectionData = sectionResult.success ? sectionResult.value.userSection : {};
                 const userSectionName = userSectionData?.sectionName?.trim();
                 
@@ -424,7 +424,7 @@ export class BirthdayModule {
             const allUnits = unitsResponse.success ? unitsResponse.data.sort((a, b) => a.uniNomeSintese.localeCompare(b.uniNomeSintese)) : [];
             const settings = await getBirthdaySettings();
             
-            const sectionResult = await sendMessageToBackground('getStorage', { key: ['userSection'] });
+            const sectionResult = await sendMessageToBackground('getStorage', { keys: ['userSection'] });
             const userSectionData = sectionResult.success ? sectionResult.value.userSection : {};
             const userSectionName = userSectionData?.sectionName?.trim() || 'Não encontrada';
             const sectionLabel = `Restringir à(ao) ${userSectionName}`;

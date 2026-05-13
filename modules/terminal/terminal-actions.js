@@ -8,15 +8,20 @@
  * @param {string} token O token JWT.
  * @returns {object|null} O payload do token ou null se a decodificação falhar.
  */
-function decodeJwt(token) { 
+function decodeJwt(token) {
+    if (!token || typeof token !== 'string') return null;
     try { 
-        return JSON.parse(atob(token.split('.')[1])); 
+        const parts = token.split('.');
+        if (parts.length !== 3) return null;
+        let payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+        const pad = payload.length % 4;
+        if (pad) payload += '='.repeat(4 - pad);
+        return JSON.parse(atob(payload)); 
     } catch (e) { 
         console.error("SisPMG+: Erro ao decodificar JWT:", e); 
         return null; 
     } 
 }
-
 /**
  * Obtém o valor de um cookie a partir do seu nome.
  * @param {string} name O nome do cookie.

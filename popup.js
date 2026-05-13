@@ -86,7 +86,7 @@ function showModal(message, type = 'alert') {
  */
 async function initializePopup() {
     const result = await sendMessageToBackground('getStorage', {
-        key: ['terminalModuleEnabled', 'intranetModuleEnabled', 'padmModuleEnabled', 'aniverModuleEnabled', 'sirconvModuleEnabled']
+        keys: ['terminalModuleEnabled', 'intranetModuleEnabled', 'padmModuleEnabled', 'aniverModuleEnabled', 'sirconvModuleEnabled']
     });
 
     if (result && result.success) {

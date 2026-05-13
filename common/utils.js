@@ -63,20 +63,30 @@ export function getCookie(name) {
 
 
 /**
- * Decodifica o payload de um token JWT de forma segura.
+ * Decodifica o payload de um token JWT de forma segura, tratando Base64Url e padding.
  * @param {string} token - O token JWT.
  * @returns {object|null} O payload do token decodificado ou null em caso de erro.
  */
 export function decodeJwt(token) {
-    // Garante que o token não é nulo, indefinido ou inválido.
     if (!token || typeof token !== 'string') { 
         return null; 
     }
     try { 
-        const payload = token.split('.')[1];
-        if (!payload) {
-            return null; // Formato de token inválido
+        const parts = token.split('.');
+        if (parts.length !== 3) {
+            return null; 
         }
+        
+        let payload = parts[1];
+        // Trata Base64Url para Base64 padrão
+        payload = payload.replace(/-/g, '+').replace(/_/g, '/');
+        
+        // Adiciona preenchimento (padding) se necessário
+        const pad = payload.length % 4;
+        if (pad) {
+            payload += '='.repeat(4 - pad);
+        }
+        
         return JSON.parse(atob(payload)); 
     } catch (e) { 
         console.error('SisPMG+ [decodeJwt]: Falha ao decodificar o token JWT.', e);
