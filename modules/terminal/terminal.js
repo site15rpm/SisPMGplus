@@ -116,7 +116,7 @@ export class TerminalModule {
                 clearInterval(initialRenderCheck);
                 
                 this.screenMonitorListener = this.term.onWriteParsed(() => this.processScreenState());
-                this.screenMonitorInterval = setInterval(() => this.processScreenState(), 1000);
+                this.screenMonitorInterval = setInterval(() => this.processScreenState(), 300);
                 this.term.onData(this.handleAutoRunTrigger.bind(this));
                 this._setupCustomKeyHandlers();
                 
@@ -205,7 +205,7 @@ export class TerminalModule {
         if (senhaIncorretaPattern.test(fullScreenText)) {
             this._stopKeepAlive();
             this.exibirNotificacao("Senha incorreta. A página será recarregada.", false);
-            setTimeout(() => this.reloadPage(), 3000);
+            setTimeout(() => this.reloadPage(), 2000);
             return;
         }
 
@@ -218,20 +218,18 @@ export class TerminalModule {
             if (pattern.test(fullScreenText)) {
                 this._stopKeepAlive();
                 this.exibirNotificacao("Conexão perdida. A página será recarregada.", false);
-                setTimeout(() => this.reloadPage(), 3000);
+                setTimeout(() => this.reloadPage(), 2000);
                 return;
             }
         }
         
-        if (await this.localizarTexto("Natural session terminated normally", { esperar: 0 }) && !this.reloginInProgress) {
+        if (await this.localizarTexto(["Natural session terminated normally", "Session terminated. Please restart your session"], { esperar: 1, modo: 'qualquer'}) && !this.reloginInProgress) {
             if (this.selectedSystemName) {
                 this.reloginInProgress = true;
                 this.exibirNotificacao(`Sessão encerrada. Relogando em ${this.selectedSystemName}...`, true);
-                setTimeout(async () => {
-                    await this.digitar(this.selectedSystemName);
-                    await this.teclar('ENTER');
-                    await this.teclar('ENTER');
-                }, 500);
+                await this.digitar(this.selectedSystemName);
+                await this.teclar('ENTER');
+                await this.teclar('ENTER');
                 return;
             }
         }
@@ -267,7 +265,7 @@ export class TerminalModule {
             // Define o intervalo para 15 segundos (15.000 ms) para evitar timeout do proxy/websocket
             this.inactivityTimer = setTimeout(() => {
                 this._sendKeepAliveCommand();
-            }, 15000); 
+            }, 240000); 
         };
 
         if (!this._keepAliveEventsAttached) {
@@ -284,13 +282,9 @@ export class TerminalModule {
     _sendKeepAliveCommand() {
         // Envia um ping incondicionalmente se houver ociosidade (e se não houver rotina rodando)
         if (this.rotinaState === 'stopped' && this.term && this.term._core) {
-            console.log('SisPMG+ [KeepAlive]: Ociosidade no emulador detectada. Enviando Ping (Reset Local).');
+            console.log('SisPMG+ [KeepAlive]: Ociosidade no emulador detectada. Enviando Ping...');
             
-            // Solução: Envia Ctrl+A (0x01) seguido de 'r' (Reset).
-            // O comando Reset() é nativo do c3270. Ele gera tráfego de rede e mantém
-            // a conexão TCP/WebSocket aberta no lado do proxy/firewall, porém
-            // é tratado inteiramente de forma local pelo emulador, nunca enviando um
-            // AID ao mainframe. Assim, a digitação em andamento é totalmente preservada.
+            this.term._core._onData.fire(this.keyMap['PA1']);
             this.term._core._onData.fire('\x01r');
         }
         
@@ -357,8 +351,8 @@ export class TerminalModule {
                         try {
                             // Executa a rotina internamente passando o customCode (se existir). 
                             // message.routineName é o nome ('Rotina_Dinamica_Remota' ou o caminho), message.customCode é o script literal puro.
-                            await this.executarRotina(message.routineName, false, message.customCode, false, message.parametros);
-                            
+                            await this.executarRotina(message.routineName, { customCode: message.customCode, parametros: message.parametros });
+
                             // Notifica sucesso de volta para o Background rotear, incluindo dados caso o usuário tenha chamado retornar()
                             await this.sendMessagePromise('relayExecutionResult', {
                                 targetAlias: message.sourceAlias,

@@ -1,6 +1,21 @@
 // Arquivo: terminal-content-script.js
 // Injeta o loader do módulo Terminal e estabelece a comunicação com o background.
 
+// --- BLINDAGEM PROFUNDA CONTRA ALERTAS DE SAÍDA ---
+// Executado em document_start para anular a capacidade da página de registrar
+// alertas de fechamento (beforeunload) antes de seus próprios scripts carregarem.
+const injectBlindagem = () => {
+    try {
+        const script = document.createElement('script');
+        script.src = browser.runtime.getURL('modules/terminal/terminal-blindagem.js');
+        script.onload = () => script.remove();
+        (document.head || document.documentElement).appendChild(script);
+    } catch (e) {
+        console.error('SisPMG+: Falha ao injetar blindagem de saída.', e);
+    }
+};
+injectBlindagem();
+
 console.log('SisPMG+: Injetor do Terminal ativo.');
 
 /**

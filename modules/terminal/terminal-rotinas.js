@@ -3,10 +3,11 @@
 
 // O RotinaProcessor é o motor que interpreta e executa o código da rotina.
 class RotinaProcessor {
-    constructor(rotinaCode, context, parametros = null) {
+    constructor(rotinaCode, context, parametros = null, rotinaName = 'Rotina Local') {
         this.context = context;
         this.code = rotinaCode;
         this.parametros = parametros;
+        this.rotinaName = rotinaName;
     }
 
     // O método run é o coração do executor. Ele pega o código da rotina,
@@ -62,11 +63,50 @@ class RotinaProcessor {
             }
         );
 
+        // Envolve o código da rotina em um bloco try-catch para capturar a linha do erro
+        // e opcionalmente injeta logs de depuração se o modo debug estiver ativo.
+        let finalProcessedCode = processedCode;
+        
+        if (this.context.debugRotinaActive) {
+            // Injeta o log antes de cada comando assíncrono detectado
+            const debugRegex = new RegExp(`await\\s+(${asyncCommandNames.join('|')})\\b\\s*\\(`, 'g');
+            finalProcessedCode = processedCode.replace(debugRegex, (match, cmd) => {
+                return `this.debug('-> Executando:', "${match.replace('await ', '')}"); ${match}`;
+            });
+        }
+
+        const wrappedCode = `
+            try {
+                ${finalProcessedCode}
+            } catch (e) {
+                if (e.name === 'UserCancellationError') throw e;
+                
+                let lineInfo = "";
+                const stack = e.stack;
+                if (stack) {
+                    const match = stack.match(/<anonymous>:(\\d+):(\\d+)/);
+                    if (match) {
+                        const lineNumber = parseInt(match[1], 10) - 2; // -2 devido ao wrapping do try {
+                        lineInfo = " (Linha: " + lineNumber + ")";
+                    }
+                }
+                
+                const errorName = e.name || "Erro";
+                const originalMessage = e.message || "Ocorreu uma falha desconhecida.";
+                
+                // Cria um novo erro com a informação da rotina e linha
+                const enrichedError = new Error(\`[\${this.rotinaName}]\${lineInfo} \${originalMessage}\`);
+                enrichedError.name = errorName;
+                enrichedError.originalStack = stack;
+                throw enrichedError;
+            }
+        `;
+
         const fullCommandNames = [...commandNames, ...specialFunctions, ...paramNames];
         
         let rotinaExecutor;
         try {
-            rotinaExecutor = new AsyncFunction(...fullCommandNames, processedCode);
+            rotinaExecutor = new AsyncFunction(...fullCommandNames, wrappedCode);
         } catch (e) {
             throw new Error(`Erro de sintaxe na rotina: ${e.message}`);
         }
@@ -357,7 +397,7 @@ export function initRotinas(prototype) {
                 this.lastTestData = { name: testName, content: testContent };
                 modal.style.display = 'none';
 
-                this.executarRotina(testName, false, testContent, true);
+                this.executarRotina(testName, { customCode: testContent, isTestRun: true });
             };
         }
          setTimeout(() => this.cmInstance.refresh(), 10);
@@ -501,7 +541,9 @@ export function initRotinas(prototype) {
         return typeof content === 'string' ? content : null;
     };
 
-    prototype.executarRotina = async function(name, isAutoRun = false, customCode = null, isTestRun = false, parametros = null) {
+    prototype.executarRotina = async function(name, options = {}) {
+        const { isAutoRun = false, customCode = null, isTestRun = false, parametros = null } = options;
+
         if ((this.rotinaState === 'running' || this.rotinaState === 'paused') && !isTestRun && !isAutoRun) {
             const subRotinaText = customCode ?? this.getRotinaContent(name);
             if (subRotinaText === null) {
@@ -544,7 +586,7 @@ export function initRotinas(prototype) {
         this.verificacaoHook = null;
         this.isExecutingHook = false;
 
-        this.currentRotinaProcessor = new RotinaProcessor(rotinaText, this, parametros);
+        this.currentRotinaProcessor = new RotinaProcessor(rotinaText, this, parametros, name);
         this.showRotinaExecutionControls(isTestRun);
         
         try {
@@ -726,7 +768,7 @@ export function initRotinas(prototype) {
                             if (fullScreenText.includes(expectedText)) {
                                 const trigger = (match[2] || 'ENTER').toUpperCase();
                                 this.waitingForAutoRunTrigger.push({ path: currentPath, trigger: trigger });
-                                await this.executarRotina(currentPath, true);
+                                await this.executarRotina(currentPath, { isAutoRun: true });
                                 return;
                             }
                         }

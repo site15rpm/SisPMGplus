@@ -58,12 +58,13 @@ export function initUI(prototype) {
         menuContainer.id = 'rotina-menu-container';
         
         const adminButton = this.userPM === '1453208' ? `<button class="rotina-menu-item" id="toggle-hidden-btn">👁️ Mostrar Ocultos</button>` : '';
-        const adminDebug = this.userPM === '1453208' ? `<div class="rotina-menu-item-group">
+        const adminDebug = `<div class="rotina-menu-item-group">
                      <div class="rotina-menu-item-with-submenu"><span class="submenu-arrow">◀</span><span>Debug</span></div>
                      <div class="rotina-submenu hidden">
                         <button class="rotina-menu-item" id="toggle-spy-btn">🕵️‍♂️ Iniciar Monitor</button>
+                        <button class="rotina-menu-item" id="toggle-debug-rotina-btn">🐞 Iniciar Depurador</button>
                      </div>
-                </div>` : '';
+                </div>`;
 
         menuContainer.innerHTML = `
             <button id="rotina-menu-toggle">${this.iconSVG}</button>
@@ -96,11 +97,6 @@ export function initUI(prototype) {
                 <div class="rotina-menu-separator"></div>
                 <div class="rotina-menu-item-group">
                     <div class="rotina-menu-item-with-submenu"><span class="submenu-arrow">◀</span><span>Gerenciar Usuário</span></div>
-                    <div class="rotina-submenu hidden">
-                        <button class="rotina-menu-item" id="forget-password-btn">🔑 Esquecer Senha</button>
-                        <button class="rotina-menu-item" id="forget-user-btn">👤 Esquecer Usuário</button>
-                    </div>
-                </div>
                 ${adminDebug}
             </div>`;
         
@@ -163,6 +159,15 @@ export function initUI(prototype) {
         
         const spyBtn = document.getElementById('toggle-spy-btn');
         if(spyBtn) spyBtn.onclick = () => { hideDropdown(); this.isSpying = !this.isSpying; this.isSpying ? this.startDebugSpy() : this.stopDebugSpy(); spyBtn.innerHTML = this.isSpying ? "🛑 Parar Debug" : "🕵️‍♂️ Iniciar Debug"; this.restoreCursorPosition(); };
+        
+        const debugRotinaBtn = document.getElementById('toggle-debug-rotina-btn');
+        if(debugRotinaBtn) debugRotinaBtn.onclick = () => { 
+            hideDropdown(); 
+            this.debugRotinaActive = !this.debugRotinaActive; 
+            this.debugRotinaActive ? this.startDebugRotina() : this.stopDebugRotina(); 
+            debugRotinaBtn.innerHTML = this.debugRotinaActive ? "🛑 Parar Depurador" : "🐞 Iniciar Depurador"; 
+            this.restoreCursorPosition(); 
+        };
         
         const hiddenBtn = document.getElementById('toggle-hidden-btn');
         if(hiddenBtn) hiddenBtn.onclick = () => { hideDropdown(); this.showHiddenFiles = !this.showHiddenFiles; hiddenBtn.innerHTML = this.showHiddenFiles ? '🙈 Ocultar Arquivos' : '👁️ Mostrar Ocultos'; this.refreshRotinas(); };
@@ -574,10 +579,9 @@ export function initUI(prototype) {
 
         bar.querySelector('#rotina-retest-btn').onclick = () => {
             if (this.lastTestData) {
-                this.executarRotina(this.lastTestData.name, false, this.lastTestData.content, true);
+                this.executarRotina(this.lastTestData.name, { customCode: this.lastTestData.content, isTestRun: true });
             }
         };
-
         bar.querySelector('#rotina-edit-after-test-btn').onclick = () => {
             this.hideRotinaExecutionControls();
             if (this.lastTestData) {

@@ -142,18 +142,66 @@ export async function handleTerminalMessages(request, sender) {
             }
         }
 
+        case 'getNextAlias': {
+            const state = await getSessionState();
+            let alias = 'T' + (state.nextAliasIndex++);
+            while (state.reverseAliasMap[alias]) {
+                alias = 'T' + (state.nextAliasIndex++);
+            }
+            await saveSessionState(state);
+            return { success: true, alias };
+        }
+
         case 'requestAlias': {
             const state = await getSessionState();
-            const tabId = sender.tab.id;
-            let alias = state.aliasMap[tabId];
+            const currentTabId = sender.tab.id;
+            
+            // --- VALIDAÇÃO PROATIVA DE ABAS ---
+            // Verifica quais abas registradas no aliasMap ainda existem de fato
+            let hasOtherTerminalTabs = false;
+            const tabIdsToCheck = Object.keys(state.aliasMap);
+            
+            for (const tabIdStr of tabIdsToCheck) {
+                const tabId = parseInt(tabIdStr, 10);
+                let tabExists = false;
+                
+                try {
+                    // Tenta obter a aba. Se lançar erro, a aba não existe mais.
+                    await browser.tabs.get(tabId);
+                    tabExists = true;
+                } catch (e) {
+                    // Aba não existe
+                    tabExists = false;
+                }
+                
+                if (!tabExists) {
+                    const alias = state.aliasMap[tabId];
+                    delete state.reverseAliasMap[alias];
+                    delete state.aliasMap[tabId];
+                    if (state.autoLoginSystems[alias]) delete state.autoLoginSystems[alias];
+                } else if (tabId !== currentTabId) {
+                    hasOtherTerminalTabs = true;
+                }
+            }
+
+            // Se esta for a única aba de terminal ativa, reiniciamos o contador
+            if (!hasOtherTerminalTabs) {
+                console.log(`SisPMG+ [Background]: Única aba de terminal ativa detectada. Reiniciando contador para T1.`);
+                state.nextAliasIndex = 1;
+                // Limpa mapas para garantir que a aba atual pegue o T1
+                state.aliasMap = {};
+                state.reverseAliasMap = {};
+            }
+
+            let alias = state.aliasMap[currentTabId];
 
             if (!alias) {
                 alias = 'T' + (state.nextAliasIndex++);
                 while (state.reverseAliasMap[alias]) {
                     alias = 'T' + (state.nextAliasIndex++);
                 }
-                state.aliasMap[tabId] = alias;
-                state.reverseAliasMap[alias] = tabId;
+                state.aliasMap[currentTabId] = alias;
+                state.reverseAliasMap[alias] = currentTabId;
             }
 
             // Verifica se há instrução de auto-login vinculada a esta aba/alias
@@ -164,7 +212,7 @@ export async function handleTerminalMessages(request, sender) {
             
             await saveSessionState(state);
 
-            console.log(`SisPMG+ [Background]: Alias ${alias} atribuído à aba ${tabId}`);
+            console.log(`SisPMG+ [Background]: Alias ${alias} atribuído à aba ${currentTabId}`);
 
             if (state.pendingExecutions[alias] && state.pendingExecutions[alias].length > 0) {
                 const msgs = state.pendingExecutions[alias];
@@ -174,7 +222,7 @@ export async function handleTerminalMessages(request, sender) {
                 setTimeout(() => {
                     msgs.forEach(msg => {
                         console.log(`SisPMG+ [Background]: Entregando mensagem pendente para a aba ${alias}`);
-                        browser.tabs.sendMessage(tabId, msg).catch(e => console.error(e));
+                        browser.tabs.sendMessage(currentTabId, msg).catch(e => console.error(e));
                     });
                 }, 1500);
             }
@@ -182,6 +230,9 @@ export async function handleTerminalMessages(request, sender) {
             // Envia o autoLoginSystem junto com o alias
             return { success: true, alias, autoLoginSystem };
         }
+
+        case 'refreshRotinas':
+            return fetchAndCacheRotinas(payload);
 
         case 'executeInTab': {
             const { targetAlias, sourceAlias, routineName, customCode, messageId, targetSystem, parametros } = payload;
@@ -313,7 +364,19 @@ export function initBackgroundListeners() {
                 delete reverseAliasMap[alias];
                 delete aliasMap[tabId];
                 if (autoLoginSystems[alias]) delete autoLoginSystems[alias];
-                await storage.set({ aliasMap, reverseAliasMap, autoLoginSystems });
+
+                // --- REINICIALIZAÇÃO DO CONTADOR ---
+                // Se não houver mais abas de terminal abertas, reinicia o contador para T1
+                let nextAliasIndex = undefined;
+                if (Object.keys(aliasMap).length === 0) {
+                    console.log(`SisPMG+ [Background]: Nenhuma aba de terminal ativa. Reiniciando contador para T1.`);
+                    nextAliasIndex = 1;
+                }
+
+                const newState = { aliasMap, reverseAliasMap, autoLoginSystems };
+                if (nextAliasIndex !== undefined) newState.nextAliasIndex = nextAliasIndex;
+
+                await storage.set(newState);
             }
         } catch (error) {
             console.error('SisPMG+ [Background]: Erro ao limpar alias da aba fechada.', error);

@@ -169,7 +169,7 @@ export function initLogin(prototype) {
     };
 
     // --- LÓGICA DE LOGIN E TOKEN ---
-    prototype.waitForToken = async function(retries = 10, interval = 500) {
+    prototype.waitForToken = async function(retries = 20, interval = 100) {
         for (let i = 0; i < retries; i++) {
             const token = getCookie('tokiuz');
             if (token) return token;
@@ -183,7 +183,7 @@ export function initLogin(prototype) {
         if (!token) {
             console.error("Sessão não encontrada. A extensão não continuará.");
             this.exibirNotificacao("Sessão não encontrada. A página será recarregada.", false);
-            setTimeout(() => this.reloadPage(), 3000);
+            setTimeout(() => this.reloadPage(), 2000);
             return;
         }
         const tokenData = decodeJwt(token);

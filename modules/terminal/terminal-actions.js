@@ -854,7 +854,12 @@ export function initActions(prototype) {
 
             let finalAliasDestino = aliasDestino;
             if (!finalAliasDestino) {
-                finalAliasDestino = 'T_' + Math.floor(1000 + Math.random() * 9000);
+                const res = await this.sendMessagePromise('getNextAlias');
+                if (res && res.success) {
+                    finalAliasDestino = res.alias;
+                } else {
+                    finalAliasDestino = 'T' + Math.floor(1000 + Math.random() * 9000);
+                }
             }
 
             const messageId = Date.now() + Math.random();
@@ -884,7 +889,10 @@ export function initActions(prototype) {
                 customCode: customCode,
                 messageId: messageId,
                 targetSystem: systemTarget,
-                parametros: parametros
+                parametros: {
+                    ...parametros,
+                    debugRotinaActive: this.debugRotinaActive
+                }
             });
         });
     };
@@ -1220,5 +1228,21 @@ export function initActions(prototype) {
     prototype.converterMoeda = function(texto) {
         if (!texto) return 0;
         return parseFloat(String(texto).replace(/[R$\s\.]/g, '').replace(',', '.')) || 0;
+    };
+
+    /**
+     * Ativa o depurador de linhas da rotina.
+     */
+    prototype.startDebugRotina = function() {
+        this.debugRotinaActive = true;
+        this.exibirNotificacao("Depurador de rotina ativado (F12 para ver logs).", true);
+    };
+
+    /**
+     * Desativa o depurador de linhas da rotina.
+     */
+    prototype.stopDebugRotina = function() {
+        this.debugRotinaActive = false;
+        this.exibirNotificacao("Depurador de rotina desativado.");
     };
 }
