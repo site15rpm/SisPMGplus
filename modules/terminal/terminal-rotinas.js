@@ -66,14 +66,7 @@ class RotinaProcessor {
         // Envolve o código da rotina em um bloco try-catch para capturar a linha do erro
         // e opcionalmente injeta logs de depuração se o modo debug estiver ativo.
         let finalProcessedCode = processedCode;
-        
-        if (this.context.debugRotinaActive) {
-            // Injeta o log antes de cada comando assíncrono detectado
-            const debugRegex = new RegExp(`await\\s+(${asyncCommandNames.join('|')})\\b\\s*\\(`, 'g');
-            finalProcessedCode = processedCode.replace(debugRegex, (match, cmd) => {
-                return `this.debug('-> Executando:', "${match.replace('await ', '')}"); ${match}`;
-            });
-        }
+        const currentRotinaName = this.rotinaName;
 
         const wrappedCode = `
             try {
@@ -93,9 +86,10 @@ class RotinaProcessor {
                 
                 const errorName = e.name || "Erro";
                 const originalMessage = e.message || "Ocorreu uma falha desconhecida.";
+                const rotinaName = ${JSON.stringify(currentRotinaName)};
                 
                 // Cria um novo erro com a informação da rotina e linha
-                const enrichedError = new Error(\`[\${this.rotinaName}]\${lineInfo} \${originalMessage}\`);
+                const enrichedError = new Error(\`[\${rotinaName}]\${lineInfo} \${originalMessage}\`);
                 enrichedError.name = errorName;
                 enrichedError.originalStack = stack;
                 throw enrichedError;
@@ -111,7 +105,18 @@ class RotinaProcessor {
             throw new Error(`Erro de sintaxe na rotina: ${e.message}`);
         }
 
-        const boundCommands = commandNames.map(cmd => this.context[cmd].bind(this.context));
+        const boundCommands = commandNames.map(cmd => {
+            const func = this.context[cmd].bind(this.context);
+            // Se o modo debug estiver ativo, envolvemos as funções assíncronas para logar a execução.
+            // Esta abordagem é muito mais segura que a substituição de strings via regex.
+            if (this.context.debugRotinaActive && asyncCommandNames.includes(cmd)) {
+                return async (...args) => {
+                    this.context.debug('-> Executando:', cmd + '(', ...args, ')');
+                    return await func(...args);
+                };
+            }
+            return func;
+        });
         
         specialFunctions.forEach(name => {
             if(this.context[name]) {
@@ -552,7 +557,7 @@ export function initRotinas(prototype) {
             }
 
             this.exibirNotificacao(`Executando sub-rotina: "${name}"...`, true);
-            const subProcessor = new RotinaProcessor(subRotinaText, this, parametros);
+            const subProcessor = new RotinaProcessor(subRotinaText, this, parametros, name);
             try {
                 await subProcessor.run();
                 this.exibirNotificacao(`Sub-rotina "${name}" concluída.`, true);
