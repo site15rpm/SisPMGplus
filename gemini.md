@@ -28,3 +28,20 @@ Este arquivo define as regras e o contexto para a interação com o assistente d
 - **Padrões Específicos (TerminalPMG+):**
   - Para comunicação interna, utilize exclusivamente o método `term._core._onData.fire()`.
   - Não utilize `term.write()` nem crie dependências de interações diretas do usuário, como foco de mouse, teclado ou cliques.
+
+---
+
+### **4. Procedimentos de Build e Compactação**
+
+Ao receber o comando "compacte os arquivos para atualização na webstore", siga rigorosamente este procedimento:
+
+1. **Limpeza:** Remova pacotes `.zip` antigos do diretório raiz.
+2. **Pacote Chrome (`SisPMGplus.chrome.zip`):**
+   - Inclua todos os arquivos do projeto.
+   - **Exclua:** `manifest-firefox.json`, `gemini.md`, `README.md`, diretório `.git` e qualquer outro arquivo de documentação ou configuração de IA.
+   - O arquivo `manifest.json` deve ser mantido como o manifesto principal.
+3. **Pacote Firefox (`SisPMGplus.firefox.zip`):**
+   - Inclua todos os arquivos do projeto.
+   - **Exclua:** `manifest.json`, `gemini.md`, `README.md`, diretório `.git`.
+   - **Ação Especial:** Renomeie o arquivo `manifest-firefox.json` para `manifest.json` dentro do pacote (este será o manifesto lido pelo Firefox).
+4. **Ferramenta:** Utilize o comando PowerShell `Compress-Archive` para garantir compatibilidade com o ambiente Windows.
