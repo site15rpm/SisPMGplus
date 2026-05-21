@@ -181,7 +181,7 @@ export function initFileSystem(prototype) {
      */
     prototype.criarModal = async function(config) {
         await this._checkRotinaState();
-        return new Promise(resolve => {
+        return new Promise((resolve, reject) => {
             let modalHTML = `<form id="interactive-modal-form">`;
             (config.elements || []).forEach(el => {
                 modalHTML += `<div class="form-group">`;
@@ -204,17 +204,21 @@ export function initFileSystem(prototype) {
                 text: btn.text,
                 className: btn.className || (btn.action === 'confirm' ? 'rotina-modal-save-btn' : 'rotina-modal-cancel-btn'),
                 action: (modal) => {
-                    const resultData = {};
-                    config.elements.forEach(el => {
-                        if (el.id) {
-                            const input = modal.querySelector(`#${el.id}`);
-                            if (input) resultData[el.id] = el.type === 'checkbox' ? input.checked : input.value;
-                        }
-                    });
-                    this.closeModalAndFocus(modal);
-                    resolve(btn.action === 'cancel' ? null : { action: btn.action, formData: resultData });
-                }
-            }));
+                   const resultData = {};
+                   config.elements.forEach(el => {
+                       if (el.id) {
+                           const input = modal.querySelector(`#${el.id}`);
+                           if (input) resultData[el.id] = el.type === 'checkbox' ? input.checked : input.value;
+                       }
+                   });
+                   this.closeModalAndFocus(modal);
+                   if (btn.action === 'cancel') {
+                       this.rotinaState = 'stopped';
+                       reject(new UserCancellationError("Ação cancelada pelo usuário no modal."));
+                   } else {
+                       resolve({ action: btn.action, formData: resultData });
+                   }
+                }            }));
             
             const modalOptions = {
                 modalClass: config.modalClass || '',

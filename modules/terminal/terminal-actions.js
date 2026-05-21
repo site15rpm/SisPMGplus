@@ -696,14 +696,16 @@ export function initActions(prototype) {
             const startPos = await this.waitForMouseClick(10000);
             if (!startPos) {
                 if(showModals) this.exibirNotificacao("Leitura de tela cancelada.", false);
-                return resolve(null);
+                this.rotinaState = 'stopped';
+                throw new UserCancellationError("Leitura de tela cancelada pelo usuário (timeout).");
             }
 
             if (showModals) await this.createInstructionalModal("Copiar Área da Tela (Passo 2/2)", "Agora clique no ponto final da área que deseja copiar.");
             const endPos = await this.waitForMouseClick(10000);
             if (!endPos) {
                 if(showModals) this.exibirNotificacao("Cópia de tela cancelada.", false);
-                return resolve(null);
+                this.rotinaState = 'stopped';
+                throw new UserCancellationError("Leitura de tela cancelada pelo usuário (timeout).");
             }
 
             const y1 = Math.min(startPos.y, endPos.y) - 1;
@@ -1062,7 +1064,7 @@ export function initActions(prototype) {
     };
 
     prototype.selecionarEmTabela = function(titulo, descricao, colunas, dados, renderRowFn) {
-        return new Promise(async (resolve) => {
+        return new Promise(async (resolve, reject) => {
             await this._checkRotinaState();
             
             let html = `<p style="font-size: 14px; color: #555;">${descricao}</p>`;
@@ -1087,7 +1089,11 @@ export function initActions(prototype) {
             }
 
             const buttons = [
-                { text: 'Cancelar', className: 'rotina-modal-cancel-btn', action: m => { this.closeModalAndFocus(m); resolve(null); } }
+                { text: 'Cancelar', className: 'rotina-modal-cancel-btn', action: m => { 
+                    this.closeModalAndFocus(m); 
+                    this.rotinaState = 'stopped';
+                    reject(new UserCancellationError("Seleção cancelada pelo usuário."));
+                } }
             ];
 
             const modalRef = this.createModal(titulo, html, null, buttons, { modalClass: 'sys-table-modal' });
@@ -1134,14 +1140,18 @@ export function initActions(prototype) {
     };
 
     prototype.solicitarEntrada = function(titulo, mensagem, placeholder = '') {
-        return new Promise(async (resolve) => {
+        return new Promise(async (resolve, reject) => {
             await this._checkRotinaState();
             let html = `<p style="font-size: 14px; margin-bottom: 10px;">${mensagem}</p>`;
             html += `<input type="text" id="sys-prompt-input" class="modal-text-input" placeholder="${placeholder}" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">`;
 
             let modalRef = null;
             const buttons = [
-                { text: 'Cancelar', className: 'rotina-modal-cancel-btn', action: m => { this.closeModalAndFocus(m); resolve(null); } },
+                { text: 'Cancelar', className: 'rotina-modal-cancel-btn', action: m => { 
+                    this.closeModalAndFocus(m); 
+                    this.rotinaState = 'stopped';
+                    reject(new UserCancellationError("Entrada cancelada pelo usuário."));
+                } },
                 { text: 'Confirmar', className: 'rotina-modal-save-btn', action: m => {
                     const val = m.querySelector('#sys-prompt-input').value;
                     this.closeModalAndFocus(m);

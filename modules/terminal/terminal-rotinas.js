@@ -604,7 +604,9 @@ export function initRotinas(prototype) {
                 this.exibirNotificacao(`Rotina "${name}" concluída.`, true);
             }
         } catch (error) {
-            if (error.name === 'UserCancellationError') {
+            // Se o erro já for de cancelamento ou se o estado for 'stopped' (interrupção manual),
+            // não exibimos o modal de erro genérico.
+            if (error.name === 'UserCancellationError' || this.rotinaState === 'stopped') {
                 throw error;
             } else {
                 console.error(`Erro ao executar a rotina '${name}':`, error);

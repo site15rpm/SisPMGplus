@@ -632,10 +632,14 @@ export function initUI(prototype) {
     };
 
     prototype.createPromiseConfirmationModal = function(title, message, { confirmText = 'Confirmar', cancelText = 'Cancelar' } = {}) {
-        return new Promise(resolve => {
+        return new Promise((resolve, reject) => {
             this.rotinaState = 'paused';
             this.createModal(title, `<p>${message}</p>`, null, [
-                { text: cancelText, className: 'rotina-modal-cancel-btn', action: (m) => { this.closeModalAndFocus(m); this.rotinaState = 'running'; resolve(false); } },
+                { text: cancelText, className: 'rotina-modal-cancel-btn', action: (m) => { 
+                    this.closeModalAndFocus(m); 
+                    this.rotinaState = 'stopped';
+                    reject(new UserCancellationError("Operação cancelada pelo usuário no diálogo de confirmação."));
+                } },
                 { text: confirmText, className: 'rotina-modal-save-btn', action: (m) => { this.closeModalAndFocus(m); this.rotinaState = 'running'; resolve(true); }}
             ], { stack: true });
         });
