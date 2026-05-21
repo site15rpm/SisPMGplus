@@ -361,10 +361,15 @@ export class TerminalModule {
                             });
                         } catch (error) {
                             // Notifica erro
+                            const isCancellation = error.name === 'UserCancellationError';
                             await this.sendMessagePromise('relayExecutionResult', {
                                 targetAlias: message.sourceAlias,
                                 messageId: message.messageId,
-                                result: { success: false, error: error.message }
+                                result: { 
+                                    success: false, 
+                                    error: error.message,
+                                    cancelled: isCancellation
+                                }
                             });
                         } finally {
                             this.isRemoteExecution = false;

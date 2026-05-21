@@ -115,6 +115,21 @@ export function initActions(prototype) {
         }
     };
 
+    // Flag para controlar a visibilidade do console de debug flutuante.
+    // Por padrão, deve começar desativado.
+    prototype.debugConsoleEnabled = false;
+
+    prototype.startDebugConsole = function() {
+        this.debugConsoleEnabled = true;
+        this.exibirNotificacao("Console de depuração ativado.", true);
+    };
+
+    prototype.stopDebugConsole = function() {
+        this.debugConsoleEnabled = false;
+        document.getElementById('debug-console')?.remove();
+        this.exibirNotificacao("Console de depuração desativado.");
+    };
+
     /**
      * Registra uma função (hook) para ser executada automaticamente após cada tecla de ação.
      * @param {string|Array|RegExp} alvo O texto a ser monitorado.
@@ -864,9 +879,20 @@ export function initActions(prototype) {
 
             const messageId = Date.now() + Math.random();
 
+            const stateCheckInterval = setInterval(async () => {
+                if (this.rotinaState === 'stopped') {
+                    clearInterval(stateCheckInterval);
+                    this.pendingCrossTabExecutions.delete(messageId);
+                    reject(new UserCancellationError("Execução cancelada pelo usuário."));
+                }
+            }, 500);
+
             this.pendingCrossTabExecutions.set(messageId, (result) => {
+                clearInterval(stateCheckInterval);
                 if (result.success) {
                     resolve(result.data);
+                } else if (result.cancelled) {
+                    reject(new UserCancellationError("Execução remota cancelada pelo usuário."));
                 } else {
                     reject(new Error(`Erro ao executar rotina na aba [${finalAliasDestino}]: ${result.error}`));
                 }
@@ -930,6 +956,8 @@ export function initActions(prototype) {
 
     prototype.debug = function(...args) {
         console.log('[DEBUG ROTINA]', ...args);
+
+        if (!this.debugConsoleEnabled) return;
     
         let consoleEl = document.getElementById('debug-console');
         if (!consoleEl) {

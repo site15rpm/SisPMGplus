@@ -63,6 +63,7 @@ export function initUI(prototype) {
                      <div class="rotina-submenu hidden">
                         <button class="rotina-menu-item" id="toggle-spy-btn">🕵️‍♂️ Iniciar Monitor</button>
                         <button class="rotina-menu-item" id="toggle-debug-rotina-btn">🐞 Iniciar Depurador</button>
+                        <button class="rotina-menu-item" id="toggle-debug-console-btn">🖥️ Abrir Console Debug</button>
                      </div>
                 </div>`;
 
@@ -166,6 +167,15 @@ export function initUI(prototype) {
             this.debugRotinaActive = !this.debugRotinaActive; 
             this.debugRotinaActive ? this.startDebugRotina() : this.stopDebugRotina(); 
             debugRotinaBtn.innerHTML = this.debugRotinaActive ? "🛑 Parar Depurador" : "🐞 Iniciar Depurador"; 
+            this.restoreCursorPosition(); 
+        };
+
+        const debugConsoleBtn = document.getElementById('toggle-debug-console-btn');
+        if(debugConsoleBtn) debugConsoleBtn.onclick = () => { 
+            hideDropdown(); 
+            this.debugConsoleEnabled = !this.debugConsoleEnabled; 
+            this.debugConsoleEnabled ? this.startDebugConsole() : this.stopDebugConsole(); 
+            debugConsoleBtn.innerHTML = this.debugConsoleEnabled ? "🛑 Fechar Console Debug" : "🖥️ Abrir Console Debug"; 
             this.restoreCursorPosition(); 
         };
         
@@ -325,7 +335,7 @@ export function initUI(prototype) {
         container.querySelectorAll('.rotina-exec-btn').forEach(btn => btn.onclick = () => {
             hideDropdown();
             this.executarRotina(btn.dataset.rotinaName).catch(err => {
-                if (err.message !== "Rotina interrompida pelo usuário.") {
+                if (err.name !== 'UserCancellationError' && err.message !== "Rotina interrompida pelo usuário.") {
                     console.error("Erro na execução da rotina:", err);
                 }
             });
@@ -435,13 +445,16 @@ export function initUI(prototype) {
     };
 
     prototype.populateFavoritesBar = async function() {
-        const bar = document.getElementById('vertical-taskbar');
-        if (!bar) return;
-        bar.innerHTML = '';
         const result = await this.getStorage(['userProfiles']);
         const profiles = result.userProfiles || {};
         const userProfile = profiles[this.userPM] || {};
         const favorites = userProfile.favorites || [];
+
+        const bar = document.getElementById('vertical-taskbar');
+        if (!bar) return;
+        
+        // Limpa o conteúdo apenas APÓS o await para evitar condições de corrida (race condition)
+        bar.innerHTML = '';
 
         if(favorites.length > 0) {
             const title = document.createElement('div');
@@ -455,7 +468,9 @@ export function initUI(prototype) {
             btn.className = 'vertical-bar-btn';
             btn.textContent = path.split('/').pop();
             btn.title = path;
-            btn.onclick = () => this.executarRotina(path);
+            btn.onclick = () => this.executarRotina(path).catch(err => {
+                if (err.name !== 'UserCancellationError') console.error(err);
+            });
             bar.appendChild(btn);
         });
         bar.classList.toggle('hidden', bar.childElementCount === 0 && this.rotinaState === 'stopped');
@@ -579,7 +594,9 @@ export function initUI(prototype) {
 
         bar.querySelector('#rotina-retest-btn').onclick = () => {
             if (this.lastTestData) {
-                this.executarRotina(this.lastTestData.name, { customCode: this.lastTestData.content, isTestRun: true });
+                this.executarRotina(this.lastTestData.name, { customCode: this.lastTestData.content, isTestRun: true }).catch(err => {
+                    if (err.name !== 'UserCancellationError') console.error(err);
+                });
             }
         };
         bar.querySelector('#rotina-edit-after-test-btn').onclick = () => {

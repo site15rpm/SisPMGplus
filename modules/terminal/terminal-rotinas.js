@@ -402,7 +402,9 @@ export function initRotinas(prototype) {
                 this.lastTestData = { name: testName, content: testContent };
                 modal.style.display = 'none';
 
-                this.executarRotina(testName, { customCode: testContent, isTestRun: true });
+                this.executarRotina(testName, { customCode: testContent, isTestRun: true }).catch(err => {
+                    if (err.name !== 'UserCancellationError') console.error(err);
+                });
             };
         }
          setTimeout(() => this.cmInstance.refresh(), 10);
@@ -547,6 +549,7 @@ export function initRotinas(prototype) {
     };
 
     prototype.executarRotina = async function(name, options = {}) {
+        await this._checkRotinaState();
         const { isAutoRun = false, customCode = null, isTestRun = false, parametros = null } = options;
 
         if ((this.rotinaState === 'running' || this.rotinaState === 'paused') && !isTestRun && !isAutoRun) {
@@ -602,6 +605,7 @@ export function initRotinas(prototype) {
             }
         } catch (error) {
             if (error.name === 'UserCancellationError') {
+                throw error;
             } else {
                 console.error(`Erro ao executar a rotina '${name}':`, error);
 
@@ -613,7 +617,9 @@ export function initRotinas(prototype) {
                     switch(userChoice) {
                         case 'stop':
                             this.rotinaState = 'stopped';
-                            break;
+                            const stopErr = new Error("Execução cancelada pelo usuário.");
+                            stopErr.name = 'UserCancellationError';
+                            throw stopErr;
                         case 'pause':
                             break;
                         case 'continue':
@@ -626,7 +632,9 @@ export function initRotinas(prototype) {
                                 const isPublic = !isTestRun && name.startsWith('public/');
                                 this.openEditor({ name, content, isUserRotina: isTestRun || !isPublic });
                             }
-                            break;
+                            const editErr = new Error("Execução cancelada para edição.");
+                            editErr.name = 'UserCancellationError';
+                            throw editErr;
                     }
                 }
             }
