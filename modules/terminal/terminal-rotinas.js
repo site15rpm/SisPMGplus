@@ -124,7 +124,7 @@ class RotinaProcessor {
             }
         });
         
-        await rotinaExecutor.apply(this.context, [...boundCommands, ...paramValues]);
+        return await rotinaExecutor.apply(this.context, [...boundCommands, ...paramValues]);
     }
 }
 
@@ -552,27 +552,38 @@ export function initRotinas(prototype) {
         await this._checkRotinaState();
         const { isAutoRun = false, customCode = null, isTestRun = false, parametros = null } = options;
 
+        const previousReturnValue = this.executionReturnValue;
+        this.executionReturnValue = undefined;
+
         if ((this.rotinaState === 'running' || this.rotinaState === 'paused') && !isTestRun && !isAutoRun) {
             const subRotinaText = customCode ?? this.getRotinaContent(name);
             if (subRotinaText === null) {
                 this.exibirNotificacao(`Sub-rotina "${name}" não encontrada.`, false);
+                this.executionReturnValue = previousReturnValue;
                 throw new Error(`Sub-rotina "${name}" não encontrada.`);
             }
 
             this.exibirNotificacao(`Executando sub-rotina: "${name}"...`, true);
             const subProcessor = new RotinaProcessor(subRotinaText, this, parametros, name);
             try {
-                await subProcessor.run();
+                const runResult = await subProcessor.run();
+                const result = this.executionReturnValue !== undefined ? this.executionReturnValue : runResult;
                 this.exibirNotificacao(`Sub-rotina "${name}" concluída.`, true);
+                this.executionReturnValue = previousReturnValue;
+                return result;
             } catch (error) {
+                this.executionReturnValue = previousReturnValue;
                 throw error;
             }
-            return;
         }
 
         if (this.rotinaState === 'running' || this.rotinaState === 'paused') {
-            if (isAutoRun) return;
+            if (isAutoRun) {
+                this.executionReturnValue = previousReturnValue;
+                return;
+            }
             this.exibirNotificacao("Aguarde a rotina atual terminar.", false);
+            this.executionReturnValue = previousReturnValue;
             return;
         }
         
@@ -582,6 +593,7 @@ export function initRotinas(prototype) {
             if (typeof this.removeFavorite === 'function') {
                 this.removeFavorite(name);
             }
+            this.executionReturnValue = previousReturnValue;
             return;
         }
         
@@ -597,9 +609,12 @@ export function initRotinas(prototype) {
         this.currentRotinaProcessor = new RotinaProcessor(rotinaText, this, parametros, name);
         this.showRotinaExecutionControls(isTestRun);
         
+        let finalResult;
         try {
             this.term.options.disableStdin = true;
-            await this.currentRotinaProcessor.run();
+            const runResult = await this.currentRotinaProcessor.run();
+            finalResult = this.executionReturnValue !== undefined ? this.executionReturnValue : runResult;
+            
             if (this.rotinaState !== 'stopped') {
                 this.exibirNotificacao(`Rotina "${name}" concluída.`, true);
             }
@@ -619,9 +634,7 @@ export function initRotinas(prototype) {
                     switch(userChoice) {
                         case 'stop':
                             this.rotinaState = 'stopped';
-                            const stopErr = new Error("Execução cancelada pelo usuário.");
-                            stopErr.name = 'UserCancellationError';
-                            throw stopErr;
+                            throw new UserCancellationError("Execução cancelada pelo usuário.");
                         case 'pause':
                             break;
                         case 'continue':
@@ -634,9 +647,7 @@ export function initRotinas(prototype) {
                                 const isPublic = !isTestRun && name.startsWith('public/');
                                 this.openEditor({ name, content, isUserRotina: isTestRun || !isPublic });
                             }
-                            const editErr = new Error("Execução cancelada para edição.");
-                            editErr.name = 'UserCancellationError';
-                            throw editErr;
+                            throw new UserCancellationError("Execução cancelada para edição.");
                     }
                 }
             }
@@ -661,7 +672,10 @@ export function initRotinas(prototype) {
                 if (!this.editAfterTest) this.testingModal = null;
                 this.editAfterTest = false;
             }
+            
+            this.executionReturnValue = previousReturnValue;
         }
+        return finalResult;
     };
     
     prototype.startRotinaRecording = async function() {

@@ -40,6 +40,8 @@ class UserCancellationError extends Error {
         this.name = 'UserCancellationError';
     }
 }
+window.UserCancellationError = UserCancellationError;
+export { UserCancellationError };
 
 /**
  * Normaliza o texto para comparação, removendo espaços, quebras de linha e caracteres especiais.
@@ -105,7 +107,7 @@ export function initActions(prototype) {
     // Função interna para pausar a execução se a rotina estiver em estado 'paused'
     // e para lançar um erro se a rotina for interrompida ('stopped').
     prototype._checkRotinaState = async function() {
-        if (!this.currentRotinaProcessor) return;
+        if (!this.currentRotinaProcessor || this.isMonitoring) return;
 
         while (this.rotinaState === 'paused') {
             await new Promise(resolve => setTimeout(resolve, 100));

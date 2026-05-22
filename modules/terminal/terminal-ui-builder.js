@@ -425,7 +425,15 @@ export class UiBuilder {
                 ],
                 examples: [
                     { description: 'Simples: Chamar rotina de preparação (sem parâmetros).', code: "await executarRotina('Configuracoes/Ir_Para_Menu_Principal');\n// O código principal continua aqui..." },
-                    { description: 'Avançado: Chamar rotina enviando variáveis para ela processar.', code: "const dados = { cpf: '12345678900', obs: 'Urgente' };\nawait executarRotina('Public/Cadastro_Padrao', { parametros: dados });" }
+                    { description: 'Avançado: Chamar rotina enviando variáveis para ela processar.', code: "const dados = { cpf: '12345678900', obs: 'Urgente' };\nawait executarRotina('Public/Cadastro_Padrao', { parametros: dados });" },
+                    { description: 'Retorno: Chamar sub-rotina e obter o resultado processado por ela.', code: "const resultado = await executarRotina('Public/Consultas/Obter_Dados');\ndebug('A sub-rotina retornou:', resultado);" }
+                ]
+            },
+            { 
+                type: 'retornar', title: 'retornar(valor)', category: 'Controle de Fluxo', icon: 'fa-solid fa-reply-all',
+                description: 'Define qual dado será devolvido ao chamador quando esta rotina terminar. Funciona tanto para sub-rotinas locais canto para execuções remotas (Inter-Abas).',
+                examples: [
+                    { description: 'Simples: Devolver um status de execução ou objeto coletado.', code: "const textoColetado = obterTexto(10, 10, 10, 50).trim();\nretornar({\n    sucesso: true,\n    texto: textoColetado\n});" }
                 ]
             },
             { 
@@ -759,13 +767,6 @@ export class UiBuilder {
                 examples: [
                     { description: 'Simples: Executar uma consulta sem interface bloqueando a aba atual.', code: "const configAba = { idBusca: '9999' };\n// Chama e aguarda a aba remota terminar:\nconst resultado = await executarRotinaEm('Public/Consultas/BuscaProcesso', 'AUX_1', 'SIAD', configAba);\ndebug('A aba auxiliar retornou:', resultado);" },
                     { description: 'Complexo: Enviar código JS puro para rodar como Worker temporário em outro sistema.', code: "const scriptDinamico = `\n    // Este código rodará na ABA 2 (SICI)\n    digitar('PESQUISA'); teclar('ENTER');\n    const data = obterTexto();\n    retornar(data);\n`;\n\nconst retornoRemoto = await executarRotinaEm(scriptDinamico, 'WORKER_SICI', 'SICI');\nfechar('WORKER_SICI'); // Destrói o worker" }
-                ]
-            },
-            { 
-                type: 'retornar', title: 'retornar(valor)', category: 'Inter-Abas', icon: 'fa-solid fa-reply-all',
-                description: 'Exclusivo para rotinas disparadas via `executarRotinaEm`. Define qual dado será devolvido ao chamador quando esta rotina terminar.',
-                examples: [
-                    { description: 'Simples: Devolver um status de execução ou string coletada.', code: "const textoColetado = obterTexto(10, 10, 10, 50).trim();\nretornar({\n    sucesso: true,\n    texto: textoColetado\n});\n// Fim da execução" }
                 ]
             },
             { 

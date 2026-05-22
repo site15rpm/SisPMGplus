@@ -389,6 +389,11 @@ export function initLogin(prototype) {
             await this.digitar(password, false);
             
             await this.teclar('ENTER');
+
+            while (await this.localizarTexto("Tecle <ENTER> para proxima mensagem", { esperar: 2 })) {
+                await this.teclar('ENTER');
+            }
+
             await this.localizarTexto("Logon executado com sucesso", { esperar: 20, lancarErro: true }); 
             
             this.isLoggedIn = true;

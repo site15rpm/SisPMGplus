@@ -212,12 +212,11 @@ export function initFileSystem(prototype) {
                        }
                    });
                    this.closeModalAndFocus(modal);
-                   if (btn.action === 'cancel') {
-                       this.rotinaState = 'stopped';
-                       reject(new UserCancellationError("Ação cancelada pelo usuário no modal."));
-                   } else {
-                       resolve({ action: btn.action, formData: resultData });
-                   }
+                   
+                   // Se for um botão de cancelamento explícito em uma rotina que não trata o retorno, 
+                   // podemos manter a rejeição, mas para criarModal genérico, o ideal é resolver 
+                   // para permitir ao script decidir o que fazer (como no caso de Sim/Não).
+                   resolve({ action: btn.action, formData: resultData });
                 }            }));
             
             const modalOptions = {

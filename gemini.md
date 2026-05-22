@@ -44,4 +44,4 @@ Ao receber o comando "compacte os arquivos para atualização na webstore", siga
    - Inclua todos os arquivos do projeto.
    - **Exclua:** `manifest.json`, `gemini.md`, `README.md`, diretório `.git`.
    - **Ação Especial:** Renomeie o arquivo `manifest-firefox.json` para `manifest.json` dentro do pacote (este será o manifesto lido pelo Firefox).
-4. **Ferramenta:** Utilize o comando PowerShell `Compress-Archive` para garantir compatibilidade com o ambiente Windows.
+4. Ferramenta: Utilize o comando `tar -a -c -f arquivo.zip *` dentro de pastas temporárias para garantir que os caminhos internos usem barras normais (`/`) e não barras invertidas (`\`), garantindo compatibilidade total com Chrome e Firefox.

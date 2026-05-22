@@ -182,67 +182,72 @@ export class TerminalModule {
     }
 
     async processScreenState() {
-        if (this.rotinaState !== 'stopped') return;
+        if (this.rotinaState !== 'stopped' || this.isMonitoring) return;
+        this.isMonitoring = true;
 
-        if (this.isMonitoringPausedForManualLogin) {
-            if (await this.localizarTexto("Logon executado com sucesso", { esperar: 0 })) {
-                this.isLoggedIn = true;
-                this.reloginInProgress = false;
-                this.createFullMenu();
-                await this.loadRotinasFromCache();
-                this.isTerminalReadyForRoutines = true; // Libera execuções pendentes Inter-Abas
-                
-                if (!this.inactivityTimer) this._startKeepAlive();
-                
-                this.resumeScreenMonitoring();
+        try {
+            if (this.isMonitoringPausedForManualLogin) {
+                if (await this.localizarTexto("Logon executado com sucesso", { esperar: 0 })) {
+                    this.isLoggedIn = true;
+                    this.reloginInProgress = false;
+                    this.createFullMenu();
+                    await this.loadRotinasFromCache();
+                    this.isTerminalReadyForRoutines = true; // Libera execuções pendentes Inter-Abas
+                    
+                    if (!this.inactivityTimer) this._startKeepAlive();
+                    
+                    this.resumeScreenMonitoring();
+                }
+                return;
             }
-            return;
-        }
 
-        const fullScreenText = this.getFullScreenText(true);
+            const fullScreenText = this.getFullScreenText(true);
 
-        const senhaIncorretaPattern = /senha incorreta/i;
-        if (senhaIncorretaPattern.test(fullScreenText)) {
-            this._stopKeepAlive();
-            this.exibirNotificacao("Senha incorreta. A página será recarregada.", false);
-            setTimeout(() => this.reloadPage(), 2000);
-            return;
-        }
-
-        const reloadPatterns = [
-            /conex.*com o mainframe encerrada/i,
-            /press.*to reconnect/i
-        ];
-        
-        for (const pattern of reloadPatterns) {
-            if (pattern.test(fullScreenText)) {
+            const senhaIncorretaPattern = /senha incorreta/i;
+            if (senhaIncorretaPattern.test(fullScreenText)) {
                 this._stopKeepAlive();
-                this.exibirNotificacao("Conexão perdida. A página será recarregada.", false);
+                this.exibirNotificacao("Senha incorreta. A página será recarregada.", false);
                 setTimeout(() => this.reloadPage(), 2000);
                 return;
             }
-        }
-        
-        if (await this.localizarTexto(["Natural session terminated normally", "Session terminated. Please restart your session"], { esperar: 1, modo: 'qualquer'}) && !this.reloginInProgress) {
-            if (this.selectedSystemName) {
-                this.reloginInProgress = true;
-                this.exibirNotificacao(`Sessão encerrada. Relogando em ${this.selectedSystemName}...`, true);
-                await this.digitar(this.selectedSystemName);
-                await this.teclar('ENTER');
-                await this.teclar('ENTER');
-                return;
+
+            const reloadPatterns = [
+                /conex.*com o mainframe encerrada/i,
+                /press.*to reconnect/i
+            ];
+            
+            for (const pattern of reloadPatterns) {
+                if (pattern.test(fullScreenText)) {
+                    this._stopKeepAlive();
+                    this.exibirNotificacao("Conexão perdida. A página será recarregada.", false);
+                    setTimeout(() => this.reloadPage(), 2000);
+                    return;
+                }
             }
-        }
+            
+            if (await this.localizarTexto(["Natural session terminated normally", "Session terminated. Please restart your session"], { esperar: 1, modo: 'qualquer'}) && !this.reloginInProgress) {
+                if (this.selectedSystemName) {
+                    this.reloginInProgress = true;
+                    this.exibirNotificacao(`Sessão encerrada. Relogando em ${this.selectedSystemName}...`, true);
+                    await this.digitar(this.selectedSystemName);
+                    await this.teclar('ENTER');
+                    await this.teclar('ENTER');
+                    return;
+                }
+            }
 
-        const isLoginState = await this.handleLoginScreen();
+            const isLoginState = await this.handleLoginScreen();
 
-        // Garante que o Keep-Alive inicie/reinicie corretamente
-        if (!this.inactivityTimer && this.rotinaState === 'stopped') {
-            this._startKeepAlive();
-        }
+            // Garante que o Keep-Alive inicie/reinicie corretamente
+            if (!this.inactivityTimer && this.rotinaState === 'stopped') {
+                this._startKeepAlive();
+            }
 
-        if (!isLoginState && this.isLoggedIn) {
-            await this.checkForAutoExecutarRotinas();
+            if (!isLoginState && this.isLoggedIn) {
+                await this.checkForAutoExecutarRotinas();
+            }
+        } finally {
+            this.isMonitoring = false;
         }
     }
 
@@ -351,13 +356,13 @@ export class TerminalModule {
                         try {
                             // Executa a rotina internamente passando o customCode (se existir). 
                             // message.routineName é o nome ('Rotina_Dinamica_Remota' ou o caminho), message.customCode é o script literal puro.
-                            await this.executarRotina(message.routineName, { customCode: message.customCode, parametros: message.parametros });
+                            const resultData = await this.executarRotina(message.routineName, { customCode: message.customCode, parametros: message.parametros });
 
-                            // Notifica sucesso de volta para o Background rotear, incluindo dados caso o usuário tenha chamado retornar()
+                            // Notifica sucesso de volta para o Background rotear, incluindo dados caso o usuário tenha chamado retornar() ou return
                             await this.sendMessagePromise('relayExecutionResult', {
                                 targetAlias: message.sourceAlias,
                                 messageId: message.messageId,
-                                result: { success: true, data: this.executionReturnValue }
+                                result: { success: true, data: resultData }
                             });
                         } catch (error) {
                             // Notifica erro
