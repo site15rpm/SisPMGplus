@@ -10,6 +10,7 @@ let sirconvConveniosModuleInstance = null;
 let sicorModuleInstance = null;
 let praticasModuleInstance = null;
 let unidadesModuleInstance = null; // <-- ADICIONADO
+let notasModuleInstance = null; // <-- ADICIONADO
 let globalConfig = null;
 let moduleSettings = {};
 
@@ -207,6 +208,38 @@ function checkAllModules() {
             destroyPraticasModule();
         }
     }
+
+    // Verifica o módulo de Notas (Integração com Terminal)
+    const isNotasPage = window.location.href.includes('manterNota.jsf');
+    if (moduleSettings.notasModuleEnabled !== false) {
+        if (isNotasPage && !notasModuleInstance) {
+            loadNotasModule();
+        } else if (!isNotasPage && notasModuleInstance) {
+            destroyNotasModule();
+        }
+    }
+}
+
+/** Carrega o módulo de Notas (Integração com Terminal). */
+async function loadNotasModule() {
+    try {
+        console.log("SisPMG+: Página de Notas detectada. Carregando módulo...");
+        const { IntranetNotasModule } = await import(globalConfig.notasModuleUrl);
+        const iconModule = await import(globalConfig.iconUrl);
+        notasModuleInstance = new IntranetNotasModule({ ...globalConfig, iconSVG_28: iconModule.iconSVG_28 });
+        notasModuleInstance.init();
+    } catch(e) {
+         console.error("SisPMG+: Falha ao carregar o módulo de Notas.", e);
+    }
+}
+
+/** Descarrega o módulo de Notas. */
+function destroyNotasModule() {
+    console.log("SisPMG+: Saindo da página de Notas. Descarregando módulo.");
+    if (notasModuleInstance && typeof notasModuleInstance.destroy === 'function') {
+        notasModuleInstance.destroy();
+    }
+    notasModuleInstance = null;
 }
 
 /** Carrega o módulo de Agenda. */

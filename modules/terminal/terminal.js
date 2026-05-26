@@ -101,8 +101,52 @@ export class TerminalModule {
             this.updateAliasBadge();
         }
 
+        // Verifica se há dados vindos da Intranet para processamento automático
+        await this.checkForIntranetData();
+
         this.createPreLoginUI();
         this.startGlobalScreenMonitor();
+    }
+
+    async checkForIntranetData() {
+        try {
+            const data = await this.getStorage([
+                'sispmg_intranet_notas_data',
+                'sispmg_terminal_routine',
+                'sispmg_terminal_param'
+            ]);
+
+            if (data.sispmg_intranet_notas_data && data.sispmg_terminal_routine === 'public/(SIEP_Notas)') {
+                console.log('SisPMG+: Dados de notas detectados no storage. Ativando auto-login SIEP.');
+                this.autoLoginSystem = 'SIEP';
+                
+                // Aguarda o terminal estar logado e pronto
+                this.waitForSystemReady().then(async () => {
+                    const notas = data.sispmg_intranet_notas_data;
+                    const routine = data.sispmg_terminal_routine;
+                    const param = data.sispmg_terminal_param;
+                    
+                    this.exibirNotificacao("Iniciando processamento automático de notas...", true);
+                    
+                    try {
+                        await this.executarRotina(routine, { 
+                            parametros: { [param]: notas } 
+                        });
+                        this.exibirNotificacao("Processamento de notas concluído com sucesso!", true);
+                    } catch (error) {
+                        console.error("SisPMG+: Erro ao executar rotina de notas.", error);
+                        this.exibirNotificacao(`Falha ao processar notas: ${error.message}`, false);
+                    } finally {
+                        // Limpa os dados do storage para evitar re-execução
+                        await this.sendMessagePromise('removeStorage', { 
+                            keys: ['sispmg_intranet_notas_data', 'sispmg_terminal_routine', 'sispmg_terminal_param'] 
+                        });
+                    }
+                });
+            }
+        } catch (error) {
+            console.error('SisPMG+: Erro ao verificar dados da Intranet.', error);
+        }
     }
 
     updateAliasBadge() {

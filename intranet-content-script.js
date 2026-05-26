@@ -193,6 +193,7 @@ try {
         sicorCssUrl: browser.runtime.getURL('modules/intranet/intranet-sicor-styles.css'),
         unidadesModuleUrl: browser.runtime.getURL('modules/intranet/intranet-unidades.js'),
         unidadesCssUrl: browser.runtime.getURL('modules/intranet/intranet-unidades-styles.css'),
+        notasModuleUrl: browser.runtime.getURL('modules/intranet/intranet-notas.js'),
         sic3Url: browser.runtime.getURL('modules/sic3.html'),
         cdocUrl: browser.runtime.getURL('modules/cdoc.html'),
         mcmtsUrl: browser.runtime.getURL('modules/mcmts.html'),
