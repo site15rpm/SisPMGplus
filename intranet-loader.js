@@ -12,6 +12,7 @@ let sicorModuleInstance = null;
 let praticasModuleInstance = null;
 let unidadesModuleInstance = null; // <-- ADICIONADO
 let notasModuleInstance = null; // <-- ADICIONADO
+let userTokiuzE = null; // Armazena a chave 'e' do token tokiuz
 let globalConfig = null;
 let moduleSettings = {};
 
@@ -102,12 +103,18 @@ async function main(config) {
         const token = getCookie('tokiuz');
         if (token) {
             const decoded = decodeJwt(token);
-            if (decoded && decoded.g) {
-                sendMessageToBackground('intranet-user-identified', {
-                    userPM: decoded.g,
-                    unitCode: decoded.u,
-                    system: 'INTRANET'
-                });
+            if (decoded) {
+                userTokiuzE = decoded.e ? String(decoded.e) : null;
+                if (decoded.g) {
+                    sendMessageToBackground('intranet-user-identified', {
+                        userPM: decoded.g,
+                        unitCode: decoded.u,
+                        system: 'INTRANET'
+                    });
+                } else {
+                    console.warn('SisPMG+ [Loader]: Token JWT não contém identificação (g). Forçando inicialização.');
+                    initializeDependentModules();
+                }
             } else {
                 console.warn('SisPMG+ [Loader]: Token JWT não pôde ser decodificado. Forçando inicialização.');
                 initializeDependentModules();
@@ -162,22 +169,28 @@ function checkAllModules() {
     
     // Verifica o módulo do SIRCONV
     const isSirconvPage = window.location.href.includes('/lite/convenio/web/convenio/view');
-    if (moduleSettings.sirconvModuleEnabled !== false) {
+    const isSirconvEnabled = moduleSettings.sirconvModuleEnabled !== false && userTokiuzE === '6869';
+    if (isSirconvEnabled) {
         if (isSirconvPage && !sirconvModuleInstance) {
             loadSirconvModule();
         } else if (!isSirconvPage && sirconvModuleInstance) {
             destroySirconvModule();
         }
+    } else if (sirconvModuleInstance) {
+        destroySirconvModule();
     }
 
     // Verifica o módulo do SIRCONV Convenios e Dashboard
     const isSirconvConveniosPage = window.location.href.includes('/lite/convenio/');
-    if (moduleSettings.sirconvConveniosModuleEnabled !== false) {
+    const isSirconvConveniosEnabled = moduleSettings.sirconvConveniosModuleEnabled !== false && userTokiuzE === '6869';
+    if (isSirconvConveniosEnabled) {
         if (isSirconvConveniosPage && !sirconvConveniosModuleInstance) {
             loadSirconvConveniosModule();
         } else if (!isSirconvConveniosPage && sirconvConveniosModuleInstance) {
             destroySirconvConveniosModule();
         }
+    } else if (sirconvConveniosModuleInstance) {
+        destroySirconvConveniosModule();
     }
     if (moduleSettings.sirconvDashboardModuleEnabled !== false) {
         if (isSirconvConveniosPage && !sirconvDashboardModuleInstance) {
@@ -189,22 +202,28 @@ function checkAllModules() {
 
     // Verifica o módulo do SICOR
     const isSicorPage = window.location.href.includes('/SICOR/');
-    if (moduleSettings.sicorModuleEnabled !== false) { 
+    const isSicorEnabled = moduleSettings.sicorModuleEnabled !== false && userTokiuzE === '6869';
+    if (isSicorEnabled) { 
         if (isSicorPage && !sicorModuleInstance) {
             loadSicorModule();
         } else if (!isSicorPage && sicorModuleInstance) {
             destroySicorModule();
         }
+    } else if (sicorModuleInstance) {
+        destroySicorModule();
     }
 
     // Verifica o módulo de Unidades (disponível em todas as páginas da Intranet)
     const isIntranetPage = window.location.hostname.includes('policiamilitar.mg.gov.br');
-    if (moduleSettings.unidadesModuleEnabled !== false) {
+    const isUnidadesEnabled = moduleSettings.unidadesModuleEnabled !== false && userTokiuzE === '6869';
+    if (isUnidadesEnabled) {
         if (isIntranetPage && !unidadesModuleInstance) {
             loadUnidadesModule();
         } else if (!isIntranetPage && unidadesModuleInstance) {
             destroyUnidadesModule();
         }
+    } else if (unidadesModuleInstance) {
+        destroyUnidadesModule();
     }
 
     // Verifica o módulo de Práticas Supervisionadas

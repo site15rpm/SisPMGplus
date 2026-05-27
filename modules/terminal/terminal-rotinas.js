@@ -236,11 +236,24 @@ export function initRotinas(prototype) {
         else if (readOnly) title = `Visualizando: ${name}`;
         else if (isNew) title = 'Criar Nova Rotina';
         else title = `Editando: ${name}`;
+
+        // Calcula o nome para exibição (sem o prefixo do sistema atual)
+        let displayName = name;
+        if (this.selectedSystemName && !isNew) {
+            const systemPrefix = this.selectedSystemName + '/';
+            const publicSystemPrefix = 'public/' + systemPrefix;
+            
+            if (displayName.startsWith(publicSystemPrefix)) {
+                displayName = displayName.substring(publicSystemPrefix.length);
+            } else if (displayName.startsWith(systemPrefix)) {
+                displayName = displayName.substring(systemPrefix.length);
+            }
+        }
     
         const contentHTML = `
             ${isEditingRecording ? '' : `
             <p>Nome da rotina (use / para criar pastas):</p>
-            <input id="modal-rotina-name" type="text" value="${name}" ${readOnly ? 'disabled' : ''} placeholder="Ex: Pasta/Nome da Rotina" class="modal-text-input">`}
+            <input id="modal-rotina-name" type="text" value="${displayName}" ${readOnly ? 'disabled' : ''} placeholder="Ex: Pasta/Nome da Rotina" class="modal-text-input">`}
             
             <div class="editor-textarea-header">
                 <p>Código da rotina:</p>
@@ -483,6 +496,14 @@ export function initRotinas(prototype) {
         let finalName = name;
         if (isPublic && name.toLowerCase().startsWith('public/')) {
             finalName = name.substring('public/'.length);
+        }
+
+        // Se houver um sistema selecionado (sigla), garante que a rotina seja salva na pasta do sistema
+        if (this.selectedSystemName) {
+            const systemPrefix = this.selectedSystemName + '/';
+            if (!finalName.startsWith(systemPrefix)) {
+                finalName = systemPrefix + finalName;
+            }
         }
 
         this.showLoadingOverlay('Salvando rotina...');
@@ -763,8 +784,9 @@ export function initRotinas(prototype) {
     };
 
     prototype.checkForAutoExecutarRotinas = async function() {
-        if (this.rotinaState !== 'stopped') return;
+        if (this.rotinaState !== 'stopped' || !this.selectedSystemName) return;
 
+        const system = this.selectedSystemName;
         const fullScreenText = this.getFullScreenText(true);
         if (!fullScreenText) return;
     
@@ -806,8 +828,13 @@ export function initRotinas(prototype) {
             }
         };
     
-        if (this.rotinas.user) await findAndExec(this.rotinas.user, '');
-        if (this.rotinaState === 'stopped' && this.rotinas.public) await findAndExec(this.rotinas.public, '');
+        // Só verifica as rotinas que estão dentro da pasta do sistema atual
+        if (this.rotinas.user && this.rotinas.user[system]) {
+            await findAndExec(this.rotinas.user[system], system);
+        }
+        if (this.rotinaState === 'stopped' && this.rotinas.public && this.rotinas.public[system]) {
+            await findAndExec(this.rotinas.public[system], `public/${system}`);
+        }
     };
     
     prototype._processTextBuffer = function() {

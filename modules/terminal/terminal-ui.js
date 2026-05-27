@@ -272,6 +272,8 @@ export function initUI(prototype) {
         const userProfile = profiles[this.userPM] || {};
         const favorites = userProfile.favorites || [];
 
+        const system = this.selectedSystemName;
+
         const createMenuItem = (name, path, isPublic) => {
             const itemContainer = document.createElement('div');
             itemContainer.className = 'rotina-menu-item-container';
@@ -290,44 +292,83 @@ export function initUI(prototype) {
             return itemContainer;
         };
 
-        const createSubMenu = (items, title, parentPath = '', isPublic = false) => {
+        const createSubMenu = (items, title, parentPath = '', isPublic = false, isTopLevel = false) => {
             const group = document.createElement('div');
             group.className = 'rotina-menu-item-group';
             group.innerHTML = `<div class="rotina-menu-item-with-submenu"><span class="submenu-arrow">◀</span><span>${title}</span></div>`;
             const submenu = document.createElement('div');
             submenu.className = 'rotina-submenu hidden';
             
-            const entries = Object.entries(items).sort(([keyA], [keyB]) => keyA.localeCompare(keyB));
-
-            for (const [name, content] of entries) {
-                const isHidden = /^\(.*\)$/.test(name);
-                if (isHidden && !this.showHiddenFiles) {
-                    continue;
+            if (isTopLevel) {
+                const visibleEntries = [];
+                const hiddenEntries = [];
+                
+                for (const [name, content] of Object.entries(items)) {
+                    if (system && name === system && typeof content === 'object') {
+                        // Conteúdo da pasta do sistema atual (Visível)
+                        Object.entries(content).forEach(([subName, subContent]) => {
+                            const fullPath = `${parentPath ? parentPath + '/' : ''}${system}/${subName}`;
+                            visibleEntries.push({ name: subName, content: subContent, path: fullPath });
+                        });
+                    } else {
+                        // Todo o resto (Oculto)
+                        const fullPath = `${parentPath ? parentPath + '/' : ''}${name}`;
+                        hiddenEntries.push({ name: name, content: content, path: fullPath });
+                    }
                 }
 
-                const currentPath = parentPath ? `${parentPath}/${name}` : name;
-                if (typeof content === 'object' && content !== null) {
-                    const subMenuGroup = createSubMenu(content, `📁 ${name}`, currentPath, isPublic);
-                    if (subMenuGroup) { 
-                        submenu.appendChild(subMenuGroup);
+                // Renderiza itens visíveis
+                visibleEntries.sort((a, b) => a.name.localeCompare(b.name));
+                visibleEntries.forEach(item => {
+                    const isNameHidden = /^\(.*\)$/.test(item.name);
+                    if (isNameHidden && !this.showHiddenFiles) return;
+
+                    if (typeof item.content === 'object' && item.content !== null) {
+                        const sub = createSubMenu(item.content, `📁 ${item.name}`, item.path, isPublic);
+                        if (sub) submenu.appendChild(sub);
+                    } else if (typeof item.content === 'string') {
+                        submenu.appendChild(createMenuItem(item.name, item.path, isPublic));
                     }
-                } else if (typeof content === 'string') {
-                    submenu.appendChild(createMenuItem(name, currentPath, isPublic));
+                });
+
+                // Renderiza itens ocultos se showHiddenFiles for true
+                if (this.showHiddenFiles) {
+                    hiddenEntries.sort((a, b) => a.name.localeCompare(b.name));
+                    hiddenEntries.forEach(item => {
+                        if (typeof item.content === 'object' && item.content !== null) {
+                            const sub = createSubMenu(item.content, `📁 ${item.name}`, item.path, isPublic);
+                            if (sub) submenu.appendChild(sub);
+                        } else if (typeof item.content === 'string') {
+                            submenu.appendChild(createMenuItem(item.name, item.path, isPublic));
+                        }
+                    });
+                }
+            } else {
+                // Comportamento recursivo padrão
+                const entries = Object.entries(items).sort(([keyA], [keyB]) => keyA.localeCompare(keyB));
+                for (const [name, content] of entries) {
+                    const isHidden = /^\(.*\)$/.test(name);
+                    if (isHidden && !this.showHiddenFiles) continue;
+
+                    const currentPath = parentPath ? `${parentPath}/${name}` : name;
+                    if (typeof content === 'object' && content !== null) {
+                        const sub = createSubMenu(content, `📁 ${name}`, currentPath, isPublic);
+                        if (sub) submenu.appendChild(sub);
+                    } else if (typeof content === 'string') {
+                        submenu.appendChild(createMenuItem(name, currentPath, isPublic));
+                    }
                 }
             }
             
-            if (submenu.children.length === 0) {
-                return null;
-            }
-
+            if (submenu.children.length === 0) return null;
             group.appendChild(submenu);
             return group;
         };
 
-        const publicSubMenu = createSubMenu(rotinas.public || {}, 'Rotinas Públicas', 'public', true);
+        const publicSubMenu = createSubMenu(rotinas.public || {}, 'Rotinas Públicas', 'public', true, true);
         if (publicSubMenu) container.appendChild(publicSubMenu);
 
-        const userSubMenu = createSubMenu(rotinas.user || {}, 'Minhas Rotinas', '', false);
+        const userSubMenu = createSubMenu(rotinas.user || {}, 'Minhas Rotinas', '', false, true);
         if (userSubMenu) container.appendChild(userSubMenu);
         
         const hideDropdown = () => document.getElementById('rotina-menu-dropdown').classList.add('hidden');

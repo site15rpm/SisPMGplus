@@ -559,6 +559,7 @@ export function initActions(prototype) {
                         await this.teclar('TAB');
                     }
                 }
+                await this.esperar(0.5);
                 return true;
             }
         }
