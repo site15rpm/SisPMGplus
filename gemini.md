@@ -45,3 +45,12 @@ Ao receber o comando "compacte os arquivos para atualização na webstore", siga
    - **Exclua:** `manifest.json`, `gemini.md`, `README.md`, diretório `.git`.
    - **Ação Especial:** Renomeie o arquivo `manifest-firefox.json` para `manifest.json` dentro do pacote (este será o manifesto lido pelo Firefox).
 4. Ferramenta: Utilize o comando `tar -a -c -f arquivo.zip *` dentro de pastas temporárias para garantir que os caminhos internos usem barras normais (`/`) e não barras invertidas (`\`), garantindo compatibilidade total com Chrome e Firefox.
+
+---
+
+### **5. Isolamento de Interface (CSS & DOM)**
+
+- **Sobreposição (Overlay):** Ao criar janelas ou modais de sobreposição, utilize sempre um ID único e específico para o container principal (ex: `#sispmg-sirconv-dashboard-modal-container`).
+- **Hierarquia CSS:** No arquivo de estilos, referencie todos os elementos a partir do ID do container para garantir a precedência e evitar que o CSS nativo do portal (`estilo.css`, `convenios.css`) desconfigure a interface da extensão.
+- **Z-Index e Posicionamento:** Utilize `position: fixed !important`, `z-index: 10000+ !important` e `top/left/transform` para garantir a centralização e evitar que o modal seja anexado ao final da página ou sofra "reflow" indesejado.
+- **Loader:** Sempre acione o método `this.ui.showLoader()` e `this.ui.hideLoader()` em operações assíncronas longas (como auditorias profundas) para fornecer feedback visual ao usuário.

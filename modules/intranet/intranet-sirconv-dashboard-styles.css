@@ -1,1 +1,391 @@
-/* Estilos para o dashboard de convênios SIRCONV */
+/* Estilos para o Dashboard de Convênios SIRCONV */
+
+/* Overlay do modal (seguindo padrão do módulo de aniversariantes) */
+#sispmg-plus-container .sispmg-sirconv-dashboard-overlay {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    background-color: rgba(0, 0, 0, 0.6) !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    z-index: 10000 !important;
+    padding: 0 !important; /* Sem padding para ocupar a tela toda */
+    box-sizing: border-box;
+}
+
+/* Container principal do Dashboard - Agora em Tela Cheia */
+#sispmg-plus-container #sispmg-sirconv-dashboard-modal-container {
+    background-color: #fbf8f5 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    display: flex !important;
+    flex-direction: row !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    animation: sispmgfadeIn 0.2s ease-out !important;
+    overflow: hidden !important;
+}
+
+/* Reset da classe genérica sispmg-plus-modal quando dentro do container específico */
+#sispmg-plus-container #sispmg-sirconv-dashboard-modal-container .sispmg-plus-modal {
+    position: relative !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    animation: none !important;
+    display: flex !important;
+    flex-direction: row !important;
+    flex-grow: 1 !important;
+    padding: 0 !important;
+    min-width: unset !important;
+    width: 100% !important;
+    overflow: hidden !important;
+}
+
+/* Layout lado a lado */
+.sispmg-dashboard-layout {
+    display: flex !important;
+    flex-direction: row !important;
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* Corpo principal do Dashboard */
+.sispmg-dashboard-main {
+    display: flex !important;
+    flex-direction: column !important;
+    flex-grow: 1 !important;
+    height: 100% !important;
+    padding: 15px !important;
+    gap: 15px !important;
+    overflow-y: auto !important;
+    color: #333 !important;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+    transition: all 0.3s ease !important;
+}
+
+/* Sidebar de Auditoria Profunda */
+.sispmg-dashboard-sidebar {
+    width: 0 !important;
+    display: none !important;
+    flex-direction: column !important;
+    border-left: 2px solid #dcd3c5 !important;
+    background-color: #fff !important;
+    overflow-y: auto !important;
+    box-shadow: -5px 0 15px rgba(0,0,0,0.05) !important;
+}
+
+.sispmg-dashboard-sidebar.active {
+    width: 50vw !important;
+    min-width: 50vw !important;
+    flex-grow: 1 !important;
+    display: flex !important;
+    padding: 15px !important;
+}
+
+/* Redimensionar o painel principal e itens internos durante a auditoria */
+.audit-active .sispmg-dashboard-main {
+    max-width: 50vw !important;
+    min-width: 50vw !important;
+    flex: 0 0 50vw !important;
+}
+
+.audit-active .sispmg-btn-text {
+    display: none !important;
+}
+
+/* Botão de Fechar Sidebar */
+.sispmg-sidebar-close {
+    align-self: flex-end !important;
+    cursor: pointer !important;
+    font-size: 24px !important;
+    color: #574e2d !important;
+    background: none !important;
+    border: none !important;
+    line-height: 1 !important;
+    margin-bottom: 5px !important;
+}
+.sispmg-sidebar-close:hover {
+    color: #b3a368 !important;
+}
+
+/* Ocultar colunas condicionalmente */
+.sispmg-hide-on-audit {
+    display: table-cell !important;
+}
+.audit-active .sispmg-hide-on-audit {
+    display: none !important;
+}
+
+.sispmg-dashboard-header {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    border-bottom: 2px solid #b3a368 !important;
+    padding-bottom: 5px !important;
+    margin-bottom: 5px !important;
+    flex-shrink: 0 !important;
+}
+
+.sispmg-dashboard-header h2 {
+    margin: 0 !important;
+    color: #574e2d !important;
+    font-size: 20px !important;
+    font-weight: 600 !important;
+}
+
+/* Botão de Fechar Global (No cabeçalho) */
+.sispmg-global-close {
+    background: #dc3545 !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 4px !important;
+    padding: 6px 12px !important;
+    cursor: pointer !important;
+    font-weight: bold !important;
+    margin-left: 15px !important;
+}
+.sispmg-global-close:hover {
+    background: #c82333 !important;
+}
+
+/* Cards de resumo */
+.sispmg-dashboard-summary {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)) !important;
+    gap: 10px !important;
+    flex-shrink: 0 !important;
+}
+
+.sispmg-dashboard-card {
+    background: #fff !important;
+    border: 1px solid #dcd3c5 !important;
+    border-radius: 8px !important;
+    padding: 10px !important;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05) !important;
+    text-align: center !important;
+}
+
+.sispmg-dashboard-card-value {
+    font-size: 24px !important;
+    font-weight: bold !important;
+    color: #b3a368 !important;
+    display: block !important;
+}
+
+.sispmg-dashboard-card-label {
+    font-size: 11px !important;
+    color: #666 !important;
+    text-transform: uppercase !important;
+    font-weight: 600 !important;
+    margin-top: 3px !important;
+}
+
+/* Tabela de dados */
+.sispmg-dashboard-table-container {
+    flex-grow: 1 !important;
+    overflow: auto !important;
+    border: 1px solid #dcd3c5 !important;
+    border-radius: 6px !important;
+    background: #fff !important;
+}
+
+.sispmg-dashboard-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    font-size: 12px !important;
+    min-width: 1000px !important;
+}
+
+/* Ajuste de min-width quando a sidebar está ativa para evitar overflow excessivo */
+.audit-active .sispmg-dashboard-table {
+    min-width: 700px !important; 
+}
+
+/* Filtros no cabeçalho */
+.sispmg-dashboard-filters {
+    display: flex !important;
+    gap: 8px !important;
+    margin-bottom: 10px !important;
+    flex-wrap: wrap !important;
+}
+
+.sispmg-dashboard-table th {
+    position: sticky !important;
+    top: 0 !important;
+    background-color: #f7f5f2 !important;
+    color: #574e2d !important;
+    padding: 8px 10px !important;
+    text-align: left !important;
+    z-index: 10 !important;
+    border-bottom: 2px solid #dcd3c5 !important;
+    font-weight: 600 !important;
+    white-space: nowrap !important;
+}
+
+.sispmg-th-content {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+}
+
+.sispmg-filter-trigger {
+    cursor: pointer !important;
+    color: #b3a368 !important;
+    font-size: 11px !important;
+    padding: 2px !important;
+    border-radius: 3px !important;
+    transition: background-color 0.2s !important;
+}
+
+.sispmg-filter-trigger:hover {
+    background-color: #efeadb !important;
+}
+
+.sispmg-filter-trigger.active {
+    color: #155724 !important;
+    background-color: #d4edda !important;
+}
+
+/* Dropdown de Filtro */
+.sispmg-filter-dropdown {
+    position: fixed !important;
+    background: #fff !important;
+    border: 1px solid #dcd3c5 !important;
+    border-radius: 6px !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2) !important;
+    z-index: 10005 !important;
+    width: 250px !important;
+    display: none;
+    flex-direction: column !important;
+    animation: sispmgfadeIn 0.2s ease-out !important;
+}
+
+.sispmg-filter-dropdown.show {
+    display: flex !important;
+}
+
+.sispmg-filter-search {
+    padding: 8px !important;
+    border-bottom: 1px solid #eee !important;
+}
+
+.sispmg-filter-search input {
+    width: 100% !important;
+    padding: 5px 8px !important;
+    border: 1px solid #dcd3c5 !important;
+    border-radius: 4px !important;
+    font-size: 12px !important;
+}
+
+.sispmg-filter-list {
+    max-height: 250px !important;
+    overflow-y: auto !important;
+    padding: 5px 0 !important;
+}
+
+.sispmg-filter-item {
+    display: flex !important;
+    align-items: center !important;
+    padding: 5px 15px !important;
+    cursor: pointer !important;
+    font-size: 12px !important;
+    gap: 8px !important;
+}
+
+.sispmg-filter-item:hover {
+    background-color: #f9f7f2 !important;
+}
+
+.sispmg-filter-item input {
+    margin: 0 !important;
+}
+
+.sispmg-filter-actions {
+    padding: 8px !important;
+    border-top: 1px solid #eee !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    background: #fbf8f5 !important;
+    border-radius: 0 0 6px 6px !important;
+}
+
+.sispmg-filter-btn {
+    padding: 4px 8px !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    border-radius: 4px !important;
+    cursor: pointer !important;
+    border: 1px solid transparent !important;
+}
+
+.sispmg-filter-btn-apply {
+    background-color: #b3a368 !important;
+    color: #fff !important;
+}
+
+.sispmg-filter-btn-clear {
+    background-color: #f0f0f0 !important;
+    color: #333 !important;
+    border-color: #ccc !important;
+}
+
+.sispmg-dashboard-table td {
+    padding: 6px 10px !important;
+    border-bottom: 1px solid #eee !important;
+    vertical-align: middle !important;
+}
+
+.sispmg-dashboard-table tr:hover {
+    background-color: #fbf8f5 !important;
+}
+
+/* Status Badges */
+.sispmg-status-badge {
+    padding: 2px 6px !important;
+    border-radius: 12px !important;
+    font-size: 10px !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    display: inline-block !important;
+}
+
+.sispmg-status-vigente { background-color: #d4edda !important; color: #155724 !important; }
+.sispmg-status-outros { background-color: #f8d7da !important; color: #721c24 !important; }
+
+/* Botões do Dashboard */
+.sispmg-dashboard-btn {
+    all: unset !important;
+    box-sizing: border-box !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 6px 12px !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    border-radius: 6px !important;
+    cursor: pointer !important;
+    transition: all 0.2s !important;
+    gap: 6px !important;
+}
+
+.sispmg-dashboard-btn-primary {
+    background-color: #b3a368 !important;
+    color: white !important;
+    border: 1px solid #b3a368 !important;
+}
+
+.sispmg-dashboard-btn-primary:hover {
+    background-color: #9e8f57 !important;
+}
+
+@keyframes sispmgfadeIn {
+  from { opacity: 0; transform: scale(0.98); }
+  to { opacity: 1; transform: scale(1); }
+}

@@ -617,12 +617,26 @@ export class UIModule {
         return modal;
     }
 
-    showLoader() {
+    showLoader(message = '') {
         this.hideLoader(); // Garante que não haja loaders duplicados
         const loader = document.createElement('div');
         loader.id = 'sispmg-loader-overlay';
-        loader.innerHTML = '<div class="sispmg-spinner"></div>';
+        
+        // Estrutura do loader, com espaço para a mensagem
+        loader.innerHTML = `
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 15px;">
+                <div class="sispmg-spinner"></div>
+                <div id="sispmg-loader-message" style="color: #fff; font-size: 16px; font-weight: 600; text-shadow: 0 1px 3px rgba(0,0,0,0.5); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">${message}</div>
+            </div>
+        `;
         document.getElementById('sispmg-plus-container').appendChild(loader);
+    }
+
+    updateLoaderMessage(message) {
+        const msgElement = document.getElementById('sispmg-loader-message');
+        if (msgElement) {
+            msgElement.innerText = message;
+        }
     }
 
     hideLoader() {
