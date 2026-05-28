@@ -189,6 +189,8 @@ try {
         sirconvCssUrl: browser.runtime.getURL('modules/intranet/intranet-sirconv-styles.css'),
         sirconvConveniosModuleUrl: browser.runtime.getURL('modules/intranet/intranet-sirconv-convenios.js'),
         sirconvConveniosCssUrl: browser.runtime.getURL('modules/intranet/intranet-sirconv-convenios-styles.css'),
+        sirconvDashboardModuleUrl: browser.runtime.getURL('modules/intranet/intranet-sirconv-dashboard.js'),
+        sirconvDashboardCssUrl: browser.runtime.getURL('modules/intranet/intranet-sirconv-dashboard-styles.css'),
         sicorModuleUrl: browser.runtime.getURL('modules/intranet/intranet-sicor.js'),
         sicorCssUrl: browser.runtime.getURL('modules/intranet/intranet-sicor-styles.css'),
         unidadesModuleUrl: browser.runtime.getURL('modules/intranet/intranet-unidades.js'),

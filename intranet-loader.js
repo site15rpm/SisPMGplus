@@ -7,6 +7,7 @@ let aniverModuleInstance = null;
 let agendaModuleInstance = null; // Módulo da Agenda
 let sirconvModuleInstance = null;
 let sirconvConveniosModuleInstance = null;
+let sirconvDashboardModuleInstance = null;
 let sicorModuleInstance = null;
 let praticasModuleInstance = null;
 let unidadesModuleInstance = null; // <-- ADICIONADO
@@ -74,7 +75,7 @@ async function main(config) {
         // Carrega o restante das configurações dos módulos.
         const otherSettings = (await getSettingsFromStorage([
             'padmModuleEnabled', 'aniverModuleEnabled', 'agendaModuleEnabled', 'sirconvModuleEnabled',
-            'sirconvConveniosModuleEnabled', 'sicorModuleEnabled', 'praticasModuleEnabled', 'unidadesModuleEnabled'
+            'sirconvConveniosModuleEnabled', 'sirconvDashboardModuleEnabled', 'sicorModuleEnabled', 'praticasModuleEnabled', 'unidadesModuleEnabled'
         ])) || {};
         Object.assign(moduleSettings, otherSettings);
 
@@ -169,13 +170,20 @@ function checkAllModules() {
         }
     }
 
-    // Verifica o módulo do SIRCONV Convenios
+    // Verifica o módulo do SIRCONV Convenios e Dashboard
     const isSirconvConveniosPage = window.location.href.includes('/lite/convenio/');
     if (moduleSettings.sirconvConveniosModuleEnabled !== false) {
         if (isSirconvConveniosPage && !sirconvConveniosModuleInstance) {
             loadSirconvConveniosModule();
         } else if (!isSirconvConveniosPage && sirconvConveniosModuleInstance) {
             destroySirconvConveniosModule();
+        }
+    }
+    if (moduleSettings.sirconvDashboardModuleEnabled !== false) {
+        if (isSirconvConveniosPage && !sirconvDashboardModuleInstance) {
+            loadSirconvDashboardModule();
+        } else if (!isSirconvConveniosPage && sirconvDashboardModuleInstance) {
+            destroySirconvDashboardModule();
         }
     }
 
@@ -422,6 +430,28 @@ function destroySirconvConveniosModule() {
         sirconvConveniosModuleInstance.destroySirconvConveniosModule();
     }
     sirconvConveniosModuleInstance = null;
+}
+
+/** Carrega o módulo SIRCONV Dashboard de forma segura. */
+async function loadSirconvDashboardModule() {
+    try {
+        console.log("SisPMG+: Página SIRCONV detectada. Carregando módulo de Dashboard...");
+        loadCSS(globalConfig.sirconvDashboardCssUrl);
+        const { SirconvDashboardModule } = await import(globalConfig.sirconvDashboardModuleUrl);
+        sirconvDashboardModuleInstance = new SirconvDashboardModule(globalConfig);
+        sirconvDashboardModuleInstance.init();
+    } catch(e) {
+         console.error("SisPMG+: Falha ao carregar o módulo SIRCONV Dashboard.", e);
+    }
+}
+
+/** Descarrega o módulo SIRCONV Dashboard. */
+function destroySirconvDashboardModule() {
+    console.log("SisPMG+: Saindo da página SIRCONV. Descarregando módulo de Dashboard.");
+    if (sirconvDashboardModuleInstance && typeof sirconvDashboardModuleInstance.destroy === 'function') {
+        sirconvDashboardModuleInstance.destroy();
+    }
+    sirconvDashboardModuleInstance = null;
 }
 
 /** Carrega o módulo de Aniversariantes. */

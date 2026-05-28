@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+	<title>Polícia Militar de Minas Gerais - SIRCONV</title>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="csrf-param" content="_csrf">
+<meta name="csrf-token" content="BZwCQ9gmiORNCGMhfnhBjiKzAJyoFZ7SyjaHWLrOybR10FUBlmL5pnxKIFQJFnDCVv9D3dlWzKj8fv8pj52b1g==">
+	<link rel="shortcut icon" type="image/ico" href="https://intranet.policiamilitar.mg.gov.br/static/img/favicon.ico" />
+	<link href="https://intranet.policiamilitar.mg.gov.br/static/css/estilo.css" rel="stylesheet">
+<link href="https://intranet.policiamilitar.mg.gov.br/static/css/graficos.css" rel="stylesheet">
+<link href="https://intranet.policiamilitar.mg.gov.br/static/css/convenios.css" rel="stylesheet">
+<script src="/lite/convenio/web/dist/js/jquery.min.js"></script>
+<script src="/lite/convenio/web/dist/js/intranet.js"></script>
+<script src="/lite/convenio/web/dist/js/modernizr.custom.js"></script>
+<script src="/lite/convenio/web/dist/js/jsapi.js"></script>
+<script src="/lite/convenio/web/dist/js/js-webshim/minified/polyfiller.js"></script>
+<script src="/lite/convenio/web/dist/js/angular.min.js"></script>
+<script src="/lite/convenio/web/dist/js/angular-locale_pt-br.js"></script>
+<script src="/lite/convenio/web/dist/js/angular-sanitize.min.js"></script>
+<script src="/lite/convenio/web/dist/js/mask.min.js"></script>
+<script src="/lite/convenio/web/dist/js/maskmoney.js"></script>
+<script src="/lite/convenio/web/js/app.js?v=1.1.8"></script>
+<script src="/lite/convenio/web/js/interceptors/errorInterceptor.js"></script>
+<script src="/lite/convenio/web/js/services/relatoriosService.js"></script>
+<script src="/lite/convenio/web/js/services/convenioService.js"></script>
+<script src="/lite/convenio/web/js/services/planoService.js"></script>
+<script src="/lite/convenio/web/js/services/cronogramaService.js"></script>
+<script src="/lite/convenio/web/js/services/execucaoService.js"></script>
+<script src="/lite/convenio/web/js/services/unidadeMedidaService.js"></script>
+<script src="/lite/convenio/web/js/services/trataErrorService.js"></script>
+<script src="/lite/convenio/web/js/controllers/relatoriosController.js?v=1.1.0"></script>
+<script src="/lite/convenio/web/js/controllers/convenioController.js?v=1.1.0"></script>
+<script src="/lite/convenio/web/js/controllers/planoController.js?v=1.1.1"></script>
+<script src="/lite/convenio/web/js/controllers/cronogramaController.js?v=1.1.1"></script>
+<script src="/lite/convenio/web/js/controllers/execucaoController.js?v=1.5.1"></script>
+<script src="/lite/convenio/web/js/directives/currencyDir.js"></script>
+	<script type="text/javascript">
+		webshims.setOptions('waitReady', false);
+		webshims.setOptions('forms-ext', {
+			types: 'date'
+		});
+		webshims.polyfill('forms forms-ext');
+	</script>
+
+</head>
+
+<body data-ng-app="app">
+	
+	<div id="g">
+		<span id="spOp" class="op"><a href="#" id="headerAjuda" class="ic-ajuda" title="Ajuda" onclick="carregaMenuAjuda();return false"></a><a class="avatar " id="u1" href="javascript:menu2023()" accesskey="m" title="Normal"><img src="https://intranet.policiamilitar.mg.gov.br/GestaoFotos/rest/gestaoFotos/retornaFoto/1453208/miniatura" class="c-foto" alt="1453208" onerror="carregarImagemPadrao()" /></a></span><div id="jmAjuda" class="jm-menu jm-menu-notif"><div class="margem"><h2>Ajuda<span><a href="#" onclick="document.getElementById('jmAjuda').classList.toggle('at');return false" class="fe" title="Fechar"></a></span></h2><div class="margem rol" id="ajuda-links"></div></div></div><div id="m3" class="jm-menu"><div class="corpo-menu"><div id="areaMenuB"><div class="flex-linha alinha-v"><div class="flex-coluna col-pesquisa"><input id="input_pesquisa_funcionalidade_menu_principal" onkeyup="pesquisarFuncionalidadeMenuPrincipal2023(this,event);" type="search" placeholder="Pesquise"></div><div class="ab flex-coluna" id="abas_areas"><a href="javascript:void(0);" onclick="areaMenuB(this, 2)" data-aba-menu-principal="2" title="Geral" class="at"><span class="ic-area-geral ic"></span></a><a href="javascript:void(0);" onclick="areaMenuB(this, 3)" data-aba-menu-principal="3" title="Gestão estratégica e RH" class=""><span class="ic-area-rh ic"></span></a><a href="javascript:void(0);" onclick="areaMenuB(this, 7)" data-aba-menu-principal="7" title="Operacional, inteligência e logística" class=""><span class="ic-area-operacional ic"></span></a><a href="javascript:void(0);" onclick="areaMenuB(this, 4)" data-aba-menu-principal="4" title="Ensino e treinamento" class=""><span class="ic-area-ensino ic"></span></a><a href="javascript:void(0);" onclick="areaMenuB(this, 8)" data-aba-menu-principal="8" title="Saúde" class=""><span class="ic-area-saude ic"></span></a><a href="javascript:void(0);" onclick="areaMenuB(this, 10)" data-aba-menu-principal="10" title="Tecnologia e comunicações" class=""><span class="ic-area-tec ic"></span></a><a href="javascript:void(0);" onclick="areaMenuB(this, 11)" data-aba-menu-principal="11" title="Corregedoria" class=""><span class="ic-area-justica ic"></span></a></div></div><div class="flex-linha no" id="dv_novo_sistema"><a href="https://spi.policiamilitar.mg.gov.br" class="bloco-novo item flex-coluna"><span class="novo"></span><span class="ic pro direita"></span>     Novo sistema <b>SPI - Sistema de Policiamento Inteligente</b></a><a href="https://intranet.policiamilitar.mg.gov.br/intranet/app/institucional/externo/principalExterno.action?idInstitucional=34&menuInterno=86" class="bloco-ctsdts flex-coluna tam-min"><img src="https://intranet.policiamilitar.mg.gov.br/static/img/ctsdts.svg" class="ctsdts" title="Iniciativa DTS/CTS"></a></div><div id="areaDestaques2" class="bloco-destaque m-b "><div class="az ne ma">Mais acessados</div><div class="tags"><a href="https://pa.policiamilitar.mg.gov.br" class="link">Mensagens</a><a href="https://intranet.policiamilitar.mg.gov.br/lite/seguranca/web/prodemge?url=https://www.sistemaspm.mg.gov.br/pm-sici-web/rest/AutenticaPM/redirecionarContraCheque/" class="link">Contracheque</a><a href="https://helios.policiamilitar.mg.gov.br" class="link">Hélios</a><a href="https://intranet.policiamilitar.mg.gov.br/lite/daop/web/" class="link">SIGOp</a><a href="https://intranet.policiamilitar.mg.gov.br/lite/recursos-humanos/web/" class="link">Busca de pessoal</a><a href="https://intranet.policiamilitar.mg.gov.br/saude/app/saude/saudePrincipal.action?menuIntermediario=3" class="link">SIGS</a><a href="https://intranet.policiamilitar.mg.gov.br/lite/aplicacoes/web/qapp" class="link mobile">QApp para iphone</a><a href="https://intranet.policiamilitar.mg.gov.br/lite/aplicacoes/web/telcorp" class="link mobile">TelCorp para iPhone</a><a href="https://intranet.policiamilitar.mg.gov.br/lite/aplicacoes/web/cpe" class="link mobile">CPE para iPhone</a></div></div><div id="areaDestaques3" class="bloco-destaque m-b no"><div class="az ne ma">Mais acessados</div><div class="tags"><a href="https://pa.policiamilitar.mg.gov.br" class="link">Mensagens</a><a href="https://intranet.policiamilitar.mg.gov.br/lite/seguranca/web/prodemge?url=https://www.sistemaspm.mg.gov.br/pm-sici-web/rest/AutenticaPM/redirecionarContraCheque/" class="link">Contracheque</a><a href="https://helios.policiamilitar.mg.gov.br" class="link">Hélios</a><a href="https://intranet.policiamilitar.mg.gov.br/lite/daop/web/" class="link">SIGOp</a><a href="https://intranet.policiamilitar.mg.gov.br/lite/recursos-humanos/web/" class="link">Busca de pessoal</a><a href="https://intranet.policiamilitar.mg.gov.br/saude/app/saude/saudePrincipal.action?menuIntermediario=3" class="link">SIGS</a><a href="https://intranet.policiamilitar.mg.gov.br/lite/aplicacoes/web/qapp" class="link mobile">QApp para iphone</a><a href="https://intranet.policiamilitar.mg.gov.br/lite/aplicacoes/web/telcorp" class="link mobile">TelCorp para iPhone</a><a href="https://intranet.policiamilitar.mg.gov.br/lite/aplicacoes/web/cpe" class="link mobile">CPE para iPhone</a></div></div><div id="areaDestaques7" class="bloco-destaque m-b no"><div class="az ne ma">Mais acessados</div><div class="tags"><a href="https://pa.policiamilitar.mg.gov.br" class="link">Mensagens</a><a href="https://intranet.policiamilitar.mg.gov.br/lite/seguranca/web/prodemge?url=https://www.sistemaspm.mg.gov.br/pm-sici-web/rest/AutenticaPM/redirecionarContraCheque/" class="link">Contracheque</a><a href="https://helios.policiamilitar.mg.gov.br" class="link">Hélios</a><a href="https://intranet.policiamilitar.mg.gov.br/lite/daop/web/" class="link">SIGOp</a><a href="https://intranet.policiamilitar.mg.gov.br/lite/recursos-humanos/web/" class="link">Busca de pessoal</a><a href="https://intranet.policiamilitar.mg.gov.br/saude/app/saude/saudePrincipal.action?menuIntermediario=3" class="link">SIGS</a><a href="https://intranet.policiamilitar.mg.gov.br/lite/aplicacoes/web/qapp" class="link mobile">QApp para iphone</a><a href="https://intranet.policiamilitar.mg.gov.br/lite/aplicacoes/web/telcorp" class="link mobile">TelCorp para iPhone</a><a href="https://intranet.policiamilitar.mg.gov.br/lite/aplicacoes/web/cpe" class="link mobile">CPE para iPhone</a></div></div><div id="areaDestaques4" class="bloco-destaque m-b no"><div class="az ne ma">Mais acessados</div><div class="tags"><a href="https://pa.policiamilitar.mg.gov.br" class="link">Mensagens</a><a href="https://intranet.policiamilitar.mg.gov.br/lite/seguranca/web/prodemge?url=https://www.sistemaspm.mg.gov.br/pm-sici-web/rest/AutenticaPM/redirecionarContraCheque/" class="link">Contracheque</a><a href="https://helios.policiamilitar.mg.gov.br" class="link">Hélios</a><a href="https://intranet.policiamilitar.mg.gov.br/lite/daop/web/" class="link">SIGOp</a><a href="https://intranet.policiamilitar.mg.gov.br/lite/recursos-humanos/web/" class="link">Busca de pessoal</a><a href="https://intranet.policiamilitar.mg.gov.br/saude/app/saude/saudePrincipal.action?menuIntermediario=3" class="link">SIGS</a><a href="https://intranet.policiamilitar.mg.gov.br/lite/aplicacoes/web/qapp" class="link mobile">QApp para iphone</a><a href="https://intranet.policiamilitar.mg.gov.br/lite/aplicacoes/web/telcorp" class="link mobile">TelCorp para iPhone</a><a href="https://intranet.policiamilitar.mg.gov.br/lite/aplicacoes/web/cpe" class="link mobile">CPE para iPhone</a></div></div><div id="areaDestaques8" class="bloco-destaque m-b no"><div class="az ne ma">Mais acessados</div><div class="tags"><a href="https://pa.policiamilitar.mg.gov.br" class="link">Mensagens</a><a href="https://intranet.policiamilitar.mg.gov.br/lite/seguranca/web/prodemge?url=https://www.sistemaspm.mg.gov.br/pm-sici-web/rest/AutenticaPM/redirecionarContraCheque/" class="link">Contracheque</a><a href="https://helios.policiamilitar.mg.gov.br" class="link">Hélios</a><a href="https://intranet.policiamilitar.mg.gov.br/lite/daop/web/" class="link">SIGOp</a><a href="https://intranet.policiamilitar.mg.gov.br/lite/recursos-humanos/web/" class="link">Busca de pessoal</a><a href="https://intranet.policiamilitar.mg.gov.br/saude/app/saude/saudePrincipal.action?menuIntermediario=3" class="link">SIGS</a><a href="https://intranet.policiamilitar.mg.gov.br/lite/aplicacoes/web/qapp" class="link mobile">QApp para iphone</a><a href="https://intranet.policiamilitar.mg.gov.br/lite/aplicacoes/web/telcorp" class="link mobile">TelCorp para iPhone</a><a href="https://intranet.policiamilitar.mg.gov.br/lite/aplicacoes/web/cpe" class="link mobile">CPE para iPhone</a></div></div><div id="areaDestaques10" class="bloco-destaque m-b no"><div class="az ne ma">Mais acessados</div><div class="tags"><a href="https://pa.policiamilitar.mg.gov.br" class="link">Mensagens</a><a href="https://intranet.policiamilitar.mg.gov.br/lite/seguranca/web/prodemge?url=https://www.sistemaspm.mg.gov.br/pm-sici-web/rest/AutenticaPM/redirecionarContraCheque/" class="link">Contracheque</a><a href="https://helios.policiamilitar.mg.gov.br" class="link">Hélios</a><a href="https://intranet.policiamilitar.mg.gov.br/lite/daop/web/" class="link">SIGOp</a><a href="https://intranet.policiamilitar.mg.gov.br/lite/recursos-humanos/web/" class="link">Busca de pessoal</a><a href="https://intranet.policiamilitar.mg.gov.br/saude/app/saude/saudePrincipal.action?menuIntermediario=3" class="link">SIGS</a><a href="https://intranet.policiamilitar.mg.gov.br/lite/aplicacoes/web/qapp" class="link mobile">QApp para iphone</a><a href="https://intranet.policiamilitar.mg.gov.br/lite/aplicacoes/web/telcorp" class="link mobile">TelCorp para iPhone</a><a href="https://intranet.policiamilitar.mg.gov.br/lite/aplicacoes/web/cpe" class="link mobile">CPE para iPhone</a></div></div><div id="areaDestaques11" class="bloco-destaque m-b no"><div class="az ne ma">Mais acessados</div><div class="tags"><a href="https://pa.policiamilitar.mg.gov.br" class="link">Mensagens</a><a href="https://intranet.policiamilitar.mg.gov.br/lite/seguranca/web/prodemge?url=https://www.sistemaspm.mg.gov.br/pm-sici-web/rest/AutenticaPM/redirecionarContraCheque/" class="link">Contracheque</a><a href="https://helios.policiamilitar.mg.gov.br" class="link">Hélios</a><a href="https://intranet.policiamilitar.mg.gov.br/lite/daop/web/" class="link">SIGOp</a><a href="https://intranet.policiamilitar.mg.gov.br/lite/recursos-humanos/web/" class="link">Busca de pessoal</a><a href="https://intranet.policiamilitar.mg.gov.br/saude/app/saude/saudePrincipal.action?menuIntermediario=3" class="link">SIGS</a><a href="https://intranet.policiamilitar.mg.gov.br/lite/aplicacoes/web/qapp" class="link mobile">QApp para iphone</a><a href="https://intranet.policiamilitar.mg.gov.br/lite/aplicacoes/web/telcorp" class="link mobile">TelCorp para iPhone</a><a href="https://intranet.policiamilitar.mg.gov.br/lite/aplicacoes/web/cpe" class="link mobile">CPE para iPhone</a></div></div><section id="areaMenuB2" class="ar" data-aba-menu-principal="2"><dl><dt>Principal</dt><dd><a id="codigo_funcionalidade_menu_principal_2-6371" href="https://principal.policiamilitar.mg.gov.br/" data-aba-menu-principal="2">            Página inicial           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_2-6243" href="https://pa.policiamilitar.mg.gov.br" data-aba-menu-principal="2">            Mensagens           </a></dd></dl><dl><dt>Serviços</dt><dd><a id="codigo_funcionalidade_menu_principal_2-3401" href="https://intranet.policiamilitar.mg.gov.br/MarcacaoWEB/paginas/marcacaoConsulta/marcarbeneficiario.jsf" data-aba-menu-principal="2">            Marcar Consultas           </a></dd></dl><dl><dt>Sistemas</dt><dd><a id="codigo_funcionalidade_menu_principal_2-4876" href="https://helios.policiamilitar.mg.gov.br/" data-aba-menu-principal="2">            Hélios           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_2-6511" href="https://painel-assinaturas.policiamilitar.mg.gov.br" data-aba-menu-principal="2">            Assinador           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_2-2383" href="https://intranet.policiamilitar.mg.gov.br/intranet/app/metropole/metropolePrincipal.action" data-aba-menu-principal="2">            Metrópole           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_2-4400" href="https://intranet.policiamilitar.mg.gov.br/intendencia/paginas/home.jsf" data-aba-menu-principal="2">            Intendência           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_2-3951" href="https://intranet.policiamilitar.mg.gov.br/sige/paginas/portal/home.jsf" data-aba-menu-principal="2">            SiGE           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_2-5585" href="https://ead.policiamilitar.mg.gov.br/" data-aba-menu-principal="2">            EAD Moodle           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_2-81" href="https://intranet.policiamilitar.mg.gov.br/legado/financeiro/dae/default.asp" data-aba-menu-principal="2">            DAE           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_2-69" href="https://intranet.policiamilitar.mg.gov.br/legado/logistica/protocolo/default.asp" data-aba-menu-principal="2">            Protocolo           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_2-4164" href="https://intranet.policiamilitar.mg.gov.br/SICOR/paginas/home/telaInicial.jsf" data-aba-menu-principal="2">            SICOR           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_2-6397" href="https://intranet.policiamilitar.mg.gov.br/terminal/" data-aba-menu-principal="2">            Terminal Prodemge           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_2-6795" href="http://sispri.nexus.mg.gov.br" data-aba-menu-principal="2">            SISPRI           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_2-6777" href="https://patrulharural-web.policiamilitar.mg.gov.br/" data-aba-menu-principal="2">            Policiamento rural           </a></dd></dl><dl><dt>Pesquisar</dt><dd><a id="codigo_funcionalidade_menu_principal_2-4136" href="https://intranet.policiamilitar.mg.gov.br/telefonia/paginas/pesquisaTelefones/pesquisaTelefones.jsf" data-aba-menu-principal="2">            Catálogo Telefônico           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_2-90" href="https://intranet.policiamilitar.mg.gov.br/legado/operacoes/unidades/default.asp" data-aba-menu-principal="2">            Busca de Unidades            </a></dd><dd><a id="codigo_funcionalidade_menu_principal_2-4927" href="https://intranet.policiamilitar.mg.gov.br/lite/recursos-humanos/web/" data-aba-menu-principal="2">            Busca de Pessoal           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_2-5762" href="https://bgpm.policiamilitar.mg.gov.br/" data-aba-menu-principal="2">            BGPM           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_2-5807" href="https://ementario.policiamilitar.mg.gov.br" data-aba-menu-principal="2">            Ementário           </a></dd></dl></section><section id="areaMenuB3" class="no" data-aba-menu-principal="3"><dl><dt>Sistemas</dt><dd><a id="codigo_funcionalidade_menu_principal_3-5517" href="https://talentos.policiamilitar.mg.gov.br" data-aba-menu-principal="3">            Banco de Talentos           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_3-4693" href="https://www.sistemaspm.mg.gov.br/sirh-frontend/" data-aba-menu-principal="3">            SIRH           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_3-6928" href="https://institucional.policiamilitar.mg.gov.br/#/area-institucional/48/menu/319" data-aba-menu-principal="3">            Manual do SIRH           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_3-4739" href="https://intranet.policiamilitar.mg.gov.br/lite/seguranca/web/prodemge?url=https://www.sistemaspm.mg.gov.br/pm-sici-web/rest/AutenticaPM/redirecionarHonorarios/" data-aba-menu-principal="3">            Honorários           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_3-7069" href="https://intranet.policiamilitar.mg.gov.br/lite/seguranca/web/prodemge?url=https://www.sistemaspm.mg.gov.br/pm-sici-web/rest/AutenticaPM/comprovarEndereco/" data-aba-menu-principal="3">            Ajuda de Custo - Comprovar Fixação de Residência           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_3-4746" href="https://intranet.policiamilitar.mg.gov.br/legado/pessoal/sistema_movimentacao.asp" data-aba-menu-principal="3">            Sistema de Movimentação           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_3-5685" href="https://intranet.policiamilitar.mg.gov.br/lite/seguranca/web/prodemge?url=https://www.sistemaspm.mg.gov.br/pm-sici-web/rest/AutenticaPM/redirecionarAlmanaque/" data-aba-menu-principal="3">            Almanaque Eletronico           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_3-4691" href="https://intranet.policiamilitar.mg.gov.br/lite/seguranca/web/prodemge?url=https://www.sistemaspm.mg.gov.br/pm-sici-web/rest/AutenticaPM/redirecionarAADP/" data-aba-menu-principal="3">            Compromisso Desempenho           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_3-7007" href="https://intranet.policiamilitar.mg.gov.br/lite/seguranca/web/prodemge?url=https://www.sistemaspm.mg.gov.br/pm-sici-web/rest/AutenticaPM/redirecionarNovaAadp/" data-aba-menu-principal="3">            Nova AADP           </a></dd></dl><dl><dt>Efetivo</dt><dd><a id="codigo_funcionalidade_menu_principal_3-4692" href="https://intranet.policiamilitar.mg.gov.br/lite/seguranca/web/prodemge?url=https://www.sistemaspm.mg.gov.br/pm-sici-web/rest/AutenticaPM/redirecionarServidorMilitar/" data-aba-menu-principal="3">            Resumo de Férias Militar           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_3-5331" href="https://intranet.policiamilitar.mg.gov.br/lite/seguranca/web/prodemge?url=https://www.sistemaspm.mg.gov.br/pm-sici-web/rest/AutenticaPM/redirecionarServidorCivil/" data-aba-menu-principal="3">            Resumo de Férias Civil           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_3-4946" href="https://intranet.policiamilitar.mg.gov.br/lite/recursos-humanos/web/index/view" data-aba-menu-principal="3">            Ficha de pessoal           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_3-5025" href="https://intranet.policiamilitar.mg.gov.br/legado/pessoal/ficha_promocao.asp" data-aba-menu-principal="3">            Ficha de Promoção           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_3-1047" href="https://intranet.policiamilitar.mg.gov.br/legado/Pessoal/pes_rel_locfunc.asp" data-aba-menu-principal="3">            Local Função           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_3-5295" href="https://intranet.policiamilitar.mg.gov.br/legado/pessoal/ficha_promocao_temposervico.asp" data-aba-menu-principal="3">            Ficha de Promoção Tempo de Serviço           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_3-6448" href="https://intranet.policiamilitar.mg.gov.br/lite/seguranca/web/prodemge?url=https://www.sistemaspm.mg.gov.br/pm-sici-web/rest/AutenticaPM/redirecionarPlanoFerias/" data-aba-menu-principal="3">            Solicitação de Férias           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_3-6460" href="https://intranet.policiamilitar.mg.gov.br/lite/seguranca/web/prodemge?url=https://www.sistemaspm.mg.gov.br/pm-sici-web/rest/AutenticaPM/redirecionarPlanoFeriasChefe/" data-aba-menu-principal="3">            Plano de férias (Chefe/Responsável)           </a></dd></dl><dl><dt>Financeiro</dt><dd><a id="codigo_funcionalidade_menu_principal_3-82" href="https://intranet.policiamilitar.mg.gov.br/legado/financeiro/taxasp/default.asp" data-aba-menu-principal="3">            Taxa de Seg. Pública           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_3-4362" href="https://intranet.policiamilitar.mg.gov.br/lite/convenio/web/convenio" data-aba-menu-principal="3">            SIRCONV           </a></dd></dl><dl><dt>Operacional</dt><dd><a id="codigo_funcionalidade_menu_principal_3-6442" href="https://intranet.policiamilitar.mg.gov.br/intranet/app/mapaSupervisao.action" data-aba-menu-principal="3">            Sistema supervisão           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_3-6179" href="https://sigop-qualidade.policiamilitar.mg.gov.br" data-aba-menu-principal="3">            Qualidade           </a></dd></dl><dl><dt>Boletim Interno</dt><dd><a id="codigo_funcionalidade_menu_principal_3-1097" href="https://intranet.policiamilitar.mg.gov.br/legado/Pessoal/Boletim/pesq/bol.asp" data-aba-menu-principal="3">            Consultar BI (anterior 2008)           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_3-42" href="https://intranet.policiamilitar.mg.gov.br/intranet/app/boletim/consulta.action" data-aba-menu-principal="3">            Consultar BI           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_3-4689" href="https://intranet.policiamilitar.mg.gov.br/lite/seguranca/web/prodemge?url=https://www.sistemaspm.mg.gov.br/pm-sici-web/rest/AutenticaPM/redirecionarBoletimNovo/" data-aba-menu-principal="3">            Consultar BI (novo)           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_3-4796" href="https://intranet.policiamilitar.mg.gov.br/lite/seguranca/web/prodemge?url=https://www.sistemaspm.mg.gov.br/pm-sici-web/rest/AutenticaPM/redirecionarBoletimServidor/" data-aba-menu-principal="3">            Boletim do Servidor           </a></dd></dl><dl><dt>Gestão</dt><dd><a id="codigo_funcionalidade_menu_principal_3-1043" href="https://intranet.policiamilitar.mg.gov.br/legado/Pessoal/efetivo_uni.asp" data-aba-menu-principal="3">            Efetivo existente x Unidade           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_3-5074" href="https://intranet.policiamilitar.mg.gov.br/legado/pessoal/ddqod.asp" data-aba-menu-principal="3">            DD/QOD           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_3-6333" href="https://intranet.policiamilitar.mg.gov.br/lite/seguranca/web/prodemge?url=https://www.sistemaspm.mg.gov.br/pm-sici-web/rest/AutenticaPM/redirecionarFolhaPontoCivil/" data-aba-menu-principal="3">            Folha Ponto Civil           </a></dd></dl><dl><dt>Site</dt><dd><a id="codigo_funcionalidade_menu_principal_3-6955" href="https://aniversariantes.policiamilitar.mg.gov.br/#/" data-aba-menu-principal="3">            Aniversariantes           </a></dd></dl><dl><dt>Serviços</dt><dd><a id="codigo_funcionalidade_menu_principal_3-5917" href="https://intranet.policiamilitar.mg.gov.br/lite/seguranca/web/prodemge?url=https://www.sistemaspm.mg.gov.br/pm-sici-web/rest/AutenticaPM/redirecionarCarteira/" data-aba-menu-principal="3">            Solicitar Carteira           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_3-4705" href="https://intranet.policiamilitar.mg.gov.br/lite/simuladorcontracheque/web/contracheque" data-aba-menu-principal="3">            Simulador de Contra-cheque           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_3-2566" href="https://intranet.policiamilitar.mg.gov.br/lite/seguranca/web/prodemge?url=https://www.sistemaspm.mg.gov.br/pm-sici-web/rest/AutenticaPM/redirecionarContraCheque/" data-aba-menu-principal="3">            Demonstrativo de pagamentos e rendimentos           </a></dd></dl><dl><dt>SISCONT PM</dt><dd><a id="codigo_funcionalidade_menu_principal_3-5805" href="https://intranet.policiamilitar.mg.gov.br/lite/seguranca/web/prodemge?url=https://www.sistemaspm.mg.gov.br/pm-sici-web/rest/AutenticaPM/redirecionarSimulacaoContagemTempo/" data-aba-menu-principal="3">            Contagem de Tempo - Simulador           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_3-5250" href="https://intranet.policiamilitar.mg.gov.br/lite/seguranca/web/prodemge?url=https://www.sistemaspm.mg.gov.br/pm-sici-web/rest/AutenticaPM/redirecionarContagemTempo/" data-aba-menu-principal="3">            Contagem de Tempo - Inatividade           </a></dd></dl><dl><dt>Diversos</dt><dd><a id="codigo_funcionalidade_menu_principal_3-4694" href="https://intranet.policiamilitar.mg.gov.br/lite/seguranca/web/prodemge?url=https://www.sistemaspm.mg.gov.br/pm-sici-web/rest/AutenticaPM/redirecionarArmas/" data-aba-menu-principal="3">            Pesquisa de Armamento Particular           </a></dd></dl><dl><dt>Repositório</dt><dd><a id="codigo_funcionalidade_menu_principal_3-6419" href="https://intranet.policiamilitar.mg.gov.br/GestaoArquivo/GestaoArquivo/paginas/pesquisarconteudo.jsf?parametro=169" data-aba-menu-principal="3">            Repositório DF           </a></dd></dl><dl><dt>Assessoria Jurídica</dt><dd><a id="codigo_funcionalidade_menu_principal_3-6889" href="https://intranet.policiamilitar.mg.gov.br/GestaoArquivo/GestaoArquivo/paginas/pesquisarconteudo.jsf?parametro=174" data-aba-menu-principal="3">            Repositório de Assessoria Jurídica           </a></dd></dl></section><section id="areaMenuB7" class="no" data-aba-menu-principal="7"><dl><dt>Portal de Inteligência</dt><dd><a id="codigo_funcionalidade_menu_principal_7-4698" href="https://redesipom.mg.gov.br/" data-aba-menu-principal="7">            Portal de Inteligência           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_7-4908" href="http://simi.policiamilitar.mg.gov.br" data-aba-menu-principal="7">            SiMI           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_7-6379" href="https://intranet.policiamilitar.mg.gov.br/intranet/app/institucional/externo/principalExterno.action?idInstitucional=128&menuInterno=86" data-aba-menu-principal="7">            Painéis de Inteligência           </a></dd></dl><dl><dt>Sistemas</dt><dd><a id="codigo_funcionalidade_menu_principal_7-459" href="https://intranet.policiamilitar.mg.gov.br/legado/Logistica/Catalogo/default.asp" data-aba-menu-principal="7">            Especificação de material           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_7-77" href="https://intranet.policiamilitar.mg.gov.br/legado/logistica/despesasunid/default.asp" data-aba-menu-principal="7">            Controle de Despesas            </a></dd><dd><a id="codigo_funcionalidade_menu_principal_7-4400" href="https://intranet.policiamilitar.mg.gov.br/intendencia/paginas/home.jsf" data-aba-menu-principal="7">            Intendência           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_7-6216" href="https://intranet.policiamilitar.mg.gov.br/lite/siglog/web" data-aba-menu-principal="7">            SiGLog           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_7-5474" href="https://intranet.policiamilitar.mg.gov.br/lite/daop/web" data-aba-menu-principal="7">            Sistema de Gestão Operacional (SiGOp)           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_7-2384" href="https://intranet.policiamilitar.mg.gov.br/intranet/app/metropole/metropoleModuloPrincipal.action" data-aba-menu-principal="7">            Metrópole           </a></dd></dl><dl><dt>Operacional</dt><dd><a id="codigo_funcionalidade_menu_principal_7-5381" href="https://tco.policiamilitar.mg.gov.br" data-aba-menu-principal="7">            TCO           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_7-6777" href="https://patrulharural-web.policiamilitar.mg.gov.br/" data-aba-menu-principal="7">            Policiamento rural           </a></dd></dl><dl><dt>Diversos</dt><dd><a id="codigo_funcionalidade_menu_principal_7-1036" href="https://intranet.policiamilitar.mg.gov.br/legado/Operacoes/Unidades/municipios_unidade.asp" data-aba-menu-principal="7">            Lista de Municípios por unidade           </a></dd></dl><dl><dt>Portal de Serviços DAL</dt><dd><a id="codigo_funcionalidade_menu_principal_7-6322" href="https://os.policiamilitar.mg.gov.br/portal/#/servicos?codUdi=63&codUeop=&equipeId=&termo=" data-aba-menu-principal="7">            Serviços Logísticos           </a></dd></dl><dl><dt>Repositório</dt><dd><a id="codigo_funcionalidade_menu_principal_7-4339" href="https://intranet.policiamilitar.mg.gov.br/GestaoArquivo/GestaoArquivo/paginas/pesquisarconteudo.jsf?parametro=117" data-aba-menu-principal="7">            Doutrina de Emprego Operacional           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_7-6306" href="https://intranet.policiamilitar.mg.gov.br/GestaoArquivo/GestaoArquivo/paginas/pesquisarconteudo.jsf?parametro=146" data-aba-menu-principal="7">            Informativos Logísticos           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_7-4208" href="https://intranet.policiamilitar.mg.gov.br/GestaoArquivo/GestaoArquivo/paginas/pesquisarconteudo.jsf?parametro=110" data-aba-menu-principal="7">            Tutoriais Logísticos           </a></dd></dl><dl><dt>Fardamento</dt><dd><a id="codigo_funcionalidade_menu_principal_7-7192" href="https://institucional.policiamilitar.mg.gov.br/#/area-institucional/50/subpagina/3277" data-aba-menu-principal="7">            RUIPM 2026           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_7-7193" href="https://institucional.policiamilitar.mg.gov.br/#/area-institucional/50/subpagina/3276" data-aba-menu-principal="7">            Lojistas credenciados           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_7-7194" href="https://institucional.policiamilitar.mg.gov.br/#/area-institucional/50/subpagina/3280" data-aba-menu-principal="7">            Catálogo de distintivos           </a></dd></dl></section><section id="areaMenuB4" class="no" data-aba-menu-principal="4"><dl><dt>Profissional</dt><dd><a id="codigo_funcionalidade_menu_principal_4-4696" href="https://intranet.policiamilitar.mg.gov.br/lite/seguranca/web/prodemge?url=https://www.sistemaspm.mg.gov.br/pm-sici-web/rest/AutenticaPM/redirecionarSMB2Notas/" data-aba-menu-principal="4">            Cursos na PM           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_4-4697" href="https://intranet.policiamilitar.mg.gov.br/lite/seguranca/web/prodemge?url=https://www.sistemaspm.mg.gov.br/pm-sici-web/rest/AutenticaPM/redirecionarSMB2LancaNota/" data-aba-menu-principal="4">            Inclusão de notas           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_4-4735" href="https://intranet.policiamilitar.mg.gov.br/lite/seguranca/web/prodemge?url=https://www.sistemaspm.mg.gov.br/pm-sici-web/rest/AutenticaPM/redirecionarSMB2Atos/" data-aba-menu-principal="4">            Relatórios Profissional           </a></dd></dl><dl><dt>Treinamento</dt><dd><a id="codigo_funcionalidade_menu_principal_4-4745" href="https://intranet.policiamilitar.mg.gov.br/legado/ensino/consultar_treinamento.asp" data-aba-menu-principal="4">            Consultar Treinamento           </a></dd></dl><dl><dt>Sistemas</dt><dd><a id="codigo_funcionalidade_menu_principal_4-5585" href="https://ead.policiamilitar.mg.gov.br/" data-aba-menu-principal="4">            EAD Moodle           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_4-4229" href="https://intranet.policiamilitar.mg.gov.br/estacionamento/pages/credencial/solicitacao/main.jsf" data-aba-menu-principal="4">            Estacionamento           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_4-4739" href="https://intranet.policiamilitar.mg.gov.br/lite/seguranca/web/prodemge?url=https://www.sistemaspm.mg.gov.br/pm-sici-web/rest/AutenticaPM/redirecionarHonorarios/" data-aba-menu-principal="4">            Honorários           </a></dd></dl><dl><dt>Colégio Tiradentes</dt><dd><a id="codigo_funcionalidade_menu_principal_4-4734" href="https://intranet.policiamilitar.mg.gov.br/lite/seguranca/web/prodemge?url=https://www.sistemaspm.mg.gov.br/pm-sici-web/rest/AutenticaPM/redirecionarRelatoriosCTPM/" data-aba-menu-principal="4">            Relatórios CTPM           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_4-6945" href="https://sgectpm.policiamilitar.mg.gov.br" data-aba-menu-principal="4">            Sistema de Gestão Escolar (SGE)           </a></dd></dl><dl><dt>TCAF</dt><dd><a id="codigo_funcionalidade_menu_principal_4-5488" href="https://tcaf.policiamilitar.mg.gov.br/#/professor/pesquisa" data-aba-menu-principal="4">            Professor           </a></dd></dl></section><section id="areaMenuB8" class="no" data-aba-menu-principal="8"><dl><dt>Sistemas</dt><dd><a id="codigo_funcionalidade_menu_principal_8-4731" href="https://intranet.policiamilitar.mg.gov.br/saude/app/saude/saudePrincipal.action?menuIntermediario=3" data-aba-menu-principal="8">            SIGS           </a></dd></dl><dl><dt>Ementário</dt><dd><a id="codigo_funcionalidade_menu_principal_8-3409" href="https://intranet.policiamilitar.mg.gov.br/GestaoArquivo/GestaoArquivo/paginas/pesquisarconteudo.jsf?parametro=58" data-aba-menu-principal="8">            Normas de Saúde           </a></dd></dl></section><section id="areaMenuB10" class="no" data-aba-menu-principal="10"><dl><dt>Informática</dt><dd><a id="codigo_funcionalidade_menu_principal_10-6091" href="https://os.policiamilitar.mg.gov.br/atendimento/" data-aba-menu-principal="10">            Ordens de Serviço - Atendimento           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_10-6111" href="https://os.policiamilitar.mg.gov.br/portal/" data-aba-menu-principal="10">            Portal de Serviços           </a></dd></dl><dl><dt>Sistemas</dt><dd><a id="codigo_funcionalidade_menu_principal_10-6129" href="https://intranet.policiamilitar.mg.gov.br/lite/gestao_sitios_repeticao/web/" data-aba-menu-principal="10">            Infratic           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_10-6256" href="https://intranet.policiamilitar.mg.gov.br/lite/infratic-ti/web/index" data-aba-menu-principal="10">            Infratic TI           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_10-6927" href="https://lpdf.policiamilitar.mg.gov.br/" data-aba-menu-principal="10">            LPDF           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_10-6944" href="https://pmmg.atlassian.net/wiki/external/ZTZkODVkZWFjOTM5NDJlMDkwYzMzNjFhZTcwNTNiMjc" data-aba-menu-principal="10">            Terminal Prodemge - Tutorial           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_10-7111" href="https://forms-pm.policiamilitar.mg.gov.br" data-aba-menu-principal="10">            Forms-PM           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_10-7133" href="https://datalake.policiamilitar.mg.gov.br/#/dashboards" data-aba-menu-principal="10">            Data LakeHousePM           </a></dd></dl><dl><dt>CGA / GEOPM</dt><dd><a id="codigo_funcionalidade_menu_principal_10-6684" href="https://geosite.policiamilitar.mg.gov.br" data-aba-menu-principal="10">            Portal GeoPM           </a></dd></dl><dl><dt>Arquivo Indicadores RMBH</dt><dd><a id="codigo_funcionalidade_menu_principal_10-4370" href="https://intranet.policiamilitar.mg.gov.br/GestaoArquivo/GestaoArquivo/paginas/pesquisarconteudo.jsf?parametro=118" data-aba-menu-principal="10">            DCO           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_10-4451" href="https://intranet.policiamilitar.mg.gov.br/GestaoArquivo/GestaoArquivo/paginas/pesquisarconteudo.jsf?parametro=120" data-aba-menu-principal="10">            1 RPM           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_10-4469" href="https://intranet.policiamilitar.mg.gov.br/GestaoArquivo/GestaoArquivo/paginas/pesquisarconteudo.jsf?parametro=138" data-aba-menu-principal="10">            CPE           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_10-4452" href="https://intranet.policiamilitar.mg.gov.br/GestaoArquivo/GestaoArquivo/paginas/pesquisarconteudo.jsf?parametro=121" data-aba-menu-principal="10">            2 RPM           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_10-4453" href="https://intranet.policiamilitar.mg.gov.br/GestaoArquivo/GestaoArquivo/paginas/pesquisarconteudo.jsf?parametro=122" data-aba-menu-principal="10">            3 RPM           </a></dd></dl><dl><dt>Arquivo Indicadores I</dt><dd><a id="codigo_funcionalidade_menu_principal_10-4454" href="https://intranet.policiamilitar.mg.gov.br/GestaoArquivo/GestaoArquivo/paginas/pesquisarconteudo.jsf?parametro=123" data-aba-menu-principal="10">            4 RPM           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_10-4455" href="https://intranet.policiamilitar.mg.gov.br/GestaoArquivo/GestaoArquivo/paginas/pesquisarconteudo.jsf?parametro=124" data-aba-menu-principal="10">            5 RPM           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_10-4456" href="https://intranet.policiamilitar.mg.gov.br/GestaoArquivo/GestaoArquivo/paginas/pesquisarconteudo.jsf?parametro=125" data-aba-menu-principal="10">            6 RPM           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_10-4457" href="https://intranet.policiamilitar.mg.gov.br/GestaoArquivo/GestaoArquivo/paginas/pesquisarconteudo.jsf?parametro=126" data-aba-menu-principal="10">            7 RPM           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_10-4458" href="https://intranet.policiamilitar.mg.gov.br/GestaoArquivo/GestaoArquivo/paginas/pesquisarconteudo.jsf?parametro=127" data-aba-menu-principal="10">            8 RPM           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_10-4459" href="https://intranet.policiamilitar.mg.gov.br/GestaoArquivo/GestaoArquivo/paginas/pesquisarconteudo.jsf?parametro=128" data-aba-menu-principal="10">            9 RPM           </a></dd></dl><dl><dt>Arquivo Indicadores II</dt><dd><a id="codigo_funcionalidade_menu_principal_10-4460" href="https://intranet.policiamilitar.mg.gov.br/GestaoArquivo/GestaoArquivo/paginas/pesquisarconteudo.jsf?parametro=129" data-aba-menu-principal="10">            10 RPM           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_10-4461" href="https://intranet.policiamilitar.mg.gov.br/GestaoArquivo/GestaoArquivo/paginas/pesquisarconteudo.jsf?parametro=130" data-aba-menu-principal="10">            11 RPM           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_10-4462" href="https://intranet.policiamilitar.mg.gov.br/GestaoArquivo/GestaoArquivo/paginas/pesquisarconteudo.jsf?parametro=131" data-aba-menu-principal="10">            12 RPM           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_10-4463" href="https://intranet.policiamilitar.mg.gov.br/GestaoArquivo/GestaoArquivo/paginas/pesquisarconteudo.jsf?parametro=132" data-aba-menu-principal="10">            13 RPM           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_10-4464" href="https://intranet.policiamilitar.mg.gov.br/GestaoArquivo/GestaoArquivo/paginas/pesquisarconteudo.jsf?parametro=133" data-aba-menu-principal="10">            14 RPM           </a></dd></dl><dl><dt>Arquivo Indicadores III</dt><dd><a id="codigo_funcionalidade_menu_principal_10-4465" href="https://intranet.policiamilitar.mg.gov.br/GestaoArquivo/GestaoArquivo/paginas/pesquisarconteudo.jsf?parametro=134" data-aba-menu-principal="10">            15 RPM           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_10-4466" href="https://intranet.policiamilitar.mg.gov.br/GestaoArquivo/GestaoArquivo/paginas/pesquisarconteudo.jsf?parametro=135" data-aba-menu-principal="10">            16 RPM           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_10-4467" href="https://intranet.policiamilitar.mg.gov.br/GestaoArquivo/GestaoArquivo/paginas/pesquisarconteudo.jsf?parametro=136" data-aba-menu-principal="10">            17 RPM           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_10-4468" href="https://intranet.policiamilitar.mg.gov.br/GestaoArquivo/GestaoArquivo/paginas/pesquisarconteudo.jsf?parametro=137" data-aba-menu-principal="10">            18 RPM           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_10-4661" href="https://intranet.policiamilitar.mg.gov.br/GestaoArquivo/GestaoArquivo/paginas/pesquisarconteudo.jsf?parametro=143" data-aba-menu-principal="10">            19 RPM           </a></dd></dl><dl><dt>LINK</dt><dd><a id="codigo_funcionalidade_menu_principal_10-6567" href="https://drive.google.com/file/d/18cx92zHt1jiuso-eQgKzgMPw2totX20L/view?usp=drive_link" data-aba-menu-principal="10">            Catálogo de TIC           </a></dd></dl><dl><dt>Conteúdo</dt><dd><a id="codigo_funcionalidade_menu_principal_10-6888" href="https://institucional.policiamilitar.mg.gov.br/#/home" data-aba-menu-principal="10">            Portal da Unidade           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_10-1854" href="https://intranet.policiamilitar.mg.gov.br/portal-adm/app/portal/admGeralPrincipal.action" data-aba-menu-principal="10">            PortalPM - Manutenção           </a></dd></dl></section><section id="areaMenuB11" class="no" data-aba-menu-principal="11"><dl><dt>Sistemas</dt><dd><a id="codigo_funcionalidade_menu_principal_11-4164" href="https://intranet.policiamilitar.mg.gov.br/SICOR/paginas/home/telaInicial.jsf" data-aba-menu-principal="11">            SICOR           </a></dd><dd><a id="codigo_funcionalidade_menu_principal_11-6795" href="http://sispri.nexus.mg.gov.br" data-aba-menu-principal="11">            SISPRI           </a></dd></dl></section></div><div id="div_resultado_pesquisa_funcionalidade" class="ar ma no"></div></div><div class="c-user"><div class="su menu-fechar"><span><a href="javascript:menu2023()" class="fe" title="Fechar"></a></span></div><img alt="1453208" class="avatar-g" width="180" height="180" src="https://intranet.policiamilitar.mg.gov.br/GestaoFotos/rest/gestaoFotos/retornaFoto/1453208/normal" onclick="document.getElementById('detalheUsr').classList.toggle('at')" onerror="carregarImagemPadrao()"><div id="detalheUsr" class="no-mobile"><h1 class="c"> 03 Sgt Cleriston Tameirao EM15RPM</h1><div class="margem"><div class="m-b"><a href="#" onclick="this.nextElementSibling.classList.toggle('no');this.classList.toggle('ne');return false" class="item"><span class="tc direita menor" id="statusFinal">Normal</span><span id="icStatus" class="ic de usr-status-1">Status</span></a><div class="ma no"><div class="card"><a href="#" onclick="mudaStatusUsuario(this);return false" data-id="1" data-descricao="Normal" class="item se">Normal</a><a href="#" onclick="mudaStatusUsuario(this);return false" data-id="2" data-descricao="Férias" class="item ">Férias</a><a href="#" onclick="mudaStatusUsuario(this);return false" data-id="3" data-descricao="Licença" class="item ">Licença</a><a href="#" onclick="mudaStatusUsuario(this);return false" data-id="4" data-descricao="Em curso" class="item ">Em curso</a><a href="#" onclick="mudaStatusUsuario(this);return false" data-id="5" data-descricao="Supervisão" class="item ">Supervisão</a><a href="#" onclick="mudaStatusUsuario(this);return false" data-id="6" data-descricao="TPB" class="item ">TPB</a></div></div><a href="javascript:void(0)" onclick="this.nextElementSibling.classList.toggle('no');this.classList.toggle('ne');return false" class="item"><span class="tc direita menor" id="statusFinal">Pessoal</span><span class="ic de carta">Caixa</span></a><div class="no ma"><div class="card" id="caixas-list"><div class="su direita rel"><a href="https://intranet.policiamilitar.mg.gov.br/configuracaoPA/paginas/config/config.jsf" class="compart" title="Compartilhar"></a></div><a href="javascript:void(0)" id="c-50471" class="item se" onclick="javascript:selecionaCaixaPA('50471', this); return false">        Pessoal       </a><a href="javascript:void(0)" id="c-21222" class="item " onclick="javascript:selecionaCaixaPA('21222', this)">            ALMOX/ 15 RPM          </a></div></div><div class="su direita rel no"><a href="https://intranet.policiamilitar.mg.gov.br/configuracaoPA/paginas/config/config.jsf" class="ad2" title="Mais configurações"></a></div><a href="javascript:void(0)" class="item" onclick="this.nextElementSibling.classList.toggle('no');this.classList.toggle('ne');return false"><span class="ic de conf">Configurações</span></a><div class="no ma"><div class="card"><a href="https://intranet.policiamilitar.mg.gov.br/auth-pmmg/app/cadAlteracaoSenha.action?act=" class="item">Alterar senha</a><a href="https://intranet.policiamilitar.mg.gov.br/configuracaoPA/paginas/config/config.jsf" class="item">Senatran</a><a href="https://intranet.policiamilitar.mg.gov.br/configuracaoPA/paginas/config/config.jsf" class="item">Configuração do PA</a><a href="#" class="item at no" onclick="this.classList.toggle('at');return false"><span class="switch tam-switch direita"></span>Autenticação em 2 fatores</a></div></div><a href="javascript:void(0)" class="item" onclick="this.nextElementSibling.classList.toggle('no');this.classList.toggle('ne');return false" onclick2="document.getElementById('cor1').click();return false"><span class="ic direita ic-tema"></span><span class="ic de tema">Tema</span></a><div class="ma no"><div class="flex sel-tema"><a href="javascript:temaIntranet()" class="ic-tema-0 card"><span class="ic ch2"></span></a><a href="javascript:temaIntranet('tema-4')" class="ic-tema-4 card"><span class="ic ch2"></span></a><a href="javascript:temaIntranet('tema-1')" class="ic-tema-1 card"><span class="ic ch2"></span></a><a href="javascript:temaIntranet('tema-2')" class="ic-tema-2 card"><span class="ic ch2"></span></a><a href="javascript:temaIntranet('tema-3')" class="ic-tema-3 card"><span class="ic ch2"></span></a></div></div><a href="javascript:void(0)" class="item" id="btnTemaEscuro" onclick="temaEscuro(this);return false"><span class="switch tam-switch direita"></span><span class="ic de lua">Modo escuro</span></a></div><a href="https://intranet.policiamilitar.mg.gov.br/autenticacaosso/login.jsf" class="card ci c ne item">Sair</a></div></div></div></div><svg class="marcadagua" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="marcadagua" patternUnits="userSpaceOnUse" x="0" y="0" width="100" height="100"><text style="font:20px/1 monospace" x="-390" y="420" transform="rotate(-45 -600 -250)">1453208</text></pattern></defs><rect fill="url(#marcadagua)" width="100%" height="100%" /></svg> 
+		<div id="m">
+			<h1>SIRCONV</h1>
+		</div>
+		<div id="n"><a href="/">Principal</a> / <a href="/lite/convenio/web/">SIRCONV</a></div>
+		<div id="c">
+							<div id="c1">
+					<dl>
+													<dt>Cadastro</dt>
+																<dd><a href="/lite/convenio/web/convenio" class="">SIRCONV</a></dd>
+																	<dd><a href="/lite/convenio/web/auxiliar" class="">Auxiliares</a></dd>
+																	<dd><a href="/lite/convenio/web/concedente" class="at">Concedentes</a></dd>
+																	<dd><a href="/lite/convenio/web/manuais" class="">Manuais</a></dd>
+																			</dl>
+				</div>
+						<div id="c2">
+								<div class="barra item">
+    <h2>
+                    <a href='/lite/convenio/web/convenio?p_todasUnidades=&p_unidade=&p_status=&p_dtInicio1=null&p_dtInicio2=null&p_dtFim1=null&p_dtFim2=null' class="ant" title="Voltar"></a>
+                PM CARLOS CHAGAS    <span>
+        <a href="#" title="Cadastro 23/3/2017" class="hi"></a>
+        <a class="ed" href="/lite/convenio/web/concedente/update?id=2705" title="Editar"></a>        <a class="ex" href="/lite/convenio/web/concedente/delete?id=2705" title="Excluir registro" data-confirm="Deseja exluir este registro?" data-method="post"></a>            </span>
+    </h2>
+</div>
+<div class="barra item info-convenio">
+    <div class="flex-linha">
+        <div class="flex-coluna">
+            <div class="tc">Razão Social</div>PREFEITURA MUNICIPAL CARLOS CHAGAS (Prefeitura)        </div>
+        <div class="flex-coluna">
+                <div class="tc">Contato</div>ACASSIO VIEIRA DE AZEREDO COUT            </div>        <div class="flex-coluna">
+            <div class="tc">CNPJ</div>
+            18.477.315/0001-90        </div>
+        <div class="flex-coluna">
+            <div class="tc">Logradouro</div>
+            AVENIDA GABRIEL PASSOS, 34, PREFEITURA, CENTRO, CARLOS CHAGAS / MG        </div>
+        <div class="flex-coluna tam-m">
+            <div class="tc">CEP</div>39.864-000        </div>
+    </div>
+</div>
+
+    <div>
+        <h2>Convênios firmados</h2>
+                    <a href="/lite/convenio/web/convenio/view?id=1495221822" class="item flex-linha ci ">
+                <div class="flex-coluna tam-g">
+                    <span class='ic de ok ne'>Finalizado</span></div>
+                <div class="flex-coluna tam-m">
+                    <div class="tc menor">Código</div>1495221822                </div>
+                <div class="flex-coluna">
+                    <div class="tc menor">Nº face</div>04/2017                </div>
+                <div class="flex-coluna">
+                    <div class="tc menor">Preposto</div> 01 Ten Rodrigo 58 BPM                </div>
+                <div class="flex-coluna tam-m">
+                    <div class="tc menor">Início</div>02/01/2017                </div>
+                <div class="flex-coluna tam-m">
+                    <div class="tc menor">Término</div>31/12/2018                </div>
+                <div class="flex-coluna">
+                    <div class="tc menor">Valor</div>R$ 56.000,00                </div>
+                <div class="flex-coluna">
+                    <div class="tc menor">Unidade</div>24 CIA PM IND815 RPM                                                                            </div>
+            </a>
+
+                    <a href="/lite/convenio/web/convenio/view?id=1551097252" class="item flex-linha ci ci">
+                <div class="flex-coluna tam-g">
+                    <span class='ic de varios-doc ne'>Tem aditivo</span></div>
+                <div class="flex-coluna tam-m">
+                    <div class="tc menor">Código</div>1551097252                </div>
+                <div class="flex-coluna">
+                    <div class="tc menor">Nº face</div>01/2019                </div>
+                <div class="flex-coluna">
+                    <div class="tc menor">Preposto</div> 01 Ten Welington 19 BPM                </div>
+                <div class="flex-coluna tam-m">
+                    <div class="tc menor">Início</div>01/02/2019                </div>
+                <div class="flex-coluna tam-m">
+                    <div class="tc menor">Término</div>31/12/2019                </div>
+                <div class="flex-coluna">
+                    <div class="tc menor">Valor</div>R$ 34.363,56                </div>
+                <div class="flex-coluna">
+                    <div class="tc menor">Unidade</div>24 CIA PM IND815 RPM                                                                            </div>
+            </a>
+
+                    <a href="/lite/convenio/web/convenio/view?id=1581423975" class="item flex-linha ci ">
+                <div class="flex-coluna tam-g">
+                    <span class='ic de erro ne'>Cancelado</span></div>
+                <div class="flex-coluna tam-m">
+                    <div class="tc menor">Código</div>1581423975                </div>
+                <div class="flex-coluna">
+                    <div class="tc menor">Nº face</div>01/2019-ADT                </div>
+                <div class="flex-coluna">
+                    <div class="tc menor">Preposto</div> Aluno Alex Torres EFO                </div>
+                <div class="flex-coluna tam-m">
+                    <div class="tc menor">Início</div>01/11/2019                </div>
+                <div class="flex-coluna tam-m">
+                    <div class="tc menor">Término</div>31/12/2019                </div>
+                <div class="flex-coluna">
+                    <div class="tc menor">Valor</div>R$ 2.400,00                </div>
+                <div class="flex-coluna">
+                    <div class="tc menor">Unidade</div>24 CIA PM IND815 RPM                                                                            </div>
+            </a>
+
+                    <a href="/lite/convenio/web/convenio/view?id=1581596844" class="item flex-linha ci ">
+                <div class="flex-coluna tam-g">
+                    <span class='ic de ok ne'>Finalizado</span></div>
+                <div class="flex-coluna tam-m">
+                    <div class="tc menor">Código</div>1581596844                </div>
+                <div class="flex-coluna">
+                    <div class="tc menor">Nº face</div>01/2020                </div>
+                <div class="flex-coluna">
+                    <div class="tc menor">Preposto</div> 01 Ten Welington 19 BPM                </div>
+                <div class="flex-coluna tam-m">
+                    <div class="tc menor">Início</div>23/01/2020                </div>
+                <div class="flex-coluna tam-m">
+                    <div class="tc menor">Término</div>31/12/2020                </div>
+                <div class="flex-coluna">
+                    <div class="tc menor">Valor</div>R$ 36.763,56                </div>
+                <div class="flex-coluna">
+                    <div class="tc menor">Unidade</div>24 CIA PM IND815 RPM                                                                            </div>
+            </a>
+
+                    <a href="/lite/convenio/web/convenio/view?id=1612200050" class="item flex-linha ci ci">
+                <div class="flex-coluna tam-g">
+                    <span class='ic de varios-doc ne'>Tem aditivo</span></div>
+                <div class="flex-coluna tam-m">
+                    <div class="tc menor">Código</div>1612200050                </div>
+                <div class="flex-coluna">
+                    <div class="tc menor">Nº face</div>001.24/2021                </div>
+                <div class="flex-coluna">
+                    <div class="tc menor">Preposto</div> 01 Ten Welington 19 BPM                </div>
+                <div class="flex-coluna tam-m">
+                    <div class="tc menor">Início</div>29/01/2021                </div>
+                <div class="flex-coluna tam-m">
+                    <div class="tc menor">Término</div>31/12/2022                </div>
+                <div class="flex-coluna">
+                    <div class="tc menor">Valor</div>R$ 120.000,00                </div>
+                <div class="flex-coluna">
+                    <div class="tc menor">Unidade</div>24 CIA PM IND815 RPM                                                                            </div>
+            </a>
+
+                    <a href="/lite/convenio/web/convenio/view?id=1626347754" class="item flex-linha ci ">
+                <div class="flex-coluna tam-g">
+                    <span class='ic de ok ne'>Finalizado</span></div>
+                <div class="flex-coluna tam-m">
+                    <div class="tc menor">Código</div>1626347754                </div>
+                <div class="flex-coluna">
+                    <div class="tc menor">Nº face</div>001.24/2021 ADT                </div>
+                <div class="flex-coluna">
+                    <div class="tc menor">Preposto</div> 01 Ten Abner Cassiel 19 BPM                </div>
+                <div class="flex-coluna tam-m">
+                    <div class="tc menor">Início</div>15/06/2021                </div>
+                <div class="flex-coluna tam-m">
+                    <div class="tc menor">Término</div>31/12/2022                </div>
+                <div class="flex-coluna">
+                    <div class="tc menor">Valor</div>R$ 106.400,00                </div>
+                <div class="flex-coluna">
+                    <div class="tc menor">Unidade</div>24 CIA PM IND815 RPM                                                                            </div>
+            </a>
+
+                    <a href="/lite/convenio/web/convenio/view?id=1674054399" class="item flex-linha ci ">
+                <div class="flex-coluna tam-g">
+                    <span class='ic de ok ne'>Finalizado</span></div>
+                <div class="flex-coluna tam-m">
+                    <div class="tc menor">Código</div>1674054399                </div>
+                <div class="flex-coluna">
+                    <div class="tc menor">Nº face</div>001.24/2021 ADT-ADT                </div>
+                <div class="flex-coluna">
+                    <div class="tc menor">Preposto</div> 01 Ten Abner Cassiel 19 BPM                </div>
+                <div class="flex-coluna tam-m">
+                    <div class="tc menor">Início</div>18/10/2022                </div>
+                <div class="flex-coluna tam-m">
+                    <div class="tc menor">Término</div>31/12/2023                </div>
+                <div class="flex-coluna">
+                    <div class="tc menor">Valor</div>R$ 108.000,00                </div>
+                <div class="flex-coluna">
+                    <div class="tc menor">Unidade</div>24 CIA PM IND815 RPM                                                                            </div>
+            </a>
+
+                    <a href="/lite/convenio/web/convenio/view?id=1675953094" class="item flex-linha ci ">
+                <div class="flex-coluna tam-g">
+                    <span class='ic de ok ne'>Finalizado</span></div>
+                <div class="flex-coluna tam-m">
+                    <div class="tc menor">Código</div>1675953094                </div>
+                <div class="flex-coluna">
+                    <div class="tc menor">Nº face</div>69/2022                </div>
+                <div class="flex-coluna">
+                    <div class="tc menor">Preposto</div> 01 Ten Awderclaner BPM MAMB                </div>
+                <div class="flex-coluna tam-m">
+                    <div class="tc menor">Início</div>01/01/2023                </div>
+                <div class="flex-coluna tam-m">
+                    <div class="tc menor">Término</div>31/12/2024                </div>
+                <div class="flex-coluna">
+                    <div class="tc menor">Valor</div>R$ 32.400,00                </div>
+                <div class="flex-coluna">
+                    <div class="tc menor">Unidade</div>BPM MAMB/CPE                                                                                    </div>
+            </a>
+
+                    <a href="/lite/convenio/web/convenio/view?id=1704459024" class="item flex-linha ci ">
+                <div class="flex-coluna tam-g">
+                    <span class='ic de ok ne'>Finalizado</span></div>
+                <div class="flex-coluna tam-m">
+                    <div class="tc menor">Código</div>1704459024                </div>
+                <div class="flex-coluna">
+                    <div class="tc menor">Nº face</div>01.24/2024                </div>
+                <div class="flex-coluna">
+                    <div class="tc menor">Preposto</div> 02 Ten Fernando 24 CIA PM IND                </div>
+                <div class="flex-coluna tam-m">
+                    <div class="tc menor">Início</div>04/01/2024                </div>
+                <div class="flex-coluna tam-m">
+                    <div class="tc menor">Término</div>31/03/2025                </div>
+                <div class="flex-coluna">
+                    <div class="tc menor">Valor</div>R$ 108.000,00                </div>
+                <div class="flex-coluna">
+                    <div class="tc menor">Unidade</div>24 CIA PM IND815 RPM                                                                            </div>
+            </a>
+
+                    <a href="/lite/convenio/web/convenio/view?id=1743422322" class="item flex-linha ci ">
+                <div class="flex-coluna tam-g">
+                    <span class='ic de ok ne'>Finalizado</span></div>
+                <div class="flex-coluna tam-m">
+                    <div class="tc menor">Código</div>1743422322                </div>
+                <div class="flex-coluna">
+                    <div class="tc menor">Nº face</div>09.24/2025                </div>
+                <div class="flex-coluna">
+                    <div class="tc menor">Preposto</div> 02 Ten Fernando 24 CIA PM IND                </div>
+                <div class="flex-coluna tam-m">
+                    <div class="tc menor">Início</div>01/04/2025                </div>
+                <div class="flex-coluna tam-m">
+                    <div class="tc menor">Término</div>31/03/2026                </div>
+                <div class="flex-coluna">
+                    <div class="tc menor">Valor</div>R$ 86.400,00                </div>
+                <div class="flex-coluna">
+                    <div class="tc menor">Unidade</div>24 CIA PM IND815 RPM                                                                            </div>
+            </a>
+
+                    <a href="/lite/convenio/web/convenio/view?id=1752509045" class="item flex-linha  ">
+                <div class="flex-coluna tam-g">
+                    <span class='ic de es ne'>Aberto</span></div>
+                <div class="flex-coluna tam-m">
+                    <div class="tc menor">Código</div>1752509045                </div>
+                <div class="flex-coluna">
+                    <div class="tc menor">Nº face</div>18/2025                </div>
+                <div class="flex-coluna">
+                    <div class="tc menor">Preposto</div> 01 Ten Awderclaner BPM MAMB                </div>
+                <div class="flex-coluna tam-m">
+                    <div class="tc menor">Início</div>30/04/2025                </div>
+                <div class="flex-coluna tam-m">
+                    <div class="tc menor">Término</div>30/12/2028                </div>
+                <div class="flex-coluna">
+                    <div class="tc menor">Valor</div>R$ 68.310,00                </div>
+                <div class="flex-coluna">
+                    <div class="tc menor">Unidade</div>BPM MAMB/CPE                                                                                    </div>
+            </a>
+
+                    <a href="/lite/convenio/web/convenio/view?id=1777300387" class="item flex-linha  ">
+                <div class="flex-coluna tam-g">
+                    <span class='ic de es ne'>Aberto</span></div>
+                <div class="flex-coluna tam-m">
+                    <div class="tc menor">Código</div>1777300387                </div>
+                <div class="flex-coluna">
+                    <div class="tc menor">Nº face</div>02.24/2026                </div>
+                <div class="flex-coluna">
+                    <div class="tc menor">Preposto</div> 02 Ten Fernando 24 CIA PM IND                </div>
+                <div class="flex-coluna tam-m">
+                    <div class="tc menor">Início</div>10/04/2026                </div>
+                <div class="flex-coluna tam-m">
+                    <div class="tc menor">Término</div>31/03/2027                </div>
+                <div class="flex-coluna">
+                    <div class="tc menor">Valor</div>R$ 90.000,00                </div>
+                <div class="flex-coluna">
+                    <div class="tc menor">Unidade</div>24 CIA PM IND815 RPM                                                                            </div>
+            </a>
+
+            </div>
+			</div>
+		</div>
+	</div>
+	<script type="text/javascript">
+		var su = function() {
+			window.open(encodeURI('https://intranet.policiamilitar.mg.gov.br/PAWeb/app/popEnviarMensagem.action?act=load&destinatario=130805&assunto=Sistema+de+Convenio/Sugestao'), 'Sugestão', 'toolbar=no,scrollbars=no,resizable=no,top=300,left=300,_blank,width=600,height=450');
+		};
+
+		var ma = function() {
+			window.open(encodeURI('/lite/convenio/web/manuais'), 'Manuais', '_blank,toolbar=no,scrollbars=no,resizable=no,top=300,left=300,width=500,height=300,resizable=false');
+		};
+	</script>
+
+	<div id="r">Polícia Militar de Minas Gerais © 2015 CTS</div>
+	<script src="https://intranet.policiamilitar.mg.gov.br/static/js/intranet.js"></script></body>
+
+</html>

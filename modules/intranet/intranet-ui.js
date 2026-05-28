@@ -403,7 +403,7 @@ export class UIModule {
         if (isSicorPage && this.modules['SICOR']) {
              moduleItems += `
                 <div id="config-sicor-btn" class="sispmg-menu-item">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M12 9.5a2.5 2.5 0 110 5 2.5 2.5 0 010-5zm0 1.5a1 1 0 100 2 1 1 0 000-2z" /><path fill-rule="evenodd" clip-rule="evenodd" d="M11.294 2.05a1 1 0 011.412 0l.544.544a1 1 0 001.02.29l1.242-.43a1 1 0 011.173.743l.26 1.282a1 1 0 00.75.75l1.282.26a1 1 0 01.743 1.173l-.43 1.242a1 1 0 00.29 1.02l.544.544a1 1 0 010 1.412l-.544.544a1 1 0 00-.29 1.02l.43 1.242a1 1 0 01-.743 1.173l-1.282.26a1 1 0 00-.75.75l-.26 1.282a1 1 0 01-1.173.743l-1.242-.43a1 1 0 00-1.02.29l-.544.544a1 1 0 01-1.412 0l-.544-.544a1 1 0 00-1.02-.29l-1.242.43a1 1 0 01-1.173-.743l-.26-1.282a1 1 0 00-.75-.75l-1.282-.26a1 1 0 01-.743-1.173l.43-1.242a1 1 0 00-.29-1.02l-.544-.544a1 1 0 010-1.412l.544-.544a1 1 0 00.29-1.02l-.43-1.242a1 1 0 01.743-1.173l1.282-.26a1 1 0 00.75-.75l.26-1.282a1 1 0 011.173-.743l1.242.43a1 1 0 001.02.29l.544-.544zM12 7.75a4.25 4.25 0 100 8.5 4.25 4.25 0 000-8.5z" /></svg>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M12 9.5a2.5 2.5 0 110 5 2.5 2.5 0 010-5zm0 1.5a1 1 0 100 2 1 1 0 000-2z" /><path fill-rule="evenodd" clip-rule="evenodd" d="M11.294 2.05a1 1 0 011.412 0l.544.544a1 1 0 001.02.29l1.242-.43a1 1 0 011.173.743l.26 1.282a1 1 0 00.75.75l1.282.26a1 1 0 01.743 1.173l-.43 1.242a1 1 0 00.29 1.02l.544.544a1 1 0 010 1.412l-.544.544a1 1 0 00-.29 1.02l.43 1.242a1 1 0 01-.743 1.173l-1.282.26a1 1 0 00-.75.75l-.26 1.282a1 1 0 01-1.173.743l-1.242-.43a1 1 0 00-1.02.29l-.544.544a1 1 0 01-1.412 0l-.544-.544a1 1 0 00-1.02-.29l-1.242.43a1 1 0 01-1.173-.743l-.26-1.282a1 1 0 00-.75-.75l-1.282-.26a1 1 0 01-.743-1.173l.43-1.242a1 1 0 00-.29-1.02l-.544-.544a1 1 0 010-1.412l.544-.544a1 1 0 00.29-1.02l-.43-1.242a1 1 0 01.743-1.173l1.282-.26a1 1 0 00.75-.75l.26-1.282a1 1 0 011.173-.743l1.242.43a1 1 0 001.02.29l.544.544zM12 7.75a4.25 4.25 0 100 8.5 4.25 4.25 0 000-8.5z" /></svg>
                     <span>Configurar Módulo SICOR</span>
                 </div>
             `;
@@ -421,6 +421,14 @@ export class UIModule {
                 </div>
             `;
         }
+        if (isSirconvConveniosPage && this.modules['SIRCONV Dashboard']) {
+            moduleItems += `
+               <div id="sirconv-dashboard-btn" class="sispmg-menu-item">
+                   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
+                   <span>Dashboard de Convênios</span>
+               </div>
+           `;
+       }
 
         // <-- ADICIONADO: Item do menu para Extração de Unidades -->
         const isUnidadesPage = window.location.href.startsWith('https://intranet.policiamilitar.mg.gov.br/legado/operacoes/unidades/');
@@ -493,6 +501,14 @@ export class UIModule {
         if (sirconvConveniosButton && this.modules['Extração de Convênios']) {
              sirconvConveniosButton.addEventListener('click', () => {
                 this.modules['Extração de Convênios'].showConfig();
+                this.closeHeaderMenu();
+            });
+        }
+
+        const sirconvDashboardButton = menu.querySelector('#sirconv-dashboard-btn');
+        if (sirconvDashboardButton && this.modules['SIRCONV Dashboard']) {
+            sirconvDashboardButton.addEventListener('click', () => {
+                this.modules['SIRCONV Dashboard'].showDashboard();
                 this.closeHeaderMenu();
             });
         }
