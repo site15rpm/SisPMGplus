@@ -1016,6 +1016,19 @@ export class SirconvDashboardModule {
                 corTextoLiquidado = isExcedido ? '#dc3545' : '#155724';
             }
 
+            const hasAtraso = conv.pendencias?.some(p => p.tipo === 'atraso_liquidacao');
+            const hasExcesso = conv.pendencias?.some(p => p.tipo === 'excesso_valor');
+
+            let pendenciasHtml = '';
+            if (hasAtraso || hasExcesso) {
+                pendenciasHtml = `
+                    <div class="sispmg-pendencias-container" style="display: inline-flex; gap: 5px; margin-left: 10px; vertical-align: middle;">
+                        ${hasAtraso ? '<i class="fas fa-clock" title="Atraso na Liquidação" style="color: #dc3545; font-size: 14px;"></i>' : ''}
+                        ${hasExcesso ? '<i class="fas fa-exclamation-triangle" title="Excesso de Valor" style="color: #dc3545; font-size: 14px;"></i>' : ''}
+                    </div>
+                `;
+            }
+
             return `
                 <tr class="sispmg-clickable-row ${isAudited ? 'sispmg-row-audited' : ''}" 
                     onclick="window.SisPMG_SirconvDashboard.loadAuditData('${conv.ID}')">
@@ -1032,7 +1045,10 @@ export class SirconvDashboardModule {
                             <div style="background: ${corProgresso}; height: 100%; width: ${progresso > 100 ? 100 : progresso}%;"></div>
                         </div>
                     </td>
-                    <td style="text-align: center;"><span class="sispmg-status-badge ${statusLabel === 'Vigente' ? 'sispmg-status-vigente' : 'sispmg-status-outros'}">${statusLabel}</span></td>
+                    <td style="text-align: center; white-space: nowrap;">
+                        <span class="sispmg-status-badge ${statusLabel === 'Vigente' ? 'sispmg-status-vigente' : 'sispmg-status-outros'}">${statusLabel}</span>
+                        ${pendenciasHtml}
+                    </td>
                 </tr>
             `;
         }).join('');
