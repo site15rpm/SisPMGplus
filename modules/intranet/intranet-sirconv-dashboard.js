@@ -169,6 +169,89 @@ export class SirconvDashboardModule {
         this.fetchConveniosData();
     }
 
+    showFilterSidebar() {
+        const layout = document.getElementById('sispmg-dashboard-layout');
+        const sidebar = document.getElementById('sispmg-dashboard-sidebar');
+        
+        if (!layout || !sidebar) return;
+
+        layout.classList.remove('audit-active');
+        layout.classList.add('filter-active');
+        sidebar.classList.add('active');
+
+        const municipios = [...new Set(this.conveniosData.map(c => this.getMunicipioClean(c.CONCEDENTE)))].sort();
+
+        sidebar.innerHTML = `
+            <div style="display: flex; flex-direction: column; height: 100%;">
+                <h2 style="color: #574e2d; font-size: 18px; border-bottom: 2px solid #b3a368; padding-bottom: 10px; margin-top: 0; margin-bottom: 20px;">
+                    <i class="fas fa-filter"></i> Filtros de Auditoria
+                </h2>
+
+                <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 20px;">
+                    <div>
+                        <label style="display: block; font-weight: 600; margin-bottom: 8px; font-size: 13px;">Tipo de Pendência:</label>
+                        <select id="sispmg-filter-tipo" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #dcd3c5; background: #fff;">
+                            <option value="todos">Todas as Pendências</option>
+                            <option value="atraso_liquidacao">Atraso na Liquidação</option>
+                            <option value="excesso_valor">Excesso de Valor</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label style="display: block; font-weight: 600; margin-bottom: 8px; font-size: 13px;">Período de Referência:</label>
+                        <select id="sispmg-filter-periodo" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #dcd3c5; background: #fff;">
+                            <option value="todos">Todos os Períodos</option>
+                            <option value="ano_atual">Ano Atual</option>
+                            <option value="mes_anterior">Mês Anterior</option>
+                            <option value="mes_atual">Mês Atual</option>
+                            <option value="manual">Digitar Mês/Ano</option>
+                        </select>
+                        <input type="text" id="sispmg-filter-manual" placeholder="JAN 2026" 
+                               style="display: none; width: 100%; margin-top: 10px; padding: 10px; border-radius: 6px; border: 1px solid #dcd3c5; text-transform: uppercase;">
+                    </div>
+
+                    <div>
+                        <label style="display: block; font-weight: 600; margin-bottom: 8px; font-size: 13px;">Município Específico:</label>
+                        <select id="sispmg-filter-municipio" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #dcd3c5; background: #fff;">
+                            <option value="todos">Todos os Municípios</option>
+                            ${municipios.map(m => `<option value="${m}">${m}</option>`).join('')}
+                        </select>
+                    </div>
+                </div>
+
+                <div style="padding-top: 20px; border-top: 1px solid #dcd3c5;">
+                    <button id="sispmg-btn-start-audit" class="sispmg-dashboard-btn sispmg-dashboard-btn-primary" style="width: 100%; padding: 12px;">
+                        <i class="fas fa-play"></i> Iniciar Auditoria
+                    </button>
+                </div>
+            </div>
+        `;
+
+        // Eventos da Sidebar
+        const selectPeriodo = sidebar.querySelector('#sispmg-filter-periodo');
+        const inputManual = sidebar.querySelector('#sispmg-filter-manual');
+        if (selectPeriodo && inputManual) {
+            selectPeriodo.onchange = () => {
+                inputManual.style.display = selectPeriodo.value === 'manual' ? 'block' : 'none';
+            };
+        }
+
+        const startBtn = sidebar.querySelector('#sispmg-btn-start-audit');
+        if (startBtn) {
+            startBtn.onclick = () => {
+                const filtros = {
+                    tipo: sidebar.querySelector('#sispmg-filter-tipo').value,
+                    periodo: sidebar.querySelector('#sispmg-filter-periodo').value,
+                    manual: sidebar.querySelector('#sispmg-filter-manual').value.toUpperCase().trim(),
+                    municipio: sidebar.querySelector('#sispmg-filter-municipio').value
+                };
+                sidebar.classList.remove('active');
+                layout.classList.remove('filter-active');
+                this.startDeepAudit(filtros);
+            };
+        }
+    }
+
     async fetchConveniosData() {
         if (this.isLoading) return;
         this.isLoading = true;
