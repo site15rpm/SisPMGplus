@@ -54,3 +54,11 @@ Ao receber o comando "compacte os arquivos para atualização na webstore", siga
 - **Hierarquia CSS:** No arquivo de estilos, referencie todos os elementos a partir do ID do container para garantir a precedência e evitar que o CSS nativo do portal (`estilo.css`, `convenios.css`) desconfigure a interface da extensão.
 - **Z-Index e Posicionamento:** Utilize `position: fixed !important`, `z-index: 10000+ !important` e `top/left/transform` para garantir a centralização e evitar que o modal seja anexado ao final da página ou sofra "reflow" indesejado.
 - **Loader:** Sempre acione o método `this.ui.showLoader()` e `this.ui.hideLoader()` em operações assíncronas longas (como auditorias profundas) para fornecer feedback visual ao usuário.
+
+---
+
+### **6. Gerenciamento de Versão e Commits**
+
+- **Commits Automáticos:** Para cada alteração de código realizada com sucesso, realize um commit automático imediatamente.
+- **Mensagens de Commit:** Utilize mensagens claras e concisas seguindo o padrão [Conventional Commits](https://www.conventionalcommits.org/) (ex: `feat:`, `fix:`, `style:`, `refactor:`), descrevendo brevemente o que foi alterado.
+- **Finalidade:** Garantir um histórico granular que permita a reversão para qualquer ponto específico do desenvolvimento, mesmo que não seja uma versão final.
