@@ -207,28 +207,42 @@
     display: inline-block !important;
 }
 
-/* Tabelas de auditoria: evitar quebra de linha em colunas curtas */
+/* Tabelas de auditoria: comportamento inteligente de colunas */
+.sispmg-dashboard-sidebar table {
+    table-layout: auto !important;
+    width: 100% !important;
+}
+
 .sispmg-dashboard-sidebar table td,
 .sispmg-dashboard-sidebar table th {
     white-space: nowrap !important;
+    width: 1% !important; /* Força todas as colunas a serem o mais estreitas possível */
+    padding: 6px 8px !important;
 }
 
-/* Permitir quebra na coluna de descrição/nome e na coluna de status do cronograma */
-.sispmg-dashboard-sidebar table td:first-child {
+/* Primeira coluna (Natureza / Mês): deve crescer para ocupar o espaço restante e permitir quebra */
+.sispmg-dashboard-sidebar table td:first-child,
+.sispmg-dashboard-sidebar table th:first-child {
     white-space: normal !important;
-    width: 100% !important; /* Dá preferência de largura para a primeira coluna */
+    width: auto !important;
+    min-width: 150px !important;
 }
 
-.sispmg-dashboard-sidebar table td:last-child {
-    white-space: normal !important;
+/* Coluna de Status: evitar quebra de linha a todo custo, a menos que o espaço acabe */
+.sispmg-dashboard-sidebar table td:last-child,
+.sispmg-dashboard-sidebar table th:last-child {
+    white-space: nowrap !important; /* Agora forçamos o nowrap para evitar o achatamento indesejado */
+    width: auto !important;
     min-width: 100px !important;
+    text-align: center !important;
 }
 
-/* Ajuste específico para o badge no cronograma */
+/* Ajuste específico para o badge no cronograma para que o fundo acompanhe o texto */
 .sispmg-dashboard-sidebar .sispmg-status-badge {
     width: auto !important;
     min-width: 80px !important;
     padding: 2px 10px !important;
+    display: inline-block !important;
 }
 
 /* Cards de resumo */
