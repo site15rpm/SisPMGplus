@@ -252,6 +252,222 @@ export class SirconvDashboardModule {
         }
     }
 
+    async startDeepAudit(filtros = { tipo: 'todos', periodo: 'todos', municipio: 'todos' }) {
+        if (this.isLoading || this.conveniosData.length === 0) return;
+        this.isLoading = true;
+        
+        let conveniosParaAuditar = this.conveniosData;
+        
+        // Filtro prévio por município para economizar requisições
+        if (filtros.municipio !== 'todos') {
+            conveniosParaAuditar = this.conveniosData.filter(c => this.getMunicipioClean(c.CONCEDENTE) === filtros.municipio);
+        }
+
+        const total = conveniosParaAuditar.length;
+        if (this.ui) this.ui.showLoader(`Iniciando auditoria: 0 de ${total} (0%)`);
+
+        try {
+            let count = 0;
+            for (let conv of conveniosParaAuditar) {
+                count++;
+                const percent = Math.round((count / total) * 100);
+                if (this.ui) this.ui.updateLoaderMessage(`Auditando convênios: ${count} de ${total} (${percent}%)`);
+
+                try {
+                    const auditData = await this.performDeepAudit(conv.ID);
+                    if (auditData) {
+                        conv.audit = auditData;
+                        conv.pendencias = this.analisarPendencias(auditData, filtros);
+                    }
+                } catch (e) {
+                    console.error(`Erro ao auditar convênio ${conv.ID}:`, e);
+                }
+
+                // Atualiza a visualização a cada 5 itens para feedback progressivo
+                if (count % 5 === 0 || count === total) {
+                    this.applyFilters();
+                }
+            }
+        } catch (error) {
+            console.error("Erro durante auditoria profunda:", error);
+        } finally {
+            this.isLoading = false;
+            if (this.ui) this.ui.hideLoader();
+        }
+    }
+
+    async performDeepAudit(convId) {
+        const res = await fetch(`https://intranet.policiamilitar.mg.gov.br/lite/convenio/web/convenio/view?id=${convId}`);
+        const html = await res.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+
+        let planoItens = [];
+        try {
+            const token = getCookie('tokiuz');
+            const planoResponse = await sendMessageToBackground('fetchConvenioPlano', { convenioId: convId, token });
+            if (planoResponse && planoResponse.success && planoResponse.data && planoResponse.data.planos) {
+                planoItens = planoResponse.data.planos.map(p => ({
+                    nome: `${p.ITEM} - ${p.NATUREZA_ITEM}`,
+                    valorEstimado: parseFloat(p.VALOR) || 0,
+                    valorExecutado: 0
+                }));
+            }
+        } catch (errApi) { console.error(`Erro API Plano ${convId}:`, errApi); }
+
+        const cronogramas = [];
+        const processedIds = new Set();
+        const cronoLinks = doc.querySelectorAll('a.item.flex-linha');
+        
+        cronoLinks.forEach(linkRow => {
+            let detalheIdMatch = linkRow.getAttribute('onclick')?.match(/detalheCronograma-(\d+)/);
+            if (!detalheIdMatch) return;
+            const detalheId = detalheIdMatch[1];
+            if (processedIds.has(detalheId)) return;
+            processedIds.add(detalheId);
+
+            const mesEl = linkRow.querySelector('.ne');
+            if (!mesEl || mesEl.tagName.toLowerCase() === 'tr') return;
+            const mesTexto = mesEl.innerText.replace(/[\n\r]/g, '').replace(/(\d+)\s+anexos?/, '').trim();
+            if (!/^[A-Za-z]{3}\s\d{4}$/.test(mesTexto) && !mesTexto.includes('202')) return;
+
+            let valorPrev = 0, valorExec = 0, prazoLimite = '-', dataLiquidado = '-', status = 'Aguardando execução';
+            const spans = linkRow.querySelectorAll('span.flex-coluna');
+            spans.forEach(span => {
+                const fullText = span.textContent.trim();
+                const labelDiv = span.querySelector('div.tc.menor');
+                if (labelDiv) {
+                    const label = labelDiv.textContent.trim();
+                    const match = fullText.match(/R\$\s*([\d\.,]+)/);
+                    if (label === 'Valor' && match) valorPrev = parseFloat(match[1].replace(/\./g, '').replace(',', '.'));
+                    else if (label === 'Executado' && match) valorExec = parseFloat(match[1].replace(/\./g, '').replace(',', '.'));
+                    else if (label === 'Prazo limite') prazoLimite = fullText.replace('Prazo limite', '').trim();
+                }
+                const dtElement = span.querySelector('dl.ic dt');
+                if (dtElement) dataLiquidado = dtElement.textContent.trim();
+            });
+
+            if (spans.length > 0) {
+                const lastSpan = spans[spans.length - 1];
+                const iconNode = lastSpan.querySelector('span.ic, dl.ic');
+                if (iconNode) {
+                    if (iconNode.hasAttribute('title')) status = iconNode.getAttribute('title').trim();
+                    else {
+                        if (iconNode.classList.contains('senha')) status = 'Liquidado';
+                        else if (iconNode.classList.contains('erro')) status = 'Liquidado fora do prazo';
+                        else if (iconNode.classList.contains('aberto')) status = 'Aguardando execução';
+                    }
+                }
+            }
+
+            cronogramas.push({ mesTexto, valorPrevisto: valorPrev, valorExecutado: valorExec, prazoLimite, dataLiquidado, status });
+
+            const divDetalheCentral = doc.getElementById(`detalheCronograma-${detalheId}`);
+            if (divDetalheCentral) {
+                const tableExec = Array.from(divDetalheCentral.querySelectorAll('table.t1')).find(t => t.querySelector('th')?.innerText.includes('Natureza'));
+                if (tableExec) {
+                    tableExec.querySelectorAll('tbody tr').forEach(tr => {
+                        const tds = tr.querySelectorAll('td');
+                        if (tds.length >= 6) {
+                            const natNome = tds[0].innerText.trim();
+                            const itemValorExec = parseFloat(tds[5].innerText.trim().replace(/\./g, '').replace(',', '.'));
+                            if (natNome && !isNaN(itemValorExec) && itemValorExec > 0) {
+                                const normalize = s => s.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                                const w1 = normalize(natNome).match(/\w{4,}/g) || [];
+                                const match = planoItens.find(p => {
+                                    const w2 = normalize(p.nome).match(/\w{4,}/g) || [];
+                                    return (w1.includes('TELEFONIA') && w2.includes('TELECOMUNICACAO')) || w1.filter(w => !['SERVICO', 'TARIFA', 'MATERIAL'].includes(w)).some(w => w2.includes(w));
+                                });
+                                if (match) match.valorExecutado += itemValorExec;
+                            }
+                        }
+                    });
+                }
+            }
+        });
+
+        const historico = [];
+        doc.querySelectorAll('#historico .item').forEach(row => {
+            const dataEl = row.querySelector('.tc');
+            if (dataEl) {
+                const data = dataEl.innerText.trim();
+                let log = row.innerText.replace(data, '').trim().replace(/\n\s*\n/g, '<br>').replace(/\n/g, ' ');
+                if (log) historico.push({ data, log });
+            }
+        });
+
+        return { cronogramas, planoItens, historico, lastUpdate: new Date().toLocaleString() };
+    }
+
+    analisarPendencias(audit, filtros = { tipo: 'todos', periodo: 'todos', manual: '' }) {
+        const pendencias = [];
+        const hoje = new Date();
+        const anoAtual = hoje.getFullYear();
+        const mesAtual = hoje.getMonth();
+
+        let filtroMes = null;
+        let filtroAno = null;
+
+        if (filtros.periodo === 'ano_atual') {
+            filtroAno = anoAtual;
+        } else if (filtros.periodo === 'mes_anterior') {
+            const dataMesAnt = new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1);
+            filtroMes = dataMesAnt.getMonth();
+            filtroAno = dataMesAnt.getFullYear();
+        } else if (filtros.periodo === 'mes_atual') {
+            filtroMes = mesAtual;
+            filtroAno = anoAtual;
+        } else if (filtros.periodo === 'manual' && filtros.manual) {
+            const partes = filtros.manual.split(' ');
+            if (partes.length === 2) {
+                const meses = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
+                filtroMes = meses.indexOf(partes[0].toUpperCase());
+                filtroAno = parseInt(partes[1]);
+            }
+        }
+
+        const isNoPeriodo = (mesTexto) => {
+            if (filtros.periodo === 'todos') return true;
+            if (!mesTexto) return false;
+            const partes = mesTexto.split(' ');
+            if (partes.length !== 2) return false;
+            const mesesMap = { 'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5, 'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11 };
+            const m = mesesMap[partes[0]];
+            const a = parseInt(partes[1]);
+            if (filtroAno !== null && a !== filtroAno) return false;
+            if (filtroMes !== null && m !== filtroMes) return false;
+            return true;
+        };
+
+        if (filtros.tipo === 'todos' || filtros.tipo === 'excesso_valor') {
+            audit.cronogramas.forEach(c => {
+                if (isNoPeriodo(c.mesTexto) && c.valorExecutado > c.valorPrevisto + 0.01) {
+                    pendencias.push({ tipo: 'excesso_valor', msg: `Excesso em ${c.mesTexto}` });
+                }
+            });
+            audit.planoItens.forEach(p => {
+                if (p.valorExecutado > p.valorEstimado + 0.01) {
+                    pendencias.push({ tipo: 'excesso_valor', msg: `Excesso na natureza: ${p.nome}` });
+                }
+            });
+        }
+
+        if (filtros.tipo === 'todos' || filtros.tipo === 'atraso_liquidacao') {
+            audit.cronogramas.forEach(c => {
+                if (isNoPeriodo(c.mesTexto) && c.status !== 'Liquidado' && c.status !== 'Liquidado fora do prazo') {
+                    if (c.prazoLimite && c.prazoLimite !== '-') {
+                        const partes = c.prazoLimite.split('/');
+                        const dataLimite = new Date(partes[2], partes[1] - 1, partes[0]);
+                        if (dataLimite < hoje) {
+                            pendencias.push({ tipo: 'atraso_liquidacao', msg: `Atraso em ${c.mesTexto}` });
+                        }
+                    }
+                }
+            });
+        }
+        return pendencias;
+    }
+
     async fetchConveniosData() {
         if (this.isLoading) return;
         this.isLoading = true;
