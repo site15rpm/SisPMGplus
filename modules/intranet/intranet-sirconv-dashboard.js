@@ -732,6 +732,8 @@ export class SirconvDashboardModule {
         
         if (!layout || !sidebar) return;
 
+        // Resetar estados de classe para garantir largura correta (2/3 da tela)
+        layout.classList.remove('filter-active');
         layout.classList.add('audit-active');
 
         sidebar.innerHTML = `
