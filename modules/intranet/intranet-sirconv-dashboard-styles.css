@@ -126,6 +126,7 @@
     color: #574e2d !important;
     font-size: 20px !important;
     font-weight: 600 !important;
+    overflow: visible !important; /* Evita corte por CSS nativo */
 }
 
 /* Container de ações posicionado de forma absoluta no topo direito */
@@ -153,11 +154,13 @@
     align-items: center !important;
 }
 
-/* Forçar cores em Select e Option para evitar sobreposição do portal */
+/* Forçar cores em Select, Option e Input para evitar sobreposição do portal */
 #sispmg-plus-container select,
-#sispmg-plus-container option {
+#sispmg-plus-container option,
+#sispmg-plus-container input[type="text"] {
     color: #333 !important;
     background-color: #fff !important;
+    border: 1px solid #dcd3c5 !important;
 }
 
 /* Fixar largura da coluna de status e colunas dos ícones */
@@ -211,9 +214,14 @@
 }
 
 /* Permitir quebra na coluna de descrição/nome e na coluna de status do cronograma */
-.sispmg-dashboard-sidebar table td:first-child,
+.sispmg-dashboard-sidebar table td:first-child {
+    white-space: normal !important;
+    width: 100% !important; /* Dá preferência de largura para a primeira coluna */
+}
+
 .sispmg-dashboard-sidebar table td:last-child {
     white-space: normal !important;
+    min-width: 100px !important;
 }
 
 /* Ajuste específico para o badge no cronograma */
