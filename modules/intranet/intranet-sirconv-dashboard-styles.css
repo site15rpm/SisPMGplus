@@ -231,6 +231,11 @@
     flex-shrink: 0 !important;
 }
 
+/* Quando auditoria ativa (painel em 1/3), forçar 2 cards por linha */
+.audit-active .sispmg-dashboard-summary {
+    grid-template-columns: repeat(2, 1fr) !important;
+}
+
 .sispmg-dashboard-card {
     background: #fff !important;
     border: 1px solid #dcd3c5 !important;
