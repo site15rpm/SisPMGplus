@@ -9,6 +9,7 @@ export class SirconvDashboardModule {
         this.filteredData = [];
         this.activeFilters = {}; // { columnId: [selectedValues] }
         this.isLoading = false;
+        this.activeConvId = null;
         console.log("SirconvDashboardModule: Instância da UI recebida:", this.ui);
     }
 
@@ -23,6 +24,7 @@ export class SirconvDashboardModule {
 
     showDashboard() {
         console.log("SirconvDashboardModule: showDashboard() chamado.");
+        document.body.style.overflow = 'hidden';
         
         const container = document.getElementById('sispmg-plus-container');
         if (!container) return;
@@ -95,12 +97,11 @@ export class SirconvDashboardModule {
                                     <th data-col="status">
                                         <div class="sispmg-th-content">Status <i class="fas fa-filter sispmg-filter-trigger"></i></div>
                                     </th>
-                                    <th style="text-align: center;">Ações</th>
                                 </tr>
                             </thead>
                             <tbody id="sispmg-dashboard-tbody">
                                 <tr>
-                                    <td colspan="9" style="text-align: center; padding: 40px;">
+                                    <td colspan="8" style="text-align: center; padding: 40px;">
                                         Carregando dados...
                                     </td>
                                 </tr>
@@ -122,8 +123,19 @@ export class SirconvDashboardModule {
         const closeBtnGlobal = modalContainer.querySelector('#sispmg-dashboard-close-global');
         if (closeBtnGlobal) {
             closeBtnGlobal.onclick = () => {
-                this.closeAllFilterDropdowns();
-                overlay.remove();
+                const layout = document.getElementById('sispmg-dashboard-layout');
+                const sidebar = document.getElementById('sispmg-dashboard-sidebar');
+                if (layout && layout.classList.contains('audit-active')) {
+                    sidebar.classList.remove('active');
+                    layout.classList.remove('audit-active');
+                    // Remover seleção da linha ao fechar sidebar
+                    this.activeConvId = null;
+                    this.renderDashboard(true);
+                } else {
+                    this.closeAllFilterDropdowns();
+                    overlay.remove();
+                    document.body.style.overflow = '';
+                }
             };
         }
 
@@ -192,6 +204,8 @@ export class SirconvDashboardModule {
     }
 
     async loadAuditData(convId) {
+        this.activeConvId = convId;
+
         const conv = this.conveniosData.find(c => c.ID === convId);
         if (!conv) return;
 
@@ -400,13 +414,12 @@ export class SirconvDashboardModule {
         layout.classList.add('audit-active');
 
         sidebar.innerHTML = `
-            <button class="sispmg-sidebar-close" id="btn-close-sidebar">&times;</button>
-            <h2 style="color: #574e2d; font-size: 20px; border-bottom: 2px solid #b3a368; padding-bottom: 10px; margin-top: 0;">
+            <h2 style="color: #574e2d; font-size: 20px; border-bottom: 2px solid #b3a368; padding-bottom: 10px; margin-top: 0; margin-bottom: 15px;">
                 ${conv.ID} - ${this.getMunicipioClean(conv.CONCEDENTE)}
             </h2>
             
             <div style="flex-grow: 1; overflow-y: auto; padding-right: 10px;">
-                <div style="margin-top: 15px;">
+                <div style="margin-top: 5px;">
                     <h3 style="font-size: 16px; color: #333;"><i class="fas fa-list-check"></i> Plano de Trabalho (Naturezas)</h3>
                     <table class="sispmg-dashboard-table" style="min-width: 100%;">
                         <thead>
@@ -457,9 +470,9 @@ export class SirconvDashboardModule {
                         <thead>
                             <tr>
                                 <th>Mês</th>
-                                <th>Prazo Limite</th>
                                 <th style="text-align: right;">Previsto (R$)</th>
                                 <th style="text-align: right;">Executado (R$)</th>
+                                <th>Prazo Limite</th>
                                 <th>Data Liq.</th>
                                 <th style="text-align: center;">Status</th>
                             </tr>
@@ -469,9 +482,9 @@ export class SirconvDashboardModule {
                                 return `
                                 <tr>
                                     <td style="white-space: nowrap;">${c.mesTexto || "-"}</td>
-                                    <td>${c.prazoLimite || "-"}</td>
                                     <td style="text-align: right;">${(c.valorPrevisto || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                                     <td style="text-align: right; font-weight: 600; color: ${c.valorExecutado > 0 ? '#155724' : 'inherit'};">${(c.valorExecutado || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                                    <td>${c.prazoLimite || "-"}</td>
                                     <td>${c.dataLiquidado || "-"}</td>
                                     <td style="text-align: center;"><span class="sispmg-status-badge ${c.status === 'Liquidado' ? 'sispmg-status-vigente' : 'sispmg-status-outros'}">${c.status || "Pendente"}</span></td>
                                 </tr>
@@ -495,11 +508,6 @@ export class SirconvDashboardModule {
         `;
 
         sidebar.classList.add('active');
-
-        document.getElementById('btn-close-sidebar').onclick = () => {
-            sidebar.classList.remove('active');
-            layout.classList.remove('audit-active');
-        };
 
         // Renderiza botões da tabela para refletir que o cache está ativo
         this.renderDashboard(true);
@@ -645,7 +653,7 @@ export class SirconvDashboardModule {
         if (!tbody) return;
         let dataToRender = isFiltered ? this.filteredData : this.sortConvenios([...this.conveniosData]);
         if (dataToRender.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 40px;">Nenhum convênio encontrado.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 40px;">Nenhum convênio encontrado.</td></tr>`;
             ['dash-total-convenios','dash-valor-total','dash-valor-liquidado','dash-convenios-ativos'].forEach(id => document.getElementById(id).innerText = id.includes('total') ? '0' : '0,00');
             return;
         }
@@ -656,9 +664,10 @@ export class SirconvDashboardModule {
 
         tbody.innerHTML = dataToRender.map(conv => {
             const statusLabel = this.getStatusLabel(conv);
-            const hasAudit = conv.audit !== null;
+            const isAudited = conv.ID === this.activeConvId;
             return `
-                <tr>
+                <tr class="sispmg-clickable-row ${isAudited ? 'sispmg-row-audited' : ''}" 
+                    onclick="window.SisPMG_SirconvDashboard.loadAuditData('${conv.ID}')">
                     <td><strong>${conv.ID}</strong></td>
                     <td class="sispmg-hide-on-audit">${conv.NUMERO_FACE || '-'}</td>
                     <td>${this.getMunicipioClean(conv.CONCEDENTE)}</td>
@@ -667,12 +676,6 @@ export class SirconvDashboardModule {
                     <td class="sispmg-hide-on-audit" style="text-align: right;">${(parseFloat(conv.VALOR_ESTIMADO) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                     <td class="sispmg-hide-on-audit" style="text-align: right;">${(parseFloat(conv.LIQUIDADO) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                     <td style="text-align: center;"><span class="sispmg-status-badge ${statusLabel === 'Vigente' ? 'sispmg-status-vigente' : 'sispmg-status-outros'}">${statusLabel}</span></td>
-                    <td style="text-align: center;">
-                        <button class="sispmg-dashboard-btn" style="padding: 4px 8px; font-size: 11px; ${hasAudit ? 'background: #b3a368; color: #fff;' : 'background: #eee; color: #333;'}" 
-                                onclick="window.SisPMG_SirconvDashboard.loadAuditData('${conv.ID}')">
-                            <i class="fas fa-eye"></i> <span class="sispmg-btn-text">Detalhes</span>
-                        </button>
-                    </td>
                 </tr>
             `;
         }).join('');
