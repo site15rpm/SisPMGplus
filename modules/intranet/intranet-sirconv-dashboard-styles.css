@@ -67,8 +67,8 @@
 }
 
 .sispmg-dashboard-sidebar.active {
-    width: 50vw !important;
-    min-width: 50vw !important;
+    width: 66.66vw !important;
+    min-width: 66.66vw !important;
     flex-grow: 1 !important;
     display: flex !important;
     padding: 15px !important;
@@ -83,9 +83,9 @@
 
 /* Redimensionar o painel principal e itens internos durante a auditoria */
 .audit-active .sispmg-dashboard-main {
-    max-width: 50vw !important;
-    min-width: 50vw !important;
-    flex: 0 0 50vw !important;
+    max-width: 33.33vw !important;
+    min-width: 33.33vw !important;
+    flex: 0 0 33.33vw !important;
 }
 
 /* Ao abrir filtros, não redimensionar o painel principal de forma agressiva e não ocultar colunas */
@@ -148,7 +148,7 @@
     padding: 6px 15px !important;
     cursor: pointer !important;
     font-weight: bold !important;
-    height: 38px !important; /* Mesma altura do botão primário */
+    height: 38px !important; /* MesMA ALTURA DO BOTÃO PRIMÁRIO */
     display: flex !important;
     align-items: center !important;
 }
@@ -196,7 +196,7 @@
 .sispmg-status-badge {
     width: 65px !important;
     text-align: center !important;
-    padding: 2px 0 !important;
+    padding: 2px 6px !important;
     border-radius: 12px !important;
     font-size: 10px !important;
     font-weight: 600 !important;
@@ -210,9 +210,17 @@
     white-space: nowrap !important;
 }
 
-/* Permitir quebra apenas na coluna de descrição/nome */
-.sispmg-dashboard-sidebar table td:first-child {
+/* Permitir quebra na coluna de descrição/nome e na coluna de status do cronograma */
+.sispmg-dashboard-sidebar table td:first-child,
+.sispmg-dashboard-sidebar table td:last-child {
     white-space: normal !important;
+}
+
+/* Ajuste específico para o badge no cronograma */
+.sispmg-dashboard-sidebar .sispmg-status-badge {
+    width: auto !important;
+    min-width: 80px !important;
+    padding: 2px 10px !important;
 }
 
 /* Cards de resumo */
