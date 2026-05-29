@@ -12,7 +12,7 @@
     justify-content: center !important;
     align-items: center !important;
     z-index: 10000 !important;
-    padding: 0 !important; /* Sem padding para ocupar a tela toda */
+    padding: 0 !important;
     box-sizing: border-box;
 }
 
@@ -30,27 +30,7 @@
     max-width: 100vw !important;
     animation: sispmgfadeIn 0.2s ease-out !important;
     overflow: hidden !important;
-    position: relative !important; /* Âncora para o botão de fechar absoluto */
-}
-
-#sispmg-plus-container #sispmg-sirconv-dashboard-modal-container h2 {
-    overflow: visible !important;
-}
-
-/* Reset da classe genérica sispmg-plus-modal quando dentro do container específico */
-#sispmg-plus-container #sispmg-sirconv-dashboard-modal-container .sispmg-plus-modal {
     position: relative !important;
-    background: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
-    animation: none !important;
-    display: flex !important;
-    flex-direction: row !important;
-    flex-grow: 1 !important;
-    padding: 0 !important;
-    min-width: unset !important;
-    width: 100% !important;
-    overflow: hidden !important;
 }
 
 /* Layout lado a lado */
@@ -81,7 +61,7 @@
     display: none !important;
     flex-direction: column !important;
     border-left: 2px solid #dcd3c5 !important;
-    background-color: #fff !important;
+    background-color: #fbf8f5 !important; /* Igual ao fundo principal */
     overflow-y: auto !important;
     box-shadow: -5px 0 15px rgba(0,0,0,0.05) !important;
 }
@@ -107,21 +87,20 @@
     flex: 0 0 50vw !important;
 }
 
+/* Ao abrir filtros, não redimensionar o painel principal de forma agressiva e não ocultar colunas */
 .filter-active .sispmg-dashboard-main {
-    max-width: calc(100vw - 320px) !important;
-    min-width: calc(100vw - 320px) !important;
-    flex: 0 0 calc(100vw - 320px) !important;
+    flex: 1 !important;
 }
 
 .audit-active .sispmg-btn-text, .filter-active .sispmg-btn-text {
     display: none !important;
 }
 
-/* Ocultar colunas condicionalmente */
+/* Ocultar colunas condicionalmente apenas em auditoria profunda */
 .sispmg-hide-on-audit {
     display: table-cell !important;
 }
-.audit-active .sispmg-hide-on-audit, .filter-active .sispmg-hide-on-audit {
+.audit-active .sispmg-hide-on-audit {
     display: none !important;
 }
 
@@ -146,7 +125,6 @@
     color: #574e2d !important;
     font-size: 20px !important;
     font-weight: 600 !important;
-    padding-right: 200px !important; /* Espaço para botões absolutos */
 }
 
 /* Container de ações posicionado de forma absoluta no topo direito */
@@ -160,19 +138,34 @@
     align-items: center !important;
 }
 
-/* Botão de Fechar Global (Agora dentro do container flex) */
+/* Botão de Fechar Global ajustado */
 #sispmg-dashboard-close-global.sispmg-global-close {
     background: #dc3545 !important;
     color: white !important;
     border: none !important;
     border-radius: 4px !important;
-    padding: 6px 12px !important;
+    padding: 6px 15px !important;
     cursor: pointer !important;
     font-weight: bold !important;
-    margin-left: 0 !important;
+    height: 38px !important; /* Mesma altura do botão primário */
+    display: flex !important;
+    align-items: center !important;
 }
-.sispmg-global-close:hover {
-    background: #c82333 !important;
+
+/* Forçar cores em Select e Option para evitar sobreposição do portal */
+#sispmg-plus-container select, 
+#sispmg-plus-container option {
+    color: #333 !important;
+    background-color: #fff !important;
+}
+
+/* Fixar largura da coluna de status */
+.sispmg-dashboard-table th[data-col="status"],
+.sispmg-dashboard-table td:last-child {
+    width: 140px !important;
+    min-width: 140px !important;
+    max-width: 140px !important;
+    text-align: center !important;
 }
 
 /* Cards de resumo */
@@ -220,19 +213,6 @@
     width: 100% !important;
     border-collapse: collapse !important;
     font-size: 12px !important;
-}
-
-/* Ajuste de min-width quando a sidebar está ativa para evitar overflow excessivo */
-.audit-active .sispmg-dashboard-table {
-    width: 100% !important;
-}
-
-/* Filtros no cabeçalho */
-.sispmg-dashboard-filters {
-    display: flex !important;
-    gap: 8px !important;
-    margin-bottom: 10px !important;
-    flex-wrap: wrap !important;
 }
 
 .sispmg-dashboard-table th {
@@ -385,13 +365,14 @@
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    padding: 6px 12px !important;
+    padding: 6px 15px !important;
     font-size: 12px !important;
     font-weight: 600 !important;
     border-radius: 6px !important;
     cursor: pointer !important;
     transition: all 0.2s !important;
     gap: 6px !important;
+    height: 38px !important;
 }
 
 .sispmg-dashboard-btn-primary {
@@ -414,7 +395,7 @@
     transition: background-color 0.2s !important;
 }
 
-/* Hover e Linha Selecionada com especificidade máxima para garantir precedência */
+/* Hover e Linha Selecionada */
 #sispmg-plus-container #sispmg-sirconv-dashboard-modal-container .sispmg-dashboard-table tr.sispmg-clickable-row:hover td { 
     background-color: #e5dfc5 !important; 
 }
