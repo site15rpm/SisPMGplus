@@ -77,31 +77,33 @@ export class SirconvDashboardModule {
                         <table class="sispmg-dashboard-table">
                             <thead>
                                 <tr>
-                                    <th data-col="id">
-                                        <div class="sispmg-th-content">ID <i class="fas fa-filter sispmg-filter-trigger"></i></div>
+                                    <th data-col="id" style="text-align: left;">
+                                        <div class="sispmg-th-content">Convênio <i class="fas fa-filter sispmg-filter-trigger"></i></div>
                                     </th>
-                                    <th data-col="numero_face" class="sispmg-hide-on-audit">
+                                    <th data-col="numero_face" class="sispmg-hide-on-audit" style="text-align: left;">
                                         <div class="sispmg-th-content">Nº Face <i class="fas fa-filter sispmg-filter-trigger"></i></div>
                                     </th>
-                                    <th data-col="municipio">
+                                    <th data-col="municipio" style="text-align: left;">
                                         <div class="sispmg-th-content">Município <i class="fas fa-filter sispmg-filter-trigger"></i></div>
                                     </th>
-                                    <th data-col="unidade">
+                                    <th data-col="unidade" style="text-align: left;">
                                         <div class="sispmg-th-content">Unidade Responsável <i class="fas fa-filter sispmg-filter-trigger"></i></div>
                                     </th>
-                                    <th data-col="vigencia" class="sispmg-hide-on-audit">
+                                    <th data-col="vigencia" class="sispmg-hide-on-audit" style="text-align: left;">
                                         <div class="sispmg-th-content">Vigência (Fim) <i class="fas fa-filter sispmg-filter-trigger"></i></div>
                                     </th>
-                                    <th class="sispmg-hide-on-audit">Valor Estimado (R$)</th>
-                                    <th class="sispmg-hide-on-audit">Valor Liquidado (R$)</th>
-                                    <th data-col="status">
-                                        <div class="sispmg-th-content">Status <i class="fas fa-filter sispmg-filter-trigger"></i></div>
+                                    <th class="sispmg-hide-on-audit" style="text-align: right;">Valor Estimado (R$)</th>
+                                    <th class="sispmg-hide-on-audit" style="text-align: right;">Valor Liquidado (R$)</th>
+                                    <th class="sispmg-hide-on-audit" style="text-align: center;">%</th>
+                                    <th class="sispmg-hide-on-audit" style="text-align: center;">Progresso</th>
+                                    <th data-col="status" style="text-align: center;">
+                                        <div class="sispmg-th-content" style="justify-content: center;">Status <i class="fas fa-filter sispmg-filter-trigger"></i></div>
                                     </th>
                                 </tr>
                             </thead>
                             <tbody id="sispmg-dashboard-tbody">
                                 <tr>
-                                    <td colspan="8" style="text-align: center; padding: 40px;">
+                                    <td colspan="10" style="text-align: center; padding: 40px;">
                                         Carregando dados...
                                     </td>
                                 </tr>
@@ -141,7 +143,7 @@ export class SirconvDashboardModule {
 
         const refreshBtn = modalContainer.querySelector('#sispmg-dashboard-refresh');
         if (refreshBtn) {
-            refreshBtn.onclick = () => this.fetchConveniosData(); // Mudado de fetchDeepAudit
+            refreshBtn.onclick = () => this.showFilterSidebar();
         }
 
         // Adicionar eventos de clique nos ícones de filtro
@@ -215,7 +217,7 @@ export class SirconvDashboardModule {
             return;
         }
 
-        if (this.ui) this.ui.showLoader(`Buscando detalhes do convênio ${conv.NUMERO_FACE || convId}...`);
+        if (this.ui) this.ui.showLoader(`Buscando detalhes do convênio ${convId}...`);
         
         try {
             const res = await fetch(`https://intranet.policiamilitar.mg.gov.br/lite/convenio/web/convenio/view?id=${convId}`);
@@ -415,88 +417,122 @@ export class SirconvDashboardModule {
 
         sidebar.innerHTML = `
             <h2 style="color: #574e2d; font-size: 20px; border-bottom: 2px solid #b3a368; padding-bottom: 10px; margin-top: 0; margin-bottom: 15px;">
-                ${conv.ID} - ${this.getMunicipioClean(conv.CONCEDENTE)}
+                Convênio ${conv.ID} - ${this.getMunicipioClean(conv.CONCEDENTE)}
             </h2>
             
             <div style="flex-grow: 1; overflow-y: auto; padding-right: 10px;">
                 <div style="margin-top: 5px;">
                     <h3 style="font-size: 16px; color: #333;"><i class="fas fa-list-check"></i> Plano de Trabalho (Naturezas)</h3>
-                    <table class="sispmg-dashboard-table" style="min-width: 100%;">
-                        <thead>
-                            <tr>
-                                <th>Item / Natureza</th>
-                                <th style="text-align: right;">Previsto (R$)</th>
-                                <th style="text-align: right;">Executado (R$)</th>
-                                <th style="text-align: center;">Progresso</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${audit.planoItens.length > 0 ? audit.planoItens.map(p => {
-                                const progresso = p.valorEstimado > 0 ? ((p.valorExecutado / p.valorEstimado) * 100).toFixed(1) : 0;
-                                const isConcluido = progresso >= 100;
-                                return `
+                    <div class="sispmg-dashboard-table-container">
+                        <table class="sispmg-dashboard-table" style="min-width: 100%;">
+                            <thead>
                                 <tr>
-                                    <td>${p.nome}</td>
-                                    <td style="text-align: right;">${p.valorEstimado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                                    <td style="text-align: right; font-weight: 600; color: ${p.valorExecutado > 0 ? '#155724' : '#666'};">${p.valorExecutado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                                    <td style="text-align: center;">
-                                        <div style="background: #eee; width: 100%; border-radius: 4px; overflow: hidden; height: 12px; position: relative;">
-                                            <div style="background: ${isConcluido ? '#b3a368' : '#28a745'}; height: 100%; width: ${progresso > 100 ? 100 : progresso}%;"></div>
-                                        </div>
-                                        <small style="font-size: 10px;">${progresso}%</small>
-                                    </td>
+                                    <th style="text-align: left;">Item / Natureza</th>
+                                    <th style="text-align: right;">Previsto (R$)</th>
+                                    <th style="text-align: right;">Executado (R$)</th>
+                                    <th style="text-align: center;">%</th>
+                                    <th style="text-align: center;">Progresso</th>
                                 </tr>
-                            `}).join('') : '<tr><td colspan="4" style="text-align: center;">Nenhum registro no plano.</td></tr>'}
-                        </tbody>
-                        ${audit.planoItens.length > 0 ? `
-                        <tfoot>
-                            <tr style="background: #fbf8f5; font-weight: 700; border-top: 2px solid #dcd3c5;">
-                                <td style="text-align: right;">Total:</td>
-                                <td style="text-align: right;">${audit.planoItens.reduce((a, b) => a + b.valorEstimado, 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                                <td style="text-align: right; color: #155724;">${audit.planoItens.reduce((a, b) => a + b.valorExecutado, 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                                <td style="text-align: center;">
-                                    ${audit.planoItens.reduce((a, b) => a + b.valorEstimado, 0) > 0 ? 
-                                        ((audit.planoItens.reduce((a, b) => a + b.valorExecutado, 0) / audit.planoItens.reduce((a, b) => a + b.valorEstimado, 0)) * 100).toFixed(1) + '%' 
-                                        : '0%'}
-                                </td>
-                            </tr>
-                        </tfoot>` : ''}
-                    </table>
+                            </thead>
+                            <tbody>
+                                ${audit.planoItens.length > 0 ? audit.planoItens.map(p => {
+                                    const progresso = p.valorEstimado > 0 ? ((p.valorExecutado / p.valorEstimado) * 100).toFixed(1) : 0;
+                                    const isExcedido = parseFloat(progresso) > 100;
+                                    const isConcluido = parseFloat(progresso) >= 100;
+                                    
+                                    let corProgresso = '#28a745'; // Verde padrão
+                                    if (isExcedido) corProgresso = '#dc3545'; // Vermelho se > 100%
+                                    else if (isConcluido) corProgresso = '#b3a368'; // Dourado se exatamente 100%
+
+                                    let corTextoExecutado = '#666';
+                                    if (p.valorExecutado > 0) {
+                                        corTextoExecutado = isExcedido ? '#dc3545' : '#155724';
+                                    }
+
+                                    return `
+                                    <tr>
+                                        <td>${p.nome}</td>
+                                        <td style="text-align: right;">${p.valorEstimado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                                        <td style="text-align: right; font-weight: 600; color: ${corTextoExecutado};">${p.valorExecutado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                                        <td style="text-align: center; font-weight: 600; color: ${corTextoExecutado};">${progresso}%</td>
+                                        <td style="text-align: center;">
+                                            <div style="background: #eee; width: 60px; border-radius: 4px; overflow: hidden; height: 10px; display: inline-block; vertical-align: middle;">
+                                                <div style="background: ${corProgresso}; height: 100%; width: ${progresso > 100 ? 100 : progresso}%;"></div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                `}).join('') : '<tr><td colspan="5" style="text-align: center;">Nenhum registro no plano.</td></tr>'}
+                            </tbody>
+                            ${audit.planoItens.length > 0 ? `
+                            <tfoot>
+                                <tr style="background: #fbf8f5; font-weight: 700; border-top: 2px solid #dcd3c5;">
+                                    <td style="text-align: right;">Total:</td>
+                                    <td style="text-align: right;">${audit.planoItens.reduce((a, b) => a + b.valorEstimado, 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                                    <td style="text-align: right; color: #155724;">${audit.planoItens.reduce((a, b) => a + b.valorExecutado, 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                                    <td style="text-align: center; color: #000;">
+                                        ${audit.planoItens.reduce((a, b) => a + b.valorEstimado, 0) > 0 ? 
+                                            ((audit.planoItens.reduce((a, b) => a + b.valorExecutado, 0) / audit.planoItens.reduce((a, b) => a + b.valorEstimado, 0)) * 100).toFixed(1) + '%' 
+                                            : '0%'}
+                                    </td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>` : ''}
+                        </table>
+                    </div>
                 </div>
 
                 <div style="margin-top: 25px;">
                     <h3 style="font-size: 16px; color: #333;"><i class="fas fa-calendar-alt"></i> Cronograma Mensal</h3>
-                    <table class="sispmg-dashboard-table" style="min-width: 100%;">
-                        <thead>
-                            <tr>
-                                <th>Mês</th>
-                                <th style="text-align: right;">Previsto (R$)</th>
-                                <th style="text-align: right;">Executado (R$)</th>
-                                <th>Prazo Limite</th>
-                                <th>Data Liq.</th>
-                                <th style="text-align: center;">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${audit.cronogramas.length > 0 ? audit.cronogramas.map(c => {
-                                return `
+                    <div class="sispmg-dashboard-table-container">
+                        <table class="sispmg-dashboard-table" style="min-width: 100%;">
+                            <thead>
                                 <tr>
-                                    <td style="white-space: nowrap;">${c.mesTexto || "-"}</td>
-                                    <td style="text-align: right;">${(c.valorPrevisto || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                                    <td style="text-align: right; font-weight: 600; color: ${c.valorExecutado > 0 ? '#155724' : 'inherit'};">${(c.valorExecutado || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                                    <td>${c.prazoLimite || "-"}</td>
-                                    <td>${c.dataLiquidado || "-"}</td>
-                                    <td style="text-align: center;"><span class="sispmg-status-badge ${c.status === 'Liquidado' ? 'sispmg-status-vigente' : 'sispmg-status-outros'}">${c.status || "Pendente"}</span></td>
+                                    <th style="text-align: left;">Mês</th>
+                                    <th style="text-align: right;">Previsto (R$)</th>
+                                    <th style="text-align: right;">Executado (R$)</th>
+                                    <th style="text-align: center;">%</th>
+                                    <th style="text-align: center;">Progresso</th>
+                                    <th style="text-align: left;">Prazo Limite</th>
+                                    <th style="text-align: left;">Data Liq.</th>
+                                    <th style="text-align: center;">Status</th>
                                 </tr>
-                                `;
-                            }).join('') : '<tr><td colspan="6" style="text-align: center;">Nenhum registro de cronograma extraído.</td></tr>'}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                ${audit.cronogramas.length > 0 ? audit.cronogramas.map(c => {
+                                    const percCrono = c.valorPrevisto > 0 ? ((c.valorExecutado / c.valorPrevisto) * 100).toFixed(1) : (c.valorExecutado > 0 ? 100 : 0);
+                                    const isCronoExcedido = c.valorExecutado > c.valorPrevisto;
+                                    const isCronoConcluido = parseFloat(percCrono) >= 100;
+                                    const corCrono = c.valorExecutado > 0 ? (isCronoExcedido ? '#dc3545' : '#155724') : 'inherit';
+
+                                    let corProgressoCrono = '#28a745';
+                                    if (isCronoExcedido) corProgressoCrono = '#dc3545';
+                                    else if (isCronoConcluido) corProgressoCrono = '#b3a368';
+
+                                    return `
+                                    <tr>
+                                        <td style="white-space: nowrap;">${c.mesTexto || "-"}</td>
+                                        <td style="text-align: right;">${(c.valorPrevisto || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                                        <td style="text-align: right; font-weight: 600; color: ${corCrono};">${(c.valorExecutado || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                                        <td style="text-align: center; font-weight: 600; color: ${corCrono};">${percCrono}%</td>
+                                        <td style="text-align: center;">
+                                            <div style="background: #eee; width: 60px; border-radius: 4px; overflow: hidden; height: 10px; display: inline-block; vertical-align: middle;">
+                                                <div style="background: ${corProgressoCrono}; height: 100%; width: ${parseFloat(percCrono) > 100 ? 100 : percCrono}%;"></div>
+                                            </div>
+                                        </td>
+                                        <td>${c.prazoLimite || "-"}</td>
+                                        <td>${c.dataLiquidado || "-"}</td>
+                                        <td style="text-align: center;"><span class="sispmg-status-badge ${c.status === 'Liquidado' ? 'sispmg-status-vigente' : 'sispmg-status-outros'}">${c.status || "Pendente"}</span></td>
+                                    </tr>
+                                    `;
+                                }).join('') : '<tr><td colspan="8" style="text-align: center;">Nenhum registro de cronograma extraído.</td></tr>'}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
                 <div style="margin-top: 25px; margin-bottom: 20px;">
                     <h3 style="font-size: 16px; color: #333;"><i class="fas fa-history"></i> Histórico de Alterações</h3>
-                    <div style="background: #fbf8f5; border: 1px solid #dcd3c5; border-radius: 6px; padding: 10px; font-size: 12px; max-height: 250px; overflow-y: auto;">
+                    <div style="background: #fff; border: 1px solid #dcd3c5; border-radius: 6px; padding: 10px; font-size: 12px; max-height: 250px; overflow-y: auto;">
                         ${audit.historico.length > 0 ? audit.historico.map(h => `
                             <div style="margin-bottom: 8px; border-bottom: 1px solid #eee; padding-bottom: 4px;">
                                 <strong style="color: #b3a368;">${h.data}</strong><br>${h.log}
@@ -653,7 +689,7 @@ export class SirconvDashboardModule {
         if (!tbody) return;
         let dataToRender = isFiltered ? this.filteredData : this.sortConvenios([...this.conveniosData]);
         if (dataToRender.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 40px;">Nenhum convênio encontrado.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; padding: 40px;">Nenhum convênio encontrado.</td></tr>`;
             ['dash-total-convenios','dash-valor-total','dash-valor-liquidado','dash-convenios-ativos'].forEach(id => document.getElementById(id).innerText = id.includes('total') ? '0' : '0,00');
             return;
         }
@@ -665,6 +701,22 @@ export class SirconvDashboardModule {
         tbody.innerHTML = dataToRender.map(conv => {
             const statusLabel = this.getStatusLabel(conv);
             const isAudited = conv.ID === this.activeConvId;
+            
+            const vEstimado = parseFloat(conv.VALOR_ESTIMADO) || 0;
+            const vLiquidado = parseFloat(conv.LIQUIDADO) || 0;
+            const progresso = vEstimado > 0 ? ((vLiquidado / vEstimado) * 100).toFixed(1) : 0;
+            const isExcedido = parseFloat(progresso) > 100;
+            const isConcluido = parseFloat(progresso) >= 100;
+
+            let corProgresso = '#28a745';
+            if (isExcedido) corProgresso = '#dc3545';
+            else if (isConcluido) corProgresso = '#b3a368';
+
+            let corTextoLiquidado = '#666';
+            if (vLiquidado > 0) {
+                corTextoLiquidado = isExcedido ? '#dc3545' : '#155724';
+            }
+
             return `
                 <tr class="sispmg-clickable-row ${isAudited ? 'sispmg-row-audited' : ''}" 
                     onclick="window.SisPMG_SirconvDashboard.loadAuditData('${conv.ID}')">
@@ -673,8 +725,14 @@ export class SirconvDashboardModule {
                     <td>${this.getMunicipioClean(conv.CONCEDENTE)}</td>
                     <td>${this.cleanUnidade(conv.UNI_NOME_PRINCIPAL)}</td>
                     <td class="sispmg-hide-on-audit">${this.formatDate(conv.DTFINAL)}</td>
-                    <td class="sispmg-hide-on-audit" style="text-align: right;">${(parseFloat(conv.VALOR_ESTIMADO) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                    <td class="sispmg-hide-on-audit" style="text-align: right;">${(parseFloat(conv.LIQUIDADO) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                    <td class="sispmg-hide-on-audit" style="text-align: right;">${vEstimado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                    <td class="sispmg-hide-on-audit" style="text-align: right; font-weight: 600; color: ${corTextoLiquidado};">${vLiquidado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                    <td class="sispmg-hide-on-audit" style="text-align: center; font-weight: 600; color: ${corTextoLiquidado};">${progresso}%</td>
+                    <td class="sispmg-hide-on-audit" style="text-align: center;">
+                        <div style="background: #eee; width: 60px; border-radius: 4px; overflow: hidden; height: 10px; display: inline-block; vertical-align: middle;">
+                            <div style="background: ${corProgresso}; height: 100%; width: ${progresso > 100 ? 100 : progresso}%;"></div>
+                        </div>
+                    </td>
                     <td style="text-align: center;"><span class="sispmg-status-badge ${statusLabel === 'Vigente' ? 'sispmg-status-vigente' : 'sispmg-status-outros'}">${statusLabel}</span></td>
                 </tr>
             `;
