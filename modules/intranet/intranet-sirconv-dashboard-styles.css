@@ -78,6 +78,7 @@
 .filter-active .sispmg-dashboard-sidebar.active {
     width: 320px !important;
     min-width: 320px !important;
+    max-width: 320px !important;
 }
 
 /* Redimensionar o painel principal e itens internos durante a auditoria */
@@ -159,13 +160,40 @@
     background-color: #fff !important;
 }
 
-/* Fixar largura da coluna de status */
+/* Fixar largura da coluna de status e colunas dos ícones */
 .sispmg-dashboard-table th[data-col="status"],
 .sispmg-dashboard-table td:last-child {
-    width: 140px !important;
-    min-width: 140px !important;
-    max-width: 140px !important;
+    width: 160px !important;
+    min-width: 160px !important;
+    max-width: 160px !important;
     text-align: center !important;
+}
+
+.sispmg-pendencias-container {
+    display: inline-flex !important;
+    gap: 0 !important;
+    margin-left: 8px !important;
+    vertical-align: middle !important;
+    width: 40px !important;
+    justify-content: center !important;
+}
+
+.sispmg-pendencia-slot {
+    width: 20px !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+}
+
+/* Tabelas de auditoria: evitar quebra de linha em colunas curtas */
+.sispmg-dashboard-sidebar table td, 
+.sispmg-dashboard-sidebar table th {
+    white-space: nowrap !important;
+}
+
+/* Permitir quebra apenas na coluna de descrição/nome */
+.sispmg-dashboard-sidebar table td:first-child {
+    white-space: normal !important;
 }
 
 /* Cards de resumo */
