@@ -131,13 +131,17 @@ export class SirconvDashboardModule {
             closeBtnGlobal.onclick = () => {
                 const layout = document.getElementById('sispmg-dashboard-layout');
                 const sidebar = document.getElementById('sispmg-dashboard-sidebar');
-                if (layout && layout.classList.contains('audit-active')) {
+                
+                // Se estiver em modo Auditoria ou modo Filtro, apenas fecha a lateral
+                if (layout && (layout.classList.contains('audit-active') || layout.classList.contains('filter-active'))) {
                     sidebar.classList.remove('active');
                     layout.classList.remove('audit-active');
-                    // Remover seleção da linha ao fechar sidebar
+                    layout.classList.remove('filter-active');
+                    // Limpar seleção se houver
                     this.activeConvId = null;
                     this.renderDashboard(true);
                 } else {
+                    // Se não houver lateral aberta, fecha o dashboard completo
                     this.closeAllFilterDropdowns();
                     overlay.remove();
                     document.body.style.overflow = '';
