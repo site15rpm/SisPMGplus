@@ -154,7 +154,7 @@
 }
 
 /* Forçar cores em Select e Option para evitar sobreposição do portal */
-#sispmg-plus-container select, 
+#sispmg-plus-container select,
 #sispmg-plus-container option {
     color: #333 !important;
     background-color: #fff !important;
@@ -205,7 +205,7 @@
 }
 
 /* Tabelas de auditoria: evitar quebra de linha em colunas curtas */
-.sispmg-dashboard-sidebar table td, 
+.sispmg-dashboard-sidebar table td,
 .sispmg-dashboard-sidebar table th {
     white-space: nowrap !important;
 }
@@ -213,6 +213,183 @@
 /* Permitir quebra apenas na coluna de descrição/nome */
 .sispmg-dashboard-sidebar table td:first-child {
     white-space: normal !important;
+}
+
+/* Cards de resumo */
+.sispmg-dashboard-summary {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)) !important;
+    gap: 10px !important;
+    flex-shrink: 0 !important;
+}
+
+.sispmg-dashboard-card {
+    background: #fff !important;
+    border: 1px solid #dcd3c5 !important;
+    border-radius: 8px !important;
+    padding: 10px !important;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05) !important;
+    text-align: center !important;
+}
+
+.sispmg-dashboard-card-value {
+    font-size: 24px !important;
+    font-weight: bold !important;
+    color: #b3a368 !important;
+    display: block !important;
+}
+
+.sispmg-dashboard-card-label {
+    font-size: 11px !important;
+    color: #666 !important;
+    text-transform: uppercase !important;
+    font-weight: 600 !important;
+    margin-top: 3px !important;
+}
+
+/* Tabela de dados */
+.sispmg-dashboard-table-container {
+    flex-grow: 1 !important;
+    overflow: auto !important;
+    border: 1px solid #dcd3c5 !important;
+    border-radius: 6px !important;
+    background: #fff !important;
+}
+
+.sispmg-dashboard-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    font-size: 12px !important;
+}
+
+.sispmg-dashboard-table th {
+    position: sticky !important;
+    top: 0 !important;
+    background-color: #f7f5f2 !important;
+    color: #574e2d !important;
+    padding: 8px 10px !important;
+    text-align: left !important;
+    z-index: 10 !important;
+    border-bottom: 2px solid #dcd3c5 !important;
+    font-weight: 600 !important;
+    white-space: nowrap !important;
+}
+
+.sispmg-th-content {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+}
+
+.sispmg-filter-trigger {
+    cursor: pointer !important;
+    color: #b3a368 !important;
+    font-size: 11px !important;
+    padding: 2px !important;
+    border-radius: 3px !important;
+    transition: background-color 0.2s !important;
+}
+
+.sispmg-filter-trigger:hover {
+    background-color: #efeadb !important;
+}
+
+.sispmg-filter-trigger.active {
+    color: #155724 !important;
+    background-color: #d4edda !important;
+}
+
+/* Dropdown de Filtro */
+.sispmg-filter-dropdown {
+    position: fixed !important;
+    background: #fff !important;
+    border: 1px solid #dcd3c5 !important;
+    border-radius: 6px !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2) !important;
+    z-index: 10005 !important;
+    width: 250px !important;
+    display: none;
+    flex-direction: column !important;
+    animation: sispmgfadeIn 0.2s ease-out !important;
+}
+
+.sispmg-filter-dropdown.show {
+    display: flex !important;
+}
+
+.sispmg-filter-search {
+    padding: 8px !important;
+    border-bottom: 1px solid #eee !important;
+}
+
+.sispmg-filter-search input {
+    width: 100% !important;
+    padding: 5px 8px !important;
+    border: 1px solid #dcd3c5 !important;
+    border-radius: 4px !important;
+    font-size: 12px !important;
+}
+
+.sispmg-filter-list {
+    max-height: 250px !important;
+    overflow-y: auto !important;
+    padding: 5px 0 !important;
+}
+
+.sispmg-filter-item {
+    display: flex !important;
+    align-items: center !important;
+    padding: 5px 15px !important;
+    cursor: pointer !important;
+    font-size: 12px !important;
+    gap: 8px !important;
+}
+
+.sispmg-filter-item:hover {
+    background-color: #f9f7f2 !important;
+}
+
+.sispmg-filter-item input {
+    margin: 0 !important;
+}
+
+.sispmg-filter-actions {
+    padding: 8px !important;
+    border-top: 1px solid #eee !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    background: #fbf8f5 !important;
+    border-radius: 0 0 6px 6px !important;
+}
+
+.sispmg-filter-btn {
+    padding: 4px 8px !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    border-radius: 4px !important;
+    cursor: pointer !important;
+    border: 1px solid transparent !important;
+}
+
+.sispmg-filter-btn-apply {
+    background-color: #b3a368 !important;
+    color: #fff !important;
+}
+
+.sispmg-filter-btn-clear {
+    background-color: #f0f0f0 !important;
+    color: #333 !important;
+    border-color: #ccc !important;
+}
+
+.sispmg-dashboard-table td {
+    padding: 6px 10px !important;
+    border-bottom: 1px solid #eee !important;
+    vertical-align: middle !important;
+}
+
+.sispmg-dashboard-table tr:hover {
+    background-color: #fbf8f5 !important;
 }
 
 .sispmg-status-vigente { background-color: #d4edda !important; color: #155724 !important; }
@@ -256,12 +433,12 @@
 }
 
 /* Hover e Linha Selecionada */
-#sispmg-plus-container #sispmg-sirconv-dashboard-modal-container .sispmg-dashboard-table tr.sispmg-clickable-row:hover td { 
-    background-color: #e5dfc5 !important; 
+#sispmg-plus-container #sispmg-sirconv-dashboard-modal-container .sispmg-dashboard-table tr.sispmg-clickable-row:hover td {
+    background-color: #e5dfc5 !important;
 }
 
-#sispmg-plus-container #sispmg-sirconv-dashboard-modal-container .sispmg-dashboard-table tr.sispmg-row-audited td { 
-    background-color: #e8dfbf !important; 
+#sispmg-plus-container #sispmg-sirconv-dashboard-modal-container .sispmg-dashboard-table tr.sispmg-row-audited td {
+    background-color: #e8dfbf !important;
 }
 
 .sispmg-row-audited {
