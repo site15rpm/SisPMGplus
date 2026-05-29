@@ -204,6 +204,17 @@
     display: inline-block !important;
 }
 
+/* Tabelas de auditoria: evitar quebra de linha em colunas curtas */
+.sispmg-dashboard-sidebar table td, 
+.sispmg-dashboard-sidebar table th {
+    white-space: nowrap !important;
+}
+
+/* Permitir quebra apenas na coluna de descrição/nome */
+.sispmg-dashboard-sidebar table td:first-child {
+    white-space: normal !important;
+}
+
 .sispmg-status-vigente { background-color: #d4edda !important; color: #155724 !important; }
 .sispmg-status-outros { background-color: #f8d7da !important; color: #721c24 !important; }
 
