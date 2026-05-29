@@ -735,7 +735,7 @@ export class SirconvDashboardModule {
         layout.classList.add('audit-active');
 
         sidebar.innerHTML = `
-            <h2 style="color: #574e2d; font-size: 20px; border-bottom: 2px solid #b3a368; padding-bottom: 10px; margin-top: 0; margin-bottom: 15px;">
+            <h2 style="color: #574e2d; font-size: 20px; border-bottom: 2px solid #b3a368; padding-bottom: 10px; margin-top: 0; margin-bottom: 15px; overflow: visible !important;">
                 Convênio ${conv.ID} - ${this.getMunicipioClean(conv.CONCEDENTE)}
             </h2>
             
