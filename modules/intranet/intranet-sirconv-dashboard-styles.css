@@ -94,6 +94,12 @@
     padding: 15px !important;
 }
 
+/* Estado da Sidebar para Filtros */
+.filter-active .sispmg-dashboard-sidebar.active {
+    width: 320px !important;
+    min-width: 320px !important;
+}
+
 /* Redimensionar o painel principal e itens internos durante a auditoria */
 .audit-active .sispmg-dashboard-main {
     max-width: 50vw !important;
@@ -101,7 +107,13 @@
     flex: 0 0 50vw !important;
 }
 
-.audit-active .sispmg-btn-text {
+.filter-active .sispmg-dashboard-main {
+    max-width: calc(100vw - 320px) !important;
+    min-width: calc(100vw - 320px) !important;
+    flex: 0 0 calc(100vw - 320px) !important;
+}
+
+.audit-active .sispmg-btn-text, .filter-active .sispmg-btn-text {
     display: none !important;
 }
 
@@ -109,7 +121,12 @@
 .sispmg-hide-on-audit {
     display: table-cell !important;
 }
-.audit-active .sispmg-hide-on-audit {
+.audit-active .sispmg-hide-on-audit, .filter-active .sispmg-hide-on-audit {
+    display: none !important;
+}
+
+/* Ocultar botão de atualizar quando lateral aberta */
+.audit-active #sispmg-dashboard-refresh, .filter-active #sispmg-dashboard-refresh {
     display: none !important;
 }
 
