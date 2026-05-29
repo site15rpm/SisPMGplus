@@ -426,11 +426,20 @@ export class SirconvDashboardModule {
             filtroMes = mesAtual;
             filtroAno = anoAtual;
         } else if (filtros.periodo === 'manual' && filtros.manual) {
-            const partes = filtros.manual.split(' ');
-            if (partes.length === 2) {
-                const meses = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
-                filtroMes = meses.indexOf(partes[0].toUpperCase());
-                filtroAno = parseInt(partes[1]);
+            // Motor de parsing flexível para suportar: JAN 2026, JAN/2026, JAN2026, 01 2026, 01/2026, 012026
+            const meses = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
+            const entrada = filtros.manual.toUpperCase().replace(/[\/\s-]/g, ''); // Remove separadores
+            
+            // Tenta extrair Mês (texto ou número) e Ano (4 dígitos)
+            const matchTexto = entrada.match(/^([A-Z]{3})(\d{4})$/);
+            const matchNum = entrada.match(/^(\d{1,2})(\d{4})$/);
+
+            if (matchTexto) {
+                filtroMes = meses.indexOf(matchTexto[1]);
+                filtroAno = parseInt(matchTexto[2]);
+            } else if (matchNum) {
+                filtroMes = parseInt(matchNum[1]) - 1;
+                filtroAno = parseInt(matchNum[2]);
             }
         }
 
