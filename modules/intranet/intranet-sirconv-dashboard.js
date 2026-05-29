@@ -703,6 +703,9 @@ export class SirconvDashboardModule {
                 lastUpdate: new Date().toLocaleString()
             };
 
+            // NOVA LINHA: Analisa pendências logo após o carregamento individual (sem filtros de período específicos)
+            conv.pendencias = this.analisarPendencias(conv.audit);
+
             this.renderAuditSidebar(conv);
 
         } catch (e) {
@@ -1030,9 +1033,13 @@ export class SirconvDashboardModule {
             let pendenciasHtml = '';
             if (hasAtraso || hasExcesso) {
                 pendenciasHtml = `
-                    <div class="sispmg-pendencias-container" style="display: inline-flex; gap: 5px; margin-left: 10px; vertical-align: middle;">
-                        ${hasAtraso ? '<i class="fas fa-clock" title="Atraso na Liquidação" style="color: #dc3545; font-size: 14px;"></i>' : ''}
-                        ${hasExcesso ? '<i class="fas fa-exclamation-triangle" title="Excesso de Valor" style="color: #dc3545; font-size: 14px;"></i>' : ''}
+                    <div class="sispmg-pendencias-container">
+                        <div class="sispmg-pendencia-slot">
+                            ${hasAtraso ? '<i class="fas fa-clock" title="Atraso na Liquidação" style="color: #dc3545; font-size: 14px;"></i>' : ''}
+                        </div>
+                        <div class="sispmg-pendencia-slot">
+                            ${hasExcesso ? '<i class="fas fa-exclamation-triangle" title="Excesso de Valor" style="color: #dc3545; font-size: 14px;"></i>' : ''}
+                        </div>
                     </div>
                 `;
             }
@@ -1054,8 +1061,19 @@ export class SirconvDashboardModule {
                         </div>
                     </td>
                     <td style="text-align: center; white-space: nowrap;">
-                        <span class="sispmg-status-badge ${statusLabel === 'Vigente' ? 'sispmg-status-vigente' : 'sispmg-status-outros'}">${statusLabel}</span>
-                        ${pendenciasHtml}
+                        <div style="display: flex; align-items: center; justify-content: center; gap: 5px;">
+                            <div class="sispmg-status-badge-slot">
+                                <span class="sispmg-status-badge ${statusLabel === 'Vigente' ? 'sispmg-status-vigente' : 'sispmg-status-outros'}">${statusLabel}</span>
+                            </div>
+                            <div class="sispmg-pendencias-container">
+                                <div class="sispmg-pendencia-slot">
+                                    ${hasAtraso ? '<i class="fas fa-clock" title="Atraso na Liquidação" style="color: #dc3545; font-size: 14px;"></i>' : ''}
+                                </div>
+                                <div class="sispmg-pendencia-slot">
+                                    ${hasExcesso ? '<i class="fas fa-exclamation-triangle" title="Excesso de Valor" style="color: #dc3545; font-size: 14px;"></i>' : ''}
+                                </div>
+                            </div>
+                        </div>
                     </td>
                 </tr>
             `;
