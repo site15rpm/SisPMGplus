@@ -1,5 +1,6 @@
 // Funções e lógica para o dashboard de convênios SIRCONV
 import { sendMessageToBackground, getCookie } from '../../common/utils.js';
+import { iconSVG_28 } from '../../common/icon.js';
 
 export class SirconvDashboardModule {
     constructor(config) {
@@ -43,10 +44,13 @@ export class SirconvDashboardModule {
             <div id="sispmg-dashboard-layout" class="sispmg-dashboard-layout">
                 <div class="sispmg-dashboard-main">
                     <div class="sispmg-dashboard-header">
-                        <h2>Dashboard de Convênios SIRCONV</h2>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            ${iconSVG_28}
+                            <h2>Dashboard de Convênios SIRCONV</h2>
+                        </div>
                         <div class="sispmg-dashboard-actions" style="display: flex; align-items: center;">
                             <button id="sispmg-dashboard-refresh" class="sispmg-dashboard-btn sispmg-dashboard-btn-primary">
-                                <i class="fas fa-sync-alt"></i> Atualizar Dados
+                                <i class="fas fa-search"></i> Buscar Pendências
                             </button>
                             <button id="sispmg-dashboard-close-global" class="sispmg-global-close">
                                 Fechar
