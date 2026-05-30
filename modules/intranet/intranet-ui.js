@@ -411,6 +411,15 @@ export class UIModule {
 
         // Adiciona item do menu para Extração de Convênios (SIRCONV)
         const isSirconvConveniosPage = window.location.href.includes('/lite/convenio/');
+        if (isSirconvConveniosPage && this.modules['SIRCONV Dashboard']) {
+            moduleItems += `
+               <div id="sirconv-dashboard-btn" class="sispmg-menu-item">
+                   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
+                   <span>Dashboard de Convênios</span>
+               </div>
+           `;
+        }
+
         if (isSirconvConveniosPage && this.modules['Extração de Convênios']) {
              moduleItems += `
                 <div id="config-sirconv-convenios-btn" class="sispmg-menu-item">
@@ -421,14 +430,6 @@ export class UIModule {
                 </div>
             `;
         }
-        if (isSirconvConveniosPage && this.modules['SIRCONV Dashboard']) {
-            moduleItems += `
-               <div id="sirconv-dashboard-btn" class="sispmg-menu-item">
-                   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
-                   <span>Dashboard de Convênios</span>
-               </div>
-           `;
-       }
 
         // <-- ADICIONADO: Item do menu para Extração de Unidades -->
         const isUnidadesPage = window.location.href.startsWith('https://intranet.policiamilitar.mg.gov.br/legado/operacoes/unidades/');
