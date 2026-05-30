@@ -48,9 +48,9 @@ export class SirconvDashboardModule {
                             ${iconSVG_28}
                             <h2>Dashboard de Convênios SIRCONV</h2>
                         </div>
-                        <div class="sispmg-dashboard-actions" style="display: flex; align-items: center;">
+                        <div class="sispmg-dashboard-actions" style="display: flex; align-items: center; gap: 10px;">
                             <button id="sispmg-dashboard-refresh" class="sispmg-dashboard-btn sispmg-dashboard-btn-primary">
-                                <i class="fas fa-search"></i> Buscar Pendências
+                                <i class="fas fa-search"></i> Busca Avançada
                             </button>
                             <button id="sispmg-dashboard-close-global" class="sispmg-global-close">
                                 Fechar
@@ -173,8 +173,8 @@ export class SirconvDashboardModule {
         };
         modalContainer.onclick = () => this.closeAllFilterDropdowns();
 
-        // Carregamento automático da lista básica ao abrir
-        this.fetchConveniosData();
+        // Carregamento automático da lista básica ao abrir (Sempre Ativos por padrão ao abrir o dashboard)
+        this.fetchConveniosData('ativos');
     }
 
     showFilterSidebar() {
@@ -192,12 +192,21 @@ export class SirconvDashboardModule {
         sidebar.innerHTML = `
             <div style="display: flex; flex-direction: column; height: 100%;">
                 <h2 style="color: #574e2d; font-size: 18px; border-bottom: 2px solid #b3a368; padding-bottom: 10px; margin-top: 0; margin-bottom: 20px;">
-                    <i class="fas fa-filter"></i> Filtros de Auditoria
+                    <i class="fas fa-filter"></i> Busca Avançada
                 </h2>
 
                 <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 20px;">
                     <div>
-                        <label style="display: block; font-weight: 600; margin-bottom: 8px; font-size: 13px;">Tipo de Pendência:</label>
+                        <label style="display: block; font-weight: 600; margin-bottom: 8px; font-size: 13px;">Tipo de Busca:</label>
+                        <select id="sispmg-dashboard-tipo-busca" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #dcd3c5; background: #fff;">
+                            <option value="ativos" selected>Convênios Ativos</option>
+                            <option value="todos">Todos os Convênios (Concedentes na Página)</option>
+                        </select>
+                        <p style="font-size: 11px; color: #666; margin-top: 5px;">A opção 'Todos' extrai dados de cada concedente listado na página atual da Intranet.</p>
+                    </div>
+
+                    <div>
+                        <label style="display: block; font-weight: 600; margin-bottom: 8px; font-size: 13px;">Tipo de Pendência (Auditoria):</label>
                         <select id="sispmg-filter-tipo" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #dcd3c5; background: #fff;">
                             <option value="todos">Todas as Pendências</option>
                             <option value="atraso_liquidacao">Atraso na Liquidação</option>
@@ -229,7 +238,7 @@ export class SirconvDashboardModule {
 
                 <div style="padding-top: 20px; border-top: 1px solid #dcd3c5;">
                     <button id="sispmg-btn-start-audit" class="sispmg-dashboard-btn sispmg-dashboard-btn-primary" style="width: 100%; padding: 12px;">
-                        <i class="fas fa-play"></i> Iniciar Auditoria
+                        <i class="fas fa-play"></i> Iniciar Auditoria Avançada
                     </button>
                 </div>
             </div>
@@ -246,15 +255,22 @@ export class SirconvDashboardModule {
 
         const startBtn = sidebar.querySelector('#sispmg-btn-start-audit');
         if (startBtn) {
-            startBtn.onclick = () => {
+            startBtn.onclick = async () => {
+                const tipoBusca = sidebar.querySelector('#sispmg-dashboard-tipo-busca').value;
                 const filtros = {
                     tipo: sidebar.querySelector('#sispmg-filter-tipo').value,
                     periodo: sidebar.querySelector('#sispmg-filter-periodo').value,
                     manual: sidebar.querySelector('#sispmg-filter-manual').value.toUpperCase().trim(),
                     municipio: sidebar.querySelector('#sispmg-filter-municipio').value
                 };
+
                 sidebar.classList.remove('active');
                 layout.classList.remove('filter-active');
+
+                // Se mudou o tipo de busca (ex: Ativos -> Todos), recarrega a base antes da auditoria
+                // Se for 'ativos', costuma já estar carregado, mas para garantir consistência ou troca:
+                await this.fetchConveniosData(tipoBusca);
+                
                 this.startDeepAudit(filtros);
             };
         }
@@ -485,40 +501,114 @@ export class SirconvDashboardModule {
         return pendencias;
     }
 
-    async fetchConveniosData() {
+    async fetchConveniosData(tipo = 'ativos') {
         if (this.isLoading) return;
         this.isLoading = true;
         
-        if (this.ui) this.ui.showLoader('Carregando dados básicos...');
+        const msg = tipo === 'todos' ? 'Extraindo dados de todos os concedentes...' : 'Carregando meus convênios...';
+        if (this.ui) this.ui.showLoader(msg);
 
         try {
-            console.log("Buscando lista de convênios via API...");
-            
-            const pesquisa = JSON.stringify({
-                preposto: "", numeroConvenio: "", numeroFace: "", todasUnidades: "", unidade: "",
-                status: "", dtInicio1: null, dtInicio2: null, dtFim1: null, dtFim2: null
-            });
-            
-            const url = `https://intranet.policiamilitar.mg.gov.br/lite/convenio/web/convenio/meus-convenios?pesquisa=${encodeURIComponent(pesquisa)}`;
-            
-            const response = await fetch(url);
-            const data = await response.json();
+            if (tipo === 'ativos') {
+                console.log("Buscando lista de convênios ativos via API...");
+                const pesquisa = JSON.stringify({
+                    preposto: "", numeroConvenio: "", numeroFace: "", todasUnidades: "", unidade: "",
+                    status: "", dtInicio1: null, dtInicio2: null, dtFim1: null, dtFim2: null
+                });
+                const url = `https://intranet.policiamilitar.mg.gov.br/lite/convenio/web/convenio/meus-convenios?pesquisa=${encodeURIComponent(pesquisa)}`;
+                const response = await fetch(url);
+                const data = await response.json();
 
-            if (data && data.convenios) {
-                this.conveniosData = data.convenios.map(c => ({ ...c, audit: null }));
-                this.activeFilters = {}; 
-                this.applyFilters();
+                if (data && data.convenios) {
+                    this.conveniosData = data.convenios.map(c => ({ ...c, audit: null }));
+                } else {
+                    throw new Error("Estrutura de dados inválida.");
+                }
             } else {
-                throw new Error("Estrutura de dados inválida.");
+                // Modo Todos - Lógica do extrator-convenios.js
+                this.conveniosData = await this.fetchAllConveniosFromConcedentes();
             }
 
+            this.activeFilters = {}; 
+            this.applyFilters();
+
         } catch (error) {
-            console.error("Erro ao carregar Dashboard via API:", error);
+            console.error("Erro ao carregar Dashboard:", error);
             alert("Erro ao carregar os dados. Verifique se você está logado na Intranet.");
         } finally {
             this.isLoading = false;
             if (this.ui) this.ui.hideLoader();
         }
+    }
+
+    async fetchAllConveniosFromConcedentes() {
+        // Busca concedentes na página atual (conforme lógica do extrator-convenios.js)
+        const links = document.querySelectorAll('a[href*="concedente/view?id="]');
+        const concedentesMap = new Map();
+
+        links.forEach(link => {
+            const urlMatch = link.href.match(/id=(\d+)/);
+            if (urlMatch && urlMatch[1]) {
+                concedentesMap.set(urlMatch[1], link.innerText.trim());
+            }
+        });
+
+        const concedentes = Array.from(concedentesMap).map(([id, nome]) => ({ id, nome }));
+        const resultados = [];
+
+        if (concedentes.length === 0) {
+            console.warn("Nenhum concedente encontrado na página.");
+            alert("Nenhum concedente identificado na página. Certifique-se de estar na listagem de convênios.");
+            return [];
+        }
+
+        for (let i = 0; i < concedentes.length; i++) {
+            const concedente = concedentes[i];
+            const progMsg = `Extraindo concedente ${i + 1} de ${concedentes.length}: ${concedente.nome}`;
+            if (this.ui) this.ui.updateLoaderMessage(progMsg);
+
+            try {
+                // 1. Requisita a página HTML do concedente para listar os convênios
+                const resHtml = await fetch(`https://intranet.policiamilitar.mg.gov.br/lite/convenio/web/concedente/view?id=${concedente.id}`);
+                const htmlText = await resHtml.text();
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(htmlText, 'text/html');
+
+                const headers = Array.from(doc.querySelectorAll('h2'));
+                const targetHeader = headers.find(h => h.textContent.includes('Convênios firmados'));
+
+                if (targetHeader && targetHeader.parentElement) {
+                    const items = targetHeader.parentElement.querySelectorAll('a.item.flex-linha');
+                    for (const item of items) {
+                        const colunas = item.querySelectorAll('.flex-coluna');
+                        const codigoConvenio = colunas[1]?.innerText.replace('Código', '').trim() || '';
+
+                        if (!codigoConvenio) continue;
+
+                        try {
+                            // 2. Requisita os detalhes consolidados via endpoint JSON
+                            const resJson = await fetch(`https://intranet.policiamilitar.mg.gov.br/lite/convenio/web/convenio/get-convenio-detalhes?id=${codigoConvenio}`);
+                            const data = await resJson.json();
+
+                            if (data.success && data.convenio) {
+                                resultados.push({
+                                    ...data.convenio,
+                                    audit: null
+                                });
+                            }
+                        } catch (errJson) {
+                            console.error(`Erro ao buscar JSON do convênio ${codigoConvenio}:`, errJson);
+                        }
+                        await new Promise(r => setTimeout(r, 200));
+                    }
+                }
+            } catch (errHtml) {
+                console.error(`Erro ao processar concedente ${concedente.id}:`, errHtml);
+            }
+            await new Promise(r => setTimeout(r, 300));
+        }
+
+        return resultados;
     }
 
     async loadAuditData(convId) {
