@@ -433,16 +433,22 @@ export class SirconvDashboardModule {
         if (!statusCell) return;
 
         const hasAtraso = conv.pendencias?.some(p => p.tipo === 'atraso_liquidacao');
-        const hasExcesso = conv.pendencias?.some(p => p.tipo === 'excesso_valor');
+        const hasExcessoM = conv.pendencias?.some(p => p.tipo === 'excesso_valor_mensal');
+        const hasExcessoN = conv.pendencias?.filter(p => p.tipo === 'excesso_valor_natureza');
+        const isCritico = hasExcessoN?.some(p => p.nivel === 'critico');
+        const isAlerta = !isCritico && hasExcessoN?.some(p => p.nivel === 'alerta');
 
         const pendContainer = statusCell.querySelector('.sispmg-pendencias-container');
         if (pendContainer) {
             pendContainer.innerHTML = `
-                <div class="sispmg-pendencia-slot">
+                <div class="sispmg-pendencia-slot" style="width: 16px;">
                     ${hasAtraso ? '<i class="fas fa-clock" title="Atraso na Liquidação" style="color: #dc3545; font-size: 14px;"></i>' : ''}
                 </div>
-                <div class="sispmg-pendencia-slot">
-                    ${hasExcesso ? '<i class="fas fa-exclamation-triangle" title="Excesso de Valor" style="color: #dc3545; font-size: 14px;"></i>' : ''}
+                <div class="sispmg-pendencia-slot" style="width: 16px;">
+                    ${hasExcessoM ? '<i class="fas fa-chart-line" title="Excesso de Valor Mensal" style="color: #dc3545; font-size: 14px;"></i>' : ''}
+                </div>
+                <div class="sispmg-pendencia-slot" style="width: 16px;">
+                    ${isCritico ? '<i class="fas fa-exclamation-triangle" title="Excesso Crítico por Natureza" style="color: #dc3545; font-size: 14px;"></i>' : (isAlerta ? '<i class="fas fa-exclamation-triangle" title="Alerta de Consumo por Natureza" style="color: #fd7e14; font-size: 14px;"></i>' : '')}
                 </div>
             `;
         }
@@ -630,7 +636,7 @@ export class SirconvDashboardModule {
         return auditResult;
     }
 
-    analisarPendencias(audit, filtros = { tipo: 'todos', periodo: 'todos', manual: '' }) {
+    analisarPendencias(audit, filtros = { tipo: 'todos', periodo: 'todos', manual: '' }, conv = null) {
         const pendencias = [];
         const hoje = new Date();
         const anoAtual = hoje.getFullYear();
@@ -651,6 +657,19 @@ export class SirconvDashboardModule {
             else if (mN) { filtroMes = parseInt(mN[1]) - 1; filtroAno = parseInt(mN[2]); }
         }
 
+        // Cálculos de vigência e duração
+        let duracaoMeses = 0, mesesDecorridos = 0, mesesFaltantes = 0;
+        if (conv && conv.DTINICIAL && conv.DTFINAL) {
+            const d1 = new Date(conv.DTINICIAL.split(' ')[0]), d2 = new Date(conv.DTFINAL.split(' ')[0]);
+            duracaoMeses = Math.max(1, (d2.getFullYear() - d1.getFullYear()) * 12 + (d2.getMonth() - d1.getMonth()) + 1);
+            mesesDecorridos = Math.max(0, (hoje.getFullYear() - d1.getFullYear()) * 12 + (hoje.getMonth() - d1.getMonth()));
+            mesesDecorridos = Math.min(duracaoMeses, mesesDecorridos + 1);
+            mesesFaltantes = Math.max(0, duracaoMeses - mesesDecorridos);
+            
+            // Atribui ao audit para uso no render
+            audit.vigenciaInfo = { duracaoMeses, mesesDecorridos, mesesFaltantes, dtInicio: conv.DTINICIAL.split(' ')[0], dtFim: conv.DTFINAL.split(' ')[0] };
+        }
+
         const isNoPeriodo = (mesTexto) => {
             if (filtros.periodo === 'todos') return true;
             const p = mesTexto?.split(' '); if (!p || p.length !== 2) return false;
@@ -661,18 +680,29 @@ export class SirconvDashboardModule {
 
         if (filtros.tipo === 'todos' || filtros.tipo === 'excesso_valor') {
             audit.cronogramas.forEach(c => {
-                if (isNoPeriodo(c.mesTexto) && c.valorExecutado > c.valorPrevisto + 0.01) pendencias.push({ tipo: 'excesso_valor', msg: `Excesso em ${c.mesTexto}` });
+                if (isNoPeriodo(c.mesTexto) && c.valorExecutado > c.valorPrevisto + 0.01) {
+                    pendencias.push({ tipo: 'excesso_valor_mensal', msg: `Excesso mensal em ${c.mesTexto}` });
+                }
             });
             audit.planoItens.forEach(p => {
-                if (p.valorExecutado > p.valorEstimado + 0.01) pendencias.push({ tipo: 'excesso_valor', msg: `Excesso na natureza: ${p.nome}` });
+                if (p.valorExecutado > p.valorEstimado + 0.01) {
+                    pendencias.push({ tipo: 'excesso_valor_natureza', nivel: 'critico', msg: `Excesso crítico na natureza: ${p.nome}` });
+                } else if (duracaoMeses > 0 && p.valorExecutado > 0) {
+                    const projecaoLinear = (p.valorEstimado / duracaoMeses) * mesesDecorridos;
+                    if (p.valorExecutado > projecaoLinear * 1.3) { // 30% acima da projeção linear
+                        pendencias.push({ tipo: 'excesso_valor_natureza', nivel: 'alerta', msg: `Consumo acelerado na natureza: ${p.nome}` });
+                    }
+                }
             });
         }
         if (filtros.tipo === 'todos' || filtros.tipo === 'atraso_liquidacao') {
             audit.cronogramas.forEach(c => {
-                if (isNoPeriodo(c.mesTexto) && c.status !== 'Liquidado' && c.status !== 'Liquidado fora do prazo') {
+                const isAguardando = c.status === 'Aguardando execução' || c.status === 'Pendente';
+                if (isNoPeriodo(c.mesTexto) && isAguardando) {
                     if (c.prazoLimite && c.prazoLimite !== '-') {
                         const pt = c.prazoLimite.split('/');
-                        if (new Date(pt[2], pt[1] - 1, pt[0]) < hoje) pendencias.push({ tipo: 'atraso_liquidacao', msg: `Atraso em ${c.mesTexto}` });
+                        const dtLimite = new Date(pt[2], pt[1] - 1, pt[0]);
+                        if (dtLimite < hoje) pendencias.push({ tipo: 'atraso_liquidacao', msg: `Atraso na liquidação de ${c.mesTexto}` });
                     }
                 }
             });
@@ -829,11 +859,27 @@ export class SirconvDashboardModule {
         const audit = conv.audit, layout = document.getElementById('sispmg-dashboard-layout'), sidebar = document.getElementById('sispmg-dashboard-sidebar');
         if (!layout || !sidebar) return;
         layout.classList.remove('filter-active'); layout.classList.add('audit-active');
+        
+        const vInfo = audit.vigenciaInfo || {};
+        const headerInfoHtml = vInfo.duracaoMeses ? `
+            <div class="sispmg-audit-header-info" style="background: #fbf8f5; border: 1px solid #dcd3c5; border-radius: 6px; padding: 12px; margin-bottom: 20px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; font-size: 13px;">
+                <div><strong style="color: #574e2d;">Início:</strong> ${this.formatDate(vInfo.dtInicio)}</div>
+                <div><strong style="color: #574e2d;">Término:</strong> ${this.formatDate(vInfo.dtFim)}</div>
+                <div><strong style="color: #574e2d;">Duração:</strong> ${vInfo.duracaoMeses} meses</div>
+                <div><strong style="color: #574e2d;">Nº Face:</strong> ${conv.NUMERO_FACE || '-'}</div>
+                <div><strong style="color: #574e2d;">Meses Decorridos:</strong> ${vInfo.mesesDecorridos}</div>
+                <div><strong style="color: #574e2d;">Meses Faltantes:</strong> ${vInfo.mesesFaltantes}</div>
+            </div>
+        ` : `<div style="padding: 10px; background: #fbf8f5; margin-bottom: 15px; border-radius: 6px; font-size: 13px;"><strong>Nº Face:</strong> ${conv.NUMERO_FACE || '-'}</div>`;
+
         sidebar.innerHTML = `
             <h2 style="color: #574e2d; font-size: 20px; border-bottom: 2px solid #b3a368; padding-bottom: 10px; margin-top: 0; margin-bottom: 15px; overflow: visible !important;">
                 Convênio ${conv.ID} - ${this.getMunicipioClean(conv.CONCEDENTE)}
             </h2>
+            
             <div style="flex-grow: 1; overflow-y: auto; padding-right: 10px;">
+                ${headerInfoHtml}
+                
                 <div style="margin-top: 5px;">
                     <h3 style="font-size: 16px; color: #333;"><i class="fas fa-list-check"></i> Plano de Trabalho (Naturezas)</h3>
                     <div class="sispmg-dashboard-table-container">
@@ -923,8 +969,34 @@ export class SirconvDashboardModule {
             const statusLabel = this.getStatusLabel(conv), isAudited = conv.ID === this.activeConvId;
             const vEstimado = parseFloat(conv.VALOR_ESTIMADO) || 0, vLiquidado = parseFloat(conv.LIQUIDADO) || 0, prog = vEstimado > 0 ? ((vLiquidado / vEstimado) * 100).toFixed(1) : 0, isE = parseFloat(prog) > 100, isC = parseFloat(prog) >= 100;
             let corP = isE ? '#dc3545' : (isC ? '#b3a368' : '#28a745'), corT = vLiquidado > 0 ? (isE ? '#dc3545' : '#155724') : '#666';
-            const hasAtraso = conv.pendencias?.some(p => p.tipo === 'atraso_liquidacao'), hasExcesso = conv.pendencias?.some(p => p.tipo === 'excesso_valor');
-            return `<tr class="sispmg-clickable-row ${isAudited ? 'sispmg-row-audited' : ''}" onclick="window.SisPMG_SirconvDashboard.loadAuditData('${conv.ID}')"><td><strong>${conv.ID}</strong></td><td class="sispmg-hide-on-audit">${conv.NUMERO_FACE || '-'}</td><td>${this.getMunicipioClean(conv.CONCEDENTE)}</td><td>${this.cleanUnidade(conv.UNI_NOME_PRINCIPAL)}</td><td class="sispmg-hide-on-audit">${this.formatDate(conv.DTFINAL)}</td><td class="sispmg-hide-on-audit" style="text-align: right;">${vEstimado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td><td class="sispmg-hide-on-audit" style="text-align: right; font-weight: 600; color: ${corT};">${vLiquidado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td><td class="sispmg-hide-on-audit" style="text-align: center; font-weight: 600; color: ${corT};">${prog}%</td><td class="sispmg-hide-on-audit" style="text-align: center;"><div style="background: #eee; width: 60px; border-radius: 4px; overflow: hidden; height: 10px; display: inline-block; vertical-align: middle;"><div style="background: ${corP}; height: 100%; width: ${prog > 100 ? 100 : prog}%;"></div></div></td><td style="text-align: center; white-space: nowrap;"><div style="display: flex; align-items: center; justify-content: center; gap: 5px;"><div class="sispmg-status-badge-slot"><span class="sispmg-status-badge ${statusLabel === 'Vigente' ? 'sispmg-status-vigente' : 'sispmg-status-outros'}">${statusLabel}</span></div><div class="sispmg-pendencias-container"><div class="sispmg-pendencia-slot">${hasAtraso ? '<i class="fas fa-clock" title="Atraso na Liquidação" style="color: #dc3545; font-size: 14px;"></i>' : ''}</div><div class="sispmg-pendencia-slot">${hasExcesso ? '<i class="fas fa-exclamation-triangle" title="Excesso de Valor" style="color: #dc3545; font-size: 14px;"></i>' : ''}</div></div></div></td></tr>`;
+            
+            const hasAtraso = conv.pendencias?.some(p => p.tipo === 'atraso_liquidacao');
+            const hasExcessoM = conv.pendencias?.some(p => p.tipo === 'excesso_valor_mensal');
+            const hasExcessoN = conv.pendencias?.filter(p => p.tipo === 'excesso_valor_natureza');
+            const isCritico = hasExcessoN?.some(p => p.nivel === 'critico');
+            const isAlerta = !isCritico && hasExcessoN?.some(p => p.nivel === 'alerta');
+
+            return `<tr class="sispmg-clickable-row ${isAudited ? 'sispmg-row-audited' : ''}" onclick="window.SisPMG_SirconvDashboard.loadAuditData('${conv.ID}')">
+                <td><strong>${conv.ID}</strong></td>
+                <td class="sispmg-hide-on-audit">${conv.NUMERO_FACE || '-'}</td>
+                <td>${this.getMunicipioClean(conv.CONCEDENTE)}</td>
+                <td>${this.cleanUnidade(conv.UNI_NOME_PRINCIPAL)}</td>
+                <td class="sispmg-hide-on-audit">${this.formatDate(conv.DTFINAL)}</td>
+                <td class="sispmg-hide-on-audit" style="text-align: right;">${vEstimado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                <td class="sispmg-hide-on-audit" style="text-align: right; font-weight: 600; color: ${corT};">${vLiquidado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                <td class="sispmg-hide-on-audit" style="text-align: center; font-weight: 600; color: ${corT};">${prog}%</td>
+                <td class="sispmg-hide-on-audit" style="text-align: center;"><div style="background: #eee; width: 60px; border-radius: 4px; overflow: hidden; height: 10px; display: inline-block; vertical-align: middle;"><div style="background: ${corP}; height: 100%; width: ${prog > 100 ? 100 : prog}%;"></div></div></td>
+                <td style="text-align: center; white-space: nowrap;">
+                    <div style="display: flex; align-items: center; justify-content: center; gap: 5px;">
+                        <div class="sispmg-status-badge-slot"><span class="sispmg-status-badge ${statusLabel === 'Vigente' ? 'sispmg-status-vigente' : 'sispmg-status-outros'}">${statusLabel}</span></div>
+                        <div class="sispmg-pendencias-container" style="display: flex; gap: 2px;">
+                            <div class="sispmg-pendencia-slot" style="width: 16px;">${hasAtraso ? '<i class="fas fa-clock" title="Atraso na Liquidação" style="color: #dc3545; font-size: 14px;"></i>' : ''}</div>
+                            <div class="sispmg-pendencia-slot" style="width: 16px;">${hasExcessoM ? '<i class="fas fa-chart-line" title="Excesso de Valor Mensal" style="color: #dc3545; font-size: 14px;"></i>' : ''}</div>
+                            <div class="sispmg-pendencia-slot" style="width: 16px;">${isCritico ? '<i class="fas fa-exclamation-triangle" title="Excesso Crítico por Natureza" style="color: #dc3545; font-size: 14px;"></i>' : (isAlerta ? '<i class="fas fa-exclamation-triangle" title="Alerta de Consumo por Natureza" style="color: #fd7e14; font-size: 14px;"></i>' : '')}</div>
+                        </div>
+                    </div>
+                </td>
+            </tr>`;
         }).join(''); window.SisPMG_SirconvDashboard = this;
     }
 
