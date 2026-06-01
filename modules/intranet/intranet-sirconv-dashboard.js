@@ -80,10 +80,10 @@ export class SirconvDashboardModule {
                             ${iconSVG_28}
                             <h2>Dashboard de Convênios SIRCONV</h2>
                         </div>
-                        <div class="sispmg-dashboard-actions" style="display: flex; align-items: center; gap: 10px;">
-                            <div id="sispmg-dashboard-bg-status" style="display: none; align-items: center; gap: 8px; color: #b3a368; font-size: 12px; margin-right: 15px; font-weight: 600;">
+                        <div class="sispmg-dashboard-actions" style="display: flex; align-items: center; gap: 10px; flex-shrink: 0;">
+                            <div id="sispmg-dashboard-bg-status" style="display: none; align-items: center; gap: 8px; color: #b3a368; font-size: 12px; margin-right: 15px; font-weight: 600; cursor: pointer;" title="Clique para parar a atualização">
                                 <i class="fas fa-circle-notch fa-spin"></i>
-                                <span>Atualização de segundo plano em andamento...</span>
+                                <span style="text-decoration: underline;">Atualização em andamento...</span>
                             </div>
                             <button id="sispmg-dashboard-force-reload" class="sispmg-dashboard-btn" title="Recarregar dados do zero">
                                 <i class="fas fa-sync-alt"></i> Recarregar
