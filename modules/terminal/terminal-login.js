@@ -133,37 +133,23 @@ export function initLogin(prototype) {
 
     prototype.handleExpiredPasswordAndStop = async function() {
         this.pauseAutomaticLoginMonitoring();
-        this.exibirNotificacao("Senha expirada. Preenchendo dados para troca manual...", true);
+        this.exibirNotificacao("Senha expirada. A senha salva foi removida.", true);
         
         try {
             const result = await this.getStorage(['userProfiles']);
             const profiles = result.userProfiles || {};
             const userProfile = profiles[this.userPM];
 
-            if (userProfile && userProfile.user && userProfile.pass) {
-                const terminalUser = userProfile.user;
-                const expiredPassword = userProfile.pass;
-
-                if (!await this.posicionar('Usuario')) throw new Error("Campo 'Usuario' não encontrado.");
-                await this.digitar(terminalUser);
-
-                if (!await this.posicionar('Senha..')) throw new Error("Campo 'Senha..' não encontrado.");
-                await this.digitar(expiredPassword, false);
-
+            if (userProfile && userProfile.pass) {
                 // Deleta a senha salva
                 delete userProfile.pass;
                 userProfile.autoLoginEnabled = false;
                 await this.setStorage({ userProfiles: profiles });
 
-                this.exibirNotificacao("Senha antiga removida. Por favor, cadastre a nova senha manualmente.", true, 5000);
-                
-                // Posiciona o cursor para o usuário
-                await this.posicionar('Nova senha');
-            } else {
-                this.exibirNotificacao("Não foi possível encontrar dados salvos para preenchimento.", false);
+                this.exibirNotificacao("Por favor, realize a troca de senha manualmente.", true, 5000);
             }
         } catch (error) {
-            this.exibirNotificacao(`Erro ao preencher dados: ${error.message}`, false);
+            console.error("SisPMG+: Erro ao remover senha expirada.", error);
         }
         // Mantém o monitoramento pausado para o usuário finalizar o processo.
     };

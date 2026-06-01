@@ -116,7 +116,7 @@ export class TerminalModule {
                 'sispmg_terminal_param'
             ]);
 
-            if (data.sispmg_intranet_notas_data && data.sispmg_terminal_routine === 'public/SIEP/SIEP_Notas') {
+            if (data.sispmg_intranet_notas_data && data.sispmg_terminal_routine === 'public/SIEP_Notas') {
                 console.log('SisPMG+: Dados de notas detectados no storage. Ativando auto-login SIEP.');
                 this.autoLoginSystem = 'SIEP';
                 
@@ -232,6 +232,13 @@ export class TerminalModule {
         try {
             if (this.isMonitoringPausedForManualLogin) {
                 if (await this.localizarTexto("Logon executado com sucesso", { esperar: 0 })) {
+                    if (this.passwordChangeFlowActive) {
+                        this.passwordChangeFlowActive = false;
+                        this.exibirNotificacao("Troca de senha detectada. Recarregando para novo login...", true);
+                        setTimeout(() => this.reloadPage(), 2000);
+                        return;
+                    }
+
                     this.isLoggedIn = true;
                     this.reloginInProgress = false;
                     this.createFullMenu();
@@ -250,6 +257,7 @@ export class TerminalModule {
             const senhaIncorretaPattern = /senha incorreta/i;
             if (senhaIncorretaPattern.test(fullScreenText)) {
                 this._stopKeepAlive();
+                await this.clearSavedPassword("incorreta");
                 this.exibirNotificacao("Senha incorreta. A página será recarregada.", false);
                 setTimeout(() => this.reloadPage(), 2000);
                 return;
