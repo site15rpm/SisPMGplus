@@ -373,7 +373,15 @@ export class TerminalModule {
 
     async waitForSystemReady() {
         // Trava a execução Inter-Abas até o ambiente estar logado e rotinas carregadas
+        let feedbackShown = false;
+        let waitStartTime = Date.now();
+
         while (!this.isTerminalReadyForRoutines) {
+            // Se demorar mais de 1 segundo e ainda não mostramos feedback, avisa o usuário
+            if (!feedbackShown && (Date.now() - waitStartTime) > 1000) {
+                this.exibirNotificacao("Aguarde, carregando rotinas e ambiente...", true, 5);
+                feedbackShown = true;
+            }
             await new Promise(resolve => setTimeout(resolve, 250));
         }
     }
