@@ -387,6 +387,7 @@ export function initLogin(prototype) {
             this.createFullMenu(); 
             
             await this.executePostLoginActions();
+            this.isLoginRoutineFinished = true; // Sinaliza fim da rotina de login
             this.exibirNotificacao("Login concluído com sucesso!", true);
             
             // Carrega rotinas por último para não atrasar a entrada no sistema

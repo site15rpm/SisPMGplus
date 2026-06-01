@@ -28,6 +28,7 @@ export class TerminalModule {
 
         this.userPM = null;
         this.isLoggedIn = false;
+        this.isLoginRoutineFinished = false; // Indica que o fluxo de login (incluindo ações pós-login) terminou
         this.loginFlowActive = false;
         this.isMonitoringPausedForManualLogin = false;
         this.showHiddenFiles = false;
@@ -240,6 +241,7 @@ export class TerminalModule {
                     }
 
                     this.isLoggedIn = true;
+                    this.isLoginRoutineFinished = true; // Sinaliza fim do login manual
                     this.reloginInProgress = false;
                     this.createFullMenu();
                     await this.loadRotinasFromCache();
@@ -374,11 +376,10 @@ export class TerminalModule {
     async waitForSystemReady() {
         // Trava a execução Inter-Abas até o ambiente estar logado e rotinas carregadas
         let feedbackShown = false;
-        let waitStartTime = Date.now();
 
         while (!this.isTerminalReadyForRoutines) {
-            // Se demorar mais de 1 segundo e ainda não mostramos feedback, avisa o usuário
-            if (!feedbackShown && (Date.now() - waitStartTime) > 1000) {
+            // Se o login já terminou mas as rotinas ainda não estão prontas, mostra o feedback
+            if (this.isLoginRoutineFinished && !feedbackShown) {
                 this.showLoadingOverlay("Aguarde, carregando rotinas e ambiente...");
                 feedbackShown = true;
             }
