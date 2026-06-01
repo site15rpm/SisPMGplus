@@ -116,7 +116,7 @@ export class TerminalModule {
                 'sispmg_terminal_param'
             ]);
 
-            if (data.sispmg_intranet_notas_data && data.sispmg_terminal_routine === 'public/(SIEP_Notas)') {
+            if (data.sispmg_intranet_notas_data && data.sispmg_terminal_routine === 'public/SIEP/SIEP_Notas') {
                 console.log('SisPMG+: Dados de notas detectados no storage. Ativando auto-login SIEP.');
                 this.autoLoginSystem = 'SIEP';
                 
