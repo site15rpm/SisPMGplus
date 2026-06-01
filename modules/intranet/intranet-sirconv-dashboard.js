@@ -520,41 +520,64 @@ export class SirconvDashboardModule {
             }
 
             cronogramas.push({ mesTexto, valorPrevisto: valorPrev, valorExecutado: valorExec, prazoLimite, dataLiquidado, status });
+        });
 
-            const divDetalheCentral = doc.getElementById(`detalheCronograma-${detalheId}`);
-            if (divDetalheCentral) {
-                const t1Tables = divDetalheCentral.querySelectorAll('table.t1');
-                let tableExec = null;
-                t1Tables.forEach(t => {
-                    if (t.querySelector('th')?.innerText.includes('Natureza')) tableExec = t;
-                });
+        // Nova lógica de extração de valores executados por natureza
+        // 1. Criar mapa de Natureza (Nome -> Código) a partir de datalists e selects na página
+        const normalize = s => s.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+        const natureIdMap = new Map();
+        
+        doc.querySelectorAll('#natureza option, select[name^="NATUREZA_ID"] option').forEach(opt => {
+            const text = opt.innerText.trim();
+            const val = opt.getAttribute('value') || (text.includes(' - ') ? text.split(' - ')[0].trim() : null);
+            const name = text.includes(' - ') ? text.split(' - ').slice(1).join(' - ').trim() : text;
+            if (val && name) natureIdMap.set(normalize(name), val);
+        });
 
-                if (tableExec) {
-                    tableExec.querySelectorAll('tbody tr').forEach(tr => {
-                        if (tr.querySelector('th') || tr.classList.contains('ci') || tr.classList.contains('ne')) return;
-                        const tds = tr.querySelectorAll('td');
-                        if (tds.length >= 4) {
-                            const natNome = tds[0].innerText.trim();
-                            let itemValorExec = parseFloat(tds[3].innerText.trim().replace(/\./g, '').replace(',', '.')) || 0;
-                            if (itemValorExec === 0 && tds.length >= 6) {
-                                itemValorExec = parseFloat(tds[5].innerText.trim().replace(/\./g, '').replace(',', '.')) || 0;
+        // 2. Coletar e somar todos os valores de todas as tabelas 't1' que contêm naturezas
+        const execucoesPorNatureza = new Map(); // ID -> Soma
+        doc.querySelectorAll('table.t1').forEach(table => {
+            const headers = Array.from(table.querySelectorAll('th')).map(th => th.innerText.trim());
+            if (!headers.some(h => h.includes('Natureza'))) return;
+
+            table.querySelectorAll('tbody tr').forEach(tr => {
+                if (tr.querySelector('th') || tr.classList.contains('ci') || tr.classList.contains('ne')) return;
+                const tds = tr.querySelectorAll('td');
+                if (tds.length >= 6) {
+                    const natNome = tds[0].innerText.trim();
+                    // Prioriza a coluna 5 (Total) que é o valor final da linha
+                    let itemValorExec = parseFloat(tds[5].innerText.trim().replace(/\./g, '').replace(',', '.')) || 0;
+                    if (itemValorExec === 0) {
+                        itemValorExec = parseFloat(tds[3].innerText.trim().replace(/\./g, '').replace(',', '.')) || 0;
+                    }
+
+                    if (natNome && itemValorExec > 0) {
+                        const normName = normalize(natNome);
+                        const code = natureIdMap.get(normName);
+                        
+                        if (code) {
+                            execucoesPorNatureza.set(code, (execucoesPorNatureza.get(code) || 0) + itemValorExec);
+                        } else {
+                            // Tenta match por prefixo ou inclusão se não houver match exato (ex: nomes truncados)
+                            let foundCode = null;
+                            for (let [mappedName, mappedCode] of natureIdMap.entries()) {
+                                if (mappedName.includes(normName) || normName.includes(mappedName)) {
+                                    foundCode = mappedCode;
+                                    break;
+                                }
                             }
-
-                            if (natNome && !isNaN(itemValorExec) && itemValorExec > 0) {
-                                const normalize = s => s.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-                                const w1 = normalize(natNome).match(/\w{4,}/g) || [];
-                                const match = planoItens.find(p => {
-                                    const w2 = normalize(p.nome).match(/\w{4,}/g) || [];
-                                    const isTelecom = w1.includes('TELEFONIA') && w2.includes('TELECOMUNICACAO');
-                                    const matchWords = w1.filter(w => !['SERVICO', 'TARIFA', 'MATERIAL', 'ARTIGOS'].includes(w));
-                                    return isTelecom || matchWords.some(w => w2.includes(w));
-                                });
-                                if (match) match.valorExecutado += itemValorExec;
+                            if (foundCode) {
+                                execucoesPorNatureza.set(foundCode, (execucoesPorNatureza.get(foundCode) || 0) + itemValorExec);
                             }
                         }
-                    });
+                    }
                 }
-            }
+            });
+        });
+
+        // 3. Atualizar planoItens com os valores aglutinados
+        planoItens.forEach(p => {
+            p.valorExecutado = execucoesPorNatureza.get(String(p.naturezaId)) || 0;
         });
 
         const historico = [];
