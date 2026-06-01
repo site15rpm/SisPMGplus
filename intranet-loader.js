@@ -458,7 +458,7 @@ async function loadSirconvDashboardModule() {
         loadCSS(globalConfig.sirconvDashboardCssUrl);
         const { SirconvDashboardModule } = await import(globalConfig.sirconvDashboardModuleUrl);
         sirconvDashboardModuleInstance = new SirconvDashboardModule(globalConfig);
-        sirconvDashboardModuleInstance.init();
+        await sirconvDashboardModuleInstance.init();
     } catch(e) {
          console.error("SisPMG+: Falha ao carregar o módulo SIRCONV Dashboard.", e);
     }
