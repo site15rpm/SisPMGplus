@@ -379,10 +379,14 @@ export class TerminalModule {
         while (!this.isTerminalReadyForRoutines) {
             // Se demorar mais de 1 segundo e ainda não mostramos feedback, avisa o usuário
             if (!feedbackShown && (Date.now() - waitStartTime) > 1000) {
-                this.exibirNotificacao("Aguarde, carregando rotinas e ambiente...", true, 5);
+                this.showLoadingOverlay("Aguarde, carregando rotinas e ambiente...");
                 feedbackShown = true;
             }
             await new Promise(resolve => setTimeout(resolve, 250));
+        }
+
+        if (feedbackShown) {
+            this.hideLoadingOverlay();
         }
     }
 
