@@ -98,6 +98,11 @@ export function initUI(prototype) {
                 <div class="rotina-menu-separator"></div>
                 <div class="rotina-menu-item-group">
                     <div class="rotina-menu-item-with-submenu"><span class="submenu-arrow">◀</span><span>Gerenciar Usuário</span></div>
+                    <div class="rotina-submenu hidden">
+                        <button class="rotina-menu-item" id="forget-password-btn">🔑 Esquecer Senha</button>
+                        <button class="rotina-menu-item" id="forget-user-btn">🗑️ Esquecer Usuário</button>
+                    </div>
+                </div>
                 ${adminDebug}
             </div>`;
         
