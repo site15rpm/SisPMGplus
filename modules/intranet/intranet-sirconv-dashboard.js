@@ -81,11 +81,11 @@ export class SirconvDashboardModule {
                             <h2 style="margin: 0; font-size: 18px; color: #574e2d; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Dashboard de Convênios SIRCONV</h2>
                         </div>
                         <div class="sispmg-dashboard-actions" style="display: flex; align-items: center; gap: 10px; flex-shrink: 0;">
-                            <div id="sispmg-dashboard-bg-status" style="display: none; align-items: center; gap: 8px; color: #b3a368; font-size: 12px; margin-right: 15px; font-weight: 600; cursor: pointer; background: #fff; padding: 5px 10px; border-radius: 20px; border: 1px solid #dcd3c5;" title="Clique para parar a atualização">
+                            <div id="sispmg-dashboard-bg-status" style="display: none; align-items: center; gap: 8px; color: #b3a368; font-size: 12px; margin-right: 15px; font-weight: 600; cursor: pointer; background: #fff; padding: 5px 12px; border-radius: 20px; border: 1px solid #dcd3c5;" title="Clique para parar a atualização">
                                 <i class="fas fa-circle-notch fa-spin"></i>
                                 <span style="text-decoration: underline;">Atualização em andamento...</span>
                             </div>
-                            <button id="sispmg-dashboard-force-reload" class="sispmg-dashboard-btn" title="Recarregar dados do zero" style="white-space: nowrap;">
+                            <button id="sispmg-dashboard-force-reload" class="sispmg-dashboard-btn sispmg-dashboard-btn-primary" title="Recarregar dados do zero" style="white-space: nowrap;">
                                 <i class="fas fa-sync-alt"></i> Recarregar
                             </button>
                             <button id="sispmg-dashboard-refresh" class="sispmg-dashboard-btn sispmg-dashboard-btn-primary" style="white-space: nowrap;">
@@ -231,7 +231,7 @@ export class SirconvDashboardModule {
         this.fetchConveniosData('ativos');
     }
 
-    updateBackgroundStatus(isActive, message = "Atualização de segundo plano em andamento...") {
+    updateBackgroundStatus(isActive, message = "Atualização em andamento...") {
         const statusEl = document.getElementById('sispmg-dashboard-bg-status');
         const reloadBtn = document.getElementById('sispmg-dashboard-force-reload');
         if (!statusEl) return;
@@ -375,10 +375,9 @@ export class SirconvDashboardModule {
             this.activeFilters = {}; 
             this.applyFilters();
             
-            // Adiciona convênios sem audit à fila de processamento em segundo plano
-            this.backgroundAuditQueue = this.filteredData
-                .filter(c => !c.audit && this.getStatusLabel(c) === 'Vigente')
-                .map(c => c.ID);
+            // Ordena a fila de background seguindo a mesma classificação do painel geral
+            const allToAudit = this.conveniosData.filter(c => !c.audit && this.getStatusLabel(c) === 'Vigente');
+            this.backgroundAuditQueue = this.sortConvenios(allToAudit).map(c => c.ID);
                 
             this.processBackgroundQueue();
         } catch (error) {
@@ -445,7 +444,6 @@ export class SirconvDashboardModule {
                             dtInicio = audit.vigenciaInfo?.dtInicio || '-';
                         }
 
-                        // Criamos o objeto básico. O DTINICIAL e LIQUIDADO serão refinados pela fila de background se não houver cache
                         resultados.push({
                             ID: cod, 
                             NUMERO_FACE: face || '-', 
@@ -458,7 +456,7 @@ export class SirconvDashboardModule {
                             ATIVO: st, 
                             VENCIDO: (vigFim !== '-' && new Date(vigFim.split('/').reverse().join('-')) < new Date() ? '1' : '0'), 
                             audit, 
-                            pendencias: audit ? this.analisarPendencias(audit, { tipo: 'todos', periodo: 'todos' }) : [] 
+                            pendencias: audit ? this.analisarPendencias(audit, { tipo: 'todos', periodo: 'todos' }, { ID: cod, DTINICIAL: dtInicio, DTFINAL: vigFim }) : [] 
                         });
                     }
                 }
@@ -487,7 +485,7 @@ export class SirconvDashboardModule {
 
         const initialSize = this.backgroundAuditQueue.length;
         console.log(`[Dashboard] Processamento em segundo plano iniciado: ${initialSize} itens na fila.`);
-        this.updateBackgroundStatus(true, "Atualização de segundo plano: 0%");
+        this.updateBackgroundStatus(true, `Atualização: 0/${initialSize}`);
 
         let processed = 0;
         while (this.backgroundAuditQueue.length > 0) {
@@ -499,18 +497,13 @@ export class SirconvDashboardModule {
                     const auditData = await this.performDeepAudit(convId);
                     if (auditData) {
                         conv.audit = auditData;
-                        
-                        // Atualiza dados básicos vindos do audit profundo (DTINICIAL e LIQUIDADO real)
                         if (auditData.vigenciaInfo?.dtInicio) conv.DTINICIAL = auditData.vigenciaInfo.dtInicio;
-                        
                         const totalLiq = auditData.planoItens.reduce((sum, p) => sum + (parseFloat(p.valorExecutado) || 0), 0);
                         if (totalLiq > 0) conv.LIQUIDADO = totalLiq;
-                        
                         conv.pendencias = this.analisarPendencias(auditData, { tipo: 'todos', periodo: 'todos' }, conv);
 
                         const row = document.querySelector(`.sispmg-clickable-row[onclick*="'${convId}'"]`);
                         if (row) {
-                            // Re-renderiza a linha completa para aplicar cores e novas métricas calculadas
                             const tempDiv = document.createElement('tbody');
                             tempDiv.innerHTML = this.renderRowHtml(conv);
                             row.replaceWith(tempDiv.firstChild);
@@ -520,12 +513,8 @@ export class SirconvDashboardModule {
                     console.error(`[Dashboard] Erro no background audit do convênio ${convId}:`, e);
                 }
                 processed++;
-                const percent = Math.round((processed / initialSize) * 100);
-                this.updateBackgroundStatus(true, `Atualização de segundo plano: ${percent}%`);
-                
-                // Atualiza cards de resumo periodicamente
+                this.updateBackgroundStatus(true, `Atualização: ${processed}/${initialSize}`);
                 if (processed % 5 === 0) this.updateSummaryCards();
-                
                 await new Promise(r => setTimeout(r, 600));
             }
         }
@@ -536,84 +525,9 @@ export class SirconvDashboardModule {
         console.log("[Dashboard] Processamento em segundo plano finalizado.");
     }
 
-    renderRowHtml(conv) {
-        const statusLabel = this.getStatusLabel(conv), isAudited = conv.ID === this.activeConvId;
-        const vEstimado = parseFloat(conv.VALOR_ESTIMADO) || 0, vLiquidado = parseFloat(conv.LIQUIDADO) || 0, prog = vEstimado > 0 ? ((vLiquidado / vEstimado) * 100).toFixed(1) : 0, isE = parseFloat(prog) > 100, isC = parseFloat(prog) >= 100;
-        let corP = isE ? '#dc3545' : (isC ? '#b3a368' : '#28a745'), corT = vLiquidado > 0 ? (isE ? '#dc3545' : '#155724') : '#666';
-        
-        let duracao = 0, executados = 0, faltantes = 0, mediaPrev = 0, mediaReal = 0, rowStyle = '';
-        if (conv.DTINICIAL && conv.DTFINAL && conv.DTINICIAL !== '-') {
-            const hoje = new Date();
-            const d1 = new Date(conv.DTINICIAL.split(' ')[0]), d2 = new Date(conv.DTFINAL.split(' ')[0]);
-            duracao = Math.max(1, (d2.getFullYear() - d1.getFullYear()) * 12 + (d2.getMonth() - d1.getMonth()) + 1);
-            executados = Math.max(0, (hoje.getFullYear() - d1.getFullYear()) * 12 + (hoje.getMonth() - d1.getMonth()));
-            executados = Math.min(duracao, executados + 1);
-            faltantes = Math.max(0, duracao - executados);
-            mediaPrev = vEstimado / duracao;
-            mediaReal = vLiquidado / duracao;
-
-            if (statusLabel === 'Vigente') {
-                if (faltantes <= 3) rowStyle = 'background-color: #fffde7 !important; border-left: 5px solid #fdd835;';
-                if (faltantes <= 1) rowStyle = 'background-color: #fff3e0 !important; border-left: 5px solid #ff9800;';
-            } else if (statusLabel === 'Vencido' || d2 < hoje) {
-                rowStyle = 'background-color: #fce8e8 !important; border-left: 5px solid #dc3545;';
-            }
-        }
-
-        const hasAtraso = conv.pendencias?.some(p => p.tipo === 'atraso_liquidacao');
-        const hasExcessoM = conv.pendencias?.some(p => p.tipo === 'excesso_valor_mensal');
-        const hasExcessoN = conv.pendencias?.filter(p => p.tipo === 'excesso_valor_natureza');
-        const isCritico = hasExcessoN?.some(p => p.nivel === 'critico');
-        const isAlerta = !isCritico && hasExcessoN?.some(p => p.nivel === 'alerta');
-
-        return `<tr class="sispmg-clickable-row ${isAudited ? 'sispmg-row-audited' : ''}" style="${rowStyle}" onclick="window.SisPMG_SirconvDashboard.loadAuditData('${conv.ID}')">
-            <td><strong>${conv.ID}</strong></td>
-            <td class="sispmg-hide-on-audit">${conv.NUMERO_FACE || '-'}</td>
-            <td>${this.getMunicipioClean(conv.CONCEDENTE)}</td>
-            <td>${this.cleanUnidade(conv.UNI_NOME_PRINCIPAL)}</td>
-            <td class="sispmg-hide-on-audit" style="white-space: nowrap; font-size: 11px;">
-                ${this.formatDate(conv.DTINICIAL)}<br>${this.formatDate(conv.DTFINAL)}
-            </td>
-            <td class="sispmg-hide-on-audit" style="text-align: center;">
-                <span title="Executados">${executados}</span> / <span title="Faltantes" style="color: ${faltantes <= 3 ? '#d9534f' : '#666'}; font-weight: ${faltantes <= 3 ? 'bold' : 'normal'};">${faltantes}</span>
-            </td>
-            <td class="sispmg-hide-on-audit" style="text-align: right;">${vEstimado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-            <td class="sispmg-hide-on-audit" style="text-align: right; font-weight: 600; color: ${corT};">${vLiquidado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-            <td class="sispmg-hide-on-audit" style="text-align: right; color: #666; font-size: 11px;">${mediaPrev.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-            <td class="sispmg-hide-on-audit" style="text-align: right; color: #155724; font-size: 11px; font-weight: 600;">${mediaReal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-            <td class="sispmg-hide-on-audit" style="text-align: center; font-weight: 600; color: ${corT};">${prog}%</td>
-            <td style="text-align: center; white-space: nowrap;">
-                <div style="display: flex; align-items: center; justify-content: center; gap: 5px;">
-                    <div class="sispmg-status-badge-slot"><span class="sispmg-status-badge ${statusLabel === 'Vigente' ? 'sispmg-status-vigente' : 'sispmg-status-outros'}">${statusLabel}</span></div>
-                    <div class="sispmg-pendencias-container" style="display: flex; gap: 2px;">
-                        <div class="sispmg-pendencia-slot" style="width: 16px;">${hasAtraso ? '<i class="fas fa-clock" title="Atraso na Liquidação" style="color: #dc3545; font-size: 14px;"></i>' : ''}</div>
-                        <div class="sispmg-pendencia-slot" style="width: 16px;">${hasExcessoM ? '<i class="fas fa-chart-line" title="Excesso de Valor Mensal" style="color: #dc3545; font-size: 14px;"></i>' : ''}</div>
-                        <div class="sispmg-pendencia-slot" style="width: 16px;">${isCritico ? '<i class="fas fa-exclamation-triangle" title="Excesso Crítico por Natureza" style="color: #dc3545; font-size: 14px;"></i>' : (isAlerta ? '<i class="fas fa-exclamation-triangle" title="Alerta de Consumo por Natureza" style="color: #fd7e14; font-size: 14px;"></i>' : '')}</div>
-                    </div>
-                </div>
-            </td>
-        </tr>`;
-    }
-
-    renderDashboard(isFiltered = false) {
-        const tbody = document.getElementById('sispmg-dashboard-tbody'); if (!tbody) return;
-        let dataToRender = isFiltered ? this.filteredData : this.sortConvenios([...this.conveniosData]);
-        
-        if (dataToRender.length === 0) { 
-            tbody.innerHTML = `<tr><td colspan="12" style="text-align: center; padding: 40px;">Nenhum convênio encontrado.</td></tr>`; 
-            ['dash-total-convenios','dash-valor-total','dash-valor-liquidado','dash-convenios-ativos'].forEach(id => document.getElementById(id).innerText = id.includes('total') ? '0' : '0,00'); 
-            return; 
-        }
-
-        this.updateSummaryCards();
-        tbody.innerHTML = dataToRender.map(conv => this.renderRowHtml(conv)).join(''); 
-        window.SisPMG_SirconvDashboard = this;
-    }
-
     async performDeepAudit(convId, ignoreCache = false) {
         const cached = this.auditCache[String(convId)];
         if (!ignoreCache && cached && (Date.now() - cached.timestamp < this.CACHE_TTL)) {
-            console.log(`[Dashboard] Usando cache para convênio ${convId}.`);
             return cached.data;
         }
 
@@ -775,11 +689,6 @@ export class SirconvDashboardModule {
         });
 
         const auditResult = { cronogramas, planoItens, historico, lastUpdate: new Date().toLocaleString() };
-        
-        // Tenta extrair a data inicial se não estiver clara nos itens do plano
-        const dtInicElement = doc.querySelector('div.barra.item div.flex-linha div.flex-coluna span:nth-child(2)');
-        // A data inicial costuma estar no cabeçalho ou cronograma. Se não achar, analisarPendencias tratará.
-        
         this.auditCache[String(convId)] = { data: auditResult, timestamp: Date.now() };
         await this.savePersistentCache();
         return auditResult;
@@ -808,33 +717,35 @@ export class SirconvDashboardModule {
 
         // Cálculos de vigência e duração
         let duracaoMeses = 0, mesesDecorridos = 0, mesesFaltantes = 0;
-        if (conv && conv.DTINICIAL && conv.DTFINAL && conv.DTINICIAL !== '-') {
-            const d1 = new Date(conv.DTINICIAL.split(' ')[0]), d2 = new Date(conv.DTFINAL.split(' ')[0]);
-            duracaoMeses = Math.max(1, (d2.getFullYear() - d1.getFullYear()) * 12 + (d2.getMonth() - d1.getMonth()) + 1);
-            mesesDecorridos = Math.max(0, (hoje.getFullYear() - d1.getFullYear()) * 12 + (hoje.getMonth() - d1.getMonth()));
-            mesesDecorridos = Math.min(duracaoMeses, mesesDecorridos + 1);
-            mesesFaltantes = Math.max(0, duracaoMeses - mesesDecorridos);
-            
-            // Atribui ao audit para uso no render
-            audit.vigenciaInfo = { duracaoMeses, mesesDecorridos, mesesFaltantes, dtInicio: conv.DTINICIAL.split(' ')[0], dtFim: conv.DTFINAL.split(' ')[0] };
-        } else if (audit.cronogramas?.length > 0) {
-            // Tenta inferir datas pelo cronograma se conv estiver incompleto
-            const mesesMap = { 'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5, 'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11 };
-            const sortedCrono = [...audit.cronogramas].sort((a, b) => {
+        const parseDate = (dStr) => {
+            if (!dStr || dStr === '-') return null;
+            const parts = dStr.split(' ')[0].split(/[\/-]/);
+            if (parts.length !== 3) return null;
+            // Se for YYYY-MM-DD
+            if (parts[0].length === 4) return new Date(parts[0], parseInt(parts[1]) - 1, parts[2]);
+            // Se for DD/MM/YYYY
+            return new Date(parts[2], parseInt(parts[1]) - 1, parts[0]);
+        };
+
+        let d1 = parseDate(conv?.DTINICIAL), d2 = parseDate(conv?.DTFINAL);
+
+        if (!d1 && audit.cronogramas?.length > 0) {
+            const mP = { 'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5, 'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11 };
+            const sorted = [...audit.cronogramas].sort((a, b) => {
                 const pa = a.mesTexto.split(' '), pb = b.mesTexto.split(' ');
-                return (parseInt(pa[1]) - parseInt(pb[1])) || (mesesMap[pa[0]] - mesesMap[pb[0]]);
+                return (parseInt(pa[1]) - parseInt(pb[1])) || (mP[pa[0]] - mP[pb[0]]);
             });
-            const p1 = sortedCrono[0].mesTexto.split(' '), p2 = sortedCrono[sortedCrono.length - 1].mesTexto.split(' ');
-            const dtI = `${p1[1]}-${String(mesesMap[p1[0]] + 1).padStart(2, '0')}-01`;
-            const dtF = `${p2[1]}-${String(mesesMap[p2[0]] + 1).padStart(2, '0')}-01`;
-            
-            const d1 = new Date(dtI), d2 = new Date(dtF);
+            const p1 = sorted[0].mesTexto.split(' ');
+            d1 = new Date(parseInt(p1[1]), mP[p1[0]], 1);
+            if (conv) conv.DTINICIAL = `${p1[1]}-${String(mP[p1[0]] + 1).padStart(2, '0')}-01`;
+        }
+
+        if (d1 && d2) {
             duracaoMeses = Math.max(1, (d2.getFullYear() - d1.getFullYear()) * 12 + (d2.getMonth() - d1.getMonth()) + 1);
             mesesDecorridos = Math.max(0, (hoje.getFullYear() - d1.getFullYear()) * 12 + (hoje.getMonth() - d1.getMonth()));
             mesesDecorridos = Math.min(duracaoMeses, mesesDecorridos + 1);
             mesesFaltantes = Math.max(0, duracaoMeses - mesesDecorridos);
-            audit.vigenciaInfo = { duracaoMeses, mesesDecorridos, mesesFaltantes, dtInicio: dtI, dtFim: dtF };
-            if (conv) { conv.DTINICIAL = dtI; conv.DTFINAL = dtF; }
+            audit.vigenciaInfo = { duracaoMeses, mesesDecorridos, mesesFaltantes, dtInicio: d1.toISOString().split('T')[0], dtFim: d2.toISOString().split('T')[0] };
         }
 
         const isNoPeriodo = (mesTexto) => {
@@ -1030,7 +941,11 @@ export class SirconvDashboardModule {
         let duracao = 0, executados = 0, faltantes = 0, mediaPrev = 0, mediaReal = 0, rowStyle = '';
         if (conv.DTINICIAL && conv.DTFINAL && conv.DTINICIAL !== '-') {
             const hoje = new Date();
-            const d1 = new Date(conv.DTINICIAL.split(' ')[0]), d2 = new Date(conv.DTFINAL.split(' ')[0]);
+            const parseDate = (dStr) => {
+                const parts = dStr.split(' ')[0].split(/[\/-]/);
+                return parts[0].length === 4 ? new Date(parts[0], parseInt(parts[1]) - 1, parts[2]) : new Date(parts[2], parseInt(parts[1]) - 1, parts[0]);
+            };
+            const d1 = parseDate(conv.DTINICIAL), d2 = parseDate(conv.DTFINAL);
             duracao = Math.max(1, (d2.getFullYear() - d1.getFullYear()) * 12 + (d2.getMonth() - d1.getMonth()) + 1);
             executados = Math.max(0, (hoje.getFullYear() - d1.getFullYear()) * 12 + (hoje.getMonth() - d1.getMonth()));
             executados = Math.min(duracao, executados + 1);
@@ -1081,52 +996,5 @@ export class SirconvDashboardModule {
         </tr>`;
     }
 
-    async processBackgroundQueue() {
-        if (this.isQueueProcessing || this.backgroundAuditQueue.length === 0) return;
-        this.isQueueProcessing = true;
-
-        const initialSize = this.backgroundAuditQueue.length;
-        console.log(`[Dashboard] Processamento em segundo plano iniciado: ${initialSize} itens na fila.`);
-        this.updateBackgroundStatus(true, "Atualização de segundo plano: 0%");
-
-        let processed = 0;
-        while (this.backgroundAuditQueue.length > 0) {
-            const convId = this.backgroundAuditQueue.shift();
-            const conv = this.conveniosData.find(c => String(c.ID) === String(convId));
-
-            if (conv && !conv.audit) {
-                try {
-                    const auditData = await this.performDeepAudit(convId);
-                    if (auditData) {
-                        conv.audit = auditData;
-                        if (auditData.vigenciaInfo?.dtInicio) conv.DTINICIAL = auditData.vigenciaInfo.dtInicio;
-                        const totalLiq = auditData.planoItens.reduce((sum, p) => sum + (parseFloat(p.valorExecutado) || 0), 0);
-                        if (totalLiq > 0) conv.LIQUIDADO = totalLiq;
-                        conv.pendencias = this.analisarPendencias(auditData, { tipo: 'todos', periodo: 'todos' }, conv);
-
-                        const row = document.querySelector(`.sispmg-clickable-row[onclick*="'${convId}'"]`);
-                        if (row) {
-                            const tempDiv = document.createElement('tbody');
-                            tempDiv.innerHTML = this.renderRowHtml(conv);
-                            row.replaceWith(tempDiv.firstChild);
-                        }
-                    }
-                } catch (e) {
-                    console.error(`[Dashboard] Erro no background audit do convênio ${convId}:`, e);
-                }
-                processed++;
-                const percent = Math.round((processed / initialSize) * 100);
-                this.updateBackgroundStatus(true, `Atualização de segundo plano: ${percent}%`);
-                if (processed % 5 === 0) this.updateSummaryCards();
-                await new Promise(r => setTimeout(r, 600));
-            }
-        }
-
-        this.isQueueProcessing = false;
-        this.updateBackgroundStatus(false);
-        this.updateSummaryCards();
-        console.log("[Dashboard] Processamento em segundo plano finalizado.");
-    }
-
-    formatDate(dateStr) { if (!dateStr) return '-'; try { const parts = dateStr.split(' ')[0].split('-'); return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : dateStr; } catch (e) { return dateStr; } }
+    formatDate(dateStr) { if (!dateStr || dateStr === '-') return '-'; try { const parts = dateStr.split(' ')[0].split(/[\/-]/); return parts[0].length === 4 ? `${parts[2]}/${parts[1]}/${parts[0]}` : `${parts[0]}/${parts[1]}/${parts[2]}`; } catch (e) { return dateStr; } }
 }
