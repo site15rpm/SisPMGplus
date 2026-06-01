@@ -398,7 +398,7 @@ export class SirconvDashboardModule {
                     const auditData = await this.performDeepAudit(convId);
                     if (auditData) {
                         conv.audit = auditData;
-                        conv.pendencias = this.analisarPendencias(auditData);
+                        conv.pendencias = this.analisarPendencias(auditData, { tipo: 'todos', periodo: 'todos' }, conv);
                         
                         const totalLiq = auditData.planoItens.reduce((sum, p) => sum + (parseFloat(p.valorExecutado) || 0), 0);
                         if (totalLiq > 0) conv.LIQUIDADO = totalLiq;
@@ -834,19 +834,21 @@ export class SirconvDashboardModule {
         if (!conv) return;
         const qIndex = this.backgroundAuditQueue.indexOf(convId);
         if (qIndex !== -1) this.backgroundAuditQueue.splice(qIndex, 1);
+        
         const cached = this.auditCache[String(convId)];
         if (cached && (Date.now() - cached.timestamp < this.CACHE_TTL)) {
             conv.audit = cached.data;
-            conv.pendencias = this.analisarPendencias(conv.audit);
+            conv.pendencias = this.analisarPendencias(conv.audit, { tipo: 'todos', periodo: 'todos' }, conv);
             this.renderAuditSidebar(conv); 
             return; 
         }
+
         if (this.ui) this.ui.showLoader(`Buscando detalhes do convênio ${convId}...`);
         try {
             const auditData = await this.performDeepAudit(convId);
             if (auditData) {
                 conv.audit = auditData;
-                conv.pendencias = this.analisarPendencias(auditData);
+                conv.pendencias = this.analisarPendencias(auditData, { tipo: 'todos', periodo: 'todos' }, conv);
                 const totalLiq = auditData.planoItens.reduce((sum, p) => sum + (parseFloat(p.valorExecutado) || 0), 0);
                 if (totalLiq > 0) conv.LIQUIDADO = totalLiq;
                 this.renderAuditSidebar(conv);
