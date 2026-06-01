@@ -467,6 +467,7 @@ export class SirconvDashboardModule {
             if (planoResponse && planoResponse.success && planoResponse.data && planoResponse.data.planos) {
                 planoItens = planoResponse.data.planos.map(p => ({
                     naturezaId: p.NATUREZA_ID,
+                    naturezaItem: p.NATUREZA_ITEM,
                     nome: `${p.ITEM} - ${p.NATUREZA_ITEM}`,
                     valorEstimado: parseFloat(p.VALOR) || 0,
                     valorExecutado: 0
@@ -524,51 +525,61 @@ export class SirconvDashboardModule {
 
         // Nova lógica de extração de valores executados por natureza
         // 1. Criar mapa de Natureza (Nome -> Código) a partir de datalists e selects na página
-        const normalize = s => s.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+        const normalize = s => (s || '').toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().replace(/\s+/g, ' ');
         const natureIdMap = new Map();
         
-        doc.querySelectorAll('#natureza option, select[name^="NATUREZA_ID"] option').forEach(opt => {
-            const text = opt.innerText.trim();
-            const val = opt.getAttribute('value') || (text.includes(' - ') ? text.split(' - ')[0].trim() : null);
-            const name = text.includes(' - ') ? text.split(' - ').slice(1).join(' - ').trim() : text;
-            if (val && name) natureIdMap.set(normalize(name), val);
+        // Coleta de datalists (formato: "ID - NOME")
+        doc.querySelectorAll('#natureza option').forEach(opt => {
+            const text = (opt.textContent || opt.innerText || '').trim();
+            if (text.includes(' - ')) {
+                const parts = text.split(' - ');
+                const val = parts[0].trim();
+                const name = parts.slice(1).join(' - ').trim();
+                if (val && name) natureIdMap.set(normalize(name), val);
+            }
+        });
+
+        // Coleta de selects (formato: value=ID, text=NOME)
+        doc.querySelectorAll('select[name^="NATUREZA_ID"] option').forEach(opt => {
+            const val = opt.getAttribute('value');
+            const name = (opt.textContent || opt.innerText || '').trim();
+            if (val && name && !val.includes('{')) {
+                natureIdMap.set(normalize(name), val);
+            }
         });
 
         // 2. Coletar e somar todos os valores de todas as tabelas 't1' que contêm naturezas
-        const execucoesPorNatureza = new Map(); // ID -> Soma
+        const execucoesPorNatureza = new Map(); // Pode ser ID ou Nome Normalizado
         doc.querySelectorAll('table.t1').forEach(table => {
-            const headers = Array.from(table.querySelectorAll('th')).map(th => th.innerText.trim());
-            if (!headers.some(h => h.includes('Natureza'))) return;
+            const tableText = (table.textContent || '').toUpperCase();
+            if (!tableText.includes('NATUREZA')) return;
 
             table.querySelectorAll('tbody tr').forEach(tr => {
                 if (tr.querySelector('th') || tr.classList.contains('ci') || tr.classList.contains('ne')) return;
                 const tds = tr.querySelectorAll('td');
                 if (tds.length >= 6) {
-                    const natNome = tds[0].innerText.trim();
-                    // Prioriza a coluna 5 (Total) que é o valor final da linha
-                    let itemValorExec = parseFloat(tds[5].innerText.trim().replace(/\./g, '').replace(',', '.')) || 0;
+                    const natNomeRaw = (tds[0].textContent || '').trim();
+                    if (!natNomeRaw) return;
+
+                    const valTotalStr = (tds[5].textContent || '').trim();
+                    const valUnitStr = (tds[3].textContent || '').trim();
+                    
+                    let itemValorExec = parseFloat(valTotalStr.replace(/\./g, '').replace(',', '.')) || 0;
                     if (itemValorExec === 0) {
-                        itemValorExec = parseFloat(tds[3].innerText.trim().replace(/\./g, '').replace(',', '.')) || 0;
+                        itemValorExec = parseFloat(valUnitStr.replace(/\./g, '').replace(',', '.')) || 0;
                     }
 
-                    if (natNome && itemValorExec > 0) {
-                        const normName = normalize(natNome);
+                    if (itemValorExec > 0) {
+                        const normName = normalize(natNomeRaw);
                         const code = natureIdMap.get(normName);
                         
+                        // Aglutina pelo nome normalizado
+                        execucoesPorNatureza.set(normName, (execucoesPorNatureza.get(normName) || 0) + itemValorExec);
+                        
+                        // Se encontramos um ID, aglutina pelo ID também
                         if (code) {
-                            execucoesPorNatureza.set(code, (execucoesPorNatureza.get(code) || 0) + itemValorExec);
-                        } else {
-                            // Tenta match por prefixo ou inclusão se não houver match exato (ex: nomes truncados)
-                            let foundCode = null;
-                            for (let [mappedName, mappedCode] of natureIdMap.entries()) {
-                                if (mappedName.includes(normName) || normName.includes(mappedName)) {
-                                    foundCode = mappedCode;
-                                    break;
-                                }
-                            }
-                            if (foundCode) {
-                                execucoesPorNatureza.set(foundCode, (execucoesPorNatureza.get(foundCode) || 0) + itemValorExec);
-                            }
+                            const codeKey = String(code);
+                            execucoesPorNatureza.set(codeKey, (execucoesPorNatureza.get(codeKey) || 0) + itemValorExec);
                         }
                     }
                 }
@@ -577,7 +588,30 @@ export class SirconvDashboardModule {
 
         // 3. Atualizar planoItens com os valores aglutinados
         planoItens.forEach(p => {
-            p.valorExecutado = execucoesPorNatureza.get(String(p.naturezaId)) || 0;
+            const codeKey = p.naturezaId ? String(p.naturezaId) : null;
+            const nameKey = normalize(p.naturezaItem);
+            const nameFromNomeKey = normalize(p.nome.split(' - ').slice(1).join(' - '));
+            
+            // Tenta match por ID, depois por nome da natureza vindo da API, depois por nome processado
+            let valor = 0;
+            if (codeKey && execucoesPorNatureza.has(codeKey)) {
+                valor = execucoesPorNatureza.get(codeKey);
+            } else if (nameKey && execucoesPorNatureza.has(nameKey)) {
+                valor = execucoesPorNatureza.get(nameKey);
+            } else if (nameFromNomeKey && execucoesPorNatureza.has(nameFromNomeKey)) {
+                valor = execucoesPorNatureza.get(nameFromNomeKey);
+            } else {
+                // Tenta um match parcial nos nomes como último recurso
+                for (let [key, val] of execucoesPorNatureza.entries()) {
+                    if (isNaN(key)) { // Se a chave for um nome e não um ID
+                        if (key.includes(nameKey) || nameKey.includes(key) || key.includes(nameFromNomeKey) || nameFromNomeKey.includes(key)) {
+                            valor = val;
+                            break;
+                        }
+                    }
+                }
+            }
+            p.valorExecutado = valor;
         });
 
         const historico = [];
