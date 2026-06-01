@@ -130,15 +130,15 @@ export class SirconvDashboardModule {
                                         <div class="sispmg-th-content">Município <i class="fas fa-filter sispmg-filter-trigger"></i></div>
                                     </th>
                                     <th data-col="unidade" style="text-align: left;">
-                                        <div class="sispmg-th-content">Unidade Responsável <i class="fas fa-filter sispmg-filter-trigger"></i></div>
+                                        <div class="sispmg-th-content">Unidade <i class="fas fa-filter sispmg-filter-trigger"></i></div>
                                     </th>
-                                    <th data-col="vigencia" class="sispmg-hide-on-audit" style="text-align: left;">
-                                        <div class="sispmg-th-content">Vigência (Fim) <i class="fas fa-filter sispmg-filter-trigger"></i></div>
-                                    </th>
-                                    <th class="sispmg-hide-on-audit" style="text-align: right;">Valor Estimado (R$)</th>
-                                    <th class="sispmg-hide-on-audit" style="text-align: right;">Valor Liquidado (R$)</th>
+                                    <th class="sispmg-hide-on-audit" style="text-align: left;">Vigência (Início/Fim)</th>
+                                    <th class="sispmg-hide-on-audit" style="text-align: center;">Meses (Ex/Ft)</th>
+                                    <th class="sispmg-hide-on-audit" style="text-align: right;">Estimado (R$)</th>
+                                    <th class="sispmg-hide-on-audit" style="text-align: right;">Liquidado (R$)</th>
+                                    <th class="sispmg-hide-on-audit" style="text-align: right;">Média Prev.</th>
+                                    <th class="sispmg-hide-on-audit" style="text-align: right;">Média Real</th>
                                     <th class="sispmg-hide-on-audit" style="text-align: center;">%</th>
-                                    <th class="sispmg-hide-on-audit" style="text-align: center;">Progresso</th>
                                     <th data-col="status" style="text-align: center;">
                                         <div class="sispmg-th-content" style="justify-content: center;">Status <i class="fas fa-filter sispmg-filter-trigger"></i></div>
                                     </th>
@@ -972,22 +972,55 @@ export class SirconvDashboardModule {
             const vEstimado = parseFloat(conv.VALOR_ESTIMADO) || 0, vLiquidado = parseFloat(conv.LIQUIDADO) || 0, prog = vEstimado > 0 ? ((vLiquidado / vEstimado) * 100).toFixed(1) : 0, isE = parseFloat(prog) > 100, isC = parseFloat(prog) >= 100;
             let corP = isE ? '#dc3545' : (isC ? '#b3a368' : '#28a745'), corT = vLiquidado > 0 ? (isE ? '#dc3545' : '#155724') : '#666';
             
+            // Cálculos de vigência e duração para as novas colunas
+            let duracao = 0, executados = 0, faltantes = 0, mediaPrev = 0, mediaReal = 0;
+            let rowStyle = '';
+            if (conv.DTINICIAL && conv.DTFINAL) {
+                const hoje = new Date();
+                const d1 = new Date(conv.DTINICIAL.split(' ')[0]), d2 = new Date(conv.DTFINAL.split(' ')[0]);
+                duracao = Math.max(1, (d2.getFullYear() - d1.getFullYear()) * 12 + (d2.getMonth() - d1.getMonth()) + 1);
+                executados = Math.max(0, (hoje.getFullYear() - d1.getFullYear()) * 12 + (hoje.getMonth() - d1.getMonth()));
+                executados = Math.min(duracao, executados + 1);
+                faltantes = Math.max(0, duracao - executados);
+                
+                mediaPrev = vEstimado / duracao;
+                mediaReal = vLiquidado / duracao; // Média sobre o contrato todo
+
+                // Lógica de cores da linha
+                if (statusLabel === 'Vigente') {
+                    if (faltantes <= 1) rowStyle = 'background-color: #fff3cd !important; border-left: 5px solid #fd7e14;'; // Laranja claro/Amarelo
+                    if (faltantes === 0 || d2 < hoje) rowStyle = 'background-color: #fff3cd !important; border-left: 5px solid #fd7e14;'; // Laranja
+                    
+                    // Ajuste preciso conforme pedido: 3 meses amarelo, 1 mês laranja
+                    if (faltantes <= 3) rowStyle = 'background-color: #fffde7 !important; border-left: 5px solid #fdd835;'; // Amarelo
+                    if (faltantes <= 1) rowStyle = 'background-color: #fff3e0 !important; border-left: 5px solid #ff9800;'; // Laranja
+                } else if (statusLabel === 'Vencido' || d2 < hoje) {
+                    rowStyle = 'background-color: #fce8e8 !important; border-left: 5px solid #dc3545;'; // Vermelho
+                }
+            }
+
             const hasAtraso = conv.pendencias?.some(p => p.tipo === 'atraso_liquidacao');
             const hasExcessoM = conv.pendencias?.some(p => p.tipo === 'excesso_valor_mensal');
             const hasExcessoN = conv.pendencias?.filter(p => p.tipo === 'excesso_valor_natureza');
             const isCritico = hasExcessoN?.some(p => p.nivel === 'critico');
             const isAlerta = !isCritico && hasExcessoN?.some(p => p.nivel === 'alerta');
 
-            return `<tr class="sispmg-clickable-row ${isAudited ? 'sispmg-row-audited' : ''}" onclick="window.SisPMG_SirconvDashboard.loadAuditData('${conv.ID}')">
+            return `<tr class="sispmg-clickable-row ${isAudited ? 'sispmg-row-audited' : ''}" style="${rowStyle}" onclick="window.SisPMG_SirconvDashboard.loadAuditData('${conv.ID}')">
                 <td><strong>${conv.ID}</strong></td>
                 <td class="sispmg-hide-on-audit">${conv.NUMERO_FACE || '-'}</td>
                 <td>${this.getMunicipioClean(conv.CONCEDENTE)}</td>
                 <td>${this.cleanUnidade(conv.UNI_NOME_PRINCIPAL)}</td>
-                <td class="sispmg-hide-on-audit">${this.formatDate(conv.DTFINAL)}</td>
+                <td class="sispmg-hide-on-audit" style="white-space: nowrap; font-size: 11px;">
+                    ${this.formatDate(conv.DTINICIAL)}<br>${this.formatDate(conv.DTFINAL)}
+                </td>
+                <td class="sispmg-hide-on-audit" style="text-align: center;">
+                    <span title="Executados">${executados}</span> / <span title="Faltantes" style="color: ${faltantes <= 3 ? '#d9534f' : '#666'}; font-weight: ${faltantes <= 3 ? 'bold' : 'normal'};">${faltantes}</span>
+                </td>
                 <td class="sispmg-hide-on-audit" style="text-align: right;">${vEstimado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                 <td class="sispmg-hide-on-audit" style="text-align: right; font-weight: 600; color: ${corT};">${vLiquidado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                <td class="sispmg-hide-on-audit" style="text-align: right; color: #666; font-size: 11px;">${mediaPrev.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                <td class="sispmg-hide-on-audit" style="text-align: right; color: #155724; font-size: 11px; font-weight: 600;">${mediaReal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                 <td class="sispmg-hide-on-audit" style="text-align: center; font-weight: 600; color: ${corT};">${prog}%</td>
-                <td class="sispmg-hide-on-audit" style="text-align: center;"><div style="background: #eee; width: 60px; border-radius: 4px; overflow: hidden; height: 10px; display: inline-block; vertical-align: middle;"><div style="background: ${corP}; height: 100%; width: ${prog > 100 ? 100 : prog}%;"></div></div></td>
                 <td style="text-align: center; white-space: nowrap;">
                     <div style="display: flex; align-items: center; justify-content: center; gap: 5px;">
                         <div class="sispmg-status-badge-slot"><span class="sispmg-status-badge ${statusLabel === 'Vigente' ? 'sispmg-status-vigente' : 'sispmg-status-outros'}">${statusLabel}</span></div>
