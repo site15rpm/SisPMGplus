@@ -351,12 +351,10 @@ export class SirconvDashboardModule {
             this.refreshConveniosList();
             this.applyFilters();
             
-            // Auditoria profunda: Vigentes sem audit ou expirado
+            // Auditoria profunda: Todos os convênios encontrados na busca avançada que não tenham audit recente
             const allToAudit = this.conveniosData.filter(c => {
-                const isVigente = this.getStatusLabel(c) === 'Vigente';
                 const audit = this.masterData[c.ID]?.audit;
-                const needsAudit = !audit || (Date.now() - (audit.timestamp || 0) > this.CACHE_TTL);
-                return isVigente && needsAudit;
+                return !audit || (Date.now() - (audit.timestamp || 0) > this.CACHE_TTL);
             });
             
             this.backgroundAuditQueue = this.sortConvenios(allToAudit).map(c => c.ID);
@@ -404,9 +402,20 @@ export class SirconvDashboardModule {
                             else if (lbl.includes('Valor')) val = v;
                             else if (lbl.includes('Unidade')) uni = v;
                             else if (lbl.includes('Término')) vigFim = v;
+                            else if (lbl.includes('Início')) dtIni = v;
                             if (!lblEl && (v.toLowerCase().includes('inativo') || v.toLowerCase().includes('finalizado') || v.toLowerCase().includes('cancelado'))) st = 'N';
                         });
-                        resultados.push({ ID: cod, NUMERO_FACE: face || '-', CONCEDENTE: nReal, UNI_NOME_PRINCIPAL: uni, DTFINAL: vigFim, VALOR_ESTIMADO: parseFloat(val.replace(/\./g, '').replace(',', '.')) || 0, ATIVO: st, VENCIDO: (vigFim !== '-' && this.parseDate(vigFim) < new Date() ? '1' : '0') });
+                        resultados.push({ 
+                            ID: cod, 
+                            NUMERO_FACE: face || '-', 
+                            CONCEDENTE: nReal, 
+                            UNI_NOME_PRINCIPAL: uni, 
+                            DTINICIAL: dtIni,
+                            DTFINAL: vigFim, 
+                            VALOR_ESTIMADO: parseFloat(val.replace(/\./g, '').replace(',', '.')) || 0, 
+                            ATIVO: st, 
+                            VENCIDO: (vigFim !== '-' && this.parseDate(vigFim) < new Date() ? '1' : '0') 
+                        });
                     }
                 }
             } catch (e) { console.error(e); }
