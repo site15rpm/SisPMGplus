@@ -679,7 +679,29 @@ export class SirconvDashboardModule {
         if (globalClose) globalClose.style.display = 'none';
 
         const v = audit.vigenciaInfo || {};
+        const p = conv.pendencias || [];
         
+        const pendenciasHtml = p.length > 0 ? `
+            <div style="margin-top: 15px; padding-top: 10px; border-top: 1px dashed #dcd3c5;">
+                <strong style="display: block; margin-bottom: 8px; font-size: 13px; color: #574e2d;">Alertas Identificados:</strong>
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                    ${p.map(x => {
+                        let icon = '', color = '#dc3545';
+                        if (x.tipo === 'atraso_liquidacao') icon = '<i class="fas fa-clock"></i>';
+                        else if (x.tipo === 'excesso_valor_mensal') icon = '<i class="fas fa-chart-line"></i>';
+                        else if (x.tipo === 'excesso_valor_natureza') {
+                            icon = '<i class="fas fa-exclamation-triangle"></i>';
+                            if (x.nivel === 'alerta') color = '#ff9800';
+                        }
+                        return `<div style="display: flex; align-items: flex-start; gap: 8px; font-size: 12px; color: #333;">
+                            <span style="color: ${color}; width: 16px; text-align: center; flex-shrink: 0;">${icon}</span>
+                            <span>${x.msg}</span>
+                        </div>`;
+                    }).join('')}
+                </div>
+            </div>
+        ` : '';
+
         sidebar.innerHTML = `
             <div style="display: flex; flex-direction: column; height: 100%;">
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #b3a368; padding: 15px 20px;">
@@ -687,13 +709,16 @@ export class SirconvDashboardModule {
                     <button id="sispmg-close-audit-btn" class="sispmg-dashboard-btn sispmg-global-close">Fechar</button>
                 </div>
                 <div style="flex-grow: 1; overflow-y: auto; padding: 20px;">
-                    <div style="background: #fbf8f5; border: 1px solid #dcd3c5; border-radius: 6px; padding: 12px; margin-bottom: 20px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; font-size: 13px;">
-                        <div><strong>Início:</strong> ${this.formatDate(conv.DTINICIAL)}</div>
-                        <div><strong>Término:</strong> ${this.formatDate(conv.DTFINAL)}</div>
-                        <div><strong>Duração:</strong> ${v.duracaoMeses || '-'} m</div>
-                        <div><strong>Nº Face:</strong> ${conv.NUMERO_FACE || '-'}</div>
-                        <div><strong>Decorridos:</strong> ${v.mesesDecorridos || '-'} m</div>
-                        <div><strong>Faltantes:</strong> ${v.mesesFaltantes || '-'} m</div>
+                    <div style="background: #fbf8f5; border: 1px solid #dcd3c5; border-radius: 6px; padding: 12px; margin-bottom: 20px; font-size: 13px;">
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+                            <div><strong>Início:</strong> ${this.formatDate(conv.DTINICIAL)}</div>
+                            <div><strong>Término:</strong> ${this.formatDate(conv.DTFINAL)}</div>
+                            <div><strong>Duração:</strong> ${v.duracaoMeses || '-'} m</div>
+                            <div><strong>Nº Face:</strong> ${conv.NUMERO_FACE || '-'}</div>
+                            <div><strong>Decorridos:</strong> ${v.mesesDecorridos || '-'} m</div>
+                            <div><strong>Faltantes:</strong> ${v.mesesFaltantes || '-'} m</div>
+                        </div>
+                        ${pendenciasHtml}
                     </div>
                     
                     <h3 style="font-size: 16px; color: #333; margin-top: 0;"><i class="fas fa-list-check"></i> Plano de Trabalho (Naturezas)</h3>
@@ -898,10 +923,10 @@ export class SirconvDashboardModule {
             <td class="sispmg-hide-on-audit" style="text-align: center; font-weight: bold; color: ${colorT};">${prog}%</td>
             <td style="text-align: center;"><span class="sispmg-status-badge ${statusLabel === 'Vigente' ? 'sispmg-status-vigente' : 'sispmg-status-outros'}">${statusLabel}</span></td>
             <td style="text-align: center;">
-                <div style="display: flex; gap: 4px; justify-content: center;">
-                    ${hA ? '<i class="fas fa-clock" title="Atraso Liquidação" style="color: #dc3545;"></i>' : ''}
-                    ${hEM ? '<i class="fas fa-chart-line" title="Excesso Mensal" style="color: #dc3545;"></i>' : ''}
-                    ${isC ? '<i class="fas fa-exclamation-triangle" title="Excesso Crítico" style="color: #dc3545;"></i>' : (isAl ? '<i class="fas fa-exclamation-triangle" title="Consumo Acelerado" style="color: #fd7e14;"></i>' : '')}
+                <div style="display: flex; gap: 8px; justify-content: center; width: 60px; margin: 0 auto;">
+                    <div style="width: 14px; text-align: center;">${hA ? '<i class="fas fa-clock" title="Atraso Liquidação" style="color: #dc3545;"></i>' : ''}</div>
+                    <div style="width: 14px; text-align: center;">${hEM ? '<i class="fas fa-chart-line" title="Excesso Mensal" style="color: #dc3545;"></i>' : ''}</div>
+                    <div style="width: 14px; text-align: center;">${isC ? '<i class="fas fa-exclamation-triangle" title="Excesso Crítico" style="color: #dc3545;"></i>' : (isAl ? '<i class="fas fa-exclamation-triangle" title="Consumo Acelerado" style="color: #ff9800;"></i>' : '')}</div>
                 </div>
             </td>
         </tr>`;
