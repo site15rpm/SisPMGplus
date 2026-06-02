@@ -164,12 +164,21 @@
 }
 
 /* Fixar largura da coluna de status e colunas dos ícones */
-.sispmg-dashboard-table th[data-col="status"],
-.sispmg-dashboard-table td:last-child {
-    width: 160px !important;
-    min-width: 160px !important;
-    max-width: 160px !important;
+.sispmg-dashboard-table th[data-col="status"] {
+    width: 90px !important;
+    min-width: 90px !important;
     text-align: center !important;
+}
+
+.sispmg-dashboard-table td:last-child, 
+.sispmg-dashboard-table th:last-child {
+    width: 80px !important;
+    min-width: 80px !important;
+    text-align: center !important;
+}
+
+.sispmg-dashboard-table th[data-col="municipio"] {
+    min-width: 130px !important;
 }
 
 .sispmg-status-badge-slot {
@@ -292,7 +301,6 @@
     background-color: #f7f5f2 !important;
     color: #574e2d !important;
     padding: 8px 10px !important;
-    text-align: left !important;
     z-index: 10 !important;
     border-bottom: 2px solid #dcd3c5 !important;
     font-weight: 600 !important;
