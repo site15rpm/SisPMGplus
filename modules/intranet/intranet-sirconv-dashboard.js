@@ -15,6 +15,7 @@ export class SirconvDashboardModule {
         this.conveniosData = []; // Array derivado para exibição e ordenação
         this.filteredData = [];
         this.activeFilters = {}; 
+        this.lastFiltros = { tipoBusca: 'ativos', tipo: 'todos', periodo: 'todos', manual: '', municipio: 'todos' };
         this.isLoading = false;
         this.activeConvId = null;
         this.backgroundAuditQueue = [];
@@ -99,7 +100,7 @@ export class SirconvDashboardModule {
 
         // Recálculo de pendências se houver auditoria
         if (entry.audit) {
-            entry.pendencias = this.analisarPendencias(entry.audit, { tipo: 'todos', periodo: 'todos' }, entry);
+            entry.pendencias = this.analisarPendencias(entry.audit, this.lastFiltros, entry);
             
             const totalLiq = entry.audit.planoItens?.reduce((sum, p) => sum + (parseFloat(p.valorExecutado) || 0), 0);
             if (totalLiq > 0) entry.LIQUIDADO = totalLiq;
@@ -250,15 +251,39 @@ export class SirconvDashboardModule {
                     <div>
                         <label style="display: block; font-weight: 600; margin-bottom: 8px; font-size: 13px;">Tipo de Busca:</label>
                         <select id="sispmg-dashboard-tipo-busca" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #dcd3c5; background: #fff;">
-                            <option value="ativos" selected>Meus Convênios (Vigentes)</option>
-                            <option value="todos">Todos os Convênios (Varredura de Concedentes)</option>
+                            <option value="ativos" ${this.lastFiltros?.tipoBusca === 'ativos' ? 'selected' : ''}>Meus Convênios (Vigentes)</option>
+                            <option value="todos" ${this.lastFiltros?.tipoBusca === 'todos' ? 'selected' : ''}>Todos os Convênios (Varredura de Concedentes)</option>
                         </select>
                     </div>
+
+                    <div>
+                        <label style="display: block; font-weight: 600; margin-bottom: 8px; font-size: 13px;">Tipo de Pendência:</label>
+                        <select id="sispmg-filter-tipo" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #dcd3c5; background: #fff;">
+                            <option value="todos" ${this.lastFiltros?.tipo === 'todos' ? 'selected' : ''}>Todas as Pendências</option>
+                            <option value="atraso_liquidacao" ${this.lastFiltros?.tipo === 'atraso_liquidacao' ? 'selected' : ''}>Atraso na Liquidação</option>
+                            <option value="excesso_valor" ${this.lastFiltros?.tipo === 'excesso_valor' ? 'selected' : ''}>Excesso de Valor</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label style="display: block; font-weight: 600; margin-bottom: 8px; font-size: 13px;">Período de Referência:</label>
+                        <select id="sispmg-filter-periodo" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #dcd3c5; background: #fff;">
+                            <option value="todos" ${this.lastFiltros?.periodo === 'todos' ? 'selected' : ''}>Todos os Períodos</option>
+                            <option value="ano_atual" ${this.lastFiltros?.periodo === 'ano_atual' ? 'selected' : ''}>Ano Atual</option>
+                            <option value="mes_anterior" ${this.lastFiltros?.periodo === 'mes_anterior' ? 'selected' : ''}>Mês Anterior</option>
+                            <option value="mes_atual" ${this.lastFiltros?.periodo === 'mes_atual' ? 'selected' : ''}>Mês Atual</option>
+                            <option value="manual" ${this.lastFiltros?.periodo === 'manual' ? 'selected' : ''}>Digitar Mês/Ano</option>
+                        </select>
+                        <input type="text" id="sispmg-filter-manual" placeholder="JAN 2026" 
+                               value="${this.lastFiltros?.manual || ''}"
+                               style="display: ${this.lastFiltros?.periodo === 'manual' ? 'block' : 'none'}; width: 100%; margin-top: 10px; padding: 10px; border-radius: 6px; border: 1px solid #dcd3c5; text-transform: uppercase;">
+                    </div>
+
                     <div>
                         <label style="display: block; font-weight: 600; margin-bottom: 8px; font-size: 13px;">Município Específico:</label>
                         <select id="sispmg-filter-municipio" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #dcd3c5; background: #fff;">
                             <option value="todos">Todos os Municípios</option>
-                            ${municipios.map(m => `<option value="${m}">${m}</option>`).join('')}
+                            ${municipios.map(m => `<option value="${m}" ${this.lastFiltros?.municipio === m ? 'selected' : ''}>${m}</option>`).join('')}
                         </select>
                     </div>
                 </div>
@@ -270,21 +295,39 @@ export class SirconvDashboardModule {
             </div>
         `;
 
+        const selectPeriodo = sidebar.querySelector('#sispmg-filter-periodo');
+        const inputManual = sidebar.querySelector('#sispmg-filter-manual');
+        selectPeriodo.onchange = () => { inputManual.style.display = selectPeriodo.value === 'manual' ? 'block' : 'none'; };
+
         sidebar.querySelector('#sispmg-btn-start-audit').onclick = () => {
-            const tipo = sidebar.querySelector('#sispmg-dashboard-tipo-busca').value;
-            const mun = sidebar.querySelector('#sispmg-filter-municipio').value;
+            const filtros = {
+                tipoBusca: sidebar.querySelector('#sispmg-dashboard-tipo-busca').value,
+                tipo: sidebar.querySelector('#sispmg-filter-tipo').value,
+                periodo: sidebar.querySelector('#sispmg-filter-periodo').value,
+                manual: sidebar.querySelector('#sispmg-filter-manual').value.toUpperCase().trim(),
+                municipio: sidebar.querySelector('#sispmg-filter-municipio').value
+            };
+            this.lastFiltros = filtros;
             sidebar.classList.remove('active'); layout.classList.remove('filter-active');
-            this.fetchConveniosData(tipo, mun);
+            this.fetchConveniosData(filtros);
         };
     }
 
-    async fetchConveniosData(tipo = 'ativos', municipioFiltro = 'todos') {
+    async fetchConveniosData(filtrosInput = null) {
         if (this.isLoading) return;
+        
+        if (typeof filtrosInput === 'string') {
+            this.lastFiltros.tipoBusca = filtrosInput;
+        } else if (filtrosInput && typeof filtrosInput === 'object') {
+            this.lastFiltros = { ...this.lastFiltros, ...filtrosInput };
+        }
+        
+        const { tipoBusca, municipio } = this.lastFiltros;
         this.isLoading = true;
-        if (!this.isQueueProcessing && this.ui) this.ui.showLoader(tipo === 'todos' ? 'Extraindo lista de concedentes...' : 'Carregando meus convênios...');
+        if (!this.isQueueProcessing && this.ui) this.ui.showLoader(tipoBusca === 'todos' ? 'Extraindo lista de concedentes...' : 'Carregando meus convênios...');
 
         try {
-            if (tipo === 'ativos') {
+            if (tipoBusca === 'ativos') {
                 const pesquisa = JSON.stringify({ preposto: "", numeroConvenio: "", numeroFace: "", status: "" });
                 const res = await fetch(`https://intranet.policiamilitar.mg.gov.br/lite/convenio/web/convenio/meus-convenios?pesquisa=${encodeURIComponent(pesquisa)}`);
                 const data = await res.json();
@@ -292,8 +335,16 @@ export class SirconvDashboardModule {
                     data.convenios.forEach(c => this.syncConvenio(c.ID, c));
                 }
             } else {
-                const results = await this.fetchAllConveniosFromConcedentes(municipioFiltro);
+                const results = await this.fetchAllConveniosFromConcedentes(municipio);
                 results.forEach(r => this.syncConvenio(r.ID, r));
+            }
+            
+            // Re-calcular pendências para todos os convênios na base master com os novos filtros
+            for (const id in this.masterData) {
+                const c = this.masterData[id];
+                if (c.audit) {
+                    c.pendencias = this.analisarPendencias(c.audit, this.lastFiltros, c);
+                }
             }
             
             await this.savePersistentCache();
@@ -465,13 +516,41 @@ export class SirconvDashboardModule {
         } catch (e) { console.error(e); return null; }
     }
 
-    analisarPendencias(audit, filtros = { tipo: 'todos', periodo: 'todos' }, conv = null) {
+    analisarPendencias(audit, filtros = { tipo: 'todos', periodo: 'todos', manual: '' }, conv = null) {
         const pendencias = [], hoje = new Date();
+        const anoAtual = hoje.getFullYear();
+        const mesAtual = hoje.getMonth();
+        let filtroMes = null, filtroAno = null;
+
+        if (filtros.periodo === 'ano_atual') {
+            filtroAno = anoAtual;
+        } else if (filtros.periodo === 'mes_anterior') {
+            const dAnt = new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1);
+            filtroMes = dAnt.getMonth(); filtroAno = dAnt.getFullYear();
+        } else if (filtros.periodo === 'mes_atual') {
+            filtroMes = mesAtual; filtroAno = anoAtual;
+        } else if (filtros.periodo === 'manual' && filtros.manual) {
+            const partes = filtros.manual.split(' ');
+            if (partes.length === 2) {
+                const meses = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
+                filtroMes = meses.indexOf(partes[0].toUpperCase());
+                filtroAno = parseInt(partes[1]);
+            }
+        }
+
+        const mP = { 'JAN': 0, 'FEV': 1, 'MAR': 2, 'ABR': 3, 'MAI': 4, 'JUN': 5, 'JUL': 6, 'AGO': 7, 'SET': 8, 'OUT': 9, 'NOV': 10, 'DEZ': 11, 'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5, 'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11 };
+
+        const isNoPeriodo = (mesTexto) => {
+            if (filtros.periodo === 'todos') return true;
+            if (!mesTexto) return false;
+            const p = mesTexto.toUpperCase().split(' ');
+            return mP[p[0]] === filtroMes && parseInt(p[1]) === filtroAno;
+        };
+
         let duracaoMeses = 0, mesesDecorridos = 0;
-        
         let d1 = this.parseDate(conv?.DTINICIAL), d2 = this.parseDate(conv?.DTFINAL);
+        
         if (!d1 && audit.cronogramas?.length > 0) {
-            const mP = { 'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5, 'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11 };
             const s = [...audit.cronogramas].sort((a, b) => {
                 const pa = a.mesTexto.split(' '), pb = b.mesTexto.split(' ');
                 return (parseInt(pa[1]) - parseInt(pb[1])) || (mP[pa[0]] - mP[pb[0]]);
@@ -486,23 +565,34 @@ export class SirconvDashboardModule {
             audit.vigenciaInfo = { duracaoMeses, mesesDecorridos, mesesFaltantes: Math.max(0, duracaoMeses - mesesDecorridos), dtInicio: d1.toISOString().split('T')[0], dtFim: d2.toISOString().split('T')[0] };
         }
         
-        audit.cronogramas?.forEach(c => {
-            if (c.valorExecutado > c.valorPrevisto + 0.01) pendencias.push({ tipo: 'excesso_valor_mensal', msg: `Excesso em ${c.mesTexto}` });
-            if (c.prazoLimite && c.prazoLimite !== '-') {
-                const pt = c.prazoLimite.split('/');
-                if (new Date(pt[2], pt[1]-1, pt[0]) < hoje && c.status.includes('Aguardando')) {
-                    pendencias.push({ tipo: 'atraso_liquidacao', msg: `Atraso: ${c.mesTexto}` });
+        if (filtros.tipo === 'todos' || filtros.tipo === 'excesso_valor') {
+            audit.cronogramas?.forEach(c => {
+                if (isNoPeriodo(c.mesTexto) && c.valorExecutado > c.valorPrevisto + 0.01) {
+                    pendencias.push({ tipo: 'excesso_valor_mensal', msg: `Excesso em ${c.mesTexto}` });
                 }
-            }
-        });
+            });
+        }
 
-        audit.planoItens?.forEach(p => {
-            if (p.valorExecutado > p.valorEstimado + 0.01) {
-                pendencias.push({ tipo: 'excesso_valor_natureza', nivel: 'critico', msg: `Excesso: ${p.nome}` });
-            } else if (duracaoMeses > 0 && p.valorExecutado > (p.valorEstimado / duracaoMeses) * mesesDecorridos * 1.3) {
-                pendencias.push({ tipo: 'excesso_valor_natureza', nivel: 'alerta', msg: `Consumo acelerado: ${p.nome}` });
-            }
-        });
+        if (filtros.tipo === 'todos' || filtros.tipo === 'atraso_liquidacao') {
+            audit.cronogramas?.forEach(c => {
+                if (isNoPeriodo(c.mesTexto) && c.prazoLimite && c.prazoLimite !== '-') {
+                    const pt = c.prazoLimite.split('/');
+                    if (new Date(pt[2], pt[1]-1, pt[0]) < hoje && c.status.includes('Aguardando')) {
+                        pendencias.push({ tipo: 'atraso_liquidacao', msg: `Atraso: ${c.mesTexto}` });
+                    }
+                }
+            });
+        }
+
+        if (filtros.tipo === 'todos' || filtros.tipo === 'excesso_valor') {
+            audit.planoItens?.forEach(p => {
+                if (p.valorExecutado > p.valorEstimado + 0.01) {
+                    pendencias.push({ tipo: 'excesso_valor_natureza', nivel: 'critico', msg: `Excesso: ${p.nome}` });
+                } else if (duracaoMeses > 0 && p.valorExecutado > (p.valorEstimado / duracaoMeses) * mesesDecorridos * 1.3) {
+                    pendencias.push({ tipo: 'excesso_valor_natureza', nivel: 'alerta', msg: `Consumo acelerado: ${p.nome}` });
+                }
+            });
+        }
 
         return pendencias;
     }
