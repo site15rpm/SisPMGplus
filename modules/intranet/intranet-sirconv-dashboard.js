@@ -239,7 +239,7 @@ export class SirconvDashboardModule {
             sidebar.classList.remove('active');
             layout.classList.remove('audit-active', 'filter-active');
             this.activeConvId = null;
-            if (globalClose) globalClose.style.display = 'inline-flex';
+            if (globalClose) globalClose.style.setProperty('display', 'inline-flex', 'important');
             this.renderDashboard(true);
         }
     }
@@ -265,9 +265,9 @@ export class SirconvDashboardModule {
         if (!layout || !sidebar) return;
         layout.classList.remove('audit-active'); layout.classList.add('filter-active'); sidebar.classList.add('active');
         
-        // Unificação do Botão Fechar: Ocultar o global
+        // Unificação do Botão Fechar: Ocultar o global com !important
         const globalClose = document.getElementById('sispmg-dashboard-close-global');
-        if (globalClose) globalClose.style.display = 'none';
+        if (globalClose) globalClose.style.setProperty('display', 'none', 'important');
 
         const db = this.currentView === 'meus' ? this.masterData : this.advSearchData;
         const municipios = [...new Set(Object.values(db).map(c => this.getMunicipioClean(c.CONCEDENTE)))].sort();
@@ -276,7 +276,7 @@ export class SirconvDashboardModule {
             <div style="display: flex; flex-direction: column; height: 100%; padding: 0;">
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #b3a368; padding: 15px 20px;">
                     <h2 style="color: #574e2d; font-size: 18px; margin: 0;"><i class="fas fa-filter"></i> Busca Avançada</h2>
-                    <button id="sispmg-close-sidebar-btn" class="sispmg-dashboard-btn sispmg-global-close">Fechar</button>
+                    <button id="sispmg-close-sidebar-btn" class="sispmg-dashboard-btn sispmg-global-close" style="background-color: #dc3545 !important; color: white !important;">Fechar</button>
                 </div>
                 <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 20px; padding: 20px; overflow-y: auto;">
                     <div>
@@ -350,7 +350,7 @@ export class SirconvDashboardModule {
             if (titleEl) titleEl.innerText = this.currentView === 'meus' ? '(Meus Convênios)' : '(Busca Avançada)';
 
             sidebar.classList.remove('active'); layout.classList.remove('filter-active');
-            if (globalClose) globalClose.style.display = 'inline-flex';
+            if (globalClose) globalClose.style.setProperty('display', 'inline-flex', 'important');
             this.fetchConveniosData(filtros);
         };
     }
@@ -683,9 +683,9 @@ export class SirconvDashboardModule {
         if (!layout || !sidebar || !audit) return;
         layout.classList.remove('filter-active'); layout.classList.add('audit-active'); sidebar.classList.add('active');
         
-        // Unificação do Botão Fechar: Ocultar o global
+        // Unificação do Botão Fechar: Ocultar o global com !important
         const globalClose = document.getElementById('sispmg-dashboard-close-global');
-        if (globalClose) globalClose.style.display = 'none';
+        if (globalClose) globalClose.style.setProperty('display', 'none', 'important');
 
         const v = audit.vigenciaInfo || {};
         const p = conv.pendencias || [];
@@ -735,8 +735,8 @@ export class SirconvDashboardModule {
         sidebar.innerHTML = `
             <div style="display: flex; flex-direction: column; height: 100%;">
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #b3a368; padding: 15px 20px;">
-                    <h2 style="color: #574e2d; font-size: 18px; margin: 0; white-space: nowrap; flex-grow: 1;">Convênio ${conv.ID} - ${this.getMunicipioClean(conv.CONCEDENTE)}</h2>
-                    <button id="sispmg-close-audit-btn" class="sispmg-dashboard-btn sispmg-global-close">Fechar</button>
+                    <h2 style="color: #574e2d; font-size: 18px; margin: 0; white-space: normal; line-height: 1.2;">Detalhamento: ${conv.ID} - ${this.getMunicipioClean(conv.CONCEDENTE)}</h2>
+                    <button id="sispmg-close-audit-btn" class="sispmg-dashboard-btn sispmg-global-close" style="background-color: #dc3545 !important; color: white !important;">Fechar</button>
                 </div>
                 <div style="flex-grow: 1; overflow-y: auto; padding: 20px;">
                     <div style="background: #fbf8f5; border: 1px solid #dcd3c5; border-radius: 6px; padding: 15px; margin-bottom: 20px; font-size: 13px;">
@@ -960,7 +960,7 @@ export class SirconvDashboardModule {
 
     updateSummaryCards() {
         const data = this.filteredData.length > 0 ? this.filteredData : this.conveniosData;
-        const tE = data.reduce((a, b) => a + (parseFloat(b.VALOR_ESTIMADO) || 0), 0);
+        const tE = data.reduce((a, b) => a + (parseFloat(b.audit?.valorEstimadoReal || b.VALOR_ESTIMADO) || 0), 0);
         const tL = data.reduce((a, b) => a + (parseFloat(b.LIQUIDADO) || 0), 0);
         document.getElementById('dash-total-convenios').innerText = data.length;
         document.getElementById('dash-convenios-ativos').innerText = data.filter(c => this.getStatusLabel(c) === 'Vigente').length;
