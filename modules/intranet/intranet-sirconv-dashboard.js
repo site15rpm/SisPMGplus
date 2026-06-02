@@ -234,10 +234,12 @@ export class SirconvDashboardModule {
     closeSidebar() {
         const layout = document.getElementById('sispmg-dashboard-layout');
         const sidebar = document.getElementById('sispmg-dashboard-sidebar');
+        const globalClose = document.getElementById('sispmg-dashboard-close-global');
         if (layout && sidebar) {
             sidebar.classList.remove('active');
             layout.classList.remove('audit-active', 'filter-active');
             this.activeConvId = null;
+            if (globalClose) globalClose.style.display = 'inline-flex';
             this.renderDashboard(true);
         }
     }
@@ -263,6 +265,10 @@ export class SirconvDashboardModule {
         if (!layout || !sidebar) return;
         layout.classList.remove('audit-active'); layout.classList.add('filter-active'); sidebar.classList.add('active');
         
+        // Unificação do Botão Fechar: Ocultar o global
+        const globalClose = document.getElementById('sispmg-dashboard-close-global');
+        if (globalClose) globalClose.style.display = 'none';
+
         const db = this.currentView === 'meus' ? this.masterData : this.advSearchData;
         const municipios = [...new Set(Object.values(db).map(c => this.getMunicipioClean(c.CONCEDENTE)))].sort();
 
@@ -270,6 +276,7 @@ export class SirconvDashboardModule {
             <div style="display: flex; flex-direction: column; height: 100%; padding: 0;">
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #b3a368; padding: 15px 20px;">
                     <h2 style="color: #574e2d; font-size: 18px; margin: 0;"><i class="fas fa-filter"></i> Busca Avançada</h2>
+                    <button id="sispmg-close-sidebar-btn" class="sispmg-dashboard-btn sispmg-global-close">Fechar</button>
                 </div>
                 <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 20px; padding: 20px; overflow-y: auto;">
                     <div>
@@ -319,6 +326,8 @@ export class SirconvDashboardModule {
             </div>
         `;
 
+        sidebar.querySelector('#sispmg-close-sidebar-btn').onclick = () => this.closeSidebar();
+
         const selectPeriodo = sidebar.querySelector('#sispmg-filter-periodo');
         const inputManual = sidebar.querySelector('#sispmg-filter-manual');
         selectPeriodo.onchange = () => { inputManual.style.display = selectPeriodo.value === 'manual' ? 'block' : 'none'; };
@@ -341,6 +350,7 @@ export class SirconvDashboardModule {
             if (titleEl) titleEl.innerText = this.currentView === 'meus' ? '(Meus Convênios)' : '(Busca Avançada)';
 
             sidebar.classList.remove('active'); layout.classList.remove('filter-active');
+            if (globalClose) globalClose.style.display = 'inline-flex';
             this.fetchConveniosData(filtros);
         };
     }
@@ -673,6 +683,10 @@ export class SirconvDashboardModule {
         if (!layout || !sidebar || !audit) return;
         layout.classList.remove('filter-active'); layout.classList.add('audit-active'); sidebar.classList.add('active');
         
+        // Unificação do Botão Fechar: Ocultar o global
+        const globalClose = document.getElementById('sispmg-dashboard-close-global');
+        if (globalClose) globalClose.style.display = 'none';
+
         const v = audit.vigenciaInfo || {};
         const p = conv.pendencias || [];
         
@@ -721,10 +735,10 @@ export class SirconvDashboardModule {
         sidebar.innerHTML = `
             <div style="display: flex; flex-direction: column; height: 100%;">
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #b3a368; padding: 15px 20px;">
-                    <h2 style="color: #574e2d; font-size: 18px; margin: 0; white-space: nowrap;">Detalhamento do Convênio ${conv.ID}</h2>
+                    <h2 style="color: #574e2d; font-size: 18px; margin: 0; white-space: nowrap; flex-grow: 1;">Convênio ${conv.ID} - ${this.getMunicipioClean(conv.CONCEDENTE)}</h2>
+                    <button id="sispmg-close-audit-btn" class="sispmg-dashboard-btn sispmg-global-close">Fechar</button>
                 </div>
                 <div style="flex-grow: 1; overflow-y: auto; padding: 20px;">
-                    <h3 style="font-size: 15px; color: #574e2d; margin-top: 0; margin-bottom: 12px; border-left: 4px solid #b3a368; padding-left: 10px;">${this.getMunicipioClean(conv.CONCEDENTE)}</h3>
                     <div style="background: #fbf8f5; border: 1px solid #dcd3c5; border-radius: 6px; padding: 15px; margin-bottom: 20px; font-size: 13px;">
                         <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
                             <div><strong>Início:</strong> ${this.formatDate(conv.DTINICIAL)}</div>
@@ -811,6 +825,7 @@ export class SirconvDashboardModule {
                 </div>
             </div>
         `;
+        sidebar.querySelector('#sispmg-close-audit-btn').onclick = () => this.closeSidebar();
         this.renderDashboard(true);
     }
 
