@@ -53,7 +53,6 @@ export class SirconvDashboardModule {
                     }
                 }
                 if (mudou) await this.savePersistentCache();
-                console.log(`[Dashboard] Base Master carregada: ${Object.keys(this.masterData).length} convênios.`);
                 this.refreshConveniosList();
             }
         } catch (e) { console.error("[Dashboard] Erro ao carregar Master Data:", e); }
@@ -200,10 +199,7 @@ export class SirconvDashboardModule {
         modalContainer.querySelector('#sispmg-dashboard-close-global').onclick = () => {
             const layout = document.getElementById('sispmg-dashboard-layout');
             if (layout && (layout.classList.contains('audit-active') || layout.classList.contains('filter-active'))) {
-                document.getElementById('sispmg-dashboard-sidebar').classList.remove('active');
-                layout.classList.remove('audit-active', 'filter-active');
-                this.activeConvId = null;
-                this.renderDashboard(true);
+                this.closeSidebar();
             } else {
                 this.closeAllFilterDropdowns();
                 overlay.remove();
@@ -235,6 +231,17 @@ export class SirconvDashboardModule {
         this.fetchConveniosData('ativos');
     }
 
+    closeSidebar() {
+        const layout = document.getElementById('sispmg-dashboard-layout');
+        const sidebar = document.getElementById('sispmg-dashboard-sidebar');
+        if (layout && sidebar) {
+            sidebar.classList.remove('active');
+            layout.classList.remove('audit-active', 'filter-active');
+            this.activeConvId = null;
+            this.renderDashboard(true);
+        }
+    }
+
     updateBackgroundStatus(isActive, message = "") {
         const statusEl = document.getElementById('sispmg-dashboard-bg-status');
         const actionBtn = document.getElementById('sispmg-dashboard-action-btn');
@@ -256,10 +263,6 @@ export class SirconvDashboardModule {
         if (!layout || !sidebar) return;
         layout.classList.remove('audit-active'); layout.classList.add('filter-active'); sidebar.classList.add('active');
         
-        // Ocultar botão fechar global para evitar duplicidade
-        const globalClose = document.getElementById('sispmg-dashboard-close-global');
-        if (globalClose) globalClose.style.display = 'none';
-
         const db = this.currentView === 'meus' ? this.masterData : this.advSearchData;
         const municipios = [...new Set(Object.values(db).map(c => this.getMunicipioClean(c.CONCEDENTE)))].sort();
 
@@ -267,7 +270,6 @@ export class SirconvDashboardModule {
             <div style="display: flex; flex-direction: column; height: 100%; padding: 0;">
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #b3a368; padding: 15px 20px;">
                     <h2 style="color: #574e2d; font-size: 18px; margin: 0;"><i class="fas fa-filter"></i> Busca Avançada</h2>
-                    <button id="sispmg-close-sidebar-btn" class="sispmg-dashboard-btn sispmg-global-close">Fechar</button>
                 </div>
                 <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 20px; padding: 20px; overflow-y: auto;">
                     <div>
@@ -316,11 +318,6 @@ export class SirconvDashboardModule {
                 </div>
             </div>
         `;
-
-        sidebar.querySelector('#sispmg-close-sidebar-btn').onclick = () => {
-            sidebar.classList.remove('active'); layout.classList.remove('filter-active');
-            if (globalClose) globalClose.style.display = 'inline-flex';
-        };
 
         const selectPeriodo = sidebar.querySelector('#sispmg-filter-periodo');
         const inputManual = sidebar.querySelector('#sispmg-filter-manual');
@@ -375,8 +372,9 @@ export class SirconvDashboardModule {
             }
             
             // Re-calcular pendências para todos os convênios na base master com os novos filtros
-            for (const id in this.masterData) {
-                const c = this.masterData[id];
+            const db = this.currentView === 'meus' ? this.masterData : this.advSearchData;
+            for (const id in db) {
+                const c = db[id];
                 if (c.audit) {
                     c.pendencias = this.analisarPendencias(c.audit, this.lastFiltros, c);
                 }
@@ -388,7 +386,7 @@ export class SirconvDashboardModule {
             
             // Auditoria profunda: Todos os convênios encontrados na busca avançada que não tenham audit recente
             const allToAudit = this.conveniosData.filter(c => {
-                const audit = this.masterData[c.ID]?.audit;
+                const audit = (this.currentView === 'meus' ? this.masterData[c.ID] : this.advSearchData[c.ID])?.audit;
                 return !audit || (Date.now() - (audit.timestamp || 0) > this.CACHE_TTL);
             });
             
@@ -430,7 +428,7 @@ export class SirconvDashboardModule {
                     for (const item of items) {
                         const lIdM = item.href.match(/id=(\d+)/);
                         if (!lIdM) continue;
-                        let cod = lIdM[1], face = '', val = '0', uni = '-', vigFim = '-', st = 'S';
+                        let cod = lIdM[1], face = '', val = '0', uni = '-', vigFim = '-', st = 'S', dtIni = '-';
                         item.querySelectorAll('.flex-coluna').forEach(col => {
                             const lblEl = col.querySelector('.tc.menor'), lbl = lblEl?.innerText.trim() || '', v = col.innerText.replace(lbl, '').trim();
                             if (lbl.includes('face')) face = v;
@@ -651,7 +649,8 @@ export class SirconvDashboardModule {
 
     async loadAuditData(convId) {
         this.activeConvId = convId;
-        const conv = this.masterData[String(convId)];
+        const db = this.currentView === 'meus' ? this.masterData : this.advSearchData;
+        const conv = db[String(convId)];
         if (!conv) return;
         
         if (conv.audit && (Date.now() - (conv.audit.timestamp || 0) < this.CACHE_TTL)) {
@@ -663,7 +662,7 @@ export class SirconvDashboardModule {
             const auditData = await this.performDeepAudit(convId);
             if (auditData) {
                 this.syncConvenio(convId, { audit: auditData });
-                this.renderAuditSidebar(this.masterData[convId]);
+                this.renderAuditSidebar(db[convId]);
                 this.updateSummaryCards();
             }
         } catch (e) { console.error(e); } finally { if (this.ui) this.ui.hideLoader(); }
@@ -674,30 +673,47 @@ export class SirconvDashboardModule {
         if (!layout || !sidebar || !audit) return;
         layout.classList.remove('filter-active'); layout.classList.add('audit-active'); sidebar.classList.add('active');
         
-        // Ocultar botão fechar global para evitar duplicidade
-        const globalClose = document.getElementById('sispmg-dashboard-close-global');
-        if (globalClose) globalClose.style.display = 'none';
-
         const v = audit.vigenciaInfo || {};
         const p = conv.pendencias || [];
         
-        const pendenciasHtml = p.length > 0 ? `
+        // Agrupar pendências por tipo para exibição consolidada
+        const agrp = { atraso: [], mensal: [], natureza: [], acelerado: [] };
+        p.forEach(x => {
+            if (x.tipo === 'atraso_liquidacao') agrp.atraso.push(x.msg.replace('Atraso: ', ''));
+            else if (x.tipo === 'excesso_valor_mensal') agrp.mensal.push(x.msg.replace('Excesso em ', ''));
+            else if (x.tipo === 'excesso_valor_natureza') {
+                if (x.nivel === 'critico') agrp.natureza.push(x.msg.replace('Excesso: ', ''));
+                else agrp.acelerado.push(x.msg.replace('Consumo acelerado: ', ''));
+            }
+        });
+
+        const alertas = [];
+        if (agrp.atraso.length > 0) alertas.push({ icon: '<i class="fas fa-clock"></i>', color: '#dc3545', msg: `Liquidação pendente fora do prazo nos meses: ${agrp.atraso.join(', ')}.` });
+        if (agrp.mensal.length > 0) alertas.push({ icon: '<i class="fas fa-chart-line"></i>', color: '#dc3545', msg: `Valor executado superior ao previsto nos meses: ${agrp.mensal.join(', ')}.` });
+        
+        agrp.natureza.forEach(n => {
+            const item = audit.planoItens?.find(it => it.nome.includes(n));
+            const perc = item ? ((item.valorExecutado / item.valorEstimado) * 100).toFixed(1) : '?';
+            alertas.push({ icon: '<i class="fas fa-exclamation-triangle"></i>', color: '#dc3545', msg: `Excesso Crítico em "${n}": Execução de ${perc}% (superior ao limite de 100%).` });
+        });
+
+        agrp.acelerado.forEach(n => {
+            const item = audit.planoItens?.find(it => it.nome.includes(n));
+            const percExec = item ? ((item.valorExecutado / item.valorEstimado) * 100).toFixed(1) : '?';
+            const percTempo = v.duracaoMeses ? ((v.mesesDecorridos / v.duracaoMeses) * 100).toFixed(1) : '?';
+            alertas.push({ icon: '<i class="fas fa-exclamation-triangle"></i>', color: '#9c27b0', msg: `Consumo Acelerado em "${n}": ${percExec}% do recurso utilizado em apenas ${percTempo}% do tempo de vigência (projeção linear excedida em mais de 30%).` });
+        });
+
+        const pendenciasHtml = alertas.length > 0 ? `
             <div style="margin-top: 15px; padding-top: 10px; border-top: 1px dashed #dcd3c5;">
-                <strong style="display: block; margin-bottom: 8px; font-size: 13px; color: #574e2d;">Alertas Identificados:</strong>
-                <div style="display: flex; flex-direction: column; gap: 6px;">
-                    ${p.map(x => {
-                        let icon = '', color = '#dc3545';
-                        if (x.tipo === 'atraso_liquidacao') icon = '<i class="fas fa-clock"></i>';
-                        else if (x.tipo === 'excesso_valor_mensal') icon = '<i class="fas fa-chart-line"></i>';
-                        else if (x.tipo === 'excesso_valor_natureza') {
-                            icon = '<i class="fas fa-exclamation-triangle"></i>';
-                            if (x.nivel === 'alerta') color = '#ff9800';
-                        }
-                        return `<div style="display: flex; align-items: flex-start; gap: 8px; font-size: 12px; color: #333;">
-                            <span style="color: ${color}; width: 16px; text-align: center; flex-shrink: 0;">${icon}</span>
-                            <span>${x.msg}</span>
-                        </div>`;
-                    }).join('')}
+                <strong style="display: block; margin-bottom: 10px; font-size: 13px; color: #574e2d;">Alertas de Auditoria:</strong>
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    ${alertas.map(a => `
+                        <div style="display: flex; align-items: flex-start; gap: 10px; font-size: 12px; color: #333; line-height: 1.4;">
+                            <span style="color: ${a.color}; width: 16px; text-align: center; flex-shrink: 0; padding-top: 2px;">${a.icon}</span>
+                            <span>${a.msg}</span>
+                        </div>
+                    `).join('')}
                 </div>
             </div>
         ` : '';
@@ -705,12 +721,12 @@ export class SirconvDashboardModule {
         sidebar.innerHTML = `
             <div style="display: flex; flex-direction: column; height: 100%;">
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #b3a368; padding: 15px 20px;">
-                    <h2 style="color: #574e2d; font-size: 18px; margin: 0; white-space: nowrap;">Convênio ${conv.ID} - ${this.getMunicipioClean(conv.CONCEDENTE)}</h2>
-                    <button id="sispmg-close-audit-btn" class="sispmg-dashboard-btn sispmg-global-close">Fechar</button>
+                    <h2 style="color: #574e2d; font-size: 18px; margin: 0; white-space: nowrap;">Detalhamento do Convênio ${conv.ID}</h2>
                 </div>
                 <div style="flex-grow: 1; overflow-y: auto; padding: 20px;">
-                    <div style="background: #fbf8f5; border: 1px solid #dcd3c5; border-radius: 6px; padding: 12px; margin-bottom: 20px; font-size: 13px;">
-                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+                    <h3 style="font-size: 15px; color: #574e2d; margin-top: 0; margin-bottom: 12px; border-left: 4px solid #b3a368; padding-left: 10px;">${this.getMunicipioClean(conv.CONCEDENTE)}</h3>
+                    <div style="background: #fbf8f5; border: 1px solid #dcd3c5; border-radius: 6px; padding: 15px; margin-bottom: 20px; font-size: 13px;">
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
                             <div><strong>Início:</strong> ${this.formatDate(conv.DTINICIAL)}</div>
                             <div><strong>Término:</strong> ${this.formatDate(conv.DTFINAL)}</div>
                             <div><strong>Duração:</strong> ${v.duracaoMeses || '-'} m</div>
@@ -795,11 +811,6 @@ export class SirconvDashboardModule {
                 </div>
             </div>
         `;
-        sidebar.querySelector('#sispmg-close-audit-btn').onclick = () => {
-            sidebar.classList.remove('active'); layout.classList.remove('audit-active'); this.activeConvId = null; 
-            if (globalClose) globalClose.style.display = 'inline-flex';
-            this.renderDashboard(true);
-        };
         this.renderDashboard(true);
     }
 
@@ -926,7 +937,7 @@ export class SirconvDashboardModule {
                 <div style="display: flex; gap: 8px; justify-content: center; width: 60px; margin: 0 auto;">
                     <div style="width: 14px; text-align: center;">${hA ? '<i class="fas fa-clock" title="Atraso Liquidação" style="color: #dc3545;"></i>' : ''}</div>
                     <div style="width: 14px; text-align: center;">${hEM ? '<i class="fas fa-chart-line" title="Excesso Mensal" style="color: #dc3545;"></i>' : ''}</div>
-                    <div style="width: 14px; text-align: center;">${isC ? '<i class="fas fa-exclamation-triangle" title="Excesso Crítico" style="color: #dc3545;"></i>' : (isAl ? '<i class="fas fa-exclamation-triangle" title="Consumo Acelerado" style="color: #ff9800;"></i>' : '')}</div>
+                    <div style="width: 14px; text-align: center;">${isC ? '<i class="fas fa-exclamation-triangle" title="Excesso Crítico" style="color: #dc3545;"></i>' : (isAl ? '<i class="fas fa-exclamation-triangle" title="Consumo Acelerado" style="color: #9c27b0;"></i>' : '')}</div>
                 </div>
             </td>
         </tr>`;
