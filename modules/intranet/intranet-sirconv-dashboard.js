@@ -672,7 +672,7 @@ export class SirconvDashboardModule {
         sidebar.innerHTML = `
             <div style="display: flex; flex-direction: column; height: 100%;">
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #b3a368; padding: 15px 20px;">
-                    <h2 style="color: #574e2d; font-size: 18px; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 250px;">Convênio ${conv.ID}</h2>
+                    <h2 style="color: #574e2d; font-size: 18px; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 250px;">Convênio ${conv.ID} - ${this.getMunicipioClean(conv.CONCEDENTE)}</h2>
                     <button id="sispmg-close-audit-btn" class="sispmg-global-close" style="position: static; padding: 5px 10px;">Fechar</button>
                 </div>
                 <div style="flex-grow: 1; overflow-y: auto; padding: 20px;">
@@ -684,14 +684,78 @@ export class SirconvDashboardModule {
                         <div><strong>Decorridos:</strong> ${v.mesesDecorridos || '-'} m</div>
                         <div><strong>Faltantes:</strong> ${v.mesesFaltantes || '-'} m</div>
                     </div>
-                    <h3 style="font-size: 15px; color: #333; margin-top: 0;"><i class="fas fa-list-check"></i> Plano de Trabalho</h3>
-                    <table class="sispmg-dashboard-table" style="width: 100%; font-size: 12px;">
-                        <thead><tr><th style="text-align: left;">Natureza</th><th style="text-align: right;">Prev (R$)</th><th style="text-align: right;">Exec (R$)</th><th style="text-align: center;">%</th></tr></thead>
-                        <tbody>${audit.planoItens?.map(p => {
-                            const prog = p.valorEstimado > 0 ? ((p.valorExecutado / p.valorEstimado) * 100).toFixed(1) : 0;
-                            return `<tr><td>${p.nome}</td><td style="text-align: right;">${p.valorEstimado.toLocaleString('pt-BR')}</td><td style="text-align: right; color: ${parseFloat(prog) > 100 ? '#dc3545' : '#155724'}">${p.valorExecutado.toLocaleString('pt-BR')}</td><td style="text-align: center;">${prog}%</td></tr>`;
-                        }).join('')}</tbody>
-                    </table>
+                    
+                    <h3 style="font-size: 16px; color: #333; margin-top: 0;"><i class="fas fa-list-check"></i> Plano de Trabalho (Naturezas)</h3>
+                    <div class="sispmg-dashboard-table-container">
+                        <table class="sispmg-dashboard-table" style="min-width: 100%;">
+                            <thead>
+                                <tr>
+                                    <th style="text-align: left;">Item / Natureza</th>
+                                    <th style="text-align: right;">Previsto (R$)</th>
+                                    <th style="text-align: right;">Executado (R$)</th>
+                                    <th style="text-align: center;">%</th>
+                                    <th style="text-align: center;">Progresso</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${audit.planoItens?.length > 0 ? audit.planoItens.map(p => {
+                                    const progresso = p.valorEstimado > 0 ? ((p.valorExecutado / p.valorEstimado) * 100).toFixed(1) : 0;
+                                    const isExcedido = parseFloat(progresso) > 100, isConcluido = parseFloat(progresso) >= 100;
+                                    let corProgresso = isExcedido ? '#dc3545' : (isConcluido ? '#b3a368' : '#28a745');
+                                    let corTextoExecutado = p.valorExecutado > 0 ? (isExcedido ? '#dc3545' : '#155724') : '#666';
+                                    return `<tr>
+                                        <td>${p.nome}</td>
+                                        <td style="text-align: right;">${p.valorEstimado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                                        <td style="text-align: right; font-weight: 600; color: ${corTextoExecutado};">${p.valorExecutado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                                        <td style="text-align: center; font-weight: 600; color: ${corTextoExecutado};">${progresso}%</td>
+                                        <td style="text-align: center;"><div style="background: #eee; width: 60px; border-radius: 4px; overflow: hidden; height: 10px; display: inline-block; vertical-align: middle;"><div style="background: ${corProgresso}; height: 100%; width: ${progresso > 100 ? 100 : progresso}%;"></div></div></td>
+                                    </tr>`;
+                                }).join('') : '<tr><td colspan="5" style="text-align: center;">Nenhum registro no plano.</td></tr>'}
+                            </tbody>
+                            ${audit.planoItens?.length > 0 ? `<tfoot><tr style="background: #fbf8f5; font-weight: 700; border-top: 2px solid #dcd3c5;"><td style="text-align: right;">Total:</td><td style="text-align: right;">${audit.planoItens.reduce((a, b) => a + b.valorEstimado, 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td><td style="text-align: right; color: #155724;">${audit.planoItens.reduce((a, b) => a + b.valorExecutado, 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td><td style="text-align: center; color: #000;">${audit.planoItens.reduce((a, b) => a + b.valorEstimado, 0) > 0 ? ((audit.planoItens.reduce((a, b) => a + b.valorExecutado, 0) / audit.planoItens.reduce((a, b) => a + b.valorEstimado, 0)) * 100).toFixed(1) + '%' : '0%'}</td><td></td></tr></tfoot>` : ''}
+                        </table>
+                    </div>
+
+                    <h3 style="font-size: 16px; color: #333; margin-top: 25px;"><i class="fas fa-calendar-alt"></i> Cronograma Mensal</h3>
+                    <div class="sispmg-dashboard-table-container">
+                        <table class="sispmg-dashboard-table" style="min-width: 100%;">
+                            <thead>
+                                <tr>
+                                    <th style="text-align: left;">Mês</th>
+                                    <th style="text-align: right;">Previsto (R$)</th>
+                                    <th style="text-align: right;">Executado (R$)</th>
+                                    <th style="text-align: center;">%</th>
+                                    <th style="text-align: center;">Progresso</th>
+                                    <th style="text-align: left;">Prazo Limite</th>
+                                    <th style="text-align: left;">Data Liq.</th>
+                                    <th style="text-align: center;">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${audit.cronogramas?.length > 0 ? audit.cronogramas.map(c => {
+                                    const percCrono = c.valorPrevisto > 0 ? ((c.valorExecutado / c.valorPrevisto) * 100).toFixed(1) : (c.valorExecutado > 0 ? 100 : 0);
+                                    const isCronoExcedido = c.valorExecutado > c.valorPrevisto, isCronoConcluido = parseFloat(percCrono) >= 100;
+                                    const corCrono = c.valorExecutado > 0 ? (isCronoExcedido ? '#dc3545' : '#155724') : 'inherit';
+                                    let corProgressoCrono = isCronoExcedido ? '#dc3545' : (isCronoConcluido ? '#b3a368' : '#28a745');
+                                    return `<tr>
+                                        <td style="white-space: nowrap;">${c.mesTexto || "-"}</td>
+                                        <td style="text-align: right;">${(c.valorPrevisto || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                                        <td style="text-align: right; font-weight: 600; color: ${corCrono};">${(c.valorExecutado || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                                        <td style="text-align: center; font-weight: 600; color: ${corCrono};">${percCrono}%</td>
+                                        <td style="text-align: center;"><div style="background: #eee; width: 60px; border-radius: 4px; overflow: hidden; height: 10px; display: inline-block; vertical-align: middle;"><div style="background: ${corProgressoCrono}; height: 100%; width: ${parseFloat(percCrono) > 100 ? 100 : percCrono}%;"></div></div></td>
+                                        <td>${c.prazoLimite || "-"}</td>
+                                        <td>${c.dataLiquidado || "-"}</td>
+                                        <td style="text-align: center;"><span class="sispmg-status-badge ${c.status.includes('Liquidado') ? 'sispmg-status-vigente' : 'sispmg-status-outros'}">${c.status || "Pendente"}</span></td>
+                                    </tr>`;
+                                }).join('') : '<tr><td colspan="8" style="text-align: center;">Nenhum registro extraído.</td></tr>'}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <h3 style="font-size: 16px; color: #333; margin-top: 25px;"><i class="fas fa-history"></i> Histórico de Alterações</h3>
+                    <div style="background: #fff; border: 1px solid #dcd3c5; border-radius: 6px; padding: 10px; font-size: 12px; max-height: 250px; overflow-y: auto;">
+                        ${audit.historico?.length > 0 ? audit.historico.map(h => `<div style="margin-bottom: 8px; border-bottom: 1px solid #eee; padding-bottom: 4px;"><strong style="color: #b3a368;">${h.data}</strong><br>${h.log}</div>`).join('') : 'Nenhum histórico registrado.'}
+                    </div>
                 </div>
             </div>
         `;
@@ -702,10 +766,12 @@ export class SirconvDashboardModule {
     }
 
     getMunicipioClean(concedente) {
-        if (!concedente) return "-"; let nome = concedente;
+        if (!concedente) return "-";
+        let nome = concedente;
         const prefixos = [/^PREFEITURA\s+MUNICIAP?AL\s+DE\s+/i, /^PREFEITURA\s+MUNICIPAL\s+DE\s+/i, /^PREFEITURA\s+MUNICIPAL\s+/i, /^PREFEITURA\s+DE\s+/i, /^MUNICIPIO\s+DE\s+/i, /^P\.\s*M\.\s*DE\s+/i, /^PM\s+/i];
         for (const pref of prefixos) { if (pref.test(nome)) { nome = nome.replace(pref, ''); break; } }
-        return nome.replace(/\s+/g, ' ').trim();
+        nome = nome.replace(/Ã‡/g, 'Ç').replace(/Ã\“/g, 'Ó').replace(/Ã\*/g, 'Ó').replace(/Ã\‰/g, 'É').replace(/Ãƒ/g, 'Ã').replace(/Ã\…/g, 'Ã').replace(/Ã\•/g, 'Õ').replace(/Ã\š/g, 'Ú').replace(/Ã\*/g, 'Ú').replace(/Ã\?/g, 'Í').replace(/Â/g, '').replace(/\s+/g, ' ').trim();
+        return nome;
     }
 
     getStatusLabel(conv) { const isVigente = conv.ATIVO === 'S' && conv.VENCIDO === '0'; return isVigente ? 'Vigente' : (conv.ATIVO === 'N' ? 'Inativo' : 'Vencido'); }
