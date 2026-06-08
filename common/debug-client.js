@@ -6,8 +6,11 @@
     const DEBUG_SERVER = 'http://localhost:3001';
     const CLIENT_ID = Math.random().toString(36).substring(2, 8);
     let isPolling = false;
+    let serverOnline = true;
+    let pollInterval = 5000;
 
     async function sendToDebug(data) {
+        if (!serverOnline && data.type !== 'heartbeat') return;
         try {
             await fetch(DEBUG_SERVER, {
                 method: 'POST',
@@ -20,7 +23,10 @@
                     title: document.title
                 })
             });
-        } catch (e) {}
+            serverOnline = true;
+        } catch (e) {
+            serverOnline = false;
+        }
     }
 
     async function startPolling() {
@@ -29,12 +35,16 @@
         while (true) {
             try {
                 const response = await fetch(`${DEBUG_SERVER}/poll?id=${CLIENT_ID}`);
+                serverOnline = true;
+                pollInterval = 5000; // Reseta o intervalo ao ter sucesso
                 if (response.status === 200) {
                     const cmd = await response.json();
                     handleCommand(cmd);
                 }
             } catch (e) {
-                await new Promise(r => setTimeout(r, 5000));
+                serverOnline = false;
+                pollInterval = Math.min(pollInterval * 1.5, 60000); // Max 1 minuto
+                await new Promise(r => setTimeout(r, pollInterval));
             }
         }
     }
@@ -42,6 +52,18 @@
     function handleCommand(cmd) {
         if (cmd.action === 'snapshot') {
             takeSnapshot('gemini-request');
+        } else if (cmd.action === 'click' && cmd.selector) {
+            try {
+                const el = document.querySelector(cmd.selector);
+                if (el) {
+                    el.click();
+                    sendToDebug({ type: 'log', level: 'info', message: `[RemoteClick] Sucesso: ${cmd.selector}` });
+                } else {
+                    sendToDebug({ type: 'log', level: 'error', message: `[RemoteClick] Elemento não encontrado: ${cmd.selector}` });
+                }
+            } catch (e) {
+                sendToDebug({ type: 'log', level: 'error', message: `[RemoteClick] Erro: ${e.message}` });
+            }
         } else if (cmd.action === 'eval' && cmd.code) {
             try {
                 const result = eval(cmd.code);
