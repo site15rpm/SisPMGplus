@@ -335,7 +335,7 @@ export class SirconvDashboardModule {
                         <label style="display: block; font-weight: 600; margin-bottom: 8px; font-size: 13px;">Tipo de Busca:</label>
                         <select id="sispmg-dashboard-tipo-busca" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #dcd3c5; background: #fff;">
                             <option value="ativos" ${this.lastFiltros?.tipoBusca === 'ativos' ? 'selected' : ''}>Convênios Ativos</option>
-                            <option value="todos" ${this.lastFiltros?.tipoBusca === 'todos' ? 'selected' : ''}>Todos</option>
+                            <option value="todos" ${this.lastFiltros?.tipoBusca === 'todos' || !this.lastFiltros?.tipoBusca ? 'selected' : ''}>Todos os Convênios</option>
                         </select>
                     </div>
 
