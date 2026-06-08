@@ -298,15 +298,21 @@ export class SirconvDashboardModule {
         const statusEl = document.getElementById('sispmg-dashboard-bg-status');
         if (!statusEl) return;
 
-        // Se uma busca avançada estiver ativa, ela tem prioridade total sobre a auditoria em segundo plano.
-        if (this.isLoading && this.lastFiltros?.tipoBusca === 'todos' && !message.includes('Busca:')) {
+        // Se for uma desativação, permitimos sempre para limpar a tela.
+        if (!isActive) {
+            statusEl.style.display = 'none';
+            return;
+        }
+
+        // Se for uma ativação, a busca avançada (pesquisa total) tem prioridade.
+        // Bloqueamos mensagens de auditoria interna se a busca principal ainda estiver carregando.
+        const isAdvancedSearchActive = this.isLoading && this.lastFiltros?.tipoBusca === 'todos';
+        if (isAdvancedSearchActive && message.includes('Auditoria:')) {
             return; 
         }
 
-        statusEl.style.display = isActive ? 'flex' : 'none';
-        if (isActive) {
-            statusEl.querySelector('span').innerText = message;
-        }
+        statusEl.style.display = 'flex';
+        statusEl.querySelector('span').innerText = message;
     }
 
     showFilterSidebar() {
@@ -316,6 +322,8 @@ export class SirconvDashboardModule {
         
         const globalClose = document.getElementById('sispmg-dashboard-close-global');
         if (globalClose) globalClose.style.setProperty('display', 'none', 'important');
+        
+        this.updateActionButtons();
 
         const municipios = [...new Set(this.conveniosData.map(c => this.getMunicipioClean(c.CONCEDENTE)))].sort();
 
@@ -817,25 +825,28 @@ export class SirconvDashboardModule {
         let data = isFiltered ? this.filteredData : this.sortConvenios([...this.conveniosData]);
         if (data.length === 0) { tbody.innerHTML = `<tr><td colspan="13" style="text-align: center; padding: 40px;">Nenhum convênio encontrado.</td></tr>`; return; }
         
-        // Alternar botões baseado na view e se o detalhamento (audit-active) está aberto
-        const refreshBtn = document.getElementById('sispmg-dashboard-refresh');
-        const backBtn = document.getElementById('sispmg-dashboard-back');
-        const layout = document.getElementById('sispmg-dashboard-layout');
-        const isAuditActive = layout?.classList.contains('audit-active');
-
-        if (refreshBtn && backBtn) {
-            if (isAuditActive) {
-                refreshBtn.style.display = 'none';
-                backBtn.style.display = 'none';
-            } else {
-                refreshBtn.style.display = this.currentView === 'meus' ? 'inline-flex' : 'none';
-                backBtn.style.display = this.currentView === 'adv' ? 'inline-flex' : 'none';
-            }
-        }
-
+        this.updateActionButtons();
         this.updateSummaryCards();
         tbody.innerHTML = data.map(conv => this.renderRowHtml(conv)).join('');
         window.SisPMG_SirconvDashboard = this;
+    }
+
+    updateActionButtons() {
+        const refreshBtn = document.getElementById('sispmg-dashboard-refresh');
+        const backBtn = document.getElementById('sispmg-dashboard-back');
+        const layout = document.getElementById('sispmg-dashboard-layout');
+        if (!refreshBtn || !backBtn) return;
+
+        const isAuditActive = layout?.classList.contains('audit-active');
+        const isFilterActive = layout?.classList.contains('filter-active');
+
+        if (isAuditActive || isFilterActive) {
+            refreshBtn.style.display = 'none';
+            backBtn.style.display = 'none';
+        } else {
+            refreshBtn.style.display = this.currentView === 'meus' ? 'inline-flex' : 'none';
+            backBtn.style.display = this.currentView === 'adv' ? 'inline-flex' : 'none';
+        }
     }
     renderRowHtml(conv) {
         const statusLabel = this.getStatusLabel(conv), isAudited = conv.ID === this.activeConvId;
