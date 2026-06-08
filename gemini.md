@@ -31,6 +31,15 @@ Este arquivo define as regras e o contexto para a interação com o assistente d
 
 ---
 
+### **7. Infraestrutura de Debug**
+
+- **Servidor de Debug:** O servidor utiliza a porta `3001`. 
+- **Prevenção de Conflitos:** Antes de iniciar o servidor com `node debug-server.js`, verifique sempre se a porta está ocupada usando `netstat -ano | findstr :3001`. 
+- **Limpeza Automática:** Se a porta estiver ocupada por um processo antigo, encerre-o com `taskkill /F /PID <PID>` antes de subir a nova instância.
+- **Encerramento Limpo:** Sempre que possível, utilize `SIGINT` (Ctrl+C) para fechar o servidor, permitindo que ele libere a porta corretamente.
+
+---
+
 ### **4. Procedimentos de Build e Compactação**
 
 Ao receber o comando "compacte os arquivos para atualização na webstore", siga rigorosamente este procedimento:

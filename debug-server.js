@@ -12,6 +12,7 @@ const bus = new EventEmitter();
 const clients = new Map();
 
 const server = http.createServer((req, res) => {
+    console.log(`[Request] ${req.method} ${req.url}`);
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -57,17 +58,20 @@ const server = http.createServer((req, res) => {
     // Interface para o Gemini enviar comandos
     else if (req.method === 'GET' && req.url.startsWith('/command')) {
         const urlParams = new URL(req.url, `http://${req.headers.host}`);
-        const action = urlParams.searchParams.get('action');
-        const code = urlParams.searchParams.get('code');
         const target = urlParams.searchParams.get('target') || 'all';
+        
+        // Converte todos os parâmetros para um objeto de comando
+        const cmd = {};
+        urlParams.searchParams.forEach((value, key) => {
+            if (key !== 'target') cmd[key] = value;
+        });
 
-        const cmd = { action, code };
         if (target === 'all') {
             clients.forEach((_, id) => bus.emit(`command:${id}`, cmd));
         } else {
             bus.emit(`command:${target}`, cmd);
         }
-        res.writeHead(200); res.end(`Comando enviado para ${target}`);
+        res.writeHead(200); res.end(`Comando enviado para ${target}: ${JSON.stringify(cmd)}`);
     }
     // Lista abas ativas
     else if (req.method === 'GET' && req.url === '/clients') {
@@ -99,4 +103,20 @@ function processIncomingData(data) {
 
 server.listen(PORT, () => {
     console.log(`Servidor de Debug V2 operacional na porta ${PORT}`);
+});
+
+// Encerramento limpo para evitar porta ocupada (EADDRINUSE)
+const cleanup = () => {
+    console.log('\n[DebugServer] Encerrando servidor...');
+    server.close(() => {
+        console.log('[DebugServer] Porta liberada. Até logo!');
+        process.exit(0);
+    });
+};
+
+process.on('SIGINT', cleanup);
+process.on('SIGTERM', cleanup);
+process.on('uncaughtException', (err) => {
+    console.error('[DebugServer] Erro não tratado:', err);
+    cleanup();
 });
