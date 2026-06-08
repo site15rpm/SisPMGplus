@@ -391,11 +391,14 @@ export class SirconvDashboardModule {
                 includeCPE: sidebar.querySelector('#sispmg-include-cpe').checked
             };
             
+            // Define a view ANTES de fechar a sidebar para o updateActionButtons capturar corretamente
             this.currentView = filtros.tipoBusca === 'todos' ? 'adv' : 'meus';
             if (this.currentView === 'adv') this.advSearchIds = []; 
             
-            sidebar.classList.remove('active'); layout.classList.remove('filter-active');
-            if (globalClose) globalClose.style.setProperty('display', 'inline-flex', 'important');
+            sidebar.classList.remove('active'); 
+            layout.classList.remove('filter-active');
+            
+            this.updateActionButtons();
             this.fetchConveniosData(filtros);
         };
     }
