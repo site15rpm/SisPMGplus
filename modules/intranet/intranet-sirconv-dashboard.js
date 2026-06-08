@@ -283,13 +283,11 @@ export class SirconvDashboardModule {
         const layout = document.getElementById('sispmg-dashboard-layout');
         const sidebar = document.getElementById('sispmg-dashboard-sidebar');
         const globalClose = document.getElementById('sispmg-dashboard-close-global');
-        const actionBtn = document.getElementById('sispmg-dashboard-action-btn');
         if (layout && sidebar) {
             sidebar.classList.remove('active');
             layout.classList.remove('audit-active', 'filter-active');
             this.activeConvId = null;
             if (globalClose) globalClose.style.setProperty('display', 'inline-flex', 'important');
-            if (actionBtn) actionBtn.style.setProperty('display', 'inline-flex', 'important');
             this.renderDashboard(true);
         }
     }
