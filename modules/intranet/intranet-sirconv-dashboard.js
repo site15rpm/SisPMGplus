@@ -18,7 +18,7 @@ export class SirconvDashboardModule {
         this.conveniosData = []; // Array derivado para exibição e ordenação
         this.filteredData = [];
         this.activeFilters = {}; 
-        this.lastFiltros = { tipoBusca: 'ativos', tipo: 'todos', periodo: 'todos', manual: '', municipio: 'todos', includeCPE: false };
+        this.lastFiltros = { tipoBusca: 'todos', tipo: 'todos', periodo: 'todos', manual: '', municipio: 'todos', includeCPE: false };
         this.isLoading = false;
         this.activeConvId = null;
         this.backgroundAuditQueue = [];
