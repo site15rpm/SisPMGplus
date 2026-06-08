@@ -282,12 +282,11 @@ export class SirconvDashboardModule {
     closeSidebar() {
         const layout = document.getElementById('sispmg-dashboard-layout');
         const sidebar = document.getElementById('sispmg-dashboard-sidebar');
-        const globalClose = document.getElementById('sispmg-dashboard-close-global');
         if (layout && sidebar) {
             sidebar.classList.remove('active');
             layout.classList.remove('audit-active', 'filter-active');
             this.activeConvId = null;
-            if (globalClose) globalClose.style.setProperty('display', 'inline-flex', 'important');
+            this.updateActionButtons();
             this.renderDashboard(true);
         }
     }
@@ -298,18 +297,17 @@ export class SirconvDashboardModule {
 
         // Se for uma desativação, permitimos sempre para limpar a tela.
         if (!isActive) {
-            statusEl.style.display = 'none';
+            statusEl.style.setProperty('display', 'none', 'important');
             return;
         }
 
         // Se for uma ativação, a busca avançada (pesquisa total) tem prioridade.
-        // Bloqueamos mensagens de auditoria interna se a busca principal ainda estiver carregando.
         const isAdvancedSearchActive = this.isLoading && this.lastFiltros?.tipoBusca === 'todos';
         if (isAdvancedSearchActive && message.includes('Auditoria:')) {
             return; 
         }
 
-        statusEl.style.display = 'flex';
+        statusEl.style.setProperty('display', 'flex', 'important');
         statusEl.querySelector('span').innerText = message;
     }
 
@@ -317,9 +315,6 @@ export class SirconvDashboardModule {
         const layout = document.getElementById('sispmg-dashboard-layout'), sidebar = document.getElementById('sispmg-dashboard-sidebar');
         if (!layout || !sidebar) return;
         layout.classList.remove('audit-active'); layout.classList.add('filter-active'); sidebar.classList.add('active');
-        
-        const globalClose = document.getElementById('sispmg-dashboard-close-global');
-        if (globalClose) globalClose.style.setProperty('display', 'none', 'important');
         
         this.updateActionButtons();
 
@@ -832,18 +827,29 @@ export class SirconvDashboardModule {
     updateActionButtons() {
         const refreshBtn = document.getElementById('sispmg-dashboard-refresh');
         const backBtn = document.getElementById('sispmg-dashboard-back');
+        const globalClose = document.getElementById('sispmg-dashboard-close-global');
         const layout = document.getElementById('sispmg-dashboard-layout');
-        if (!refreshBtn || !backBtn) return;
+        
+        if (!refreshBtn || !backBtn || !globalClose || !layout) return;
 
-        const isAuditActive = layout?.classList.contains('audit-active');
-        const isFilterActive = layout?.classList.contains('filter-active');
+        const isSidebarOpen = layout.classList.contains('audit-active') || layout.classList.contains('filter-active');
 
-        if (isAuditActive || isFilterActive) {
-            refreshBtn.style.display = 'none';
-            backBtn.style.display = 'none';
+        if (isSidebarOpen) {
+            // Se qualquer lateral estiver aberta, esconde as ações e o fechar global (prioriza o fechar da lateral)
+            refreshBtn.style.setProperty('display', 'none', 'important');
+            backBtn.style.setProperty('display', 'none', 'important');
+            globalClose.style.setProperty('display', 'none', 'important');
         } else {
-            refreshBtn.style.display = this.currentView === 'meus' ? 'inline-flex' : 'none';
-            backBtn.style.display = this.currentView === 'adv' ? 'inline-flex' : 'none';
+            // Painel principal: mostrar fechar global e alternar busca/voltar
+            globalClose.style.setProperty('display', 'inline-flex', 'important');
+            
+            if (this.currentView === 'meus') {
+                refreshBtn.style.setProperty('display', 'inline-flex', 'important');
+                backBtn.style.setProperty('display', 'none', 'important');
+            } else {
+                refreshBtn.style.setProperty('display', 'none', 'important');
+                backBtn.style.setProperty('display', 'inline-flex', 'important');
+            }
         }
     }
     renderRowHtml(conv) {

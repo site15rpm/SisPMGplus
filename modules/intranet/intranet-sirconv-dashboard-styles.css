@@ -105,11 +105,6 @@
     display: none !important;
 }
 
-/* Ocultar botão de atualizar quando lateral aberta */
-.audit-active #sispmg-dashboard-refresh, .filter-active #sispmg-dashboard-refresh {
-    display: none !important;
-}
-
 .sispmg-dashboard-header {
     display: flex !important;
     justify-content: space-between !important;
