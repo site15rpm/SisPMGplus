@@ -44,7 +44,7 @@
     });
 
     // Função para tirar Snapshot (pode ser chamada pelo console ou via evento)
-    window.sispmgSnapshot = async function(label = 'manual') {
+    async function takeSnapshot(label = 'manual') {
         console.log(`[Debug] Tirando snapshot: ${label}`);
         const snapshot = {
             type: 'snapshot',
@@ -53,7 +53,29 @@
             storage: await getLocalStorageData()
         };
         await sendToDebugServer(snapshot);
-    };
+    }
+
+    // Expõe internamente
+    window.sispmgSnapshot = takeSnapshot;
+
+    // Ponte para o Console (Injeta no Main World)
+    function injectBridge() {
+        const script = document.createElement('script');
+        script.textContent = `
+            window.sispmgSnapshot = function(label) {
+                window.dispatchEvent(new CustomEvent('SISPMG_TRIGGER_SNAPSHOT', { detail: label }));
+            };
+        `;
+        (document.head || document.documentElement).appendChild(script);
+        script.remove();
+    }
+
+    // Escuta o evento vindo do Main World (console)
+    window.addEventListener('SISPMG_TRIGGER_SNAPSHOT', (e) => {
+        takeSnapshot(e.detail || 'console');
+    });
+
+    injectBridge();
 
     async function getLocalStorageData() {
         return new Promise((resolve) => {
