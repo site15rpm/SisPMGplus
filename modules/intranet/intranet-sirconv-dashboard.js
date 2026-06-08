@@ -298,6 +298,11 @@ export class SirconvDashboardModule {
         const statusEl = document.getElementById('sispmg-dashboard-bg-status');
         if (!statusEl) return;
 
+        // Se uma busca avançada estiver ativa, ela tem prioridade total sobre a auditoria em segundo plano.
+        if (this.isLoading && this.lastFiltros?.tipoBusca === 'todos' && !message.includes('Busca:')) {
+            return; 
+        }
+
         statusEl.style.display = isActive ? 'flex' : 'none';
         if (isActive) {
             statusEl.querySelector('span').innerText = message;
@@ -812,12 +817,20 @@ export class SirconvDashboardModule {
         let data = isFiltered ? this.filteredData : this.sortConvenios([...this.conveniosData]);
         if (data.length === 0) { tbody.innerHTML = `<tr><td colspan="13" style="text-align: center; padding: 40px;">Nenhum convênio encontrado.</td></tr>`; return; }
         
-        // Alternar botões baseado na view
+        // Alternar botões baseado na view e se o detalhamento (audit-active) está aberto
         const refreshBtn = document.getElementById('sispmg-dashboard-refresh');
         const backBtn = document.getElementById('sispmg-dashboard-back');
+        const layout = document.getElementById('sispmg-dashboard-layout');
+        const isAuditActive = layout?.classList.contains('audit-active');
+
         if (refreshBtn && backBtn) {
-            refreshBtn.style.display = this.currentView === 'meus' ? 'inline-flex' : 'none';
-            backBtn.style.display = this.currentView === 'adv' ? 'inline-flex' : 'none';
+            if (isAuditActive) {
+                refreshBtn.style.display = 'none';
+                backBtn.style.display = 'none';
+            } else {
+                refreshBtn.style.display = this.currentView === 'meus' ? 'inline-flex' : 'none';
+                backBtn.style.display = this.currentView === 'adv' ? 'inline-flex' : 'none';
+            }
         }
 
         this.updateSummaryCards();
