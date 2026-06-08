@@ -84,9 +84,13 @@ export class SirconvDashboardModule {
         const idStr = String(id);
         const agora = Date.now();
         
+        // Localiza entrada existente para preservar dados
+        let existing = this.activeData[idStr] || this.inactiveData[idStr];
+        const combinedData = existing ? { ...existing, ...newData } : newData;
+
         // Determinar se é Ativo (Vigente/Vencido) ou Inativo
-        const statusLabel = this.getStatusLabel(newData);
-        const isActive = statusLabel === 'Vigente' || statusLabel === 'Vencido' || newData.ATIVO === 'S';
+        const statusLabel = this.getStatusLabel(combinedData);
+        const isActive = statusLabel === 'Vigente' || statusLabel === 'Vencido' || combinedData.ATIVO === 'S';
 
         // Roteamento e Migração entre categorias se necessário
         if (isActive) {
@@ -100,7 +104,7 @@ export class SirconvDashboardModule {
         const entry = isActive ? this.activeData[idStr] : this.inactiveData[idStr];
         if (isMeus) entry.isMeus = true;
         
-        // Agregação de campos
+        // Agregação de campos (Preserva o que já existe se não estiver no newData)
         for (const key in newData) {
             if (key === 'audit' && newData.audit) {
                 entry.audit = newData.audit;
@@ -112,17 +116,52 @@ export class SirconvDashboardModule {
         
         entry.lastUpdate = agora;
 
-        // Recálculo de pendências se houver auditoria
+        // Recálculo de vigência e pendências
+        const vInfo = this.calculateVigencia(entry);
         if (entry.audit) {
+            entry.audit.vigenciaInfo = vInfo;
             entry.pendencias = this.analisarPendencias(entry.audit, this.lastFiltros, entry);
             const totalLiq = entry.audit.planoItens?.reduce((sum, p) => sum + (parseFloat(p.valorExecutado) || 0), 0);
             if (totalLiq > 0) entry.LIQUIDADO = totalLiq;
-            if (entry.audit.vigenciaInfo?.dtInicio && (!entry.DTINICIAL || entry.DTINICIAL === '-')) {
-                entry.DTINICIAL = entry.audit.vigenciaInfo.dtInicio;
+            if (vInfo.dtInicio && (!entry.DTINICIAL || entry.DTINICIAL === '-')) {
+                entry.DTINICIAL = this.formatDate(vInfo.dtInicio);
             }
         }
 
         return entry;
+    }
+
+    calculateVigencia(conv) {
+        if (!conv) return { duracaoMeses: 0, mesesDecorridos: 0, mesesFaltantes: 0 };
+        if (conv.audit?.vigenciaInfo) return conv.audit.vigenciaInfo;
+        
+        const hoje = new Date();
+        const mP = { 'JAN': 0, 'FEV': 1, 'MAR': 2, 'ABR': 3, 'MAI': 4, 'JUN': 5, 'JUL': 6, 'AGO': 7, 'SET': 8, 'OUT': 9, 'NOV': 10, 'DEZ': 11, 'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5, 'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11 };
+        
+        let d1 = this.parseDate(conv.DTINICIAL), d2 = this.parseDate(conv.DTFINAL);
+        
+        // Tenta extrair do cronograma se datas principais falharem
+        if (!d1 && conv.audit?.cronogramas?.length > 0) {
+            const s = [...conv.audit.cronogramas].sort((a, b) => { 
+                const pa = a.mesTexto.split(' '), pb = b.mesTexto.split(' '); 
+                return (parseInt(pa[1]) - parseInt(pb[1])) || (mP[pa[0]] - mP[pb[0]]); 
+            });
+            const p1 = s[0].mesTexto.split(' '); 
+            d1 = new Date(parseInt(p1[1]), mP[p1[0]], 1);
+        }
+        
+        if (d1 && d2) {
+            const duracaoMeses = Math.max(1, (d2.getFullYear() - d1.getFullYear()) * 12 + (d2.getMonth() - d1.getMonth()) + 1);
+            const mesesDecorridos = Math.min(duracaoMeses, Math.max(0, (hoje.getFullYear() - d1.getFullYear()) * 12 + (hoje.getMonth() - d1.getMonth())) + 1);
+            return { 
+                duracaoMeses, 
+                mesesDecorridos, 
+                mesesFaltantes: Math.max(0, duracaoMeses - mesesDecorridos), 
+                dtInicio: d1.toISOString().split('T')[0], 
+                dtFim: d2.toISOString().split('T')[0] 
+            };
+        }
+        return { duracaoMeses: 0, mesesDecorridos: 0, mesesFaltantes: 0 };
     }
 
     refreshConveniosList() {
@@ -166,6 +205,9 @@ export class SirconvDashboardModule {
                             </div>
                             <button id="sispmg-dashboard-refresh" class="sispmg-dashboard-btn sispmg-dashboard-btn-primary">
                                 <i class="fas fa-search"></i> Busca Avançada
+                            </button>
+                            <button id="sispmg-dashboard-back" class="sispmg-dashboard-btn" style="display: none; background-color: #6c757d !important; color: white !important;">
+                                <i class="fas fa-arrow-left"></i> VOLTAR
                             </button>
                             <button id="sispmg-dashboard-close-global" class="sispmg-dashboard-btn sispmg-global-close">Fechar</button>
                         </div>
@@ -220,6 +262,12 @@ export class SirconvDashboardModule {
         };
 
         modalContainer.querySelector('#sispmg-dashboard-refresh').onclick = () => this.showFilterSidebar();
+
+        modalContainer.querySelector('#sispmg-dashboard-back').onclick = () => {
+            this.currentView = 'meus';
+            this.refreshConveniosList();
+            this.applyFilters();
+        };
 
         modalContainer.querySelectorAll('.sispmg-filter-trigger').forEach(trigger => {
             trigger.onclick = (e) => { e.stopPropagation(); this.toggleFilterDropdown(trigger, trigger.closest('th').dataset.col); };
@@ -763,6 +811,15 @@ export class SirconvDashboardModule {
         const tbody = document.getElementById('sispmg-dashboard-tbody'); if (!tbody) return;
         let data = isFiltered ? this.filteredData : this.sortConvenios([...this.conveniosData]);
         if (data.length === 0) { tbody.innerHTML = `<tr><td colspan="13" style="text-align: center; padding: 40px;">Nenhum convênio encontrado.</td></tr>`; return; }
+        
+        // Alternar botões baseado na view
+        const refreshBtn = document.getElementById('sispmg-dashboard-refresh');
+        const backBtn = document.getElementById('sispmg-dashboard-back');
+        if (refreshBtn && backBtn) {
+            refreshBtn.style.display = this.currentView === 'meus' ? 'inline-flex' : 'none';
+            backBtn.style.display = this.currentView === 'adv' ? 'inline-flex' : 'none';
+        }
+
         this.updateSummaryCards();
         tbody.innerHTML = data.map(conv => this.renderRowHtml(conv)).join('');
         window.SisPMG_SirconvDashboard = this;
@@ -772,12 +829,14 @@ export class SirconvDashboardModule {
         const vEst = parseFloat(conv.audit?.valorEstimadoReal || conv.VALOR_ESTIMADO) || 0, vLiq = parseFloat(conv.LIQUIDADO) || 0, prog = vEst > 0 ? ((vLiq / vEst) * 100).toFixed(1) : 0;
         const colorT = vLiq > 0 ? (parseFloat(prog) > 100 ? '#dc3545' : '#155724') : '#666';
         let dur = 0, dec = 0, fal = 0, mPrev = 0, mReal = 0, rowStyle = '';
-        if (conv.audit?.vigenciaInfo) {
-            const v = conv.audit.vigenciaInfo; dur = v.duracaoMeses; dec = v.mesesDecorridos; fal = v.mesesFaltantes;
-            mPrev = vEst / (dur || 1); mReal = vLiq / (dec || 1);
-            if (statusLabel === 'Vigente') { if (fal <= 3) rowStyle = 'background-color: #fffde7 !important; border-left: 5px solid #fdd835;'; if (fal <= 1) rowStyle = 'background-color: #fff3e0 !important; border-left: 5px solid #ff9800;'; }
-        }
+        
+        const v = this.calculateVigencia(conv);
+        dur = v.duracaoMeses; dec = v.mesesDecorridos; fal = v.mesesFaltantes;
+        mPrev = vEst / (dur || 1); mReal = vLiq / (dec || 1);
+        
+        if (statusLabel === 'Vigente') { if (fal <= 3) rowStyle = 'background-color: #fffde7 !important; border-left: 5px solid #fdd835;'; if (fal <= 1) rowStyle = 'background-color: #fff3e0 !important; border-left: 5px solid #ff9800;'; }
         if (statusLabel === 'Vencido') rowStyle = 'background-color: #fce8e8 !important; border-left: 5px solid #dc3545;';
+        
         const p = conv.pendencias || [];
         const hA = p.some(x => x.tipo === 'atraso_liquidacao'), hEM = p.some(x => x.tipo === 'excesso_valor_mensal'), hEN = p.filter(x => x.tipo === 'excesso_valor_natureza');
         const isC = hEN.some(x => x.nivel === 'critico'), isAl = !isC && hEN.some(x => x.nivel === 'alerta');
