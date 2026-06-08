@@ -625,15 +625,21 @@ export class SirconvDashboardModule {
                 const mesTexto = mesEl.innerText.replace(/[\n\r]/g, '').replace(/(\d+)\s+anexos?/, '').trim();
                 let vPrev = 0, vExec = 0, pLim = '-', dLiq = '-', status = 'Aguardando execução';
                 linkRow.querySelectorAll('span.flex-coluna').forEach(span => {
-                    const txt = span.textContent.trim(), lbl = span.querySelector('div.tc.menor')?.textContent.trim();
-                    const m = txt.match(/R\$\s*([\d\.,]+)/);
-                    if (lbl === 'Valor' && m) vPrev = parseFloat(m[1].replace(/\./g, '').replace(',', '.'));
-                    else if (lbl === 'Executado' && m) vExec = parseFloat(m[1].replace(/\./g, '').replace(',', '.'));
-                    else if (lbl === 'Prazo limite') pLim = txt.replace('Prazo limite', '').trim();
-                    const dt = span.querySelector('dl.ic dt'); if (dt) dLiq = dt.textContent.trim();
+                   const txt = span.textContent.trim(), lbl = span.querySelector('div.tc.menor')?.textContent.trim();
+                   const m = txt.match(/R\$\s*([\d\.,]+)/);
+                   if (lbl === 'Valor' && m) vPrev = parseFloat(m[1].replace(/\./g, '').replace(',', '.'));
+                   else if (lbl === 'Executado' && m) vExec = parseFloat(m[1].replace(/\./g, '').replace(',', '.'));
+                   else if (lbl === 'Prazo limite') pLim = txt.replace('Prazo limite', '').trim();
+                   const dt = span.querySelector('dl.ic dt'); if (dt) dLiq = dt.textContent.trim();
                 });
+
+                // Lógica de Status: Se executou algo ou tem data de liquidação, marca como Liquidado
+                if (vExec > 0 || dLiq !== '-') {
+                   status = 'Liquidado';
+                }
+
                 cronogramas.push({ mesTexto, valorPrevisto: vPrev, valorExecutado: vExec, prazoLimite: pLim, dataLiquidado: dLiq, status });
-            });
+                });
 
             const vTotalEst = planoItens.reduce((sum, p) => sum + p.valorEstimado, 0);
             return { cronogramas, planoItens, historico, timestamp: Date.now(), lastUpdate: new Date().toLocaleString(), valorEstimadoReal: vTotalEst > 0 ? vTotalEst : (parseFloat(entry?.VALOR_ESTIMADO) || 0) };
