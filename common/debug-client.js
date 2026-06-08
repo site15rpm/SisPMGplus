@@ -58,16 +58,16 @@
     // Expõe internamente
     window.sispmgSnapshot = takeSnapshot;
 
-    // Ponte para o Console (Injeta no Main World)
+    // Ponte para o Console (Carrega via script externo para evitar CSP)
     function injectBridge() {
-        const script = document.createElement('script');
-        script.textContent = `
-            window.sispmgSnapshot = function(label) {
-                window.dispatchEvent(new CustomEvent('SISPMG_TRIGGER_SNAPSHOT', { detail: label }));
-            };
-        `;
-        (document.head || document.documentElement).appendChild(script);
-        script.remove();
+        try {
+            const script = document.createElement('script');
+            script.src = browser.runtime.getURL('common/debug-bridge.js');
+            (document.head || document.documentElement).appendChild(script);
+            script.onload = () => script.remove();
+        } catch (e) {
+            // Fallback silencioso
+        }
     }
 
     // Escuta o evento vindo do Main World (console)
