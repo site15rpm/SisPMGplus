@@ -18,7 +18,7 @@ export class SirconvDashboardModule {
         this.conveniosData = []; // Array derivado para exibição e ordenação
         this.filteredData = [];
         this.activeFilters = {}; 
-        this.lastFiltros = { tipoBusca: 'ativos', tipo: 'todos', periodo: 'todos', manual: '', municipio: 'todos' };
+        this.lastFiltros = { tipoBusca: 'ativos', tipo: 'todos', periodo: 'todos', manual: '', municipio: 'todos', includeCPE: false };
         this.isLoading = false;
         this.activeConvId = null;
         this.backgroundAuditQueue = [];
@@ -228,7 +228,7 @@ export class SirconvDashboardModule {
         overlay.onclick = (e) => { if (e.target === overlay) this.closeAllFilterDropdowns(); };
         modalContainer.onclick = () => this.closeAllFilterDropdowns();
 
-        this.fetchConveniosData('ativos');
+        this.fetchConveniosData({ tipoBusca: 'ativos' });
     }
 
     closeSidebar() {
@@ -298,6 +298,10 @@ export class SirconvDashboardModule {
                             <input type="checkbox" id="sispmg-include-canceled" ${this.lastFiltros?.includeCanceled ? 'checked' : ''}>
                             Incluir cancelados
                         </label>
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;">
+                            <input type="checkbox" id="sispmg-include-cpe" ${this.lastFiltros?.includeCPE ? 'checked' : ''}>
+                            Incluir Convênios do CPE
+                        </label>
                         <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; color: #dc3545;">
                             <input type="checkbox" id="sispmg-clear-memory">
                             Limpar memória (Ativos e Inativos)
@@ -329,9 +333,10 @@ export class SirconvDashboardModule {
             const filtros = {
                 tipoBusca: sidebar.querySelector('#sispmg-dashboard-tipo-busca').value,
                 municipio: sidebar.querySelector('#sispmg-filter-municipio').value,
-                includeCanceled: sidebar.querySelector('#sispmg-include-canceled').checked
+                includeCanceled: sidebar.querySelector('#sispmg-include-canceled').checked,
+                includeCPE: sidebar.querySelector('#sispmg-include-cpe').checked
             };
-            this.lastFiltros = filtros;
+            
             this.currentView = filtros.tipoBusca === 'todos' ? 'adv' : 'meus';
             if (this.currentView === 'adv') this.advSearchIds = []; 
             
@@ -414,10 +419,16 @@ export class SirconvDashboardModule {
         });
         const concedentes = Array.from(cMap).map(([id, nome]) => ({ id, nome }));
         const resultados = [];
+        const includeCPE = this.lastFiltros?.includeCPE;
+
         if (this.ui) this.ui.showLoader(`Localizando convênios em ${concedentes.length} concedentes...`);
+        this.updateBackgroundStatus(true, `Busca: 0/${concedentes.length}`);
+
         for (let i = 0; i < concedentes.length; i++) {
             const c = concedentes[i];
             if (this.ui) this.ui.updateLoaderMessage(`Extraindo ${i + 1}/${concedentes.length}: ${c.nome}`);
+            this.updateBackgroundStatus(true, `Busca: ${i + 1}/${concedentes.length}`);
+
             try {
                 const resH = await fetch(`https://intranet.policiamilitar.mg.gov.br/lite/convenio/web/concedente/view?id=${c.id}`);
                 const hTxt = await resH.text(), doc = new DOMParser().parseFromString(hTxt, 'text/html');
@@ -430,13 +441,8 @@ export class SirconvDashboardModule {
                         if (!lIdM) continue;
                         let cod = lIdM[1], face = '', val = '0', uni = '-', vigFim = '-', st = 'S', dtIni = '-';
                         
-                        // Extração do status textual da primeira coluna (tag .ne)
+                        // Extração do status textual
                         const statusTexto = item.querySelector('.flex-coluna.tam-g .ne')?.innerText.trim() || '';
-                        
-                        // Mapeamento de Status Ativo/Inativo baseado no texto extraído
-                        // 'Cancelado' -> Inativo (ATIVO='N')
-                        // 'Finalizado' -> Inativo (ATIVO='N')
-                        // 'Vigente'/'Aberto'/'Tem aditivo' -> Ativo (ATIVO='S')
                         const isInactive = statusTexto.toLowerCase().includes('cancelado') || statusTexto.toLowerCase().includes('finalizado');
                         if (isInactive) st = 'N';
 
@@ -449,6 +455,9 @@ export class SirconvDashboardModule {
                             else if (lbl.includes('Término')) vigFim = v; 
                             else if (lbl.includes('Início')) dtIni = v;
                         });
+
+                        // Filtro de CPE
+                        if (!includeCPE && uni.toUpperCase().includes('CPE')) continue;
 
                         resultados.push({ 
                             ID: cod, 
@@ -467,6 +476,7 @@ export class SirconvDashboardModule {
             } catch (e) { console.error(e); }
             await new Promise(r => setTimeout(r, 50));
         }
+        this.updateBackgroundStatus(false);
         return resultados;
     }
 
