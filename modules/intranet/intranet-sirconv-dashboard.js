@@ -386,10 +386,11 @@ export class SirconvDashboardModule {
                 const layout = document.getElementById('sispmg-dashboard-layout');
                 if (layout) layout.classList.remove('consolidation-active');
                 sidebar.classList.remove('active');
-                await this.fetchConveniosData({ tipoBusca: 'todos', municipio: 'todos', includeCanceled: true, includeCPE: true });
+                await this.fetchConveniosData({ tipoBusca: 'todos', municipio: 'todos', includeCanceled: true, includeCPE: true }, true); // true = waitForAudit
+                this.enterConsolidationView(range);
+            } else {
+                this.enterConsolidationView(range);
             }
-            
-            this.enterConsolidationView(range);
         };
     }
 
@@ -554,7 +555,7 @@ export class SirconvDashboardModule {
         };
     }
 
-    async fetchConveniosData(filtrosInput = null) {
+    async fetchConveniosData(filtrosInput = null, waitForAudit = false) {
         if (this.isLoading) return;
         if (filtrosInput && typeof filtrosInput === 'object') this.lastFiltros = { ...this.lastFiltros, ...filtrosInput };
         const { tipoBusca, municipio, includeCanceled } = this.lastFiltros;
@@ -569,7 +570,6 @@ export class SirconvDashboardModule {
                 const data = await res.json();
                 if (data?.convenios) list = data.convenios;
                 
-                // Premissa 4: Se sumir de meus convênios, transferir para inativos
                 const fetchedIds = new Set(list.map(c => String(c.ID)));
                 for (const id in this.activeData) {
                     if (!fetchedIds.has(id)) {
@@ -580,7 +580,6 @@ export class SirconvDashboardModule {
                     }
                 }
 
-                // Premissa 3: Comparar informações vitais para forçar auditoria antecipada
                 list.forEach(c => {
                     const existing = this.activeData[String(c.ID)];
                     if (existing) {
@@ -612,14 +611,20 @@ export class SirconvDashboardModule {
             const allToAudit = baseList.filter(c => {
                 const entry = this.activeData[c.ID] || this.inactiveData[c.ID];
                 const isForced = idsToForceAudit.has(String(c.ID));
-                // Premissa 3: isForced ignora a verificação de TTL do cache
                 return isForced || !entry?.audit || (Date.now() - (entry.audit.timestamp || 0) > this.CACHE_TTL);
             });
-            if (this.ui) this.ui.hideLoader();
+            
             this.backgroundAuditQueue = this.sortConvenios(allToAudit).map(c => c.ID);
-            this.processBackgroundQueue();
+            
+            if (waitForAudit) {
+                if (this.ui) this.ui.updateLoaderMessage(`Aguardando extração detalhada de ${this.backgroundAuditQueue.length} convênios...`);
+                await this.processBackgroundQueue(true); // Modo síncrono bloqueante
+                if (this.ui) this.ui.hideLoader();
+            } else {
+                if (this.ui) this.ui.hideLoader();
+                this.processBackgroundQueue(); // Modo assíncrono padrão
+            }
 
-            // Premissa 5: Verificação periódica de inativos (ex: a cada 7 dias)
             this.checkInactiveUpdatesSilently();
         } catch (error) { console.error("Erro Dashboard:", error); if (this.ui) this.ui.hideLoader(); } finally { this.isLoading = false; }
     }
