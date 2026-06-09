@@ -764,7 +764,12 @@ export class SirconvDashboardModule {
             dropdown.classList.toggle('show'); 
             if (dropdown.classList.contains('show')) {
                 this.positionDropdown(trigger, dropdown);
-                dropdown.querySelector('input').focus();
+                const searchInput = dropdown.querySelector('input');
+                setTimeout(() => {
+                    searchInput.focus();
+                    searchInput.style.setProperty('pointer-events', 'auto', 'important');
+                    searchInput.style.setProperty('cursor', 'text', 'important');
+                }, 50);
             }
             return; 
         }
@@ -772,7 +777,10 @@ export class SirconvDashboardModule {
         dropdown = document.createElement('div'); 
         dropdown.id = `filter-dropdown-${colId}`; 
         dropdown.className = 'sispmg-filter-dropdown show';
-        dropdown.onclick = (e) => e.stopPropagation(); // CRÍTICO: Impede fechamento ao clicar dentro
+        
+        // Bloqueio agressivo no dropdown para evitar fechamento acidental
+        dropdown.onclick = (e) => e.stopPropagation();
+        dropdown.onmousedown = (e) => e.stopPropagation();
 
         let values = [];
         const dataForValues = this.currentView === 'consolidado' ? this.consolidatedData : this.conveniosData;
@@ -792,7 +800,7 @@ export class SirconvDashboardModule {
 
         dropdown.innerHTML = `
             <div class="sispmg-filter-search">
-                <input type="text" placeholder="Pesquisar..." id="search-${colId}" autocomplete="off">
+                <input type="text" placeholder="Pesquisar..." id="search-${colId}" autocomplete="off" style="pointer-events: auto !important; cursor: text !important;">
             </div>
             <div class="sispmg-filter-list" id="list-${colId}">
                 ${values.map(val => `<label class="sispmg-filter-item"><input type="checkbox" value="${val}" ${selected.includes(String(val)) ? 'checked' : ''}><span>${val}</span></label>`).join('')}
@@ -807,8 +815,23 @@ export class SirconvDashboardModule {
         this.positionDropdown(trigger, dropdown);
         
         const searchInput = dropdown.querySelector('input');
-        searchInput.focus();
-        searchInput.onkeydown = (e) => e.stopPropagation(); // CRÍTICO: Impede que atalhos da página interfiram
+        
+        // Isolamento agressivo de interferências no campo de busca
+        const preventInterference = (e) => {
+            e.stopPropagation();
+            if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+        };
+
+        ['click', 'mousedown', 'mouseup', 'keydown', 'keyup', 'keypress'].forEach(evt => {
+            searchInput.addEventListener(evt, preventInterference, true);
+        });
+
+        // Garantir foco com pequeno delay para processamento do DOM
+        setTimeout(() => {
+            searchInput.focus();
+            searchInput.style.setProperty('pointer-events', 'auto', 'important');
+            searchInput.style.setProperty('cursor', 'text', 'important');
+        }, 100);
 
         dropdown.querySelector('.apply').onclick = () => {
             const checked = Array.from(dropdown.querySelectorAll('input:checked')).map(i => i.value);

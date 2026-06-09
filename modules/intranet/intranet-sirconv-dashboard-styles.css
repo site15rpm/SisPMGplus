@@ -333,12 +333,14 @@
     border: 1px solid #dcd3c5 !important;
     border-radius: 6px !important;
     box-shadow: 0 4px 12px rgba(0,0,0,0.2) !important;
-    z-index: 10005 !important;
+    z-index: 100000 !important;
     width: 250px !important;
     display: none;
     flex-direction: column !important;
     animation: sispmgfadeIn 0.2s ease-out !important;
+    pointer-events: auto !important;
 }
+
 
 .sispmg-filter-dropdown.show {
     display: flex !important;
