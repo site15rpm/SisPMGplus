@@ -434,13 +434,12 @@ export class SirconvDashboardModule {
         const layout = document.getElementById('sispmg-dashboard-layout');
         const sidebar = document.getElementById('sispmg-dashboard-sidebar');
         if (layout && sidebar) {
+            this.activeFilters = {};
             sidebar.classList.remove('active');
             layout.classList.remove('audit-active', 'filter-active', 'consolidation-active');
             this.activeConvId = null;
             this.updateActionButtons();
-            if (this.currentView !== 'consolidado') {
-                this.renderDashboard(true);
-            }
+            this.applyFilters();
         }
     }
 
@@ -1003,6 +1002,11 @@ export class SirconvDashboardModule {
         const thead = document.getElementById('sispmg-dashboard-thead');
         let data = isFiltered ? this.filteredData : (this.currentView === 'consolidado' ? this.consolidatedData : this.sortConvenios([...this.conveniosData]));
         
+        const headerTitle = document.querySelector('.sispmg-dashboard-header h2');
+        if (headerTitle) {
+            headerTitle.innerText = this.currentView === 'consolidado' ? 'Dashboard SIRCONV - Consolidação de dados por natureza' : 'Dashboard SIRCONV';
+        }
+
         this.updateActionButtons();
         this.updateSummaryCards();
 
