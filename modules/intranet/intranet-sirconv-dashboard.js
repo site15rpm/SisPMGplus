@@ -1021,9 +1021,9 @@ export class SirconvDashboardModule {
                     <th data-col="numero_face"><div class="sispmg-th-content">Nº Face <i class="fas fa-filter ${getTriggerClass('numero_face')}"></i></div></th>
                     <th data-col="municipio"><div class="sispmg-th-content">Município <i class="fas fa-filter ${getTriggerClass('municipio')}"></i></div></th>
                     <th data-col="unidade"><div class="sispmg-th-content">Unidade <i class="fas fa-filter ${getTriggerClass('unidade')}"></i></div></th>
-                    <th data-col="natureza"><div class="sispmg-th-content">Natureza <i class="fas fa-filter ${getTriggerClass('natureza')}"></i></div></th>
                     <th data-col="ano" style="text-align: center;"><div class="sispmg-th-content" style="justify-content: center;">Ano <i class="fas fa-filter ${getTriggerClass('ano')}"></i></div></th>
                     <th data-col="mes" style="text-align: center;"><div class="sispmg-th-content" style="justify-content: center;">Mês <i class="fas fa-filter ${getTriggerClass('mes')}"></i></div></th>
+                    <th data-col="natureza"><div class="sispmg-th-content">Natureza <i class="fas fa-filter ${getTriggerClass('natureza')}"></i></div></th>
                     <th style="text-align: right;">Valor Executado (R$)</th>
                 </tr>
             `;
@@ -1033,9 +1033,9 @@ export class SirconvDashboardModule {
                     <td>${row.NUMERO_FACE}</td>
                     <td>${row.MUNICIPIO}</td>
                     <td>${row.UNIDADE}</td>
-                    <td style="font-size: 11px;">${row.NATUREZA}</td>
                     <td style="text-align: center;">${row.ANO}</td>
                     <td style="text-align: center;">${row.MES}</td>
+                    <td style="font-size: 11px;">${row.NATUREZA}</td>
                     <td style="text-align: right; font-weight: 600; color: #155724;">${row.VALOR_EXECUTADO.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                 </tr>
             `).join('');
@@ -1086,23 +1086,24 @@ export class SirconvDashboardModule {
             backBtn.style.setProperty('display', 'none', 'important');
             globalClose.style.setProperty('display', 'none', 'important');
         } else {
-            globalClose.style.setProperty('display', 'inline-flex', 'important');
-            
             if (this.currentView === 'meus') {
                 refreshBtn.style.setProperty('display', 'inline-flex', 'important');
                 consolidateBtn.style.setProperty('display', 'inline-flex', 'important');
                 clearCacheBtn.style.setProperty('display', 'inline-flex', 'important');
                 backBtn.style.setProperty('display', 'none', 'important');
+                globalClose.style.setProperty('display', 'inline-flex', 'important');
             } else if (this.currentView === 'adv') {
                 refreshBtn.style.setProperty('display', 'none', 'important');
                 consolidateBtn.style.setProperty('display', 'inline-flex', 'important');
                 clearCacheBtn.style.setProperty('display', 'none', 'important');
                 backBtn.style.setProperty('display', 'inline-flex', 'important');
+                globalClose.style.setProperty('display', 'inline-flex', 'important');
             } else if (this.currentView === 'consolidado') {
                 refreshBtn.style.setProperty('display', 'none', 'important');
                 consolidateBtn.style.setProperty('display', 'none', 'important');
                 clearCacheBtn.style.setProperty('display', 'none', 'important');
                 backBtn.style.setProperty('display', 'inline-flex', 'important');
+                globalClose.style.setProperty('display', 'none', 'important');
             }
         }
     }
