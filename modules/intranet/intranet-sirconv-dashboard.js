@@ -296,6 +296,7 @@ export class SirconvDashboardModule {
             <div style="display: flex; flex-direction: column; height: 100%; padding: 0;">
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #28a745; padding: 15px 20px;">
                     <h2 style="color: #155724; font-size: 18px; margin: 0;"><i class="fas fa-table"></i> Consolidação</h2>
+                    <button id="sispmg-close-sidebar-btn" class="sispmg-dashboard-btn" style="background-color: #dc3545 !important; color: white !important;">Fechar</button>
                 </div>
                 <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 15px; padding: 20px; overflow-y: auto;">
                     <div style="background: #f4fdf4; border: 1px solid #c3e6cb; border-radius: 6px; padding: 12px; font-size: 12px; color: #155724; line-height: 1.4; margin-bottom: 5px;">
@@ -368,6 +369,9 @@ export class SirconvDashboardModule {
                 }
             };
         });
+
+        const closeBtn = sidebar.querySelector('#sispmg-close-sidebar-btn');
+        if (closeBtn) closeBtn.onclick = () => this.closeSidebar();
 
         sidebar.querySelector('#sispmg-btn-run-consolidation').onclick = () => {
             const range = {
@@ -486,6 +490,7 @@ export class SirconvDashboardModule {
             <div style="display: flex; flex-direction: column; height: 100%; padding: 0;">
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #b3a368; padding: 15px 20px;">
                     <h2 style="color: #574e2d; font-size: 18px; margin: 0;"><i class="fas fa-filter"></i> Busca Avançada</h2>
+                    <button id="sispmg-close-sidebar-btn" class="sispmg-dashboard-btn" style="background-color: #dc3545 !important; color: white !important;">Fechar</button>
                 </div>
                 <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 15px; padding: 20px; overflow-y: auto;">
                     <div style="background: #fdfaf6; border: 1px solid #e8dfbf; border-radius: 6px; padding: 12px; font-size: 12px; color: #574e2d; line-height: 1.4; margin-bottom: 5px;">
@@ -524,6 +529,7 @@ export class SirconvDashboardModule {
             </div>
         `;
 
+        sidebar.querySelector('#sispmg-close-sidebar-btn').onclick = () => this.closeSidebar();
         sidebar.querySelector('#sispmg-btn-start-audit').onclick = async () => {
             const filtros = {
                 tipoBusca: sidebar.querySelector('#sispmg-dashboard-tipo-busca').value,
@@ -821,7 +827,7 @@ export class SirconvDashboardModule {
             <div style="display: flex; flex-direction: column; height: 100%;">
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #b3a368; padding: 15px 20px;">
                     <h2 style="color: #574e2d; font-size: 18px; margin: 0; white-space: normal; line-height: 1.2;">Detalhamento: ${conv.ID} - ${this.getMunicipioClean(conv.CONCEDENTE)}</h2>
-                    <button id="sispmg-close-audit-btn" class="sispmg-dashboard-btn sispmg-global-close" style="background-color: #dc3545 !important; color: white !important;">Fechar</button>
+                    <button id="sispmg-close-audit-btn" class="sispmg-dashboard-btn" style="background-color: #dc3545 !important; color: white !important;">Fechar</button>
                 </div>
                 <div style="flex-grow: 1; overflow-y: auto; padding: 20px;">
                     <div style="background: #fbf8f5; border: 1px solid #dcd3c5; border-radius: 6px; padding: 15px; margin-bottom: 20px; font-size: 13px;">
