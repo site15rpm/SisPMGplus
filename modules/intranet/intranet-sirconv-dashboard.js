@@ -199,7 +199,7 @@ export class SirconvDashboardModule {
                                 <i class="fas fa-table"></i> Consolidação
                             </button>
                             <button id="sispmg-dashboard-clear-cache" class="sispmg-dashboard-btn" style="background-color: #dc3545 !important; color: white !important;">
-                                <i class="fas fa-trash"></i> Limpar Cache
+                                <i class="fas fa-trash"></i>
                             </button>
                             <button id="sispmg-dashboard-back" class="sispmg-dashboard-btn" style="display: none; background-color: #6c757d !important; color: white !important;">
                                 <i class="fas fa-arrow-left"></i> VOLTAR
@@ -233,6 +233,7 @@ export class SirconvDashboardModule {
         container.appendChild(overlay);
 
         modalContainer.querySelector('#sispmg-dashboard-close-global').onclick = () => {
+            this.activeFilters = {};
             const layout = document.getElementById('sispmg-dashboard-layout');
             if (layout && (layout.classList.contains('audit-active') || layout.classList.contains('filter-active') || layout.classList.contains('consolidation-active'))) {
                 this.closeSidebar();
@@ -248,7 +249,7 @@ export class SirconvDashboardModule {
         modalContainer.querySelector('#sispmg-dashboard-consolidate').onclick = () => this.showConsolidationSidebar();
 
         modalContainer.querySelector('#sispmg-dashboard-clear-cache').onclick = async () => {
-            if (confirm("Isso apagará TODO o histórico de convênios salvos localmente (Ativos e Inativos). Esta ação não pode ser desfeita. Continuar?")) {
+            if (confirm("Isso apagará TODO o histórico de convênios salvos localmente, forçando sistema recarregar os dados na próxima execução. Continuar?")) {
                 this.activeData = {};
                 this.inactiveData = {};
                 await sendMessageToBackground('removeStorage', { keys: [this.STORAGE_KEY_ACTIVE, this.STORAGE_KEY_INACTIVE] });
@@ -261,6 +262,7 @@ export class SirconvDashboardModule {
         };
 
         modalContainer.querySelector('#sispmg-dashboard-back').onclick = () => {
+            this.activeFilters = {};
             if (this.currentView === 'consolidado') {
                 this.currentView = this.advSearchIds.length > 0 ? 'adv' : 'meus';
             } else {
@@ -294,7 +296,7 @@ export class SirconvDashboardModule {
         sidebar.innerHTML = `
             <div style="display: flex; flex-direction: column; height: 100%; padding: 0;">
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #28a745; padding: 15px 20px;">
-                    <h2 style="color: #155724; font-size: 18px; margin: 0;"><i class="fas fa-table"></i> Consolidação de Dados</h2>
+                    <h2 style="color: #155724; font-size: 18px; margin: 0;"><i class="fas fa-table"></i> Consolidação</h2>
                     <button id="sispmg-close-sidebar-btn" class="sispmg-dashboard-btn sispmg-global-close" style="background-color: #dc3545 !important; color: white !important;">Fechar</button>
                 </div>
                 <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 15px; padding: 20px; overflow-y: auto;">
