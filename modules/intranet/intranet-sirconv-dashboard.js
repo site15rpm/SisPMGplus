@@ -289,16 +289,31 @@ export class SirconvDashboardModule {
             const audit = conv.audit;
             if (audit && audit.cronogramas) {
                 audit.cronogramas.forEach(cron => {
-                    if (cron.valorExecutado > 0) {
-                        const partesMes = cron.mesTexto.split(' ');
-                        const mes = partesMes[0] || '-';
-                        const ano = partesMes[1] || '-';
+                    const partesMes = cron.mesTexto.split(' ');
+                    const mes = partesMes[0] || '-';
+                    const ano = partesMes[1] || '-';
+                    
+                    if (cron.naturezas && cron.naturezas.length > 0) {
+                        cron.naturezas.forEach(nat => {
+                            rows.push({
+                                ID: conv.ID,
+                                NUMERO_FACE: conv.NUMERO_FACE || '-',
+                                MUNICIPIO: this.getMunicipioClean(conv.CONCEDENTE),
+                                UNIDADE: this.cleanUnidade(conv.UNI_NOME_PRINCIPAL),
+                                NATUREZA: nat.nome,
+                                ANO: ano,
+                                MES: mes,
+                                VALOR_EXECUTADO: nat.valorExecutado
+                            });
+                        });
+                    } else if (cron.valorExecutado > 0) {
+                        // Fallback caso a quebra granular falhe
                         rows.push({
                             ID: conv.ID,
                             NUMERO_FACE: conv.NUMERO_FACE || '-',
                             MUNICIPIO: this.getMunicipioClean(conv.CONCEDENTE),
                             UNIDADE: this.cleanUnidade(conv.UNI_NOME_PRINCIPAL),
-                            NATUREZA: audit.planoItens?.map(p => p.nome.split(' - ')[1]).join(', ') || '-',
+                            NATUREZA: 'Consumo Mensal (Não Identificado)',
                             ANO: ano,
                             MES: mes,
                             VALOR_EXECUTADO: cron.valorExecutado
@@ -561,7 +576,8 @@ export class SirconvDashboardModule {
             doc.querySelectorAll('a.item.flex-linha').forEach(linkRow => {
                 let dIdM = linkRow.getAttribute('onclick')?.match(/detalheCronograma-(\d+)/);
                 if (!dIdM || processedIds.has(dIdM[1])) return;
-                processedIds.add(dIdM[1]);
+                const cronId = dIdM[1];
+                processedIds.add(cronId);
                 const mesEl = linkRow.querySelector('.ne');
                 if (!mesEl) return;
                 const mesTexto = mesEl.innerText.replace(/[\n\r]/g, '').replace(/(\d+)\s+anexos?/, '').trim();
@@ -575,8 +591,32 @@ export class SirconvDashboardModule {
                    const dt = span.querySelector('dl.ic dt'); if (dt) dLiq = dt.textContent.trim();
                 });
                 if (vExec > 0 || dLiq !== '-') { status = 'Liquidado'; }
-                cronogramas.push({ mesTexto, valorPrevisto: vPrev, valorExecutado: vExec, prazoLimite: pLim, dataLiquidado: dLiq, status });
+
+                // NOVA EXTRAÇÃO GRANULAR
+                const naturezasGranulares = {}; 
+                const detalheDiv = doc.getElementById(`detalheCronograma-${cronId}`);
+                if (detalheDiv) {
+                    detalheDiv.querySelectorAll('table.t1 tbody tr').forEach(row => {
+                        const select = row.querySelector('select[name^="NATUREZA_ID"]');
+                        const inputVal = row.querySelector('input[name^="VALOR_EXECUCAO"]');
+                        if (select && inputVal) {
+                            const selectedOption = select.querySelector('option[selected]');
+                            const nomeNatureza = selectedOption ? selectedOption.textContent.trim() : '-';
+                            const valExecItem = parseFloat(inputVal.value.replace(/\./g, '').replace(',', '.')) || 0;
+                            if (valExecItem > 0) {
+                                naturezasGranulares[nomeNatureza] = (naturezasGranulares[nomeNatureza] || 0) + valExecItem;
+                            }
+                        }
+                    });
+                }
+                const naturezasArray = Object.entries(naturezasGranulares).map(([nome, valor]) => ({ nome, valorExecutado: valor }));
+
+                cronogramas.push({ 
+                    mesTexto, valorPrevisto: vPrev, valorExecutado: vExec, 
+                    prazoLimite: pLim, dataLiquidado: dLiq, status,
+                    naturezas: naturezasArray // Armazena a quebra por natureza
                 });
+            });
             const vTotalEst = planoItens.reduce((sum, p) => sum + p.valorEstimado, 0);
             return { cronogramas, planoItens, historico, timestamp: Date.now(), lastUpdate: new Date().toLocaleString(), valorEstimadoReal: vTotalEst > 0 ? vTotalEst : (parseFloat(entry?.VALOR_ESTIMADO) || 0) };
         } catch (e) { console.error(e); return null; }
