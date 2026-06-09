@@ -303,7 +303,7 @@ export class SirconvDashboardModule {
                     </div>
                     <div>
                         <label style="display: block; font-weight: 600; margin-bottom: 8px; font-size: 13px;">Tipo de Busca:</label>
-                        <select id="sispmg-consolidate-tipo-busca" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #dcd3c5; background: #fff;">
+                        <select id="sispmg-consolidate-tipo-busca" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #dcd3c5; background: #fff; box-sizing: border-box;">
                             <option value="ativos">Convênios Ativos</option>
                             <option value="todos">Todos os Convênios</option>
                         </select>
@@ -311,13 +311,13 @@ export class SirconvDashboardModule {
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                         <div>
                             <label style="display: block; font-weight: 600; margin-bottom: 8px; font-size: 13px;">Mês Inicial:</label>
-                            <select id="sispmg-consolidate-mes-ini" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #dcd3c5; background: #fff;">
+                            <select id="sispmg-consolidate-mes-ini" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #dcd3c5; background: #fff; box-sizing: border-box;">
                                 ${meses.map(m => `<option value="${m}" ${m === 'JAN' ? 'selected' : ''}>${m}</option>`).join('')}
                             </select>
                         </div>
                         <div>
                             <label style="display: block; font-weight: 600; margin-bottom: 8px; font-size: 13px;">Ano Inicial:</label>
-                            <select id="sispmg-consolidate-ano-ini" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #dcd3c5; background: #fff;">
+                            <select id="sispmg-consolidate-ano-ini" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #dcd3c5; background: #fff; box-sizing: border-box;">
                                 ${anos.map(a => `<option value="${a}" ${a === anos[anos.length-1] ? 'selected' : ''}>${a}</option>`).join('')}
                             </select>
                         </div>
@@ -325,13 +325,13 @@ export class SirconvDashboardModule {
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                         <div>
                             <label style="display: block; font-weight: 600; margin-bottom: 8px; font-size: 13px;">Mês Final:</label>
-                            <select id="sispmg-consolidate-mes-fim" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #dcd3c5; background: #fff;">
+                            <select id="sispmg-consolidate-mes-fim" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #dcd3c5; background: #fff; box-sizing: border-box;">
                                 ${meses.map(m => `<option value="${m}" ${m === mesAtual ? 'selected' : ''}>${m}</option>`).join('')}
                             </select>
                         </div>
                         <div>
                             <label style="display: block; font-weight: 600; margin-bottom: 8px; font-size: 13px;">Ano Final:</label>
-                            <select id="sispmg-consolidate-ano-fim" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #dcd3c5; background: #fff;">
+                            <select id="sispmg-consolidate-ano-fim" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #dcd3c5; background: #fff; box-sizing: border-box;">
                                 ${anos.map(a => `<option value="${a}" ${a === anoAtual ? 'selected' : ''}>${a}</option>`).join('')}
                             </select>
                         </div>
@@ -388,11 +388,12 @@ export class SirconvDashboardModule {
             if (audit && audit.cronogramas) {
                 audit.cronogramas.forEach(cron => {
                     const partesMes = cron.mesTexto.split(' ');
-                    const mes = partesMes[0] || '-';
+                    const mesOriginal = partesMes[0] || '-';
+                    const mes = mesOriginal.toUpperCase();
                     const ano = partesMes[1] || '-';
                     
                     if (range) {
-                        const score = (parseInt(ano) * 100) + mP[mes];
+                        const score = (parseInt(ano) * 100) + (mP[mes] || 0);
                         if (score < minScore || score > maxScore) return;
                     }
 
@@ -405,7 +406,7 @@ export class SirconvDashboardModule {
                                 UNIDADE: this.cleanUnidade(conv.UNI_NOME_PRINCIPAL),
                                 NATUREZA: nat.nome,
                                 ANO: ano,
-                                MES: mes,
+                                MES: mesOriginal,
                                 VALOR_EXECUTADO: nat.valorExecutado
                             });
                         });
@@ -417,7 +418,7 @@ export class SirconvDashboardModule {
                             UNIDADE: this.cleanUnidade(conv.UNI_NOME_PRINCIPAL),
                             NATUREZA: 'Consumo Mensal (Não Identificado)',
                             ANO: ano,
-                            MES: mes,
+                            MES: mesOriginal,
                             VALOR_EXECUTADO: cron.valorExecutado
                         });
                     }
@@ -960,7 +961,11 @@ export class SirconvDashboardModule {
         searchInput.oninput = () => { 
             const term = searchInput.value.toLowerCase(); 
             dropdown.querySelectorAll('.sispmg-filter-item').forEach(item => {
-                item.style.display = item.textContent.toLowerCase().includes(term) ? 'flex' : 'none';
+                if (item.textContent.toLowerCase().includes(term)) {
+                    item.style.setProperty('display', 'flex', 'important');
+                } else {
+                    item.style.setProperty('display', 'none', 'important');
+                }
             }); 
         };
     }
@@ -999,16 +1004,20 @@ export class SirconvDashboardModule {
         this.updateActionButtons();
         this.updateSummaryCards();
 
+        const getTriggerClass = (colId) => {
+            return (this.activeFilters[colId] && this.activeFilters[colId].length > 0) ? 'sispmg-filter-trigger active' : 'sispmg-filter-trigger';
+        };
+
         if (this.currentView === 'consolidado') {
             thead.innerHTML = `
                 <tr>
-                    <th data-col="id"><div class="sispmg-th-content">Convênio <i class="fas fa-filter sispmg-filter-trigger"></i></div></th>
-                    <th data-col="numero_face"><div class="sispmg-th-content">Nº Face <i class="fas fa-filter sispmg-filter-trigger"></i></div></th>
-                    <th data-col="municipio"><div class="sispmg-th-content">Município <i class="fas fa-filter sispmg-filter-trigger"></i></div></th>
-                    <th data-col="unidade"><div class="sispmg-th-content">Unidade <i class="fas fa-filter sispmg-filter-trigger"></i></div></th>
-                    <th data-col="natureza"><div class="sispmg-th-content">Natureza <i class="fas fa-filter sispmg-filter-trigger"></i></div></th>
-                    <th data-col="ano" style="text-align: center;"><div class="sispmg-th-content" style="justify-content: center;">Ano <i class="fas fa-filter sispmg-filter-trigger"></i></div></th>
-                    <th data-col="mes" style="text-align: center;"><div class="sispmg-th-content" style="justify-content: center;">Mês <i class="fas fa-filter sispmg-filter-trigger"></i></div></th>
+                    <th data-col="id"><div class="sispmg-th-content">Convênio <i class="fas fa-filter ${getTriggerClass('id')}"></i></div></th>
+                    <th data-col="numero_face"><div class="sispmg-th-content">Nº Face <i class="fas fa-filter ${getTriggerClass('numero_face')}"></i></div></th>
+                    <th data-col="municipio"><div class="sispmg-th-content">Município <i class="fas fa-filter ${getTriggerClass('municipio')}"></i></div></th>
+                    <th data-col="unidade"><div class="sispmg-th-content">Unidade <i class="fas fa-filter ${getTriggerClass('unidade')}"></i></div></th>
+                    <th data-col="natureza"><div class="sispmg-th-content">Natureza <i class="fas fa-filter ${getTriggerClass('natureza')}"></i></div></th>
+                    <th data-col="ano" style="text-align: center;"><div class="sispmg-th-content" style="justify-content: center;">Ano <i class="fas fa-filter ${getTriggerClass('ano')}"></i></div></th>
+                    <th data-col="mes" style="text-align: center;"><div class="sispmg-th-content" style="justify-content: center;">Mês <i class="fas fa-filter ${getTriggerClass('mes')}"></i></div></th>
                     <th style="text-align: right;">Valor Executado (R$)</th>
                 </tr>
             `;
@@ -1027,10 +1036,10 @@ export class SirconvDashboardModule {
         } else {
             thead.innerHTML = `
                 <tr>
-                    <th data-col="id" style="text-align: left;"><div class="sispmg-th-content">Convênio <i class="fas fa-filter sispmg-filter-trigger"></i></div></th>
-                    <th data-col="numero_face" class="sispmg-hide-on-audit" style="text-align: left;"><div class="sispmg-th-content">Nº Face <i class="fas fa-filter sispmg-filter-trigger"></i></div></th>
-                    <th data-col="municipio" style="text-align: left;"><div class="sispmg-th-content">Município <i class="fas fa-filter sispmg-filter-trigger"></i></div></th>
-                    <th data-col="unidade" style="text-align: left;"><div class="sispmg-th-content">Unidade <i class="fas fa-filter sispmg-filter-trigger"></i></div></th>
+                    <th data-col="id" style="text-align: left;"><div class="sispmg-th-content">Convênio <i class="fas fa-filter ${getTriggerClass('id')}"></i></div></th>
+                    <th data-col="numero_face" class="sispmg-hide-on-audit" style="text-align: left;"><div class="sispmg-th-content">Nº Face <i class="fas fa-filter ${getTriggerClass('numero_face')}"></i></div></th>
+                    <th data-col="municipio" style="text-align: left;"><div class="sispmg-th-content">Município <i class="fas fa-filter ${getTriggerClass('municipio')}"></i></div></th>
+                    <th data-col="unidade" style="text-align: left;"><div class="sispmg-th-content">Unidade <i class="fas fa-filter ${getTriggerClass('unidade')}"></i></div></th>
                     <th class="sispmg-hide-on-audit" style="text-align: left;">Vigência (Início/Fim)</th>
                     <th class="sispmg-hide-on-audit" style="text-align: center;">Meses (Ex/Tt)</th>
                     <th class="sispmg-hide-on-audit" style="text-align: right;">Estimado (R$)</th>
@@ -1038,7 +1047,7 @@ export class SirconvDashboardModule {
                     <th class="sispmg-hide-on-audit" style="text-align: right;">Média Prev.</th>
                     <th class="sispmg-hide-on-audit" style="text-align: right;">Média Real</th>
                     <th class="sispmg-hide-on-audit" style="text-align: center;">%</th>
-                    <th data-col="status" style="text-align: center;"><div class="sispmg-th-content" style="justify-content: center;">Situação <i class="fas fa-filter sispmg-filter-trigger"></i></div></th>
+                    <th data-col="status" style="text-align: center;"><div class="sispmg-th-content" style="justify-content: center;">Situação <i class="fas fa-filter ${getTriggerClass('status')}"></i></div></th>
                     <th style="text-align: center;">Pendências</th>
                 </tr>
             `;
