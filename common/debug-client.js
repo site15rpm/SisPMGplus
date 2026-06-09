@@ -82,16 +82,7 @@
             storage: await getStorage()
         };
         await sendToDebug(snapshot);
-        
-        const btn = document.getElementById('sispmg-debug-btn');
-        if (btn) {
-            btn.textContent = '📸 OK';
-            btn.style.background = '#27ae60';
-            setTimeout(() => {
-                btn.textContent = '📸 Snapshot';
-                btn.style.background = '#2c3e50';
-            }, 2000);
-        }
+        return true;
     }
 
     async function getStorage() {
@@ -100,21 +91,6 @@
                 chrome.storage.local.get(null, r);
             } else r({});
         });
-    }
-
-    function injectUI() {
-        if (document.getElementById('sispmg-debug-container')) return;
-        const c = document.createElement('div');
-        c.id = 'sispmg-debug-container';
-        c.innerHTML = `
-            <style>
-                #sispmg-debug-container { position: fixed; bottom: 10px; right: 10px; z-index: 2147483647; }
-                #sispmg-debug-btn { background: #2c3e50; color: white; border: 1px solid #34495e; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-family: sans-serif; font-size: 11px; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
-            </style>
-            <button id="sispmg-debug-btn">📸 Snapshot</button>
-        `;
-        (document.body || document.documentElement).appendChild(c);
-        document.getElementById('sispmg-debug-btn').onclick = () => takeSnapshot('ui-button');
     }
 
     // Console Interception
@@ -141,10 +117,15 @@
 
     window.addEventListener('SISPMG_TRIGGER_SNAPSHOT', (e) => takeSnapshot(e.detail));
     
+    // Listener para mensagens do Popup/Background
+    browser.runtime.onMessage.addListener((request) => {
+        if (request.action === 'triggerSnapshot') {
+            return takeSnapshot(request.payload?.label || 'popup-trigger');
+        }
+    });
+
     // Heartbeat & Start
     setInterval(() => sendToDebug({ type: 'heartbeat' }), 10000);
-    if (document.readyState === 'complete') injectUI();
-    else window.addEventListener('load', injectUI);
     
     injectBridge();
     startPolling();

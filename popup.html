@@ -10,51 +10,6 @@
     <div class="popup-container">
         <h3>SisPMG+</h3>
 
-        <div class="popup-section">
-            <p class="section-title">Módulo Terminal</p>
-            <div class="toggle-label">
-                <span>Ativar TerminalPMG+</span>
-                <label class="switch">
-                    <input type="checkbox" id="terminalModuleEnabled" checked>
-                    <span class="slider"></span>
-                </label>
-            </div>
-        </div>
-
-        <div class="popup-section">
-            <p class="section-title">Módulos Intranet</p>
-            <div class="toggle-label">
-                <span>Ativar IntranetPMG+ (Geral)</span>
-                <label class="switch">
-                    <input type="checkbox" id="intranetModuleEnabled" checked>
-                    <span class="slider"></span>
-                </label>
-            </div>
-            <div id="intranet-submodules">
-                <div class="toggle-label">
-                    <span>- PAdm+</span>
-                    <label class="switch">
-                        <input type="checkbox" id="padmModuleEnabled" checked>
-                        <span class="slider"></span>
-                    </label>
-                </div>
-                <div class="toggle-label">
-                    <span>- Aniversariantes+</span>
-                    <label class="switch">
-                        <input type="checkbox" id="aniverModuleEnabled" checked>
-                        <span class="slider"></span>
-                    </label>
-                </div>
-                <div class="toggle-label">
-                    <span>- SIRCONV+</span>
-                    <label class="switch">
-                        <input type="checkbox" id="sirconvModuleEnabled" checked>
-                        <span class="slider"></span>
-                    </label>
-                </div>
-            </div>
-        </div>
-
         <!-- Seção do Novo Módulo de Abastecimentos -->
         <div class="popup-section">
             <p class="section-title">Módulo Abastecimentos</p>
@@ -66,6 +21,13 @@
              <p class="reset-info">Use estas opções para limpar dados salvos e resolver problemas.</p>
              <button id="reset-aniver-btn" class="btn btn-reset">Restaurar Padrões (Aniversariantes)</button>
              <button id="reset-terminal-profiles-btn" class="btn btn-reset">Limpar Perfis (Terminal)</button>
+        </div>
+
+        <div class="popup-section">
+            <p class="section-title">Debug & Desenvolvimento</p>
+            <button id="snapshot-btn" class="btn btn-full-width" style="background-color: #2c3e50 !important; color: white !important;">
+                📸 Snapshot (Capturar Estado)
+            </button>
         </div>
         
     </div>
