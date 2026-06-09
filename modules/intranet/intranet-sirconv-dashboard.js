@@ -296,7 +296,6 @@ export class SirconvDashboardModule {
             <div style="display: flex; flex-direction: column; height: 100%; padding: 0;">
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #28a745; padding: 15px 20px;">
                     <h2 style="color: #155724; font-size: 18px; margin: 0;"><i class="fas fa-table"></i> Consolidação</h2>
-                    <button id="sispmg-close-sidebar-btn" class="sispmg-dashboard-btn sispmg-global-close" style="background-color: #dc3545 !important; color: white !important;">Fechar</button>
                 </div>
                 <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 15px; padding: 20px; overflow-y: auto;">
                     <div style="background: #f4fdf4; border: 1px solid #c3e6cb; border-radius: 6px; padding: 12px; font-size: 12px; color: #155724; line-height: 1.4; margin-bottom: 5px;">
@@ -354,15 +353,22 @@ export class SirconvDashboardModule {
                     const input = document.createElement('input');
                     input.type = 'number';
                     input.id = e.target.id;
-                    input.style.cssText = e.target.style.cssText;
-                    input.placeholder = 'Digite o ano';
+                    input.style.setProperty('width', '100%', 'important');
+                    input.style.setProperty('min-width', '0', 'important');
+                    input.style.setProperty('max-width', '100%', 'important');
+                    input.style.setProperty('padding', '10px', 'important');
+                    input.style.setProperty('border-radius', '6px', 'important');
+                    input.style.setProperty('border', '1px solid #dcd3c5', 'important');
+                    input.style.setProperty('background', '#fff', 'important');
+                    input.style.setProperty('color', '#333', 'important');
+                    input.style.setProperty('box-sizing', 'border-box', 'important');
+                    input.placeholder = 'Ano';
                     e.target.replaceWith(input);
                     input.focus();
                 }
             };
         });
 
-        sidebar.querySelector('#sispmg-close-sidebar-btn').onclick = () => this.closeSidebar();
         sidebar.querySelector('#sispmg-btn-run-consolidation').onclick = () => {
             const range = {
                 tipoBusca: sidebar.querySelector('#sispmg-consolidate-tipo-busca').value,
@@ -480,7 +486,6 @@ export class SirconvDashboardModule {
             <div style="display: flex; flex-direction: column; height: 100%; padding: 0;">
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #b3a368; padding: 15px 20px;">
                     <h2 style="color: #574e2d; font-size: 18px; margin: 0;"><i class="fas fa-filter"></i> Busca Avançada</h2>
-                    <button id="sispmg-close-sidebar-btn" class="sispmg-dashboard-btn sispmg-global-close" style="background-color: #dc3545 !important; color: white !important;">Fechar</button>
                 </div>
                 <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 15px; padding: 20px; overflow-y: auto;">
                     <div style="background: #fdfaf6; border: 1px solid #e8dfbf; border-radius: 6px; padding: 12px; font-size: 12px; color: #574e2d; line-height: 1.4; margin-bottom: 5px;">
@@ -519,7 +524,6 @@ export class SirconvDashboardModule {
             </div>
         `;
 
-        sidebar.querySelector('#sispmg-close-sidebar-btn').onclick = () => this.closeSidebar();
         sidebar.querySelector('#sispmg-btn-start-audit').onclick = async () => {
             const filtros = {
                 tipoBusca: sidebar.querySelector('#sispmg-dashboard-tipo-busca').value,
