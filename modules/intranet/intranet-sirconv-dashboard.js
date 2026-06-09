@@ -14,8 +14,9 @@ export class SirconvDashboardModule {
         this.activeData = {}; // Convênios Ativos (Vigentes ou Vencidos) - Persistente 12h
         this.inactiveData = {}; // Convênios Inativos - Persistente Permanente
         this.advSearchIds = []; // IDs da última busca avançada (Volátil)
-        this.currentView = 'meus'; // 'meus' ou 'adv'
+        this.currentView = 'meus'; // 'meus', 'adv' ou 'consolidado'
         this.conveniosData = []; // Array derivado para exibição e ordenação
+        this.consolidatedData = []; // Array de registros achatados para consolidação
         this.filteredData = [];
         this.activeFilters = {}; 
         this.lastFiltros = { tipoBusca: 'todos', tipo: 'todos', periodo: 'todos', manual: '', municipio: 'todos', includeCPE: false };
@@ -155,9 +156,10 @@ export class SirconvDashboardModule {
         const all = { ...this.activeData, ...this.inactiveData };
         if (this.currentView === 'meus') {
             this.conveniosData = Object.values(all).filter(c => c.isMeus);
-        } else {
+        } else if (this.currentView === 'adv') {
             this.conveniosData = Object.values(all).filter(c => this.advSearchIds.includes(c.ID));
         }
+        // No modo consolidado, preservamos o conveniosData anterior para referência se necessário
     }
 
     showDashboard() {
@@ -193,6 +195,9 @@ export class SirconvDashboardModule {
                             <button id="sispmg-dashboard-refresh" class="sispmg-dashboard-btn sispmg-dashboard-btn-primary">
                                 <i class="fas fa-search"></i> Busca Avançada
                             </button>
+                            <button id="sispmg-dashboard-consolidate" class="sispmg-dashboard-btn" style="background-color: #28a745 !important; color: white !important;">
+                                <i class="fas fa-table"></i> Consolidação
+                            </button>
                             <button id="sispmg-dashboard-clear-cache" class="sispmg-dashboard-btn" style="background-color: #dc3545 !important; color: white !important;">
                                 <i class="fas fa-trash"></i> Limpar Cache
                             </button>
@@ -207,28 +212,15 @@ export class SirconvDashboardModule {
                         <div class="sispmg-dashboard-card"><span class="sispmg-dashboard-card-value" id="dash-total-convenios">-</span><span class="sispmg-dashboard-card-label">Total de Convênios</span></div>
                         <div class="sispmg-dashboard-card"><span class="sispmg-dashboard-card-value" id="dash-convenios-ativos">-</span><span class="sispmg-dashboard-card-label">Vigentes</span></div>
                         <div class="sispmg-dashboard-card"><span class="sispmg-dashboard-card-value" id="dash-valor-total">-</span><span class="sispmg-dashboard-card-label">Valor Estimado (R$)</span></div>
-                        <div class="sispmg-dashboard-card"><span class="sispmg-dashboard-card-value" id="dash-valor-liquidado">-</span><span class="sispmg-dashboard-card-label">Valor Liquidado (R$)</span></div>
+                        <div class="sispmg-dashboard-card">
+                            <span id="dash-valor-liquidado-label" style="display: block; font-size: 10px; color: #888; margin-top: -5px; margin-bottom: 2px;">Valor Liquidado (R$)</span>
+                            <span class="sispmg-dashboard-card-value" id="dash-valor-liquidado">-</span>
+                        </div>
                     </div>
 
                     <div class="sispmg-dashboard-table-container">
                         <table class="sispmg-dashboard-table" style="font-size: 13px;">
-                            <thead>
-                                <tr>
-                                    <th data-col="id" style="text-align: left;"><div class="sispmg-th-content">Convênio <i class="fas fa-filter sispmg-filter-trigger"></i></div></th>
-                                    <th data-col="numero_face" class="sispmg-hide-on-audit" style="text-align: left;"><div class="sispmg-th-content">Nº Face <i class="fas fa-filter sispmg-filter-trigger"></i></div></th>
-                                    <th data-col="municipio" style="text-align: left;"><div class="sispmg-th-content">Município <i class="fas fa-filter sispmg-filter-trigger"></i></div></th>
-                                    <th data-col="unidade" style="text-align: left;"><div class="sispmg-th-content">Unidade <i class="fas fa-filter sispmg-filter-trigger"></i></div></th>
-                                    <th class="sispmg-hide-on-audit" style="text-align: left;">Vigência (Início/Fim)</th>
-                                    <th class="sispmg-hide-on-audit" style="text-align: center;">Meses (Ex/Tt)</th>
-                                    <th class="sispmg-hide-on-audit" style="text-align: right;">Estimado (R$)</th>
-                                    <th class="sispmg-hide-on-audit" style="text-align: right;">Liquidado (R$)</th>
-                                    <th class="sispmg-hide-on-audit" style="text-align: right;">Média Prev.</th>
-                                    <th class="sispmg-hide-on-audit" style="text-align: right;">Média Real</th>
-                                    <th class="sispmg-hide-on-audit" style="text-align: center;">%</th>
-                                    <th data-col="status" style="text-align: center;"><div class="sispmg-th-content" style="justify-content: center;">Situação <i class="fas fa-filter sispmg-filter-trigger"></i></div></th>
-                                    <th style="text-align: center;">Pendências</th>
-                                </tr>
-                            </thead>
+                            <thead id="sispmg-dashboard-thead"></thead>
                             <tbody id="sispmg-dashboard-tbody"></tbody>
                         </table>
                     </div>
@@ -253,6 +245,8 @@ export class SirconvDashboardModule {
 
         modalContainer.querySelector('#sispmg-dashboard-refresh').onclick = () => this.showFilterSidebar();
 
+        modalContainer.querySelector('#sispmg-dashboard-consolidate').onclick = () => this.enterConsolidationView();
+
         modalContainer.querySelector('#sispmg-dashboard-clear-cache').onclick = async () => {
             if (confirm("Isso apagará TODO o histórico de convênios salvos localmente (Ativos e Inativos). Esta ação não pode ser desfeita. Continuar?")) {
                 this.activeData = {};
@@ -267,19 +261,53 @@ export class SirconvDashboardModule {
         };
 
         modalContainer.querySelector('#sispmg-dashboard-back').onclick = () => {
-            this.currentView = 'meus';
+            if (this.currentView === 'consolidado') {
+                this.currentView = this.advSearchIds.length > 0 ? 'adv' : 'meus';
+            } else {
+                this.currentView = 'meus';
+            }
             this.refreshConveniosList();
             this.applyFilters();
         };
-
-        modalContainer.querySelectorAll('.sispmg-filter-trigger').forEach(trigger => {
-            trigger.onclick = (e) => { e.stopPropagation(); this.toggleFilterDropdown(trigger, trigger.closest('th').dataset.col); };
-        });
 
         overlay.onclick = (e) => { if (e.target === overlay) this.closeAllFilterDropdowns(); };
         modalContainer.onclick = () => this.closeAllFilterDropdowns();
 
         this.fetchConveniosData({ tipoBusca: 'ativos' });
+    }
+
+    enterConsolidationView() {
+        this.currentView = 'consolidado';
+        this.generateConsolidatedData();
+        this.activeFilters = {}; // Reseta filtros ao entrar na consolidação para evitar inconsistências visuais iniciais
+        this.applyFilters();
+    }
+
+    generateConsolidatedData() {
+        const rows = [];
+        this.conveniosData.forEach(conv => {
+            const audit = conv.audit;
+            if (audit && audit.cronogramas) {
+                audit.cronogramas.forEach(cron => {
+                    if (cron.valorExecutado > 0) {
+                        const partesMes = cron.mesTexto.split(' ');
+                        const mes = partesMes[0] || '-';
+                        const ano = partesMes[1] || '-';
+                        rows.push({
+                            ID: conv.ID,
+                            NUMERO_FACE: conv.NUMERO_FACE || '-',
+                            MUNICIPIO: this.getMunicipioClean(conv.CONCEDENTE),
+                            UNIDADE: this.cleanUnidade(conv.UNI_NOME_PRINCIPAL),
+                            NATUREZA: audit.planoItens?.map(p => p.nome.split(' - ')[1]).join(', ') || '-',
+                            ANO: ano,
+                            MES: mes,
+                            VALOR_EXECUTADO: cron.valorExecutado
+                        });
+                    }
+                });
+            }
+        });
+        this.consolidatedData = rows;
     }
 
     closeSidebar() {
@@ -684,13 +712,20 @@ export class SirconvDashboardModule {
         if (dropdown) { dropdown.classList.toggle('show'); if (dropdown.classList.contains('show')) this.positionDropdown(trigger, dropdown); return; }
         dropdown = document.createElement('div'); dropdown.id = `filter-dropdown-${colId}`; dropdown.className = 'sispmg-filter-dropdown show';
         let values = [];
-        if (colId === 'municipio') values = [...new Set(this.conveniosData.map(c => this.getMunicipioClean(c.CONCEDENTE)))];
-        else if (colId === 'unidade') values = [...new Set(this.conveniosData.map(c => this.cleanUnidade(c.UNI_NOME_PRINCIPAL)))];
-        else if (colId === 'status') values = ['Vigente', 'Vencido', 'Inativo'];
-        else if (colId === 'id') values = [...new Set(this.conveniosData.map(c => c.ID))];
-        else if (colId === 'numero_face') values = [...new Set(this.conveniosData.map(c => c.NUMERO_FACE || "-"))];
+        const dataForValues = this.currentView === 'consolidado' ? this.consolidatedData : this.conveniosData;
+        
+        if (this.currentView === 'consolidado') {
+            values = [...new Set(dataForValues.map(row => row[colId.toUpperCase()]))];
+        } else {
+            if (colId === 'municipio') values = [...new Set(dataForValues.map(c => this.getMunicipioClean(c.CONCEDENTE)))];
+            else if (colId === 'unidade') values = [...new Set(dataForValues.map(c => this.cleanUnidade(c.UNI_NOME_PRINCIPAL)))];
+            else if (colId === 'status') values = ['Vigente', 'Vencido', 'Inativo'];
+            else if (colId === 'id') values = [...new Set(dataForValues.map(c => c.ID))];
+            else if (colId === 'numero_face') values = [...new Set(dataForValues.map(c => c.NUMERO_FACE || "-"))];
+        }
+        
         values.sort(); const selected = this.activeFilters[colId] || [];
-        dropdown.innerHTML = `<div class="sispmg-filter-search"><input type="text" placeholder="Pesquisar..." id="search-${colId}"></div><div class="sispmg-filter-list" id="list-${colId}">${values.map(val => `<label class="sispmg-filter-item"><input type="checkbox" value="${val}" ${selected.includes(val) ? 'checked' : ''}><span>${val}</span></label>`).join('')}</div><div class="sispmg-filter-actions"><button class="sispmg-filter-btn clear">Limpar</button><button class="sispmg-filter-btn apply">Aplicar</button></div>`;
+        dropdown.innerHTML = `<div class="sispmg-filter-search"><input type="text" placeholder="Pesquisar..." id="search-${colId}"></div><div class="sispmg-filter-list" id="list-${colId}">${values.map(val => `<label class="sispmg-filter-item"><input type="checkbox" value="${val}" ${selected.includes(String(val)) ? 'checked' : ''}><span>${val}</span></label>`).join('')}</div><div class="sispmg-filter-actions"><button class="sispmg-filter-btn clear">Limpar</button><button class="sispmg-filter-btn apply">Aplicar</button></div>`;
         document.getElementById('sispmg-plus-container').appendChild(dropdown);
         this.positionDropdown(trigger, dropdown);
         dropdown.querySelector('.apply').onclick = () => {
@@ -711,40 +746,100 @@ export class SirconvDashboardModule {
         return data.sort((a, b) => { const uA = this.cleanUnidade(a.UNI_NOME_PRINCIPAL), uB = this.cleanUnidade(b.UNI_NOME_PRINCIPAL), pA = p[uA] || 999, pB = p[uB] || 999; if (pA !== pB) return pA - pB; return this.getMunicipioClean(a.CONCEDENTE).localeCompare(this.getMunicipioClean(b.CONCEDENTE), 'pt-BR'); });
     }
     applyFilters() {
-        let filtered = this.conveniosData.filter(conv => {
+        const sourceData = this.currentView === 'consolidado' ? this.consolidatedData : this.conveniosData;
+        let filtered = sourceData.filter(item => {
             for (const colId in this.activeFilters) {
                 const sel = this.activeFilters[colId];
-                let val = (colId === 'municipio' ? this.getMunicipioClean(conv.CONCEDENTE) : (colId === 'unidade' ? this.cleanUnidade(conv.UNI_NOME_PRINCIPAL) : (colId === 'status' ? this.getStatusLabel(conv) : conv[colId.toUpperCase()])));
+                let val;
+                if (this.currentView === 'consolidado') {
+                    val = item[colId.toUpperCase()];
+                } else {
+                    val = (colId === 'municipio' ? this.getMunicipioClean(item.CONCEDENTE) : (colId === 'unidade' ? this.cleanUnidade(item.UNI_NOME_PRINCIPAL) : (colId === 'status' ? this.getStatusLabel(item) : item[colId.toUpperCase()])));
+                }
                 if (!sel.includes(String(val))) return false;
             }
             return true;
         });
-        this.filteredData = this.sortConvenios(filtered); this.renderDashboard(true);
+        this.filteredData = this.currentView === 'consolidado' ? filtered : this.sortConvenios(filtered); 
+        this.renderDashboard(true);
     }
+
     renderDashboard(isFiltered = false) {
         const tbody = document.getElementById('sispmg-dashboard-tbody'); if (!tbody) return;
-        let data = isFiltered ? this.filteredData : this.sortConvenios([...this.conveniosData]);
-        if (data.length === 0) { tbody.innerHTML = `<tr><td colspan="13" style="text-align: center; padding: 40px;">Nenhum convênio encontrado.</td></tr>`; return; }
+        const thead = document.getElementById('sispmg-dashboard-thead');
+        let data = isFiltered ? this.filteredData : (this.currentView === 'consolidado' ? this.consolidatedData : this.sortConvenios([...this.conveniosData]));
         
         this.updateActionButtons();
         this.updateSummaryCards();
-        tbody.innerHTML = data.map(conv => this.renderRowHtml(conv)).join('');
+
+        if (this.currentView === 'consolidado') {
+            thead.innerHTML = `
+                <tr>
+                    <th data-col="id"><div class="sispmg-th-content">Convênio <i class="fas fa-filter sispmg-filter-trigger"></i></div></th>
+                    <th data-col="numero_face"><div class="sispmg-th-content">Nº Face <i class="fas fa-filter sispmg-filter-trigger"></i></div></th>
+                    <th data-col="municipio"><div class="sispmg-th-content">Município <i class="fas fa-filter sispmg-filter-trigger"></i></div></th>
+                    <th data-col="unidade"><div class="sispmg-th-content">Unidade <i class="fas fa-filter sispmg-filter-trigger"></i></div></th>
+                    <th data-col="natureza"><div class="sispmg-th-content">Natureza <i class="fas fa-filter sispmg-filter-trigger"></i></div></th>
+                    <th data-col="ano" style="text-align: center;"><div class="sispmg-th-content" style="justify-content: center;">Ano <i class="fas fa-filter sispmg-filter-trigger"></i></div></th>
+                    <th data-col="mes" style="text-align: center;"><div class="sispmg-th-content" style="justify-content: center;">Mês <i class="fas fa-filter sispmg-filter-trigger"></i></div></th>
+                    <th style="text-align: right;">Valor Executado (R$)</th>
+                </tr>
+            `;
+            tbody.innerHTML = data.map(row => `
+                <tr>
+                    <td><strong>${row.ID}</strong></td>
+                    <td>${row.NUMERO_FACE}</td>
+                    <td>${row.MUNICIPIO}</td>
+                    <td>${row.UNIDADE}</td>
+                    <td style="font-size: 11px;">${row.NATUREZA}</td>
+                    <td style="text-align: center;">${row.ANO}</td>
+                    <td style="text-align: center;">${row.MES}</td>
+                    <td style="text-align: right; font-weight: 600; color: #155724;">${row.VALOR_EXECUTADO.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                </tr>
+            `).join('');
+        } else {
+            thead.innerHTML = `
+                <tr>
+                    <th data-col="id" style="text-align: left;"><div class="sispmg-th-content">Convênio <i class="fas fa-filter sispmg-filter-trigger"></i></div></th>
+                    <th data-col="numero_face" class="sispmg-hide-on-audit" style="text-align: left;"><div class="sispmg-th-content">Nº Face <i class="fas fa-filter sispmg-filter-trigger"></i></div></th>
+                    <th data-col="municipio" style="text-align: left;"><div class="sispmg-th-content">Município <i class="fas fa-filter sispmg-filter-trigger"></i></div></th>
+                    <th data-col="unidade" style="text-align: left;"><div class="sispmg-th-content">Unidade <i class="fas fa-filter sispmg-filter-trigger"></i></div></th>
+                    <th class="sispmg-hide-on-audit" style="text-align: left;">Vigência (Início/Fim)</th>
+                    <th class="sispmg-hide-on-audit" style="text-align: center;">Meses (Ex/Tt)</th>
+                    <th class="sispmg-hide-on-audit" style="text-align: right;">Estimado (R$)</th>
+                    <th class="sispmg-hide-on-audit" style="text-align: right;">Liquidado (R$)</th>
+                    <th class="sispmg-hide-on-audit" style="text-align: right;">Média Prev.</th>
+                    <th class="sispmg-hide-on-audit" style="text-align: right;">Média Real</th>
+                    <th class="sispmg-hide-on-audit" style="text-align: center;">%</th>
+                    <th data-col="status" style="text-align: center;"><div class="sispmg-th-content" style="justify-content: center;">Situação <i class="fas fa-filter sispmg-filter-trigger"></i></div></th>
+                    <th style="text-align: center;">Pendências</th>
+                </tr>
+            `;
+            tbody.innerHTML = data.map(conv => this.renderRowHtml(conv)).join('');
+        }
+
+        document.querySelectorAll('.sispmg-filter-trigger').forEach(trigger => {
+            trigger.onclick = (e) => { e.stopPropagation(); this.toggleFilterDropdown(trigger, trigger.closest('th').dataset.col); };
+        });
+        
         window.SisPMG_SirconvDashboard = this;
     }
 
     updateActionButtons() {
         const refreshBtn = document.getElementById('sispmg-dashboard-refresh');
+        const consolidateBtn = document.getElementById('sispmg-dashboard-consolidate');
         const clearCacheBtn = document.getElementById('sispmg-dashboard-clear-cache');
         const backBtn = document.getElementById('sispmg-dashboard-back');
         const globalClose = document.getElementById('sispmg-dashboard-close-global');
         const layout = document.getElementById('sispmg-dashboard-layout');
         
-        if (!refreshBtn || !clearCacheBtn || !backBtn || !globalClose || !layout) return;
+        if (!refreshBtn || !consolidateBtn || !clearCacheBtn || !backBtn || !globalClose || !layout) return;
 
         const isSidebarOpen = layout.classList.contains('audit-active') || layout.classList.contains('filter-active');
 
         if (isSidebarOpen) {
             refreshBtn.style.setProperty('display', 'none', 'important');
+            consolidateBtn.style.setProperty('display', 'none', 'important');
             clearCacheBtn.style.setProperty('display', 'none', 'important');
             backBtn.style.setProperty('display', 'none', 'important');
             globalClose.style.setProperty('display', 'none', 'important');
@@ -753,10 +848,17 @@ export class SirconvDashboardModule {
             
             if (this.currentView === 'meus') {
                 refreshBtn.style.setProperty('display', 'inline-flex', 'important');
+                consolidateBtn.style.setProperty('display', 'inline-flex', 'important');
                 clearCacheBtn.style.setProperty('display', 'inline-flex', 'important');
                 backBtn.style.setProperty('display', 'none', 'important');
-            } else {
+            } else if (this.currentView === 'adv') {
                 refreshBtn.style.setProperty('display', 'none', 'important');
+                consolidateBtn.style.setProperty('display', 'inline-flex', 'important');
+                clearCacheBtn.style.setProperty('display', 'none', 'important');
+                backBtn.style.setProperty('display', 'inline-flex', 'important');
+            } else if (this.currentView === 'consolidado') {
+                refreshBtn.style.setProperty('display', 'none', 'important');
+                consolidateBtn.style.setProperty('display', 'none', 'important');
                 clearCacheBtn.style.setProperty('display', 'none', 'important');
                 backBtn.style.setProperty('display', 'inline-flex', 'important');
             }
@@ -782,14 +884,40 @@ export class SirconvDashboardModule {
     }
 
     updateSummaryCards() {
-        const data = this.filteredData.length > 0 ? this.filteredData : this.conveniosData;
-        const tE = data.reduce((a, b) => a + (parseFloat(b.audit?.valorEstimadoReal || b.VALOR_ESTIMADO) || 0), 0);
-        const tL = data.reduce((a, b) => a + (parseFloat(b.LIQUIDADO) || 0), 0);
+        const data = this.filteredData.length > 0 ? this.filteredData : (this.currentView === 'consolidado' ? this.consolidatedData : this.conveniosData);
+        let tE = 0, tL = 0, totalCount = 0, vigentesCount = 0;
+
+        if (this.currentView === 'consolidado') {
+            tL = data.reduce((a, b) => a + (parseFloat(b.VALOR_EXECUTADO) || 0), 0);
+            const uniqueIds = [...new Set(data.map(r => r.ID))];
+            totalCount = uniqueIds.length;
+            
+            const allSource = { ...this.activeData, ...this.inactiveData };
+            uniqueIds.forEach(id => {
+                const conv = allSource[id];
+                if (conv) {
+                    tE += (parseFloat(conv.audit?.valorEstimadoReal || conv.VALOR_ESTIMADO) || 0);
+                    if (this.getStatusLabel(conv) === 'Vigente') vigentesCount++;
+                }
+            });
+        } else {
+            tE = data.reduce((a, b) => a + (parseFloat(b.audit?.valorEstimadoReal || b.VALOR_ESTIMADO) || 0), 0);
+            tL = data.reduce((a, b) => a + (parseFloat(b.LIQUIDADO) || 0), 0);
+            totalCount = data.length;
+            vigentesCount = data.filter(c => this.getStatusLabel(c) === 'Vigente').length;
+        }
+
         const totalEl = document.getElementById('dash-total-convenios'), ativosEl = document.getElementById('dash-convenios-ativos'), valorEl = document.getElementById('dash-valor-total'), liqEl = document.getElementById('dash-valor-liquidado');
-        if (totalEl) totalEl.innerText = data.length;
-        if (ativosEl) ativosEl.innerText = data.filter(c => this.getStatusLabel(c) === 'Vigente').length;
+        const liqLabelEl = document.getElementById('dash-valor-liquidado-label');
+
+        if (totalEl) totalEl.innerText = totalCount;
+        if (ativosEl) ativosEl.innerText = vigentesCount;
         if (valorEl) valorEl.innerText = tE.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
         if (liqEl) liqEl.innerText = tL.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+        
+        if (liqLabelEl) {
+            liqLabelEl.innerText = this.currentView === 'consolidado' ? 'Valor Consolidado (R$)' : 'Valor Liquidado (R$)';
+        }
     }
 
     formatDate(d) { if (!d || d === '-') return '-'; const p = d.split(' ')[0].split(/[\/-]/); return p[0].length === 4 ? `${p[2]}/${p[1]}/${p[0]}` : d; }
