@@ -1103,7 +1103,7 @@ export class SirconvDashboardModule {
             consolidateBtn.style.setProperty('display', 'none', 'important');
             clearCacheBtn.style.setProperty('display', 'none', 'important');
             backBtn.style.setProperty('display', 'none', 'important');
-            globalClose.style.setProperty('display', 'inline-flex', 'important');
+            globalClose.style.setProperty('display', 'none', 'important');
         } else {
             if (this.currentView === 'meus') {
                 refreshBtn.style.setProperty('display', 'inline-flex', 'important');
