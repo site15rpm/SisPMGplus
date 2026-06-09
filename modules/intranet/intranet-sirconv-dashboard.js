@@ -571,15 +571,16 @@ export class SirconvDashboardModule {
                 if (data?.convenios) list = data.convenios;
                 
                 const fetchedIds = new Set(list.map(c => String(c.ID)));
+                
+                // Premissa 1: Busca pelo concedente para atualizar orfãos
                 for (const id in this.activeData) {
                     if (!fetchedIds.has(id)) {
-                        this.inactiveData[id] = this.activeData[id];
-                        this.inactiveData[id].isMeus = false;
-                        this.inactiveData[id].ATIVO = 'N';
-                        delete this.activeData[id];
+                        // Não exclui nem move agora, apenas marca para forçar auditoria/verificação
+                        idsToForceAudit.add(id);
                     }
                 }
 
+                // Premissa 3: Comparar apenas campos vitais ignorando STATUS_TEXTO
                 list.forEach(c => {
                     const existing = this.activeData[String(c.ID)];
                     if (existing) {
@@ -587,7 +588,7 @@ export class SirconvDashboardModule {
                         const valLoc = parseFloat(existing.VALOR_ESTIMADO) || 0;
                         const liqExt = parseFloat(c.LIQUIDADO) || 0;
                         const liqLoc = parseFloat(existing.LIQUIDADO) || 0;
-                        if (valExt !== valLoc || liqExt !== liqLoc || existing.ATIVO !== c.ATIVO || existing.STATUS_TEXTO !== c.STATUS_TEXTO) {
+                        if (valExt !== valLoc || liqExt !== liqLoc || existing.ATIVO !== c.ATIVO) {
                             idsToForceAudit.add(String(c.ID));
                         }
                     }
@@ -601,6 +602,12 @@ export class SirconvDashboardModule {
             }
             if (tipoBusca === 'ativos') { list.forEach(c => this.syncConvenio(c.ID, c, true)); } 
             else { this.advSearchIds = list.map(r => String(r.ID)); list.forEach(r => this.syncConvenio(r.ID, r)); }
+            
+            // Premissa 2: Remoção de duplicidades (Limpa do inativo se estiver no ativo)
+            for (const id in this.activeData) {
+                if (this.inactiveData[id]) delete this.inactiveData[id];
+            }
+
             const all = { ...this.activeData, ...this.inactiveData };
             for (const id in all) { if (all[id].audit) all[id].pendencias = this.analisarPendencias(all[id].audit, this.lastFiltros, all[id]); }
             await this.savePersistentCache();
@@ -617,12 +624,11 @@ export class SirconvDashboardModule {
             this.backgroundAuditQueue = this.sortConvenios(allToAudit).map(c => c.ID);
             
             if (waitForAudit) {
-                if (this.ui) this.ui.updateLoaderMessage(`Aguardando extração detalhada de ${this.backgroundAuditQueue.length} convênios...`);
-                await this.processBackgroundQueue(true); // Modo síncrono bloqueante
+                await this.processBackgroundQueue(true); // true sinaliza modo síncrono para o loader
                 if (this.ui) this.ui.hideLoader();
             } else {
                 if (this.ui) this.ui.hideLoader();
-                this.processBackgroundQueue(); // Modo assíncrono padrão
+                this.processBackgroundQueue(); // Assíncrono
             }
 
             this.checkInactiveUpdatesSilently();
@@ -712,22 +718,35 @@ export class SirconvDashboardModule {
         return resultados;
     }
 
-    async processBackgroundQueue() {
+    async processBackgroundQueue(isSynchronous = false) {
         if (this.isQueueProcessing || this.backgroundAuditQueue.length === 0) return;
         this.isQueueProcessing = true;
         const total = this.backgroundAuditQueue.length;
         this.updateBackgroundStatus(true, `Auditoria: 0/${total}`);
         let processed = 0;
+        
+        if (isSynchronous && this.ui) {
+            this.ui.updateLoaderMessage(`Extração detalhada: 0/${total} convênios...`);
+        }
+
         while (this.backgroundAuditQueue.length > 0) {
             const convId = this.backgroundAuditQueue.shift();
             try {
                 const auditData = await this.performDeepAudit(convId);
                 if (auditData) {
                     this.syncConvenio(convId, { audit: auditData });
+                    
+                    // Se foi auditado via "orfão", remove o isMeus se confirmarmos inatividade.
+                    const entry = this.activeData[convId] || this.inactiveData[convId];
+                    if (entry && this.getStatusLabel(entry) === 'Inativo' && entry.isMeus) {
+                         entry.isMeus = false;
+                         this.inactiveData[convId] = entry;
+                         delete this.activeData[convId];
+                    }
+
                     const row = document.querySelector(`.sispmg-clickable-row[onclick*="'${convId}'"]`);
                     if (row) {
                         const tempDiv = document.createElement('tbody');
-                        const entry = this.activeData[convId] || this.inactiveData[convId];
                         tempDiv.innerHTML = this.renderRowHtml(entry);
                         row.replaceWith(tempDiv.firstChild);
                     }
@@ -735,6 +754,9 @@ export class SirconvDashboardModule {
             } catch (e) { console.error(e); }
             processed++;
             this.updateBackgroundStatus(true, `Auditoria: ${processed}/${total}`);
+            if (isSynchronous && this.ui) {
+                this.ui.updateLoaderMessage(`Extração detalhada: ${processed}/${total} convênios...`);
+            }
             if (processed % 5 === 0) { this.updateSummaryCards(); await this.savePersistentCache(); }
             await new Promise(r => setTimeout(r, 600));
         }
