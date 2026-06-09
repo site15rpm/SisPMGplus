@@ -554,11 +554,37 @@ export class SirconvDashboardModule {
         if (this.ui) this.ui.showLoader(tipoBusca === 'todos' ? 'Iniciando varredura profunda de concedentes...' : 'Carregando seus convênios ativos...');
         try {
             let list = [];
+            const idsToForceAudit = new Set();
             if (tipoBusca === 'ativos') {
                 const pesquisa = JSON.stringify({ preposto: "", numeroConvenio: "", numeroFace: "", status: "" });
                 const res = await fetch(`https://intranet.policiamilitar.mg.gov.br/lite/convenio/web/convenio/meus-convenios?pesquisa=${encodeURIComponent(pesquisa)}`);
                 const data = await res.json();
                 if (data?.convenios) list = data.convenios;
+                
+                // Premissa 4: Se sumir de meus convênios, transferir para inativos
+                const fetchedIds = new Set(list.map(c => String(c.ID)));
+                for (const id in this.activeData) {
+                    if (!fetchedIds.has(id)) {
+                        this.inactiveData[id] = this.activeData[id];
+                        this.inactiveData[id].isMeus = false;
+                        this.inactiveData[id].ATIVO = 'N';
+                        delete this.activeData[id];
+                    }
+                }
+
+                // Premissa 3: Comparar informações vitais para forçar auditoria antecipada
+                list.forEach(c => {
+                    const existing = this.activeData[String(c.ID)];
+                    if (existing) {
+                        const valExt = parseFloat(c.VALOR_ESTIMADO) || 0;
+                        const valLoc = parseFloat(existing.VALOR_ESTIMADO) || 0;
+                        const liqExt = parseFloat(c.LIQUIDADO) || 0;
+                        const liqLoc = parseFloat(existing.LIQUIDADO) || 0;
+                        if (valExt !== valLoc || liqExt !== liqLoc || existing.ATIVO !== c.ATIVO || existing.STATUS_TEXTO !== c.STATUS_TEXTO) {
+                            idsToForceAudit.add(String(c.ID));
+                        }
+                    }
+                });
             } else { list = await this.fetchAllConveniosFromConcedentes(municipio); }
             if (!includeCanceled) {
                 list = list.filter(c => {
@@ -575,12 +601,40 @@ export class SirconvDashboardModule {
             this.applyFilters();
             const allToAudit = this.conveniosData.filter(c => {
                 const entry = this.activeData[c.ID] || this.inactiveData[c.ID];
-                return !entry?.audit || (Date.now() - (entry.audit.timestamp || 0) > this.CACHE_TTL);
+                const isForced = idsToForceAudit.has(String(c.ID));
+                // Premissa 3: isForced ignora a verificação de TTL do cache
+                return isForced || !entry?.audit || (Date.now() - (entry.audit.timestamp || 0) > this.CACHE_TTL);
             });
             if (this.ui) this.ui.hideLoader();
             this.backgroundAuditQueue = this.sortConvenios(allToAudit).map(c => c.ID);
             this.processBackgroundQueue();
+
+            // Premissa 5: Verificação periódica de inativos (ex: a cada 7 dias)
+            this.checkInactiveUpdatesSilently();
         } catch (error) { console.error("Erro Dashboard:", error); if (this.ui) this.ui.hideLoader(); } finally { this.isLoading = false; }
+    }
+
+    async checkInactiveUpdatesSilently() {
+        const keys = ['sirconv_last_inactive_sync'];
+        const response = await sendMessageToBackground('getStorage', { keys });
+        const lastSync = (response && response.success && response.value['sirconv_last_inactive_sync']) || 0;
+        
+        // 7 dias = 604800000 ms
+        if (Date.now() - lastSync > 604800000) {
+            console.log("[Dashboard] Iniciando varredura silenciosa de concedentes...");
+            await sendMessageToBackground('setStorage', { 'sirconv_last_inactive_sync': Date.now() });
+            this.fetchAllConveniosFromConcedentes('todos').then(list => {
+                let mudou = false;
+                list.forEach(c => {
+                    const id = String(c.ID);
+                    if (this.inactiveData[id] || !this.activeData[id]) {
+                        this.syncConvenio(id, c, false);
+                        mudou = true;
+                    }
+                });
+                if (mudou) this.savePersistentCache();
+            }).catch(e => console.error(e));
+        }
     }
 
     async fetchAllConveniosFromConcedentes(municipioFiltro = 'todos') {
