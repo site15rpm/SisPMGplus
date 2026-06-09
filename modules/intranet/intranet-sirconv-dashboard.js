@@ -572,15 +572,38 @@ export class SirconvDashboardModule {
                 
                 const fetchedIds = new Set(list.map(c => String(c.ID)));
                 
-                // Premissa 1: Busca pelo concedente para atualizar orfãos
+                // Premissa 1: Busca pelo concedente para atualizar orfãos, em vez de assumir inatividade.
+                const missingIds = [];
                 for (const id in this.activeData) {
                     if (!fetchedIds.has(id)) {
-                        // Não exclui nem move agora, apenas marca para forçar auditoria/verificação
-                        idsToForceAudit.add(id);
+                        missingIds.push(id);
+                    }
+                }
+                
+                if (missingIds.length > 0) {
+                    for (const id of missingIds) {
+                        const entry = this.activeData[id];
+                        if (entry && entry.CONCEDENTE_ID) {
+                            try {
+                                const resH = await fetch(`https://intranet.policiamilitar.mg.gov.br/lite/convenio/web/concedente/view?id=${entry.CONCEDENTE_ID}`);
+                                const hTxt = await resH.text();
+                                const doc = new DOMParser().parseFromString(hTxt, 'text/html');
+                                const item = Array.from(doc.querySelectorAll('a.item.flex-linha')).find(a => a.href.includes(`id=${id}`));
+                                if (item) {
+                                    const statusTexto = item.querySelector('.flex-coluna.tam-g .ne')?.innerText.trim() || '';
+                                    const isInactive = statusTexto.toLowerCase().includes('cancelado') || statusTexto.toLowerCase().includes('finalizado');
+                                    this.syncConvenio(id, { ATIVO: isInactive ? 'N' : 'S', STATUS_TEXTO: statusTexto, isMeus: !isInactive });
+                                } else {
+                                    this.syncConvenio(id, { ATIVO: 'N', isMeus: false });
+                                }
+                            } catch (e) {
+                                console.error(`Erro ao verificar orfão ${id} no concedente:`, e);
+                            }
+                        }
                     }
                 }
 
-                // Premissa 3: Comparar apenas campos vitais ignorando STATUS_TEXTO
+                // Premissa 3: Comparar apenas campos vitais com precisão para evitar auditorias falsas
                 list.forEach(c => {
                     const existing = this.activeData[String(c.ID)];
                     if (existing) {
@@ -588,7 +611,7 @@ export class SirconvDashboardModule {
                         const valLoc = parseFloat(existing.VALOR_ESTIMADO) || 0;
                         const liqExt = parseFloat(c.LIQUIDADO) || 0;
                         const liqLoc = parseFloat(existing.LIQUIDADO) || 0;
-                        if (valExt !== valLoc || liqExt !== liqLoc || existing.ATIVO !== c.ATIVO) {
+                        if (Math.abs(valExt - valLoc) > 0.05 || Math.abs(liqExt - liqLoc) > 0.05 || existing.ATIVO !== c.ATIVO) {
                             idsToForceAudit.add(String(c.ID));
                         }
                     }
@@ -623,12 +646,14 @@ export class SirconvDashboardModule {
             
             this.backgroundAuditQueue = this.sortConvenios(allToAudit).map(c => c.ID);
             
+            // Premissa 4: Loader síncrono com andamento numérico da consolidação
             if (waitForAudit) {
-                await this.processBackgroundQueue(true); // true sinaliza modo síncrono para o loader
+                if (this.ui) this.ui.updateLoaderMessage(`Extração detalhada: 0/${this.backgroundAuditQueue.length} convênios...`);
+                await this.processBackgroundQueue(true); 
                 if (this.ui) this.ui.hideLoader();
             } else {
                 if (this.ui) this.ui.hideLoader();
-                this.processBackgroundQueue(); // Assíncrono
+                this.processBackgroundQueue(); 
             }
 
             this.checkInactiveUpdatesSilently();
