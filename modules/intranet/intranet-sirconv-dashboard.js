@@ -373,7 +373,7 @@ export class SirconvDashboardModule {
         const closeBtn = sidebar.querySelector('#sispmg-close-sidebar-btn');
         if (closeBtn) closeBtn.onclick = () => this.closeSidebar();
 
-        sidebar.querySelector('#sispmg-btn-run-consolidation').onclick = () => {
+        sidebar.querySelector('#sispmg-btn-run-consolidation').onclick = async () => {
             const range = {
                 tipoBusca: sidebar.querySelector('#sispmg-consolidate-tipo-busca').value,
                 mesIni: sidebar.querySelector('#sispmg-consolidate-mes-ini').value,
@@ -381,6 +381,14 @@ export class SirconvDashboardModule {
                 mesFim: sidebar.querySelector('#sispmg-consolidate-mes-fim').value,
                 anoFim: sidebar.querySelector('#sispmg-consolidate-ano-fim').value
             };
+            
+            if (range.tipoBusca === 'todos') {
+                const layout = document.getElementById('sispmg-dashboard-layout');
+                if (layout) layout.classList.remove('consolidation-active');
+                sidebar.classList.remove('active');
+                await this.fetchConveniosData({ tipoBusca: 'todos', municipio: 'todos', includeCanceled: true, includeCPE: true });
+            }
+            
             this.enterConsolidationView(range);
         };
     }
@@ -599,7 +607,9 @@ export class SirconvDashboardModule {
             await this.savePersistentCache();
             this.refreshConveniosList();
             this.applyFilters();
-            const allToAudit = this.conveniosData.filter(c => {
+            
+            const baseList = tipoBusca === 'todos' ? Object.values(all) : this.conveniosData;
+            const allToAudit = baseList.filter(c => {
                 const entry = this.activeData[c.ID] || this.inactiveData[c.ID];
                 const isForced = idsToForceAudit.has(String(c.ID));
                 // Premissa 3: isForced ignora a verificação de TTL do cache
