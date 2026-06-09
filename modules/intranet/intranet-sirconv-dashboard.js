@@ -592,29 +592,32 @@ export class SirconvDashboardModule {
                 });
                 if (vExec > 0 || dLiq !== '-') { status = 'Liquidado'; }
 
-                // EXTRAÇÃO GRANULAR ROBUSTA
+                // EXTRAÇÃO GRANULAR FINAL E CORRETA
                 const naturezasGranulares = {}; 
                 const detalheDiv = doc.getElementById(`detalheCronograma-${cronId}`) || doc.getElementById(`detalhesCronograma-${cronId}`);
                 
                 if (detalheDiv) {
-                    detalheDiv.querySelectorAll('tr').forEach(row => {
-                        const selectNat = row.querySelector('select[name^="NATUREZA_ID"]');
-                        const inputVal = row.querySelector('input[name^="VALOR_EXECUCAO"]');
-                        
-                        if (selectNat && inputVal) {
-                            const opt = selectNat.querySelector('option[selected]') || selectNat.options[0];
-                            let nomeNat = opt ? opt.textContent.trim() : 'Não Identificado';
-                            
-                            // Tenta limpar o nome ou cruzar com planoItens para nomes mais bonitos
-                            const itemPlano = planoItens.find(p => nomeNat.includes(p.naturezaId) || p.nome.includes(nomeNat));
-                            if (itemPlano) nomeNat = itemPlano.nome;
+                    detalheDiv.querySelectorAll('table.t1').forEach(table => {
+                        const rows = table.querySelectorAll('tr');
+                        rows.forEach((row, idx) => {
+                            if (idx === 0 || row.querySelector('th')) return; // Pula cabeçalho
+                            const tds = row.querySelectorAll('td');
+                            if (tds.length >= 6) {
+                                let nomeNat = tds[0].textContent.trim();
+                                if (!nomeNat || nomeNat === 'Natureza') return;
 
-                            const vExecItem = parseFloat(inputVal.getAttribute('value')?.replace(/\./g, '').replace(',', '.') || inputVal.value.replace(/\./g, '').replace(',', '.')) || 0;
-                            
-                            if (vExecItem > 0) {
-                                naturezasGranulares[nomeNat] = (naturezasGranulares[nomeNat] || 0) + vExecItem;
+                                // Cruzamento com planoItens para nomes padronizados
+                                const itemPlano = planoItens.find(p => p.nome.toUpperCase().includes(nomeNat.toUpperCase()) || nomeNat.toUpperCase().includes(p.naturezaItem.toUpperCase()));
+                                if (itemPlano) nomeNat = itemPlano.nome;
+
+                                const valText = tds[5].textContent.trim().replace(/\s/g, '');
+                                const valExecItem = parseFloat(valText.replace(/\./g, '').replace(',', '.')) || 0;
+                                
+                                if (valExecItem > 0) {
+                                    naturezasGranulares[nomeNat] = (naturezasGranulares[nomeNat] || 0) + valExecItem;
+                                }
                             }
-                        }
+                        });
                     });
                 }
                 const naturezasArray = Object.entries(naturezasGranulares).map(([nome, valor]) => ({ nome, valorExecutado: valor }));
