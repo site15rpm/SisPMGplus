@@ -286,12 +286,11 @@ export class SirconvDashboardModule {
         this.updateActionButtons();
 
         const meses = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
-        const anos = [...new Set(this.conveniosData.flatMap(c => c.audit?.cronogramas?.map(cr => cr.mesTexto.split(' ')[1]) || []))].filter(a => a && a !== '-').sort((a,b) => b-a);
-        if (anos.length === 0) anos.push(new Date().getFullYear().toString());
-
+        
         const hoje = new Date();
         const mesAtual = meses[hoje.getMonth()];
-        const anoAtual = hoje.getFullYear().toString();
+        const anoNumber = hoje.getFullYear();
+        const anos = [anoNumber, anoNumber - 1, anoNumber - 2, anoNumber - 3];
 
         sidebar.innerHTML = `
             <div style="display: flex; flex-direction: column; height: 100%; padding: 0;">
@@ -305,7 +304,7 @@ export class SirconvDashboardModule {
                     </div>
                     <div>
                         <label style="display: block; font-weight: 600; margin-bottom: 8px; font-size: 13px;">Tipo de Busca:</label>
-                        <select id="sispmg-consolidate-tipo-busca" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #dcd3c5; background: #fff; box-sizing: border-box;">
+                        <select id="sispmg-consolidate-tipo-busca" style="width: 100%; min-width: 0; max-width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #dcd3c5; background: #fff; box-sizing: border-box;">
                             <option value="ativos">Convênios Ativos</option>
                             <option value="todos">Todos os Convênios</option>
                         </select>
@@ -313,28 +312,30 @@ export class SirconvDashboardModule {
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                         <div>
                             <label style="display: block; font-weight: 600; margin-bottom: 8px; font-size: 13px;">Mês Inicial:</label>
-                            <select id="sispmg-consolidate-mes-ini" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #dcd3c5; background: #fff; box-sizing: border-box;">
+                            <select id="sispmg-consolidate-mes-ini" style="width: 100%; min-width: 0; max-width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #dcd3c5; background: #fff; box-sizing: border-box;">
                                 ${meses.map(m => `<option value="${m}" ${m === 'JAN' ? 'selected' : ''}>${m}</option>`).join('')}
                             </select>
                         </div>
                         <div>
                             <label style="display: block; font-weight: 600; margin-bottom: 8px; font-size: 13px;">Ano Inicial:</label>
-                            <select id="sispmg-consolidate-ano-ini" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #dcd3c5; background: #fff; box-sizing: border-box;">
+                            <select id="sispmg-consolidate-ano-ini" class="sispmg-year-select" style="width: 100%; min-width: 0; max-width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #dcd3c5; background: #fff; box-sizing: border-box;">
                                 ${anos.map(a => `<option value="${a}" ${a === anos[anos.length-1] ? 'selected' : ''}>${a}</option>`).join('')}
+                                <option value="outro">Outro...</option>
                             </select>
                         </div>
                     </div>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                         <div>
                             <label style="display: block; font-weight: 600; margin-bottom: 8px; font-size: 13px;">Mês Final:</label>
-                            <select id="sispmg-consolidate-mes-fim" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #dcd3c5; background: #fff; box-sizing: border-box;">
+                            <select id="sispmg-consolidate-mes-fim" style="width: 100%; min-width: 0; max-width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #dcd3c5; background: #fff; box-sizing: border-box;">
                                 ${meses.map(m => `<option value="${m}" ${m === mesAtual ? 'selected' : ''}>${m}</option>`).join('')}
                             </select>
                         </div>
                         <div>
                             <label style="display: block; font-weight: 600; margin-bottom: 8px; font-size: 13px;">Ano Final:</label>
-                            <select id="sispmg-consolidate-ano-fim" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #dcd3c5; background: #fff; box-sizing: border-box;">
-                                ${anos.map(a => `<option value="${a}" ${a === anoAtual ? 'selected' : ''}>${a}</option>`).join('')}
+                            <select id="sispmg-consolidate-ano-fim" class="sispmg-year-select" style="width: 100%; min-width: 0; max-width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #dcd3c5; background: #fff; box-sizing: border-box;">
+                                ${anos.map(a => `<option value="${a}" ${a === anoNumber ? 'selected' : ''}>${a}</option>`).join('')}
+                                <option value="outro">Outro...</option>
                             </select>
                         </div>
                     </div>
@@ -346,6 +347,20 @@ export class SirconvDashboardModule {
                 </div>
             </div>
         `;
+
+        sidebar.querySelectorAll('.sispmg-year-select').forEach(select => {
+            select.onchange = (e) => {
+                if (e.target.value === 'outro') {
+                    const input = document.createElement('input');
+                    input.type = 'number';
+                    input.id = e.target.id;
+                    input.style.cssText = e.target.style.cssText;
+                    input.placeholder = 'Digite o ano';
+                    e.target.replaceWith(input);
+                    input.focus();
+                }
+            };
+        });
 
         sidebar.querySelector('#sispmg-close-sidebar-btn').onclick = () => this.closeSidebar();
         sidebar.querySelector('#sispmg-btn-run-consolidation').onclick = () => {
@@ -1077,14 +1092,14 @@ export class SirconvDashboardModule {
         
         if (!refreshBtn || !consolidateBtn || !clearCacheBtn || !backBtn || !globalClose || !layout) return;
 
-        const isSidebarOpen = layout.classList.contains('audit-active') || layout.classList.contains('filter-active');
+        const isSidebarOpen = layout.classList.contains('audit-active') || layout.classList.contains('filter-active') || layout.classList.contains('consolidation-active');
 
         if (isSidebarOpen) {
             refreshBtn.style.setProperty('display', 'none', 'important');
             consolidateBtn.style.setProperty('display', 'none', 'important');
             clearCacheBtn.style.setProperty('display', 'none', 'important');
             backBtn.style.setProperty('display', 'none', 'important');
-            globalClose.style.setProperty('display', 'none', 'important');
+            globalClose.style.setProperty('display', 'inline-flex', 'important');
         } else {
             if (this.currentView === 'meus') {
                 refreshBtn.style.setProperty('display', 'inline-flex', 'important');
