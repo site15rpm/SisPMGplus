@@ -13,6 +13,10 @@
     box-sizing: border-box !important; /* Garante que padding e border não afetem o tamanho final */
 }
 
+#sispmg-plus-container label:first-child {
+    width: auto !important;
+}
+
 /* Estilo para o ícone, posicionado ao lado do avatar do usuário */
 #sispmg-plus-header-icon {
     display: flex !important;
