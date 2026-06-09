@@ -650,8 +650,15 @@ export class SirconvDashboardModule {
         const concedentes = Array.from(cMap).map(([id, nome]) => ({ id, nome }));
         const resultados = [];
         const includeCPE = this.lastFiltros?.includeCPE;
+        
+        if (concedentes.length === 0) {
+            console.warn("Nenhum concedente encontrado para a busca.");
+            return resultados;
+        }
+
         if (this.ui) this.ui.showLoader(`Localizando convênios em ${concedentes.length} concedentes...`);
         this.updateBackgroundStatus(true, `Busca: 0/${concedentes.length}`);
+        
         for (let i = 0; i < concedentes.length; i++) {
             const c = concedentes[i];
             if (this.ui) this.ui.updateLoaderMessage(`Extraindo ${i + 1}/${concedentes.length}: ${c.nome}`);
@@ -683,7 +690,7 @@ export class SirconvDashboardModule {
                         resultados.push({ ID: cod, NUMERO_FACE: face || '-', CONCEDENTE: nReal, UNI_NOME_PRINCIPAL: uni, DTINICIAL: dtIni, DTFINAL: vigFim, VALOR_ESTIMADO: parseFloat(val.replace(/\./g, '').replace(',', '.')) || 0, ATIVO: st, STATUS_TEXTO: statusTexto, VENCIDO: (vigFim !== '-' && this.parseDate(vigFim) < new Date() ? '1' : '0') });
                     }
                 }
-            } catch (e) { console.error(e); }
+            } catch (e) { console.error(`Erro ao extrair concedente ${c.id}:`, e); }
             await new Promise(r => setTimeout(r, 50));
         }
         this.updateBackgroundStatus(false);
