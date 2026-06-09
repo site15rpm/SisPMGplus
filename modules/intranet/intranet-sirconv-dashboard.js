@@ -574,7 +574,7 @@ export class SirconvDashboardModule {
             });
             const cronogramas = [], processedIds = new Set();
             doc.querySelectorAll('a.item.flex-linha').forEach(linkRow => {
-                let dIdM = linkRow.getAttribute('onclick')?.match(/detalheCronograma-(\d+)/);
+                let dIdM = linkRow.getAttribute('onclick')?.match(/detalhes?Cronograma-(\d+)/);
                 if (!dIdM || processedIds.has(dIdM[1])) return;
                 const cronId = dIdM[1];
                 processedIds.add(cronId);
@@ -592,19 +592,27 @@ export class SirconvDashboardModule {
                 });
                 if (vExec > 0 || dLiq !== '-') { status = 'Liquidado'; }
 
-                // NOVA EXTRAÇÃO GRANULAR
+                // EXTRAÇÃO GRANULAR ROBUSTA
                 const naturezasGranulares = {}; 
-                const detalheDiv = doc.getElementById(`detalheCronograma-${cronId}`);
+                const detalheDiv = doc.getElementById(`detalheCronograma-${cronId}`) || doc.getElementById(`detalhesCronograma-${cronId}`);
+                
                 if (detalheDiv) {
-                    detalheDiv.querySelectorAll('table.t1 tbody tr').forEach(row => {
-                        const select = row.querySelector('select[name^="NATUREZA_ID"]');
+                    detalheDiv.querySelectorAll('tr').forEach(row => {
+                        const selectNat = row.querySelector('select[name^="NATUREZA_ID"]');
                         const inputVal = row.querySelector('input[name^="VALOR_EXECUCAO"]');
-                        if (select && inputVal) {
-                            const selectedOption = select.querySelector('option[selected]');
-                            const nomeNatureza = selectedOption ? selectedOption.textContent.trim() : '-';
-                            const valExecItem = parseFloat(inputVal.value.replace(/\./g, '').replace(',', '.')) || 0;
-                            if (valExecItem > 0) {
-                                naturezasGranulares[nomeNatureza] = (naturezasGranulares[nomeNatureza] || 0) + valExecItem;
+                        
+                        if (selectNat && inputVal) {
+                            const opt = selectNat.querySelector('option[selected]') || selectNat.options[0];
+                            let nomeNat = opt ? opt.textContent.trim() : 'Não Identificado';
+                            
+                            // Tenta limpar o nome ou cruzar com planoItens para nomes mais bonitos
+                            const itemPlano = planoItens.find(p => nomeNat.includes(p.naturezaId) || p.nome.includes(nomeNat));
+                            if (itemPlano) nomeNat = itemPlano.nome;
+
+                            const vExecItem = parseFloat(inputVal.getAttribute('value')?.replace(/\./g, '').replace(',', '.') || inputVal.value.replace(/\./g, '').replace(',', '.')) || 0;
+                            
+                            if (vExecItem > 0) {
+                                naturezasGranulares[nomeNat] = (naturezasGranulares[nomeNat] || 0) + vExecItem;
                             }
                         }
                     });
@@ -614,7 +622,7 @@ export class SirconvDashboardModule {
                 cronogramas.push({ 
                     mesTexto, valorPrevisto: vPrev, valorExecutado: vExec, 
                     prazoLimite: pLim, dataLiquidado: dLiq, status,
-                    naturezas: naturezasArray // Armazena a quebra por natureza
+                    naturezas: naturezasArray 
                 });
             });
             const vTotalEst = planoItens.reduce((sum, p) => sum + p.valorEstimado, 0);
