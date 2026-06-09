@@ -758,10 +758,22 @@ export class SirconvDashboardModule {
     getStatusLabel(conv) { const isVigente = conv.ATIVO === 'S' && conv.VENCIDO === '0'; return isVigente ? 'Vigente' : (conv.ATIVO === 'N' ? 'Inativo' : 'Vencido'); }
 
     toggleFilterDropdown(trigger, colId) {
-        this.closeAllFilterDropdowns(trigger);
+        this.closeAllFilterDropdowns();
         let dropdown = document.getElementById(`filter-dropdown-${colId}`);
-        if (dropdown) { dropdown.classList.toggle('show'); if (dropdown.classList.contains('show')) this.positionDropdown(trigger, dropdown); return; }
-        dropdown = document.createElement('div'); dropdown.id = `filter-dropdown-${colId}`; dropdown.className = 'sispmg-filter-dropdown show';
+        if (dropdown) { 
+            dropdown.classList.toggle('show'); 
+            if (dropdown.classList.contains('show')) {
+                this.positionDropdown(trigger, dropdown);
+                dropdown.querySelector('input').focus();
+            }
+            return; 
+        }
+
+        dropdown = document.createElement('div'); 
+        dropdown.id = `filter-dropdown-${colId}`; 
+        dropdown.className = 'sispmg-filter-dropdown show';
+        dropdown.onclick = (e) => e.stopPropagation(); // CRÍTICO: Impede fechamento ao clicar dentro
+
         let values = [];
         const dataForValues = this.currentView === 'consolidado' ? this.consolidatedData : this.conveniosData;
         
@@ -775,18 +787,55 @@ export class SirconvDashboardModule {
             else if (colId === 'numero_face') values = [...new Set(dataForValues.map(c => c.NUMERO_FACE || "-"))];
         }
         
-        values.sort(); const selected = this.activeFilters[colId] || [];
-        dropdown.innerHTML = `<div class="sispmg-filter-search"><input type="text" placeholder="Pesquisar..." id="search-${colId}"></div><div class="sispmg-filter-list" id="list-${colId}">${values.map(val => `<label class="sispmg-filter-item"><input type="checkbox" value="${val}" ${selected.includes(String(val)) ? 'checked' : ''}><span>${val}</span></label>`).join('')}</div><div class="sispmg-filter-actions"><button class="sispmg-filter-btn clear">Limpar</button><button class="sispmg-filter-btn apply">Aplicar</button></div>`;
+        values.sort(); 
+        const selected = this.activeFilters[colId] || [];
+
+        dropdown.innerHTML = `
+            <div class="sispmg-filter-search">
+                <input type="text" placeholder="Pesquisar..." id="search-${colId}" autocomplete="off">
+            </div>
+            <div class="sispmg-filter-list" id="list-${colId}">
+                ${values.map(val => `<label class="sispmg-filter-item"><input type="checkbox" value="${val}" ${selected.includes(String(val)) ? 'checked' : ''}><span>${val}</span></label>`).join('')}
+            </div>
+            <div class="sispmg-filter-actions">
+                <button class="sispmg-filter-btn clear">Limpar</button>
+                <button class="sispmg-filter-btn apply">Aplicar</button>
+            </div>
+        `;
+
         document.getElementById('sispmg-plus-container').appendChild(dropdown);
         this.positionDropdown(trigger, dropdown);
+        
+        const searchInput = dropdown.querySelector('input');
+        searchInput.focus();
+        searchInput.onkeydown = (e) => e.stopPropagation(); // CRÍTICO: Impede que atalhos da página interfiram
+
         dropdown.querySelector('.apply').onclick = () => {
             const checked = Array.from(dropdown.querySelectorAll('input:checked')).map(i => i.value);
-            if (checked.length > 0) { this.activeFilters[colId] = checked; trigger.classList.add('active'); } else { delete this.activeFilters[colId]; trigger.classList.remove('active'); }
-            this.applyFilters(); this.closeAllFilterDropdowns();
+            if (checked.length > 0) { 
+                this.activeFilters[colId] = checked; 
+                trigger.classList.add('active'); 
+            } else { 
+                delete this.activeFilters[colId]; 
+                trigger.classList.remove('active'); 
+            }
+            this.applyFilters(); 
+            this.closeAllFilterDropdowns();
         };
-        dropdown.querySelector('.clear').onclick = () => { delete this.activeFilters[colId]; trigger.classList.remove('active'); this.applyFilters(); this.closeAllFilterDropdowns(); };
-        const searchInput = dropdown.querySelector('input');
-        searchInput.oninput = () => { const term = searchInput.value.toLowerCase(); dropdown.querySelectorAll('.sispmg-filter-item').forEach(item => item.style.display = item.textContent.toLowerCase().includes(term) ? 'flex' : 'none'); };
+
+        dropdown.querySelector('.clear').onclick = () => { 
+            delete this.activeFilters[colId]; 
+            trigger.classList.remove('active'); 
+            this.applyFilters(); 
+            this.closeAllFilterDropdowns(); 
+        };
+
+        searchInput.oninput = () => { 
+            const term = searchInput.value.toLowerCase(); 
+            dropdown.querySelectorAll('.sispmg-filter-item').forEach(item => {
+                item.style.display = item.textContent.toLowerCase().includes(term) ? 'flex' : 'none';
+            }); 
+        };
     }
 
     positionDropdown(trigger, dropdown) { const rect = trigger.getBoundingClientRect(); dropdown.style.top = `${rect.bottom + 5}px`; dropdown.style.left = `${Math.max(10, rect.left - 200)}px`; }
