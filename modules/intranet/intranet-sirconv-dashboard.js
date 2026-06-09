@@ -111,7 +111,8 @@ export class SirconvDashboardModule {
             entry.audit.vigenciaInfo = vInfo;
             entry.pendencias = this.analisarPendencias(entry.audit, this.lastFiltros, entry);
             const totalLiq = entry.audit.planoItens?.reduce((sum, p) => sum + (parseFloat(p.valorExecutado) || 0), 0);
-            if (totalLiq > 0) entry.LIQUIDADO = totalLiq;
+            // Prioriza o valor do Portal (Lista) se disponível, para evitar loops de auditoria perpétua.
+            if (totalLiq > 0 && (!entry.LIQUIDADO || entry.LIQUIDADO === '-')) entry.LIQUIDADO = totalLiq;
             if (vInfo.dtInicio && (!entry.DTINICIAL || entry.DTINICIAL === '-')) {
                 entry.DTINICIAL = this.formatDate(vInfo.dtInicio);
             }
@@ -611,7 +612,13 @@ export class SirconvDashboardModule {
                         const valLoc = parseFloat(existing.VALOR_ESTIMADO) || 0;
                         const liqExt = parseFloat(c.LIQUIDADO) || 0;
                         const liqLoc = parseFloat(existing.LIQUIDADO) || 0;
-                        if (Math.abs(valExt - valLoc) > 0.05 || Math.abs(liqExt - liqLoc) > 0.05 || existing.ATIVO !== c.ATIVO) {
+
+                        const diffVal = Math.abs(valExt - valLoc);
+                        const diffLiq = Math.abs(liqExt - liqLoc);
+                        const statusMudou = existing.ATIVO !== c.ATIVO;
+
+                        if (diffVal > 0.05 || diffLiq > 0.05 || statusMudou) {
+                            console.log(`[Dashboard] Divergência no convênio ${c.ID}: Val(${diffVal.toFixed(2)}) Liq(${diffLiq.toFixed(2)}) Status(${statusMudou})`);
                             idsToForceAudit.add(String(c.ID));
                         }
                     }
