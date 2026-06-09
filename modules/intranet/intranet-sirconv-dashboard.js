@@ -57,7 +57,6 @@ export class SirconvDashboardModule {
                         mudou = true;
                     }
                 }
-                // Inativos são permanentes, sem manutenção de expiração.
                 
                 if (mudou) await this.savePersistentCache();
                 this.refreshConveniosList();
@@ -65,9 +64,6 @@ export class SirconvDashboardModule {
         } catch (e) { console.error("[Dashboard] Erro ao carregar Cache:", e); }
     }
 
-    /**
-     * Persiste as bases no storage.
-     */
     async savePersistentCache() {
         try {
             const dataToSave = {};
@@ -77,22 +73,16 @@ export class SirconvDashboardModule {
         } catch (e) { console.error("[Dashboard] Erro ao salvar Cache:", e); }
     }
 
-    /**
-     * Sincroniza e agrega dados de um convênio à base persistente correta.
-     */
     syncConvenio(id, newData, isMeus = false) {
         const idStr = String(id);
         const agora = Date.now();
         
-        // Localiza entrada existente para preservar dados
         let existing = this.activeData[idStr] || this.inactiveData[idStr];
         const combinedData = existing ? { ...existing, ...newData } : newData;
 
-        // Determinar se é Ativo (Vigente/Vencido) ou Inativo
         const statusLabel = this.getStatusLabel(combinedData);
         const isActive = statusLabel === 'Vigente' || statusLabel === 'Vencido' || combinedData.ATIVO === 'S';
 
-        // Roteamento e Migração entre categorias se necessário
         if (isActive) {
             delete this.inactiveData[idStr];
             if (!this.activeData[idStr]) this.activeData[idStr] = { ID: idStr, audit: null, pendencias: [] };
@@ -104,7 +94,6 @@ export class SirconvDashboardModule {
         const entry = isActive ? this.activeData[idStr] : this.inactiveData[idStr];
         if (isMeus) entry.isMeus = true;
         
-        // Agregação de campos (Preserva o que já existe se não estiver no newData)
         for (const key in newData) {
             if (key === 'audit' && newData.audit) {
                 entry.audit = newData.audit;
@@ -116,7 +105,6 @@ export class SirconvDashboardModule {
         
         entry.lastUpdate = agora;
 
-        // Recálculo de vigência e pendências
         const vInfo = this.calculateVigencia(entry);
         if (entry.audit) {
             entry.audit.vigenciaInfo = vInfo;
@@ -140,7 +128,6 @@ export class SirconvDashboardModule {
         
         let d1 = this.parseDate(conv.DTINICIAL), d2 = this.parseDate(conv.DTFINAL);
         
-        // Tenta extrair do cronograma se datas principais falharem
         if (!d1 && conv.audit?.cronogramas?.length > 0) {
             const s = [...conv.audit.cronogramas].sort((a, b) => { 
                 const pa = a.mesTexto.split(' '), pb = b.mesTexto.split(' '); 
@@ -206,6 +193,9 @@ export class SirconvDashboardModule {
                             <button id="sispmg-dashboard-refresh" class="sispmg-dashboard-btn sispmg-dashboard-btn-primary">
                                 <i class="fas fa-search"></i> Busca Avançada
                             </button>
+                            <button id="sispmg-dashboard-clear-cache" class="sispmg-dashboard-btn" style="background-color: #dc3545 !important; color: white !important;">
+                                <i class="fas fa-trash"></i> Limpar Cache
+                            </button>
                             <button id="sispmg-dashboard-back" class="sispmg-dashboard-btn" style="display: none; background-color: #6c757d !important; color: white !important;">
                                 <i class="fas fa-arrow-left"></i> VOLTAR
                             </button>
@@ -263,6 +253,19 @@ export class SirconvDashboardModule {
 
         modalContainer.querySelector('#sispmg-dashboard-refresh').onclick = () => this.showFilterSidebar();
 
+        modalContainer.querySelector('#sispmg-dashboard-clear-cache').onclick = async () => {
+            if (confirm("Isso apagará TODO o histórico de convênios salvos localmente (Ativos e Inativos). Esta ação não pode ser desfeita. Continuar?")) {
+                this.activeData = {};
+                this.inactiveData = {};
+                await sendMessageToBackground('removeStorage', { keys: [this.STORAGE_KEY_ACTIVE, this.STORAGE_KEY_INACTIVE] });
+                this.advSearchIds = [];
+                this.currentView = 'meus';
+                this.refreshConveniosList();
+                this.applyFilters();
+                if (this.ui) this.ui.showToast('Cache limpo com sucesso!', 'success');
+            }
+        };
+
         modalContainer.querySelector('#sispmg-dashboard-back').onclick = () => {
             this.currentView = 'meus';
             this.refreshConveniosList();
@@ -294,19 +297,9 @@ export class SirconvDashboardModule {
     updateBackgroundStatus(isActive, message = "") {
         const statusEl = document.getElementById('sispmg-dashboard-bg-status');
         if (!statusEl) return;
-
-        // Se for uma desativação, permitimos sempre para limpar a tela.
-        if (!isActive) {
-            statusEl.style.setProperty('display', 'none', 'important');
-            return;
-        }
-
-        // Se for uma ativação, a busca avançada (pesquisa total) tem prioridade.
+        if (!isActive) { statusEl.style.setProperty('display', 'none', 'important'); return; }
         const isAdvancedSearchActive = this.isLoading && this.lastFiltros?.tipoBusca === 'todos';
-        if (isAdvancedSearchActive && message.includes('Auditoria:')) {
-            return; 
-        }
-
+        if (isAdvancedSearchActive && message.includes('Auditoria:')) return; 
         statusEl.style.setProperty('display', 'flex', 'important');
         statusEl.querySelector('span').innerText = message;
     }
@@ -317,7 +310,6 @@ export class SirconvDashboardModule {
         layout.classList.remove('audit-active'); layout.classList.add('filter-active'); sidebar.classList.add('active');
         
         this.updateActionButtons();
-
         const municipios = [...new Set(this.conveniosData.map(c => this.getMunicipioClean(c.CONCEDENTE)))].sort();
 
         sidebar.innerHTML = `
@@ -330,7 +322,6 @@ export class SirconvDashboardModule {
                     <div style="background: #fdfaf6; border: 1px solid #e8dfbf; border-radius: 6px; padding: 12px; font-size: 12px; color: #574e2d; line-height: 1.4; margin-bottom: 5px;">
                         <i class="fas fa-info-circle" style="color: #b3a368;"></i> Esta é uma <strong>Busca Profunda</strong> que verifica todos os convênios através dos códigos dos concedentes. Permite rastrear todo o histórico, incluindo convênios firmados com outras unidades.
                     </div>
-
                     <div>
                         <label style="display: block; font-weight: 600; margin-bottom: 8px; font-size: 13px;">Tipo de Busca:</label>
                         <select id="sispmg-dashboard-tipo-busca" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #dcd3c5; background: #fff;">
@@ -338,7 +329,6 @@ export class SirconvDashboardModule {
                             <option value="todos" ${this.lastFiltros?.tipoBusca === 'todos' || this.currentView === 'meus' || !this.lastFiltros?.tipoBusca ? 'selected' : ''}>Todos os Convênios</option>
                         </select>
                     </div>
-
                     <div>
                         <label style="display: block; font-weight: 600; margin-bottom: 8px; font-size: 13px;">Município Específico:</label>
                         <select id="sispmg-filter-municipio" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #dcd3c5; background: #fff;">
@@ -346,7 +336,6 @@ export class SirconvDashboardModule {
                             ${municipios.map(m => `<option value="${m}" ${this.lastFiltros?.municipio === m ? 'selected' : ''}>${m}</option>`).join('')}
                         </select>
                     </div>
-
                     <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px;">
                         <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;">
                             <input type="checkbox" id="sispmg-include-canceled" ${this.lastFiltros?.includeCanceled ? 'checked' : ''}>
@@ -355,10 +344,6 @@ export class SirconvDashboardModule {
                         <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;">
                             <input type="checkbox" id="sispmg-include-cpe" ${this.lastFiltros?.includeCPE ? 'checked' : ''}>
                             Incluir Convênios do CPE
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; color: #dc3545;">
-                            <input type="checkbox" id="sispmg-clear-memory">
-                            Limpar memória (Ativos e Inativos)
                         </label>
                     </div>
                 </div>
@@ -371,33 +356,17 @@ export class SirconvDashboardModule {
         `;
 
         sidebar.querySelector('#sispmg-close-sidebar-btn').onclick = () => this.closeSidebar();
-
         sidebar.querySelector('#sispmg-btn-start-audit').onclick = async () => {
-            const clearMemory = sidebar.querySelector('#sispmg-clear-memory').checked;
-            if (clearMemory) {
-                if (confirm("Isso apagará todo o histórico de convênios salvos localmente. Continuar?")) {
-                    this.activeData = {};
-                    this.inactiveData = {};
-                    await sendMessageToBackground('removeStorage', { keys: [this.STORAGE_KEY_ACTIVE, this.STORAGE_KEY_INACTIVE] });
-                } else {
-                    return;
-                }
-            }
-
             const filtros = {
                 tipoBusca: sidebar.querySelector('#sispmg-dashboard-tipo-busca').value,
                 municipio: sidebar.querySelector('#sispmg-filter-municipio').value,
                 includeCanceled: sidebar.querySelector('#sispmg-include-canceled').checked,
                 includeCPE: sidebar.querySelector('#sispmg-include-cpe').checked
             };
-            
-            // Define a view ANTES de fechar a sidebar para o updateActionButtons capturar corretamente
             this.currentView = filtros.tipoBusca === 'todos' ? 'adv' : 'meus';
             if (this.currentView === 'adv') this.advSearchIds = []; 
-            
             sidebar.classList.remove('active'); 
             layout.classList.remove('filter-active');
-            
             this.updateActionButtons();
             this.fetchConveniosData(filtros);
         };
@@ -406,11 +375,9 @@ export class SirconvDashboardModule {
     async fetchConveniosData(filtrosInput = null) {
         if (this.isLoading) return;
         if (filtrosInput && typeof filtrosInput === 'object') this.lastFiltros = { ...this.lastFiltros, ...filtrosInput };
-        
         const { tipoBusca, municipio, includeCanceled } = this.lastFiltros;
         this.isLoading = true;
         if (this.ui) this.ui.showLoader(tipoBusca === 'todos' ? 'Iniciando varredura profunda de concedentes...' : 'Carregando seus convênios ativos...');
-
         try {
             let list = [];
             if (tipoBusca === 'ativos') {
@@ -418,50 +385,28 @@ export class SirconvDashboardModule {
                 const res = await fetch(`https://intranet.policiamilitar.mg.gov.br/lite/convenio/web/convenio/meus-convenios?pesquisa=${encodeURIComponent(pesquisa)}`);
                 const data = await res.json();
                 if (data?.convenios) list = data.convenios;
-            } else {
-                list = await this.fetchAllConveniosFromConcedentes(municipio);
-            }
-
-            // Filtrar cancelados se solicitado
+            } else { list = await this.fetchAllConveniosFromConcedentes(municipio); }
             if (!includeCanceled) {
                 list = list.filter(c => {
-                    // Verifica status textual extraído da tag .ne (Busca Avançada)
-                    if (c.STATUS_TEXTO) {
-                        return !c.STATUS_TEXTO.toLowerCase().includes('cancelado');
-                    }
-                    // Fallback para ATIVO='S' (Meus Convênios)
+                    if (c.STATUS_TEXTO) return !c.STATUS_TEXTO.toLowerCase().includes('cancelado');
                     return String(c.ATIVO).toUpperCase() === 'S';
                 });
             }
-
-            if (tipoBusca === 'ativos') {
-                list.forEach(c => this.syncConvenio(c.ID, c, true));
-            } else {
-                this.advSearchIds = list.map(r => String(r.ID));
-                list.forEach(r => this.syncConvenio(r.ID, r));
-            }
-            
+            if (tipoBusca === 'ativos') { list.forEach(c => this.syncConvenio(c.ID, c, true)); } 
+            else { this.advSearchIds = list.map(r => String(r.ID)); list.forEach(r => this.syncConvenio(r.ID, r)); }
             const all = { ...this.activeData, ...this.inactiveData };
             for (const id in all) { if (all[id].audit) all[id].pendencias = this.analisarPendencias(all[id].audit, this.lastFiltros, all[id]); }
-            
             await this.savePersistentCache();
             this.refreshConveniosList();
             this.applyFilters();
-            
             const allToAudit = this.conveniosData.filter(c => {
                 const entry = this.activeData[c.ID] || this.inactiveData[c.ID];
                 return !entry?.audit || (Date.now() - (entry.audit.timestamp || 0) > this.CACHE_TTL);
             });
-            
             if (this.ui) this.ui.hideLoader();
             this.backgroundAuditQueue = this.sortConvenios(allToAudit).map(c => c.ID);
             this.processBackgroundQueue();
-        } catch (error) { 
-            console.error("Erro Dashboard:", error); 
-            if (this.ui) this.ui.hideLoader();
-        } finally { 
-            this.isLoading = false; 
-        }
+        } catch (error) { console.error("Erro Dashboard:", error); if (this.ui) this.ui.hideLoader(); } finally { this.isLoading = false; }
     }
 
     async fetchAllConveniosFromConcedentes(municipioFiltro = 'todos') {
@@ -477,15 +422,12 @@ export class SirconvDashboardModule {
         const concedentes = Array.from(cMap).map(([id, nome]) => ({ id, nome }));
         const resultados = [];
         const includeCPE = this.lastFiltros?.includeCPE;
-
         if (this.ui) this.ui.showLoader(`Localizando convênios em ${concedentes.length} concedentes...`);
         this.updateBackgroundStatus(true, `Busca: 0/${concedentes.length}`);
-
         for (let i = 0; i < concedentes.length; i++) {
             const c = concedentes[i];
             if (this.ui) this.ui.updateLoaderMessage(`Extraindo ${i + 1}/${concedentes.length}: ${c.nome}`);
             this.updateBackgroundStatus(true, `Busca: ${i + 1}/${concedentes.length}`);
-
             try {
                 const resH = await fetch(`https://intranet.policiamilitar.mg.gov.br/lite/convenio/web/concedente/view?id=${c.id}`);
                 const hTxt = await resH.text(), doc = new DOMParser().parseFromString(hTxt, 'text/html');
@@ -497,12 +439,9 @@ export class SirconvDashboardModule {
                         const lIdM = item.href.match(/id=(\d+)/);
                         if (!lIdM) continue;
                         let cod = lIdM[1], face = '', val = '0', uni = '-', vigFim = '-', st = 'S', dtIni = '-';
-                        
-                        // Extração do status textual
                         const statusTexto = item.querySelector('.flex-coluna.tam-g .ne')?.innerText.trim() || '';
                         const isInactive = statusTexto.toLowerCase().includes('cancelado') || statusTexto.toLowerCase().includes('finalizado');
                         if (isInactive) st = 'N';
-
                         item.querySelectorAll('.flex-coluna').forEach(col => {
                             const lblEl = col.querySelector('.tc.menor'), lbl = lblEl?.innerText.trim() || '', v = col.innerText.replace(lbl, '').trim();
                             if (lbl.includes('Código') && !cod) cod = v; 
@@ -512,22 +451,8 @@ export class SirconvDashboardModule {
                             else if (lbl.includes('Término')) vigFim = v; 
                             else if (lbl.includes('Início')) dtIni = v;
                         });
-
-                        // Filtro de CPE
                         if (!includeCPE && uni.toUpperCase().includes('CPE')) continue;
-
-                        resultados.push({ 
-                            ID: cod, 
-                            NUMERO_FACE: face || '-', 
-                            CONCEDENTE: nReal, 
-                            UNI_NOME_PRINCIPAL: uni, 
-                            DTINICIAL: dtIni, 
-                            DTFINAL: vigFim, 
-                            VALOR_ESTIMADO: parseFloat(val.replace(/\./g, '').replace(',', '.')) || 0, 
-                            ATIVO: st,
-                            STATUS_TEXTO: statusTexto,
-                            VENCIDO: (vigFim !== '-' && this.parseDate(vigFim) < new Date() ? '1' : '0') 
-                        });
+                        resultados.push({ ID: cod, NUMERO_FACE: face || '-', CONCEDENTE: nReal, UNI_NOME_PRINCIPAL: uni, DTINICIAL: dtIni, DTFINAL: vigFim, VALOR_ESTIMADO: parseFloat(val.replace(/\./g, '').replace(',', '.')) || 0, ATIVO: st, STATUS_TEXTO: statusTexto, VENCIDO: (vigFim !== '-' && this.parseDate(vigFim) < new Date() ? '1' : '0') });
                     }
                 }
             } catch (e) { console.error(e); }
@@ -541,10 +466,7 @@ export class SirconvDashboardModule {
         if (this.isQueueProcessing || this.backgroundAuditQueue.length === 0) return;
         this.isQueueProcessing = true;
         const total = this.backgroundAuditQueue.length;
-        
-        // Ativar status informativo
         this.updateBackgroundStatus(true, `Auditoria: 0/${total}`);
-
         let processed = 0;
         while (this.backgroundAuditQueue.length > 0) {
             const convId = this.backgroundAuditQueue.shift();
@@ -575,22 +497,16 @@ export class SirconvDashboardModule {
     async performDeepAudit(convId, ignoreCache = false) {
         const entry = this.activeData[String(convId)] || this.inactiveData[String(convId)];
         if (!ignoreCache && entry?.audit && (Date.now() - (entry.audit.timestamp || 0) < this.CACHE_TTL)) return entry.audit;
-
         try {
             const res = await fetch(`https://intranet.policiamilitar.mg.gov.br/lite/convenio/web/convenio/view?id=${convId}`);
             const html = await res.text(), doc = new DOMParser().parseFromString(html, 'text/html');
-            
             const historico = [];
             doc.querySelectorAll('#historico .item').forEach(row => {
                 const dEl = row.querySelector('.tc');
                 if (dEl) historico.push({ data: dEl.innerText.trim(), log: row.innerText.replace(dEl.innerText, '').trim().replace(/\n\s*\n/g, '<br>').replace(/\n/g, ' ') });
             });
-
             const statusLabel = this.getStatusLabel(entry || {});
-            if (statusLabel === 'Inativo' && entry?.audit?.historico) {
-                if (JSON.stringify(entry.audit.historico) === JSON.stringify(historico)) return entry.audit;
-            }
-
+            if (statusLabel === 'Inativo' && entry?.audit?.historico) { if (JSON.stringify(entry.audit.historico) === JSON.stringify(historico)) return entry.audit; }
             let planoItens = [];
             try {
                 const token = getCookie('tokiuz');
@@ -599,7 +515,6 @@ export class SirconvDashboardModule {
                     planoItens = pRes.data.planos.map(p => ({ naturezaId: p.NATUREZA_ID, naturezaItem: p.NATUREZA_ITEM, nome: `${p.ITEM} - ${p.NATUREZA_ITEM}`, valorEstimado: parseFloat(p.VALOR) || 0, valorExecutado: 0 }));
                 }
             } catch (e) { console.error(e); }
-
             doc.querySelectorAll('table.t1').forEach(table => {
                 if (!table.textContent.toUpperCase().includes('NATUREZA')) return;
                 table.querySelectorAll('tbody tr').forEach(tr => {
@@ -614,7 +529,6 @@ export class SirconvDashboardModule {
                     }
                 });
             });
-
             const cronogramas = [], processedIds = new Set();
             doc.querySelectorAll('a.item.flex-linha').forEach(linkRow => {
                 let dIdM = linkRow.getAttribute('onclick')?.match(/detalheCronograma-(\d+)/);
@@ -632,30 +546,17 @@ export class SirconvDashboardModule {
                    else if (lbl === 'Prazo limite') pLim = txt.replace('Prazo limite', '').trim();
                    const dt = span.querySelector('dl.ic dt'); if (dt) dLiq = dt.textContent.trim();
                 });
-
-                // Lógica de Status: Se executou algo ou tem data de liquidação, marca como Liquidado
-                if (vExec > 0 || dLiq !== '-') {
-                   status = 'Liquidado';
-                }
-
+                if (vExec > 0 || dLiq !== '-') { status = 'Liquidado'; }
                 cronogramas.push({ mesTexto, valorPrevisto: vPrev, valorExecutado: vExec, prazoLimite: pLim, dataLiquidado: dLiq, status });
                 });
-
             const vTotalEst = planoItens.reduce((sum, p) => sum + p.valorEstimado, 0);
             return { cronogramas, planoItens, historico, timestamp: Date.now(), lastUpdate: new Date().toLocaleString(), valorEstimadoReal: vTotalEst > 0 ? vTotalEst : (parseFloat(entry?.VALOR_ESTIMADO) || 0) };
-
         } catch (e) { console.error(e); return null; }
     }
 
     analisarPendencias(audit, filtros = { tipo: 'todos', periodo: 'todos', manual: '' }, conv = null) {
-        const pendencias = [], hoje = new Date(), anoAtual = hoje.getFullYear(), mesAtual = hoje.getMonth();
-        let filtroMes = null, filtroAno = null;
-        if (filtros.periodo === 'ano_atual') filtroAno = anoAtual;
-        else if (filtros.periodo === 'mes_anterior') { const dAnt = new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1); filtroMes = dAnt.getMonth(); filtroAno = dAnt.getFullYear(); }
-        else if (filtros.periodo === 'mes_atual') { filtroMes = mesAtual; filtroAno = anoAtual; }
-        else if (filtros.periodo === 'manual' && filtros.manual) { const partes = filtros.manual.split(' '); if (partes.length === 2) { const meses = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ']; filtroMes = meses.indexOf(partes[0].toUpperCase()); filtroAno = parseInt(partes[1]); } }
+        const pendencias = [], hoje = new Date();
         const mP = { 'JAN': 0, 'FEV': 1, 'MAR': 2, 'ABR': 3, 'MAI': 4, 'JUN': 5, 'JUL': 6, 'AGO': 7, 'SET': 8, 'OUT': 9, 'NOV': 10, 'DEZ': 11, 'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5, 'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11 };
-        const isNoPeriodo = (mesTexto) => { if (filtros.periodo === 'todos') return true; if (!mesTexto) return false; const p = mesTexto.toUpperCase().split(' '); return mP[p[0]] === filtroMes && parseInt(p[1]) === filtroAno; };
         let duracaoMeses = 0, mesesDecorridos = 0;
         let d1 = this.parseDate(conv?.DTINICIAL), d2 = this.parseDate(conv?.DTFINAL);
         if (!d1 && audit.cronogramas?.length > 0) {
@@ -667,8 +568,8 @@ export class SirconvDashboardModule {
             mesesDecorridos = Math.min(duracaoMeses, Math.max(0, (hoje.getFullYear() - d1.getFullYear()) * 12 + (hoje.getMonth() - d1.getMonth())) + 1);
             audit.vigenciaInfo = { duracaoMeses, mesesDecorridos, mesesFaltantes: Math.max(0, duracaoMeses - mesesDecorridos), dtInicio: d1.toISOString().split('T')[0], dtFim: d2.toISOString().split('T')[0] };
         }
-        if (filtros.tipo === 'todos' || filtros.tipo === 'excesso_valor') { audit.cronogramas?.forEach(c => { if (isNoPeriodo(c.mesTexto) && c.valorExecutado > c.valorPrevisto + 0.01) pendencias.push({ tipo: 'excesso_valor_mensal', msg: `Excesso em ${c.mesTexto}` }); }); }
-        if (filtros.tipo === 'todos' || filtros.tipo === 'atraso_liquidacao') { audit.cronogramas?.forEach(c => { if (isNoPeriodo(c.mesTexto) && c.prazoLimite && c.prazoLimite !== '-') { const pt = c.prazoLimite.split('/'); if (new Date(pt[2], pt[1]-1, pt[0]) < hoje && c.status.includes('Aguardando')) pendencias.push({ tipo: 'atraso_liquidacao', msg: `Atraso: ${c.mesTexto}` }); } }); }
+        if (filtros.tipo === 'todos' || filtros.tipo === 'excesso_valor') { audit.cronogramas?.forEach(c => { if (c.valorExecutado > c.valorPrevisto + 0.01) pendencias.push({ tipo: 'excesso_valor_mensal', msg: `Excesso em ${c.mesTexto}` }); }); }
+        if (filtros.tipo === 'todos' || filtros.tipo === 'atraso_liquidacao') { audit.cronogramas?.forEach(c => { if (c.prazoLimite && c.prazoLimite !== '-') { const pt = c.prazoLimite.split('/'); if (new Date(pt[2], pt[1]-1, pt[0]) < hoje && c.status.includes('Aguardando')) pendencias.push({ tipo: 'atraso_liquidacao', msg: `Atraso: ${c.mesTexto}` }); } }); }
         if (filtros.tipo === 'todos' || filtros.tipo === 'excesso_valor') { audit.planoItens?.forEach(p => { if (p.valorExecutado > p.valorEstimado + 0.01) pendencias.push({ tipo: 'excesso_valor_natureza', nivel: 'critico', msg: `Excesso: ${p.nome}` }); else if (duracaoMeses > 0 && p.valorExecutado > (p.valorEstimado / duracaoMeses) * mesesDecorridos * 1.3) pendencias.push({ tipo: 'excesso_valor_natureza', nivel: 'alerta', msg: `Consumo acelerado: ${p.nome}` }); }); }
         return pendencias;
     }
@@ -696,8 +597,6 @@ export class SirconvDashboardModule {
         layout.classList.remove('filter-active'); layout.classList.add('audit-active'); sidebar.classList.add('active');
         const globalClose = document.getElementById('sispmg-dashboard-close-global');
         if (globalClose) globalClose.style.setProperty('display', 'none', 'important');
-        const actionBtn = document.getElementById('sispmg-dashboard-action-btn');
-        if (actionBtn) actionBtn.style.setProperty('display', 'none', 'important');
 
         const v = audit.vigenciaInfo || {}, p = conv.pendencias || [];
         const agrp = { atraso: [], mensal: [], natureza: [], acelerado: [] };
@@ -835,45 +734,45 @@ export class SirconvDashboardModule {
 
     updateActionButtons() {
         const refreshBtn = document.getElementById('sispmg-dashboard-refresh');
+        const clearCacheBtn = document.getElementById('sispmg-dashboard-clear-cache');
         const backBtn = document.getElementById('sispmg-dashboard-back');
         const globalClose = document.getElementById('sispmg-dashboard-close-global');
         const layout = document.getElementById('sispmg-dashboard-layout');
         
-        if (!refreshBtn || !backBtn || !globalClose || !layout) return;
+        if (!refreshBtn || !clearCacheBtn || !backBtn || !globalClose || !layout) return;
 
         const isSidebarOpen = layout.classList.contains('audit-active') || layout.classList.contains('filter-active');
 
         if (isSidebarOpen) {
-            // Se qualquer lateral estiver aberta, esconde as ações e o fechar global (prioriza o fechar da lateral)
             refreshBtn.style.setProperty('display', 'none', 'important');
+            clearCacheBtn.style.setProperty('display', 'none', 'important');
             backBtn.style.setProperty('display', 'none', 'important');
             globalClose.style.setProperty('display', 'none', 'important');
         } else {
-            // Painel principal: mostrar fechar global e alternar busca/voltar
             globalClose.style.setProperty('display', 'inline-flex', 'important');
             
             if (this.currentView === 'meus') {
                 refreshBtn.style.setProperty('display', 'inline-flex', 'important');
+                clearCacheBtn.style.setProperty('display', 'inline-flex', 'important');
                 backBtn.style.setProperty('display', 'none', 'important');
             } else {
                 refreshBtn.style.setProperty('display', 'none', 'important');
+                clearCacheBtn.style.setProperty('display', 'none', 'important');
                 backBtn.style.setProperty('display', 'inline-flex', 'important');
             }
         }
     }
+
     renderRowHtml(conv) {
         const statusLabel = this.getStatusLabel(conv), isAudited = conv.ID === this.activeConvId;
         const vEst = parseFloat(conv.audit?.valorEstimadoReal || conv.VALOR_ESTIMADO) || 0, vLiq = parseFloat(conv.LIQUIDADO) || 0, prog = vEst > 0 ? ((vLiq / vEst) * 100).toFixed(1) : 0;
         const colorT = vLiq > 0 ? (parseFloat(prog) > 100 ? '#dc3545' : '#155724') : '#666';
         let dur = 0, dec = 0, fal = 0, mPrev = 0, mReal = 0, rowStyle = '';
-        
         const v = this.calculateVigencia(conv);
         dur = v.duracaoMeses; dec = v.mesesDecorridos; fal = v.mesesFaltantes;
         mPrev = vEst / (dur || 1); mReal = vLiq / (dec || 1);
-        
         if (statusLabel === 'Vigente') { if (fal <= 3) rowStyle = 'background-color: #fffde7 !important; border-left: 5px solid #fdd835;'; if (fal <= 1) rowStyle = 'background-color: #fff3e0 !important; border-left: 5px solid #ff9800;'; }
         if (statusLabel === 'Vencido') rowStyle = 'background-color: #fce8e8 !important; border-left: 5px solid #dc3545;';
-        
         const p = conv.pendencias || [];
         const hA = p.some(x => x.tipo === 'atraso_liquidacao'), hEM = p.some(x => x.tipo === 'excesso_valor_mensal'), hEN = p.filter(x => x.tipo === 'excesso_valor_natureza');
         const isC = hEN.some(x => x.nivel === 'critico'), isAl = !isC && hEN.some(x => x.nivel === 'alerta');
@@ -881,6 +780,7 @@ export class SirconvDashboardModule {
             <td style="text-align: left;"><strong>${conv.ID}</strong></td><td class="sispmg-hide-on-audit" style="text-align: left;">${conv.NUMERO_FACE || '-'}</td><td style="text-align: left;">${this.getMunicipioClean(conv.CONCEDENTE)}</td><td style="text-align: left;">${this.cleanUnidade(conv.UNI_NOME_PRINCIPAL)}</td><td class="sispmg-hide-on-audit" style="text-align: left; font-size: 12px;">${this.formatDate(conv.DTINICIAL)}<br>${this.formatDate(conv.DTFINAL)}</td><td class="sispmg-hide-on-audit" style="text-align: center;">${dec}/${dur}</td><td class="sispmg-hide-on-audit" style="text-align: right;">${vEst.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td><td class="sispmg-hide-on-audit" style="text-align: right; font-weight: bold; color: ${colorT};">${vLiq.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td><td class="sispmg-hide-on-audit" style="text-align: right; color: #666;">${mPrev.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td><td class="sispmg-hide-on-audit" style="text-align: right; font-weight: bold; color: #155724;">${mReal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td><td class="sispmg-hide-on-audit" style="text-align: center; font-weight: bold; color: ${colorT};">${prog}%</td><td style="text-align: center;"><span class="sispmg-status-badge ${statusLabel === 'Vigente' ? 'sispmg-status-vigente' : 'sispmg-status-outros'}">${statusLabel}</span></td>
             <td style="text-align: center;"><div style="display: flex; gap: 8px; justify-content: center; width: 60px; margin: 0 auto;"><div style="width: 14px; text-align: center;">${hA ? '<i class="fas fa-clock" title="Atraso Liquidação" style="color: #dc3545;"></i>' : ''}</div><div style="width: 14px; text-align: center;">${hEM ? '<i class="fas fa-chart-line" title="Excesso Mensal" style="color: #dc3545;"></i>' : ''}</div><div style="width: 14px; text-align: center;">${isC ? '<i class="fas fa-exclamation-triangle" title="Excesso Crítico" style="color: #dc3545;"></i>' : (isAl ? '<i class="fas fa-exclamation-triangle" title="Consumo Acelerado" style="color: #9c27b0;"></i>' : '')}</div></div></td></tr>`;
     }
+
     updateSummaryCards() {
         const data = this.filteredData.length > 0 ? this.filteredData : this.conveniosData;
         const tE = data.reduce((a, b) => a + (parseFloat(b.audit?.valorEstimadoReal || b.VALOR_ESTIMADO) || 0), 0);
@@ -891,6 +791,7 @@ export class SirconvDashboardModule {
         if (valorEl) valorEl.innerText = tE.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
         if (liqEl) liqEl.innerText = tL.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
     }
+
     formatDate(d) { if (!d || d === '-') return '-'; const p = d.split(' ')[0].split(/[\/-]/); return p[0].length === 4 ? `${p[2]}/${p[1]}/${p[0]}` : d; }
     parseDate(d) { if (!d || d === '-') return null; const p = d.split(' ')[0].split(/[\/-]/); return p[0].length === 4 ? new Date(p[0], p[1]-1, p[2]) : new Date(p[2], p[1]-1, p[0]); }
 }
