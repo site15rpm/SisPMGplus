@@ -234,7 +234,7 @@ export class SirconvDashboardModule {
 
         modalContainer.querySelector('#sispmg-dashboard-close-global').onclick = () => {
             const layout = document.getElementById('sispmg-dashboard-layout');
-            if (layout && (layout.classList.contains('audit-active') || layout.classList.contains('filter-active'))) {
+            if (layout && (layout.classList.contains('audit-active') || layout.classList.contains('filter-active') || layout.classList.contains('consolidation-active'))) {
                 this.closeSidebar();
             } else {
                 this.closeAllFilterDropdowns();
@@ -245,7 +245,7 @@ export class SirconvDashboardModule {
 
         modalContainer.querySelector('#sispmg-dashboard-refresh').onclick = () => this.showFilterSidebar();
 
-        modalContainer.querySelector('#sispmg-dashboard-consolidate').onclick = () => this.enterConsolidationView();
+        modalContainer.querySelector('#sispmg-dashboard-consolidate').onclick = () => this.showConsolidationSidebar();
 
         modalContainer.querySelector('#sispmg-dashboard-clear-cache').onclick = async () => {
             if (confirm("Isso apagará TODO o histórico de convênios salvos localmente (Ativos e Inativos). Esta ação não pode ser desfeita. Continuar?")) {
@@ -276,16 +276,110 @@ export class SirconvDashboardModule {
         this.fetchConveniosData({ tipoBusca: 'ativos' });
     }
 
-    enterConsolidationView() {
+    showConsolidationSidebar() {
+        const layout = document.getElementById('sispmg-dashboard-layout'), sidebar = document.getElementById('sispmg-dashboard-sidebar');
+        if (!layout || !sidebar) return;
+        layout.classList.remove('audit-active', 'filter-active'); layout.classList.add('consolidation-active'); sidebar.classList.add('active');
+        
+        this.updateActionButtons();
+
+        const meses = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
+        const anos = [...new Set(this.conveniosData.flatMap(c => c.audit?.cronogramas?.map(cr => cr.mesTexto.split(' ')[1]) || []))].filter(a => a && a !== '-').sort((a,b) => b-a);
+        if (anos.length === 0) anos.push(new Date().getFullYear().toString());
+
+        const hoje = new Date();
+        const mesAtual = meses[hoje.getMonth()];
+        const anoAtual = hoje.getFullYear().toString();
+
+        sidebar.innerHTML = `
+            <div style="display: flex; flex-direction: column; height: 100%; padding: 0;">
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #28a745; padding: 15px 20px;">
+                    <h2 style="color: #155724; font-size: 18px; margin: 0;"><i class="fas fa-table"></i> Consolidação de Dados</h2>
+                    <button id="sispmg-close-sidebar-btn" class="sispmg-dashboard-btn sispmg-global-close" style="background-color: #dc3545 !important; color: white !important;">Fechar</button>
+                </div>
+                <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 15px; padding: 20px; overflow-y: auto;">
+                    <div style="background: #f4fdf4; border: 1px solid #c3e6cb; border-radius: 6px; padding: 12px; font-size: 12px; color: #155724; line-height: 1.4; margin-bottom: 5px;">
+                        <i class="fas fa-info-circle"></i> A consolidação agrupa os gastos de todos os convênios selecionados por <strong>mês/ano</strong> e <strong>natureza de despesa</strong>.
+                    </div>
+                    <div>
+                        <label style="display: block; font-weight: 600; margin-bottom: 8px; font-size: 13px;">Tipo de Busca:</label>
+                        <select id="sispmg-consolidate-tipo-busca" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #dcd3c5; background: #fff;">
+                            <option value="ativos">Convênios Ativos</option>
+                            <option value="todos">Todos os Convênios</option>
+                        </select>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <div>
+                            <label style="display: block; font-weight: 600; margin-bottom: 8px; font-size: 13px;">Mês Inicial:</label>
+                            <select id="sispmg-consolidate-mes-ini" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #dcd3c5; background: #fff;">
+                                ${meses.map(m => `<option value="${m}" ${m === 'JAN' ? 'selected' : ''}>${m}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display: block; font-weight: 600; margin-bottom: 8px; font-size: 13px;">Ano Inicial:</label>
+                            <select id="sispmg-consolidate-ano-ini" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #dcd3c5; background: #fff;">
+                                ${anos.map(a => `<option value="${a}" ${a === anos[anos.length-1] ? 'selected' : ''}>${a}</option>`).join('')}
+                            </select>
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <div>
+                            <label style="display: block; font-weight: 600; margin-bottom: 8px; font-size: 13px;">Mês Final:</label>
+                            <select id="sispmg-consolidate-mes-fim" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #dcd3c5; background: #fff;">
+                                ${meses.map(m => `<option value="${m}" ${m === mesAtual ? 'selected' : ''}>${m}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display: block; font-weight: 600; margin-bottom: 8px; font-size: 13px;">Ano Final:</label>
+                            <select id="sispmg-consolidate-ano-fim" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #dcd3c5; background: #fff;">
+                                ${anos.map(a => `<option value="${a}" ${a === anoAtual ? 'selected' : ''}>${a}</option>`).join('')}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div style="padding: 20px; border-top: 1px solid #dcd3c5;">
+                    <button id="sispmg-btn-run-consolidation" class="sispmg-dashboard-btn" style="width: 100%; padding: 12px; background-color: #28a745 !important; color: white !important;">
+                        <i class="fas fa-play"></i> Gerar Consolidação
+                    </button>
+                </div>
+            </div>
+        `;
+
+        sidebar.querySelector('#sispmg-close-sidebar-btn').onclick = () => this.closeSidebar();
+        sidebar.querySelector('#sispmg-btn-run-consolidation').onclick = () => {
+            const range = {
+                tipoBusca: sidebar.querySelector('#sispmg-consolidate-tipo-busca').value,
+                mesIni: sidebar.querySelector('#sispmg-consolidate-mes-ini').value,
+                anoIni: sidebar.querySelector('#sispmg-consolidate-ano-ini').value,
+                mesFim: sidebar.querySelector('#sispmg-consolidate-mes-fim').value,
+                anoFim: sidebar.querySelector('#sispmg-consolidate-ano-fim').value
+            };
+            this.enterConsolidationView(range);
+        };
+    }
+
+    enterConsolidationView(range = null) {
         this.currentView = 'consolidado';
-        this.generateConsolidatedData();
-        this.activeFilters = {}; // Reseta filtros ao entrar na consolidação para evitar inconsistências visuais iniciais
+        this.generateConsolidatedData(range);
+        this.activeFilters = {}; 
+        this.closeSidebar();
         this.applyFilters();
     }
 
-    generateConsolidatedData() {
+    generateConsolidatedData(range = null) {
         const rows = [];
-        this.conveniosData.forEach(conv => {
+        const mP = { 'JAN': 1, 'FEV': 2, 'MAR': 3, 'ABR': 4, 'MAI': 5, 'JUN': 6, 'JUL': 7, 'AGO': 8, 'SET': 9, 'OUT': 10, 'NOV': 11, 'DEZ': 12 };
+        
+        let minScore = 0, maxScore = 999999;
+        if (range) {
+            minScore = (parseInt(range.anoIni) * 100) + mP[range.mesIni];
+            maxScore = (parseInt(range.anoFim) * 100) + mP[range.mesFim];
+        }
+
+        const source = range?.tipoBusca === 'todos' ? { ...this.activeData, ...this.inactiveData } : this.activeData;
+        const dataToConsolidate = Object.values(source).filter(c => range?.tipoBusca === 'todos' || c.isMeus || this.advSearchIds.includes(c.ID));
+
+        dataToConsolidate.forEach(conv => {
             const audit = conv.audit;
             if (audit && audit.cronogramas) {
                 audit.cronogramas.forEach(cron => {
@@ -293,6 +387,11 @@ export class SirconvDashboardModule {
                     const mes = partesMes[0] || '-';
                     const ano = partesMes[1] || '-';
                     
+                    if (range) {
+                        const score = (parseInt(ano) * 100) + mP[mes];
+                        if (score < minScore || score > maxScore) return;
+                    }
+
                     if (cron.naturezas && cron.naturezas.length > 0) {
                         cron.naturezas.forEach(nat => {
                             rows.push({
@@ -307,7 +406,6 @@ export class SirconvDashboardModule {
                             });
                         });
                     } else if (cron.valorExecutado > 0) {
-                        // Fallback caso a quebra granular falhe
                         rows.push({
                             ID: conv.ID,
                             NUMERO_FACE: conv.NUMERO_FACE || '-',
@@ -330,7 +428,7 @@ export class SirconvDashboardModule {
         const sidebar = document.getElementById('sispmg-dashboard-sidebar');
         if (layout && sidebar) {
             sidebar.classList.remove('active');
-            layout.classList.remove('audit-active', 'filter-active');
+            layout.classList.remove('audit-active', 'filter-active', 'consolidation-active');
             this.activeConvId = null;
             this.updateActionButtons();
             this.renderDashboard(true);

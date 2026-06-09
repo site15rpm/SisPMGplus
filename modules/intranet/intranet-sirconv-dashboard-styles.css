@@ -74,8 +74,9 @@
     padding: 15px !important;
 }
 
-/* Estado da Sidebar para Filtros */
-.filter-active .sispmg-dashboard-sidebar.active {
+/* Estado da Sidebar para Filtros e Consolidação */
+.filter-active .sispmg-dashboard-sidebar.active,
+.consolidation-active .sispmg-dashboard-sidebar.active {
     width: 320px !important;
     min-width: 320px !important;
     max-width: 320px !important;
@@ -88,8 +89,9 @@
     flex: 0 0 33.33vw !important;
 }
 
-/* Ao abrir filtros, não redimensionar o painel principal de forma agressiva e não ocultar colunas */
-.filter-active .sispmg-dashboard-main {
+/* Ao abrir filtros ou consolidação, não redimensionar o painel principal de forma agressiva */
+.filter-active .sispmg-dashboard-main,
+.consolidation-active .sispmg-dashboard-main {
     flex: 1 !important;
 }
 
