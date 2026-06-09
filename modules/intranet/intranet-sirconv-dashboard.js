@@ -85,11 +85,15 @@ export class SirconvDashboardModule {
         const isActive = statusLabel === 'Vigente' || statusLabel === 'Vencido' || combinedData.ATIVO === 'S';
 
         if (isActive) {
+            if (!this.activeData[idStr]) {
+                this.activeData[idStr] = this.inactiveData[idStr] || { ID: idStr, audit: null, pendencias: [] };
+            }
             delete this.inactiveData[idStr];
-            if (!this.activeData[idStr]) this.activeData[idStr] = { ID: idStr, audit: null, pendencias: [] };
         } else {
+            if (!this.inactiveData[idStr]) {
+                this.inactiveData[idStr] = this.activeData[idStr] || { ID: idStr, audit: null, pendencias: [] };
+            }
             delete this.activeData[idStr];
-            if (!this.inactiveData[idStr]) this.inactiveData[idStr] = { ID: idStr, audit: null, pendencias: [] };
         }
 
         const entry = isActive ? this.activeData[idStr] : this.inactiveData[idStr];
@@ -740,7 +744,8 @@ export class SirconvDashboardModule {
                             else if (lbl.includes('Início')) dtIni = v;
                         });
                         if (!includeCPE && uni.toUpperCase().includes('CPE')) continue;
-                        resultados.push({ ID: cod, NUMERO_FACE: face || '-', CONCEDENTE: nReal, UNI_NOME_PRINCIPAL: uni, DTINICIAL: dtIni, DTFINAL: vigFim, VALOR_ESTIMADO: parseFloat(val.replace(/\./g, '').replace(',', '.')) || 0, ATIVO: st, STATUS_TEXTO: statusTexto, VENCIDO: (vigFim !== '-' && this.parseDate(vigFim) < new Date() ? '1' : '0') });
+                        const cleanVal = parseFloat(val.replace(/[^\d,]/g, '').replace(',', '.')) || 0;
+                        resultados.push({ ID: cod, NUMERO_FACE: face || '-', CONCEDENTE: nReal, UNI_NOME_PRINCIPAL: uni, DTINICIAL: dtIni, DTFINAL: vigFim, VALOR_ESTIMADO: cleanVal, ATIVO: st, STATUS_TEXTO: statusTexto, VENCIDO: (vigFim !== '-' && this.parseDate(vigFim) < new Date() ? '1' : '0') });
                     }
                 }
             } catch (e) { console.error(`Erro ao extrair concedente ${c.id}:`, e); }
