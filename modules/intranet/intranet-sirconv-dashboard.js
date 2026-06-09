@@ -362,8 +362,9 @@ export class SirconvDashboardModule {
         this.currentView = 'consolidado';
         this.generateConsolidatedData(range);
         this.activeFilters = {}; 
+        this.filteredData = [...this.consolidatedData]; // Inicializa filteredData com os novos dados consolidados
         this.closeSidebar();
-        this.applyFilters();
+        this.renderDashboard(true); // Renderiza explicitamente com filteredData populado
     }
 
     generateConsolidatedData(range = null) {
@@ -376,8 +377,11 @@ export class SirconvDashboardModule {
             maxScore = (parseInt(range.anoFim) * 100) + mP[range.mesFim];
         }
 
-        const source = range?.tipoBusca === 'todos' ? { ...this.activeData, ...this.inactiveData } : this.activeData;
-        const dataToConsolidate = Object.values(source).filter(c => range?.tipoBusca === 'todos' || c.isMeus || this.advSearchIds.includes(c.ID));
+        const source = (range?.tipoBusca === 'todos' || this.currentView === 'consolidado') ? { ...this.activeData, ...this.inactiveData } : this.activeData;
+        const dataToConsolidate = Object.values(source).filter(c => {
+            if (range?.tipoBusca === 'todos') return true;
+            return c.isMeus || this.advSearchIds.includes(c.ID);
+        });
 
         dataToConsolidate.forEach(conv => {
             const audit = conv.audit;
@@ -431,7 +435,9 @@ export class SirconvDashboardModule {
             layout.classList.remove('audit-active', 'filter-active', 'consolidation-active');
             this.activeConvId = null;
             this.updateActionButtons();
-            this.renderDashboard(true);
+            if (this.currentView !== 'consolidado') {
+                this.renderDashboard(true);
+            }
         }
     }
 
