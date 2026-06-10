@@ -84,8 +84,17 @@ const server = http.createServer((req, res) => {
 });
 
 function processIncomingData(data) {
-    const timestamp = new Date().toISOString();
+    const now = new Date();
+    const timestamp = now.toISOString();
     const clientId = data.clientId || 'unknown';
+
+    // Formato da pasta: YYYY-MM-DD_HH-mm-ss
+    const folderName = now.getFullYear() + '-' + 
+        String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+        String(now.getDate()).padStart(2, '0') + '_' + 
+        String(now.getHours()).padStart(2, '0') + '-' + 
+        String(now.getMinutes()).padStart(2, '0') + '-' + 
+        String(now.getSeconds()).padStart(2, '0');
 
     if (data.type === 'heartbeat') {
         clients.set(clientId, { url: data.url, title: data.title, lastSeen: timestamp });
@@ -93,11 +102,34 @@ function processIncomingData(data) {
         const logLine = `[${timestamp}] [${clientId}] [${data.level}] ${data.message}\n`;
         fs.appendFileSync(path.join(DEBUG_DIR, 'browser.log'), logLine);
     } else if (data.type === 'snapshot') {
-        const snapshotFile = path.join(DEBUG_DIR, `snapshot_${clientId}.json`);
+        const snapshotDir = path.join(DEBUG_DIR, folderName);
+        if (!fs.existsSync(snapshotDir)) fs.mkdirSync(snapshotDir, { recursive: true });
+
+        const snapshotFile = path.join(snapshotDir, `snapshot_${clientId}.json`);
         fs.writeFileSync(snapshotFile, JSON.stringify(data, null, 2));
+        
+        // Mantém arquivos de fácil acesso na raiz do debug para visualização rápida (legado/atalho)
         fs.writeFileSync(path.join(DEBUG_DIR, 'current_state.json'), JSON.stringify(data, null, 2));
         if (data.html) fs.writeFileSync(path.join(DEBUG_DIR, 'view.html'), data.html);
-        console.log(`[DebugServer] Snapshot recebido de ${clientId}`);
+        
+        console.log(`[DebugServer] Snapshot recebido de ${clientId} salvo em ${folderName}`);
+    }
+}
+
+/**
+ * Limpa o conteúdo da pasta debug
+ */
+function cleanDebugDir() {
+    if (fs.existsSync(DEBUG_DIR)) {
+        console.log(`[DebugServer] Limpando diretório de debug: ${DEBUG_DIR}`);
+        fs.readdirSync(DEBUG_DIR).forEach(file => {
+            const curPath = path.join(DEBUG_DIR, file);
+            if (fs.lstatSync(curPath).isDirectory()) {
+                fs.rmSync(curPath, { recursive: true, force: true });
+            } else if (file !== '.gitignore') {
+                fs.unlinkSync(curPath);
+            }
+        });
     }
 }
 

@@ -23,8 +23,10 @@
                     title: document.title
                 })
             });
+            if (!serverOnline) console.info(`[Debug] Conexão restabelecida com o servidor.`);
             serverOnline = true;
         } catch (e) {
+            if (serverOnline) console.warn(`[Debug] Servidor de debug offline em ${DEBUG_SERVER}.`);
             serverOnline = false;
         }
     }
