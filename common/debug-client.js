@@ -6,18 +6,18 @@
     const DEBUG_SERVER = 'http://localhost:3001';
     const CLIENT_ID = Math.random().toString(36).substring(2, 8);
     let isPolling = false;
-    let serverOnline = true;
+    let serverOnline = false; // Começa como false para evitar spam no boot
     let isCheckingConnection = false;
     let lastCheckTime = 0;
-    let pollInterval = 5000;
 
     async function sendToDebug(data) {
         const now = Date.now();
         
-        // Se o servidor está offline, só permitimos tentativas de heartbeat a cada 30 segundos
+        // Se o servidor está offline, só permitimos tentativas de heartbeat
+        // Com intervalo longo (60s) para não poluir o console do desenvolvedor
         if (!serverOnline) {
             if (data.type !== 'heartbeat') return;
-            if (isCheckingConnection || (now - lastCheckTime < 30000)) return;
+            if (isCheckingConnection || (now - lastCheckTime < 60000)) return;
         }
 
         // Se já existe uma verificação em curso, não iniciamos outra
@@ -28,7 +28,7 @@
             lastCheckTime = now;
 
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 1500); // Timeout agressivo para localhost
+            const timeoutId = setTimeout(() => controller.abort(), 1000); // Timeout bem curto para localhost
 
             await fetch(DEBUG_SERVER, {
                 method: 'POST',
@@ -46,14 +46,16 @@
             clearTimeout(timeoutId);
             
             if (!serverOnline) {
-                console.info(`[Debug] Conexão restabelecida com o servidor de debug.`);
+                console.info(`[Debug] Conexão estabelecida com o servidor [${DEBUG_SERVER}].`);
                 serverOnline = true;
-                // Reinicia o polling se ele tiver parado por estar offline
                 if (!isPolling) startPolling();
             }
         } catch (e) {
-            if (serverOnline) {
-                console.warn(`[Debug] Servidor de debug offline. [${DEBUG_SERVER}]`);
+            // Se era a primeira tentativa de virar online, avisa uma vez
+            if (serverOnline || lastCheckTime === 0) {
+                // Não usamos console.warn aqui para evitar qualquer risco de loop, embora o filtro proteja
+                // Usamos console.debug que é mais discreto
+                if (serverOnline) console.debug(`[Debug] Servidor offline. Silenciando logs.`);
                 serverOnline = false;
             }
         } finally {
@@ -62,19 +64,14 @@
     }
 
     async function startPolling() {
-        if (isPolling) return;
-        
-        // Se já sabemos que está offline, nem tentamos iniciar o polling
-        if (!serverOnline) return;
-
+        if (isPolling || !serverOnline) return;
         isPolling = true;
-        console.info(`[Debug] Iniciando polling de comandos [ID: ${CLIENT_ID}]`);
         
         try {
             while (serverOnline) {
                 try {
                     const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 30000);
+                    const timeoutId = setTimeout(() => controller.abort(), 35000);
 
                     const response = await fetch(`${DEBUG_SERVER}/poll?id=${CLIENT_ID}`, {
                         signal: controller.signal
@@ -86,19 +83,17 @@
                         const cmd = await response.json();
                         handleCommand(cmd);
                     } else if (response.status === 204) {
-                        // Timeout normal do long polling, continua em loop
+                        // Keep-alive OK
                     } else {
-                        // Erro inesperado (ex: 404, 500), suspende
                         break;
                     }
                 } catch (e) {
-                    // Erro de rede ou abort
                     break;
                 }
             }
         } finally {
             isPolling = false;
-            serverOnline = false; // Garante estado offline se o loop quebrar
+            serverOnline = false;
         }
     }
 
@@ -111,19 +106,12 @@
                 if (el) {
                     el.click();
                     sendToDebug({ type: 'log', level: 'info', message: `[RemoteClick] Sucesso: ${cmd.selector}` });
-                } else {
-                    sendToDebug({ type: 'log', level: 'error', message: `[RemoteClick] Elemento não encontrado: ${cmd.selector}` });
                 }
-            } catch (e) {
-                sendToDebug({ type: 'log', level: 'error', message: `[RemoteClick] Erro: ${e.message}` });
-            }
+            } catch (e) {}
         } else if (cmd.action === 'eval' && cmd.code) {
             try {
-                const result = eval(cmd.code);
-                sendToDebug({ type: 'log', level: 'info', message: `[RemoteEval] Result: ${JSON.stringify(result)}` });
-            } catch (e) {
-                sendToDebug({ type: 'log', level: 'error', message: `[RemoteEval] Error: ${e.message}` });
-            }
+                eval(cmd.code);
+            } catch (e) {}
         }
     }
 
@@ -146,44 +134,61 @@
         });
     }
 
-    // Console Interception
+    // Console Interception com Proteção contra Loop
     const levels = ['log', 'warn', 'error', 'info'];
     levels.forEach(level => {
         const original = console[level];
         console[level] = function(...args) {
+            // Chama o original primeiro
             original.apply(console, args);
-            // Só tentamos enviar se o servidor estiver online
+            
+            // Só tenta enviar se o servidor estiver online
             if (serverOnline) {
-                sendToDebug({
-                    type: 'log',
-                    level: level,
-                    message: args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ')
-                });
+                try {
+                    const message = args.map(a => {
+                        if (typeof a === 'object') {
+                            try { return JSON.stringify(a); } catch(e) { return "[Complex Object]"; }
+                        }
+                        return String(a);
+                    }).join(' ');
+
+                    // FILTRO CRÍTICO: Não interceptar mensagens do próprio sistema de debug
+                    if (message.includes('[Debug]')) return;
+
+                    sendToDebug({
+                        type: 'log',
+                        level: level,
+                        message: message
+                    });
+                } catch (e) {
+                    // Falha silenciosa na interceptação
+                }
             }
         };
     });
 
-    // Injeção da Ponte para o Console (Main World)
+    // Injeção da Ponte
     function injectBridge() {
-        const s = document.createElement('script');
-        s.src = browser.runtime.getURL('common/debug-bridge.js');
-        (document.head || document.documentElement).appendChild(s);
-        s.onload = () => s.remove();
+        try {
+            const s = document.createElement('script');
+            s.src = browser.runtime.getURL('common/debug-bridge.js');
+            (document.head || document.documentElement).appendChild(s);
+            s.onload = () => s.remove();
+        } catch(e) {}
     }
 
     window.addEventListener('SISPMG_TRIGGER_SNAPSHOT', (e) => takeSnapshot(e.detail));
     
-    // Listener para mensagens do Popup/Background
     browser.runtime.onMessage.addListener((request) => {
         if (request.action === 'triggerSnapshot') {
             return takeSnapshot(request.payload?.label || 'popup-trigger');
         }
     });
 
-    // Heartbeat & Start
-    setInterval(() => sendToDebug({ type: 'heartbeat' }), 10000);
+    // Heartbeat: Tenta a primeira conexão imediatamente, depois a cada 15s (se online) ou 60s (se offline)
+    sendToDebug({ type: 'heartbeat' });
+    setInterval(() => sendToDebug({ type: 'heartbeat' }), 15000);
     
     injectBridge();
-    startPolling();
-    console.log(`SisPMG+ Debug Client V2.7 Ativado [ID: ${CLIENT_ID}]`);
+    console.log(`[Debug] SisPMG+ Debug Client V2.8 (Standby) [ID: ${CLIENT_ID}]`);
 })();
