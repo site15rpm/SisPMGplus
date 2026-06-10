@@ -68,35 +68,50 @@ class RotinaProcessor {
         let finalProcessedCode = processedCode;
         const currentRotinaName = this.rotinaName;
 
-        const wrappedCode = `
-            try {
-                ${finalProcessedCode}
-            } catch (e) {
-                if (e.name === 'UserCancellationError') throw e;
-                
-                let lineInfo = "";
-                const stack = e.stack;
-                if (stack) {
-                    const match = stack.match(/<anonymous>:(\\d+):(\\d+)/);
-                    if (match) {
-                        const lineNumber = parseInt(match[1], 10) - 2; // -2 devido ao wrapping do try {
-                        lineInfo = " (Linha: " + lineNumber + ")";
-                    }
-                }
-                
-                const errorName = e.name || "Erro";
-                const originalMessage = e.message || "Ocorreu uma falha desconhecida.";
-                const rotinaName = ${JSON.stringify(currentRotinaName)};
-                
-                // Cria um novo erro com a informação da rotina e linha
-                const enrichedError = new Error(\`[\${rotinaName}]\${lineInfo} \${originalMessage}\`);
-                enrichedError.name = errorName;
-                enrichedError.originalStack = stack;
-                throw enrichedError;
+        const wrappedCode = `try {
+${finalProcessedCode}
+} catch (e) {
+    if (e.name === 'UserCancellationError') throw e;
+    
+    let lineInfo = "";
+    let lineContent = "";
+    const stack = e.stack;
+    if (stack) {
+        const match = stack.match(/<anonymous>:(\\d+):(\\d+)/);
+        if (match) {
+            // Se usamos 'try {\\n' + finalProcessedCode, então o erro na linha 1 da rotina 
+            // aparece como linha 3 do stack (devido ao header do AsyncFunction).
+            // Stack Line 1: async function anonymous(...) {
+            // Stack Line 2: try {
+            // Stack Line 3: routine line 1
+            const lineNumber = parseInt(match[1], 10) - 2; 
+            if (lineNumber > 0 && typeof __codeLines !== 'undefined' && __codeLines[lineNumber - 1]) {
+                lineInfo = " (Linha: " + lineNumber + ")";
+                lineContent = "\\n\\nLinha " + lineNumber + ": \\"" + __codeLines[lineNumber - 1].trim() + "\\"";
+            } else {
+                lineInfo = " (Linha: " + (lineNumber > 0 ? lineNumber : "?") + ")";
             }
-        `;
+        }
+    }
+    
+    const errorName = e.name || "Erro";
+    let originalMessage = e.message || "Ocorreu uma falha desconhecida.";
+    
+    // Melhoria específica para mensagens de timeout
+    if (originalMessage.includes('Timeout') || originalMessage.includes('Falha na verificação')) {
+        originalMessage = "Aguardou por uma condição que não aconteceu: " + originalMessage;
+    }
 
-        const fullCommandNames = [...commandNames, ...specialFunctions, ...paramNames];
+    const rotinaName = ${JSON.stringify(currentRotinaName)};
+    
+    // Cria um novo erro com a informação da rotina e linha
+    const enrichedError = new Error(\`[\${rotinaName}]\${lineInfo} \${originalMessage}\${lineContent}\`);
+    enrichedError.name = errorName;
+    enrichedError.originalStack = stack;
+    throw enrichedError;
+}`;
+
+        const fullCommandNames = [...commandNames, ...specialFunctions, ...paramNames, '__codeLines'];
         
         let rotinaExecutor;
         try {
@@ -124,7 +139,8 @@ class RotinaProcessor {
             }
         });
         
-        return await rotinaExecutor.apply(this.context, [...boundCommands, ...paramValues]);
+        const codeLines = this.code.split('\n');
+        return await rotinaExecutor.apply(this.context, [...boundCommands, ...paramValues, codeLines]);
     }
 }
 

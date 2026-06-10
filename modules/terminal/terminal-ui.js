@@ -692,7 +692,7 @@ export function initUI(prototype) {
     };
     
     prototype.createModal = function(title, contentHTML, onSave = null, customButtons = [], options = {}) {
-        const { showCloseButton = true, iconHTML = '', modalClass = '', stack = false, style = {} } = options;
+        const { showCloseButton = true, iconHTML = '', modalClass = '', stack = false, style = {}, actionsClass = '' } = options;
         this.saveCursorPosition();
     
         if (!stack) {
@@ -715,7 +715,7 @@ export function initUI(prototype) {
                     <h3>${title}</h3>
                 </div>
                 <div class="rotina-modal-body">${contentHTML}</div>
-                <div class="rotina-modal-actions">${buttonsHTML}</div>
+                <div class="rotina-modal-actions ${actionsClass}">${buttonsHTML}</div>
             </div>`;
     
         const modalContent = modalBackdrop.querySelector('.rotina-modal-content');
@@ -781,32 +781,27 @@ export function initUI(prototype) {
     
     prototype.showGenericErrorModal = function(name, error) {
         return new Promise(resolve => {
-            const isTestRun = !!this.testingModal;
             const formattedMessage = error.message.replace(/\n/g, '<br>');
             const content = `<div class="rotina-error-message"><pre><code>${formattedMessage}</code></pre></div>`;
             
-            const buttons = [
-                { text: 'Parar', className: 'rotina-modal-delete-btn', action: (m) => { this.closeModalAndFocus(m); resolve('stop'); } },
-                { 
-                    text: 'Pausar', 
-                    className: 'rotina-modal-cancel-btn', 
-                    action: (m) => {
-                        this.closeModalAndFocus(m);
-                        this.rotinaState = 'paused';
-                        this.showRotinaExecutionControls(isTestRun);
-                        this.exibirNotificacao("Rotina pausada. Use a barra lateral para continuar/parar.", true, 5);
-                        resolve('pause');
-                    }
-                },
-                {
-                    text: 'Continuar',
-                    className: 'rotina-modal-save-btn',
-                    action: (m) => { this.closeModalAndFocus(m); resolve('continue'); }
-                },
-                { text: '✏️ Editar', className: 'rotina-modal-test-btn', action: (m) => { this.closeModalAndFocus(m); resolve('edit'); } }
-            ];
+            const buttons = [];
+            const isPublic = name.startsWith('public/');
+            const canEditPublic = String(this.userPM) === '1453208';
+
+            // Botão Editar (Extremidade Esquerda se houver outro botão)
+            if (!isPublic || canEditPublic) {
+                buttons.push({ text: 'Editar', className: 'rotina-modal-test-btn', action: (m) => { this.closeModalAndFocus(m); resolve('edit'); } });
+            }
+
+            // Botão Parar (Extremidade Direita)
+            buttons.push({ text: 'Parar', className: 'rotina-modal-delete-btn', action: (m) => { this.closeModalAndFocus(m); resolve('stop'); } });
     
-            this.createModal(`Erro na Rotina: ${name}`, content, null, buttons, { modalClass: 'error-modal', showCloseButton: false });
+            const actionsClass = buttons.length > 1 ? 'justify-between' : '';
+            this.createModal(`Erro na Rotina: ${name}`, content, null, buttons, { 
+                modalClass: 'error-modal', 
+                showCloseButton: false,
+                actionsClass: actionsClass
+            });
         });
     };
     

@@ -257,7 +257,8 @@ export function initActions(prototype) {
                         reject(new UserCancellationError("Execução cancelada pelo usuário após falha na verificação."));
                     }
                 } else if (config.lancarErro) {
-                    reject(new Error(`Timeout aguardando elemento em tela.`));
+                    const alvoDesc = Array.isArray(alvo) ? alvo.join(' ou ') : String(alvo);
+                    reject(new Error(`Timeout: O texto "${alvoDesc}" não apareceu na tela após ${config.esperar}s.`));
                 } else {
                     resolve(false);
                 }
