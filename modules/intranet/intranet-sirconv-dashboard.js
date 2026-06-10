@@ -197,13 +197,13 @@ export class SirconvDashboardModule {
                                 <i class="fas fa-circle-notch fa-spin"></i>
                                 <span>Atualizando...</span>
                             </div>
-                            <button id="sispmg-dashboard-refresh" class="sispmg-dashboard-btn sispmg-dashboard-btn-primary">
-                                <i class="fas fa-search"></i> Busca Avançada
-                            </button>
-                            <button id="sispmg-dashboard-consolidate" class="sispmg-dashboard-btn" style="background-color: #28a745 !important; color: white !important;">
+                            <button id="sispmg-dashboard-consolidate" class="sispmg-dashboard-btn" style="background-color: #28a745 !important; color: white !important;" title="Consolidação Financeira">
                                 <i class="fas fa-table"></i> Consolidação
                             </button>
-                            <button id="sispmg-dashboard-clear-cache" class="sispmg-dashboard-btn" style="background-color: #dc3545 !important; color: white !important;">
+                            <button id="sispmg-dashboard-refresh" class="sispmg-dashboard-btn sispmg-dashboard-btn-primary" title="Busca Avançada Profunda">
+                                <i class="fas fa-search"></i>
+                            </button>
+                            <button id="sispmg-dashboard-clear-cache" class="sispmg-dashboard-btn" style="background-color: #dc3545 !important; color: white !important;" title="Limpar Cache Local">
                                 <i class="fas fa-trash"></i>
                             </button>
                             <button id="sispmg-dashboard-back" class="sispmg-dashboard-btn" style="display: none; background-color: #6c757d !important; color: white !important;">
@@ -267,6 +267,7 @@ export class SirconvDashboardModule {
         };
 
         modalContainer.querySelector('#sispmg-dashboard-back').onclick = () => {
+            this.closeSidebar(); // Limpa estados de sidebar e layout para evitar interface travada
             this.activeFilters = {};
             if (this.currentView === 'consolidado') {
                 this.currentView = this.advSearchIds.length > 0 ? 'adv' : 'meus';
@@ -291,7 +292,6 @@ export class SirconvDashboardModule {
         this.updateActionButtons();
 
         const meses = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
-        
         const hoje = new Date();
         const mesAtual = meses[hoje.getMonth()];
         const anoNumber = hoje.getFullYear();
@@ -311,7 +311,7 @@ export class SirconvDashboardModule {
                         <label style="display: block; font-weight: 600; margin-bottom: 8px; font-size: 13px;">Tipo de Busca:</label>
                         <select id="sispmg-consolidate-tipo-busca" style="width: 100%; min-width: 0; max-width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #dcd3c5; background: #fff; box-sizing: border-box;">
                             <option value="ativos">Convênios Ativos</option>
-                            <option value="todos">Todos os Convênios</option>
+                            <option value="todos" selected>Todos os Convênios</option>
                         </select>
                     </div>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
@@ -324,7 +324,7 @@ export class SirconvDashboardModule {
                         <div>
                             <label style="display: block; font-weight: 600; margin-bottom: 8px; font-size: 13px;">Ano Inicial:</label>
                             <select id="sispmg-consolidate-ano-ini" class="sispmg-year-select" style="width: 100%; min-width: 0; max-width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #dcd3c5; background: #fff; box-sizing: border-box;">
-                                ${anos.map(a => `<option value="${a}" ${a === anos[anos.length-1] ? 'selected' : ''}>${a}</option>`).join('')}
+                                ${anos.map(a => `<option value="${a}" ${a === anoNumber ? 'selected' : ''}>${a}</option>`).join('')}
                                 <option value="outro">Outro...</option>
                             </select>
                         </div>
@@ -343,6 +343,16 @@ export class SirconvDashboardModule {
                                 <option value="outro">Outro...</option>
                             </select>
                         </div>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 5px;">
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;">
+                            <input type="checkbox" id="sispmg-consolidate-include-canceled">
+                            Incluir Cancelados
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;">
+                            <input type="checkbox" id="sispmg-consolidate-include-cpe">
+                            Incluir Convênios do CPE
+                        </label>
                     </div>
                 </div>
                 <div style="padding: 20px; border-top: 1px solid #dcd3c5;">
@@ -382,19 +392,31 @@ export class SirconvDashboardModule {
             const range = {
                 tipoBusca: sidebar.querySelector('#sispmg-consolidate-tipo-busca').value,
                 mesIni: sidebar.querySelector('#sispmg-consolidate-mes-ini').value,
-                anoIni: sidebar.querySelector('#sispmg-consolidate-ano-ini').value,
+                anoIni: sidebar.querySelector('#sispmg-consolidate-ano-ini').value || anoNumber,
                 mesFim: sidebar.querySelector('#sispmg-consolidate-mes-fim').value,
-                anoFim: sidebar.querySelector('#sispmg-consolidate-ano-fim').value
+                anoFim: sidebar.querySelector('#sispmg-consolidate-ano-fim').value || anoNumber,
+                includeCanceled: sidebar.querySelector('#sispmg-consolidate-include-canceled').checked,
+                includeCPE: sidebar.querySelector('#sispmg-consolidate-include-cpe').checked
             };
             
             if (range.tipoBusca === 'todos') {
                 const layout = document.getElementById('sispmg-dashboard-layout');
                 if (layout) layout.classList.remove('consolidation-active');
                 sidebar.classList.remove('active');
-                await this.fetchConveniosData({ tipoBusca: 'todos', municipio: 'todos', includeCanceled: true, includeCPE: true }, true); // true = waitForAudit
+                await this.fetchConveniosData({ 
+                    tipoBusca: 'todos', 
+                    municipio: 'todos', 
+                    includeCanceled: range.includeCanceled, 
+                    includeCPE: range.includeCPE,
+                    range: range // Passa o range para otimizar auditoria
+                }, true); 
                 this.enterConsolidationView(range);
             } else {
-                this.enterConsolidationView(range);
+                if (this.ui) this.ui.showLoader('Processando dados consolidados...');
+                setTimeout(() => {
+                    this.enterConsolidationView(range);
+                    if (this.ui) this.ui.hideLoader();
+                }, 100);
             }
         };
     }
@@ -403,9 +425,9 @@ export class SirconvDashboardModule {
         this.currentView = 'consolidado';
         this.generateConsolidatedData(range);
         this.activeFilters = {}; 
-        this.filteredData = [...this.consolidatedData]; // Inicializa filteredData com os novos dados consolidados
+        this.filteredData = [...this.consolidatedData]; 
         this.closeSidebar();
-        this.renderDashboard(true); // Renderiza explicitamente com filteredData populado
+        this.renderDashboard(true); 
     }
 
     generateConsolidatedData(range = null) {
@@ -421,10 +443,16 @@ export class SirconvDashboardModule {
         const source = (range?.tipoBusca === 'todos' || this.currentView === 'consolidado') ? { ...this.activeData, ...this.inactiveData } : this.activeData;
         const dataToConsolidate = Object.values(source).filter(c => {
             if (range?.tipoBusca === 'todos') return true;
-            return c.isMeus || this.advSearchIds.includes(c.ID);
+            return c.isMeus || this.advSearchIds.includes(String(c.ID));
         });
 
         dataToConsolidate.forEach(conv => {
+            // Filtros de Consolidação
+            if (range) {
+                if (!range.includeCanceled && conv.STATUS_TEXTO?.toLowerCase().includes('cancelado')) return;
+                if (!range.includeCPE && conv.UNI_NOME_PRINCIPAL?.toUpperCase().includes('CPE')) return;
+            }
+
             const audit = conv.audit;
             if (audit && audit.cronogramas) {
                 audit.cronogramas.forEach(cron => {
@@ -648,19 +676,55 @@ export class SirconvDashboardModule {
             this.refreshConveniosList();
             this.applyFilters();
             
-            const baseList = tipoBusca === 'todos' ? Object.values(all) : this.conveniosData;
+            // Premissa: Otimização por Período na Consolidação
+            const range = this.lastFiltros.range;
+            const mP = { 'JAN': 1, 'FEV': 2, 'MAR': 3, 'ABR': 4, 'MAI': 5, 'JUN': 6, 'JUL': 7, 'AGO': 8, 'SET': 9, 'OUT': 10, 'NOV': 11, 'DEZ': 12 };
+            
+            let rangeMin = 0, rangeMax = 999999;
+            if (range) {
+                rangeMin = (parseInt(range.anoIni) * 100) + (mP[String(range.mesIni).toUpperCase()] || 1);
+                rangeMax = (parseInt(range.anoFim) * 100) + (mP[String(range.mesFim).toUpperCase()] || 12);
+            }
+
+            const baseList = tipoBusca === 'todos' ? Object.values(all).filter(c => this.advSearchIds.includes(String(c.ID))) : this.conveniosData;
             const allToAudit = baseList.filter(c => {
                 const entry = this.activeData[c.ID] || this.inactiveData[c.ID];
+                
+                // Otimização: Filtrar por período se houver range (Consolidação)
+                if (range) {
+                    const dIni = this.parseDate(c.DTINICIAL);
+                    const dFim = this.parseDate(c.DTFINAL);
+                    
+                    if (dFim) {
+                        const convMax = (dFim.getFullYear() * 100) + (dFim.getMonth() + 1);
+                        if (convMax < rangeMin) {
+                            console.log(`[Dashboard] Skip ${c.ID}: Terminou em ${convMax} antes do período ${rangeMin}.`);
+                            return false;
+                        }
+                    }
+                    if (dIni) {
+                        const convMin = (dIni.getFullYear() * 100) + (dIni.getMonth() + 1);
+                        if (convMin > rangeMax) {
+                            console.log(`[Dashboard] Skip ${c.ID}: Inicia em ${convMin} após o período ${rangeMax}.`);
+                            return false;
+                        }
+                    }
+                }
+
                 const isForced = idsToForceAudit.has(String(c.ID));
-                return isForced || !entry?.audit || (Date.now() - (entry.audit.timestamp || 0) > this.CACHE_TTL);
+                const auditExpirada = !entry?.audit || (Date.now() - (entry.audit.timestamp || 0) > this.CACHE_TTL);
+                return isForced || auditExpirada;
             });
             
+            console.log(`[Dashboard] Otimização de Auditoria: ${allToAudit.length} de ${baseList.length} convênios selecionados para processamento.`);
             this.backgroundAuditQueue = this.sortConvenios(allToAudit).map(c => c.ID);
             
             // Premissa 4: Loader síncrono com andamento numérico da consolidação
             if (waitForAudit) {
-                if (this.ui) this.ui.updateLoaderMessage(`Extração detalhada: 0/${this.backgroundAuditQueue.length} convênios...`);
-                await this.processBackgroundQueue(true); 
+                if (this.ui) this.ui.updateLoaderMessage(`Otimização: ${allToAudit.length}/${baseList.length} convênios no período...`);
+                if (this.backgroundAuditQueue.length > 0) {
+                    await this.processBackgroundQueue(true); 
+                }
                 if (this.ui) this.ui.hideLoader();
             } else {
                 if (this.ui) this.ui.hideLoader();
@@ -740,17 +804,26 @@ export class SirconvDashboardModule {
                             else if (lbl.includes('face')) face = v; 
                             else if (lbl.includes('Valor')) val = v; 
                             else if (lbl.includes('Unidade')) uni = v; 
-                            else if (lbl.includes('Término')) vigFim = v; 
-                            else if (lbl.includes('Início')) dtIni = v;
+                            else if (lbl.includes('Término') || lbl.includes('Vigência') || lbl.includes('Fim')) {
+                                if (v.includes(' a ')) {
+                                    const partes = v.split(' a ');
+                                    dtIni = partes[0].trim();
+                                    vigFim = partes[1].trim();
+                                } else if (v.match(/\d{2}\/\d{2}\/\d{4}/)) {
+                                    vigFim = v;
+                                }
+                            }
+                            else if (lbl.includes('Início') || lbl.includes('Começo')) dtIni = v;
                         });
                         if (!includeCPE && uni.toUpperCase().includes('CPE')) continue;
                         const cleanVal = parseFloat(val.replace(/[^\d,]/g, '').replace(',', '.')) || 0;
-                        resultados.push({ ID: cod, NUMERO_FACE: face || '-', CONCEDENTE: nReal, UNI_NOME_PRINCIPAL: uni, DTINICIAL: dtIni, DTFINAL: vigFim, VALOR_ESTIMADO: cleanVal, ATIVO: st, STATUS_TEXTO: statusTexto, VENCIDO: (vigFim !== '-' && this.parseDate(vigFim) < new Date() ? '1' : '0') });
+                        resultados.push({ ID: String(cod), NUMERO_FACE: face || '-', CONCEDENTE: nReal, UNI_NOME_PRINCIPAL: uni, DTINICIAL: dtIni, DTFINAL: vigFim, VALOR_ESTIMADO: cleanVal, ATIVO: st, STATUS_TEXTO: statusTexto, VENCIDO: (vigFim !== '-' && this.parseDate(vigFim) < new Date() ? '1' : '0') });
                     }
                 }
             } catch (e) { console.error(`Erro ao extrair concedente ${c.id}:`, e); }
             await new Promise(r => setTimeout(r, 50));
         }
+        console.log(`[Dashboard] Busca finalizada. Total extraído: ${resultados.length} convênios.`);
         this.updateBackgroundStatus(false);
         return resultados;
     }
@@ -1246,20 +1319,20 @@ export class SirconvDashboardModule {
             backBtn.style.setProperty('display', 'none', 'important');
             globalClose.style.setProperty('display', 'none', 'important');
         } else {
+            // Em qualquer modo de visualização (meus, adv, consolidado), o botão de busca deve estar visível
+            refreshBtn.style.setProperty('display', 'inline-flex', 'important');
+            
             if (this.currentView === 'meus') {
-                refreshBtn.style.setProperty('display', 'inline-flex', 'important');
                 consolidateBtn.style.setProperty('display', 'inline-flex', 'important');
                 clearCacheBtn.style.setProperty('display', 'inline-flex', 'important');
                 backBtn.style.setProperty('display', 'none', 'important');
                 globalClose.style.setProperty('display', 'inline-flex', 'important');
             } else if (this.currentView === 'adv') {
-                refreshBtn.style.setProperty('display', 'none', 'important');
                 consolidateBtn.style.setProperty('display', 'inline-flex', 'important');
                 clearCacheBtn.style.setProperty('display', 'none', 'important');
                 backBtn.style.setProperty('display', 'inline-flex', 'important');
                 globalClose.style.setProperty('display', 'inline-flex', 'important');
             } else if (this.currentView === 'consolidado') {
-                refreshBtn.style.setProperty('display', 'none', 'important');
                 consolidateBtn.style.setProperty('display', 'none', 'important');
                 clearCacheBtn.style.setProperty('display', 'none', 'important');
                 backBtn.style.setProperty('display', 'inline-flex', 'important');
