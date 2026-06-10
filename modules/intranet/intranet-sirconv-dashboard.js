@@ -267,13 +267,11 @@ export class SirconvDashboardModule {
         };
 
         modalContainer.querySelector('#sispmg-dashboard-back').onclick = () => {
-            this.closeSidebar(); // Limpa estados de sidebar e layout para evitar interface travada
+            this.closeSidebar(); // Limpa estados de sidebar e layout
             this.activeFilters = {};
-            if (this.currentView === 'consolidado') {
-                this.currentView = this.advSearchIds.length > 0 ? 'adv' : 'meus';
-            } else {
-                this.currentView = 'meus';
-            }
+            // Ao voltar da consolidação ou da busca avançada, retornamos ao painel principal 'meus'
+            this.currentView = 'meus';
+            this.advSearchIds = []; // Limpa resultados de busca profunda
             this.refreshConveniosList();
             this.applyFilters();
         };
@@ -1319,20 +1317,20 @@ export class SirconvDashboardModule {
             backBtn.style.setProperty('display', 'none', 'important');
             globalClose.style.setProperty('display', 'none', 'important');
         } else {
-            // Em qualquer modo de visualização (meus, adv, consolidado), o botão de busca deve estar visível
-            refreshBtn.style.setProperty('display', 'inline-flex', 'important');
-            
             if (this.currentView === 'meus') {
+                refreshBtn.style.setProperty('display', 'inline-flex', 'important');
                 consolidateBtn.style.setProperty('display', 'inline-flex', 'important');
                 clearCacheBtn.style.setProperty('display', 'inline-flex', 'important');
                 backBtn.style.setProperty('display', 'none', 'important');
                 globalClose.style.setProperty('display', 'inline-flex', 'important');
             } else if (this.currentView === 'adv') {
+                refreshBtn.style.setProperty('display', 'inline-flex', 'important');
                 consolidateBtn.style.setProperty('display', 'inline-flex', 'important');
                 clearCacheBtn.style.setProperty('display', 'none', 'important');
                 backBtn.style.setProperty('display', 'inline-flex', 'important');
                 globalClose.style.setProperty('display', 'inline-flex', 'important');
             } else if (this.currentView === 'consolidado') {
+                refreshBtn.style.setProperty('display', 'none', 'important');
                 consolidateBtn.style.setProperty('display', 'none', 'important');
                 clearCacheBtn.style.setProperty('display', 'none', 'important');
                 backBtn.style.setProperty('display', 'inline-flex', 'important');
