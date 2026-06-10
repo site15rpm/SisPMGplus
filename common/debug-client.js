@@ -15,7 +15,6 @@
         const now = Date.now();
         
         // Se o servidor está offline, só permitimos tentativas de heartbeat a cada 30 segundos
-        // E evitamos tentativas simultâneas (isCheckingConnection)
         if (!serverOnline) {
             if (data.type !== 'heartbeat') return;
             if (isCheckingConnection || (now - lastCheckTime < 30000)) return;
@@ -29,7 +28,7 @@
             lastCheckTime = now;
 
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 2000); // Timeout curto para localhost
+            const timeoutId = setTimeout(() => controller.abort(), 1500); // Timeout agressivo para localhost
 
             await fetch(DEBUG_SERVER, {
                 method: 'POST',
@@ -48,13 +47,15 @@
             
             if (!serverOnline) {
                 console.info(`[Debug] Conexão restabelecida com o servidor de debug.`);
+                serverOnline = true;
+                // Reinicia o polling se ele tiver parado por estar offline
+                if (!isPolling) startPolling();
             }
-            serverOnline = true;
         } catch (e) {
             if (serverOnline) {
-                console.warn(`[Debug] Servidor de debug offline. As mensagens serão silenciadas até a reconexão. [${DEBUG_SERVER}]`);
+                console.warn(`[Debug] Servidor de debug offline. [${DEBUG_SERVER}]`);
+                serverOnline = false;
             }
-            serverOnline = false;
         } finally {
             isCheckingConnection = false;
         }
@@ -62,36 +63,42 @@
 
     async function startPolling() {
         if (isPolling) return;
-        isPolling = true;
         
-        while (true) {
-            if (!serverOnline) {
-                // Se offline, esperamos o backoff antes de tentar o polling novamente
-                await new Promise(r => setTimeout(r, pollInterval));
-            }
+        // Se já sabemos que está offline, nem tentamos iniciar o polling
+        if (!serverOnline) return;
 
-            try {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 25000);
+        isPolling = true;
+        console.info(`[Debug] Iniciando polling de comandos [ID: ${CLIENT_ID}]`);
+        
+        try {
+            while (serverOnline) {
+                try {
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 30000);
 
-                const response = await fetch(`${DEBUG_SERVER}/poll?id=${CLIENT_ID}`, {
-                    signal: controller.signal
-                });
-                
-                clearTimeout(timeoutId);
-                serverOnline = true;
-                pollInterval = 5000; 
-
-                if (response.status === 200) {
-                    const cmd = await response.json();
-                    handleCommand(cmd);
+                    const response = await fetch(`${DEBUG_SERVER}/poll?id=${CLIENT_ID}`, {
+                        signal: controller.signal
+                    });
+                    
+                    clearTimeout(timeoutId);
+                    
+                    if (response.status === 200) {
+                        const cmd = await response.json();
+                        handleCommand(cmd);
+                    } else if (response.status === 204) {
+                        // Timeout normal do long polling, continua em loop
+                    } else {
+                        // Erro inesperado (ex: 404, 500), suspende
+                        break;
+                    }
+                } catch (e) {
+                    // Erro de rede ou abort
+                    break;
                 }
-            } catch (e) {
-                serverOnline = false;
-                // Backoff progressivo para o polling (max 1 min)
-                pollInterval = Math.min(pollInterval * 1.5, 60000);
-                await new Promise(r => setTimeout(r, pollInterval));
             }
+        } finally {
+            isPolling = false;
+            serverOnline = false; // Garante estado offline se o loop quebrar
         }
     }
 
@@ -145,7 +152,7 @@
         const original = console[level];
         console[level] = function(...args) {
             original.apply(console, args);
-            // Só tentamos enviar se o servidor estiver online para evitar erros de rede no console
+            // Só tentamos enviar se o servidor estiver online
             if (serverOnline) {
                 sendToDebug({
                     type: 'log',
@@ -178,5 +185,5 @@
     
     injectBridge();
     startPolling();
-    console.log(`SisPMG+ Debug Client V2.6 Ativado [ID: ${CLIENT_ID}]`);
+    console.log(`SisPMG+ Debug Client V2.7 Ativado [ID: ${CLIENT_ID}]`);
 })();
