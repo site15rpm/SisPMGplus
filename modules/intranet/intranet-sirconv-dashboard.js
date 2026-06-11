@@ -898,6 +898,9 @@ export class SirconvDashboardModule {
                         tempDiv.innerHTML = this.renderRowHtml(entry);
                         row.replaceWith(tempDiv.firstChild);
                     }
+                    if (this.activeConvId === convId) {
+                        this.renderAuditSidebar(entry);
+                    }
                 }
             } catch (e) { console.error(e); }
             processed++;
