@@ -3,6 +3,59 @@
 
 import { executarApi, getGasApiUrl, saveGasApiUrl } from './api.js';
 
+// Funções de decodificação de credenciais do tokiuz (Intranet PM)
+function decodeJwt(token) {
+    if (!token || typeof token !== 'string') return null;
+    try { 
+        const parts = token.split('.');
+        if (parts.length !== 3) return null;
+        let payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+        const pad = payload.length % 4;
+        if (pad) payload += '='.repeat(4 - pad);
+        return JSON.parse(atob(payload)); 
+    } catch (e) { 
+        console.error("Erro ao decodificar JWT:", e); 
+        return null; 
+    } 
+}
+
+function getCookie(name) { 
+    const v = `; ${document.cookie}`; 
+    const p = v.split(`; ${name}=`); 
+    if (p.length === 2) return p.pop().split(';').shift(); 
+    return undefined; 
+}
+
+function extrairRpmDoToken() {
+    try {
+        const token = getCookie('tokiuz');
+        if (!token) return null;
+        const tokenData = decodeJwt(token);
+        if (!tokenData) return null;
+        
+        // e = codigoRegiao (geralmente número puro da RPM, ex: "15" ou 15)
+        if (tokenData.e) {
+            const match = String(tokenData.e).match(/\d+/);
+            if (match) return match[0];
+        }
+        
+        // r = regiao (ex: "15ª RPM" ou "15 RPM")
+        if (tokenData.r) {
+            const match = String(tokenData.r).match(/\d+/);
+            if (match) return match[0];
+        }
+        
+        // u = codigoUnidadeContabil
+        if (tokenData.u) {
+            const match = String(tokenData.u).match(/\d+/);
+            if (match) return match[0];
+        }
+    } catch (e) {
+        console.error("Erro ao extrair RPM do token:", e);
+    }
+    return null;
+}
+
 // Elementos do DOM
 const appContainer = document.getElementById('sic3-app-container');
 const globalOverlay = document.getElementById('loading-overlay-global');
@@ -328,6 +381,11 @@ window.addEventListener('DOMContentLoaded', async () => {
 
     if (urlRpm) {
         window.rpm = urlRpm;
+    } else {
+        const rpmToken = extrairRpmDoToken();
+        if (rpmToken) {
+            window.rpm = rpmToken;
+        }
     }
     if (urlAno) {
         window.ano = urlAno;
