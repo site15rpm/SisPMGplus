@@ -48,7 +48,19 @@ export class SirconvModule {
                         sic3Btn.addEventListener('click', (e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            sendMessageToBackground('openSettingsPage', { page: `modules/sic3.html?convenioId=${convenioId}` });
+                            // Extração dinâmica de RPM e Ano da página do convênio
+                            let rpm = "15RPM"; // Fallback padrão
+                            const textBody = document.body.innerText || "";
+                            const rpmMatch = textBody.match(/(EM)?(\d+)RPM/i);
+                            if (rpmMatch) {
+                                rpm = rpmMatch[2] + "RPM";
+                            }
+                            let ano = new Date().getFullYear().toString();
+                            const anoMatch = textBody.match(/Cronograma.*(\d{4})/i) || textBody.match(/Plano.*(\d{4})/i) || textBody.match(/(\d{4})/);
+                            if (anoMatch) {
+                                ano = anoMatch[1];
+                            }
+                            sendMessageToBackground('openSettingsPage', { page: `modules/sic3.html?convenioId=${convenioId}&rpm=${rpm}&ano=${ano}` });
                         });
                         
                         parentSpan.insertBefore(sic3Btn, parentSpan.firstChild);

@@ -51,6 +51,8 @@ export async function executarApi(action, params = {}) {
     }
 
     const token = sessionStorage.getItem('authToken') || '';
+    const rpm = window.rpm || "15RPM";
+    const ano = window.ano || new Date().getFullYear().toString();
     
     try {
         const response = await fetch(apiUrl, {
@@ -62,6 +64,8 @@ export async function executarApi(action, params = {}) {
             body: JSON.stringify({
                 action: action,
                 authToken: token,
+                rpm: rpm,
+                ano: ano,
                 params: params
             })
         });
