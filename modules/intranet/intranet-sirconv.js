@@ -56,7 +56,7 @@ export class SirconvModule {
                                 rpm = rpmMatch[2] + "RPM";
                             }
                             let ano = new Date().getFullYear().toString();
-                            const anoMatch = textBody.match(/Cronograma.*(\d{4})/i) || textBody.match(/Plano.*(\d{4})/i) || textBody.match(/(\d{4})/);
+                            const anoMatch = textBody.match(/Cronograma.*(20\d{2})/i) || textBody.match(/Plano.*(20\d{2})/i) || textBody.match(/(20[2-3]\d)/);
                             if (anoMatch) {
                                 ano = anoMatch[1];
                             }
