@@ -24,6 +24,7 @@ export class SirconvDashboardModule {
         this.activeConvId = null;
         this.backgroundAuditQueue = [];
         this.isQueueProcessing = false;
+        this.currentQueueSessionId = 0; // Identificador de sessão de fila
         this.CACHE_TTL = 8 * 60 * 60 * 1000; // 8 horas para validade da auditoria profunda
         this.DATA_TTL_ACTIVE = 12 * 60 * 60 * 1000; // 12 horas para manutenção dos ativos
         this.STORAGE_KEY_ACTIVE = 'sirconv_active_data';
@@ -108,6 +109,25 @@ export class SirconvDashboardModule {
             }
         }
         
+        // Substitui a data de início do convênio atual pela data de início mais antiga da cadeia se identificada na auditoria
+        if (entry.audit && entry.audit.dtInicialAbsoluta) {
+            let dtAntigaDate = entry.audit.dtInicialAbsoluta;
+            if (typeof dtAntigaDate === 'string') {
+                dtAntigaDate = new Date(dtAntigaDate);
+            }
+            if (dtAntigaDate instanceof Date && !isNaN(dtAntigaDate.getTime())) {
+                const dtAntigaStr = this.formatDate(dtAntigaDate.toISOString().split('T')[0]);
+                if (entry.DTINICIAL !== dtAntigaStr) {
+                    console.log(`[Dashboard] Data de início do convênio ${entry.ID} atualizada para a mais antiga da cadeia: ${dtAntigaStr} (era ${entry.DTINICIAL})`);
+                    entry.DTINICIAL = dtAntigaStr;
+                    // Força o recálculo da vigência com a nova data de início
+                    if (entry.audit.vigenciaInfo) {
+                        delete entry.audit.vigenciaInfo;
+                    }
+                }
+            }
+        }
+        
         entry.lastUpdate = agora;
 
         const vInfo = this.calculateVigencia(entry);
@@ -117,17 +137,6 @@ export class SirconvDashboardModule {
             const totalLiq = entry.audit.planoItens?.reduce((sum, p) => sum + (parseFloat(p.valorExecutado) || 0), 0);
             
             if (totalLiq > 0 && (!entry.LIQUIDADO || entry.LIQUIDADO === '-')) entry.LIQUIDADO = totalLiq;
-            
-            // Regra: Substitui a data de início se a descoberta na auditoria for mais antiga
-            if (vInfo.dtInicio) {
-                const dtRecenteStr = entry.DTINICIAL;
-                const dtRecente = this.parseDate(dtRecenteStr);
-                const dtAntiga = new Date(vInfo.dtInicio + 'T12:00:00');
-                if (!dtRecente || dtAntiga < dtRecente) {
-                    entry.DTINICIAL = this.formatDate(vInfo.dtInicio);
-                    console.log(`[Dashboard] Data de início do convênio ${entry.ID} atualizada para a mais antiga da cadeia: ${entry.DTINICIAL} (era ${dtRecenteStr})`);
-                }
-            }
         }
 
         return entry;
@@ -212,7 +221,7 @@ export class SirconvDashboardModule {
                             <button id="sispmg-dashboard-refresh" class="sispmg-dashboard-btn sispmg-dashboard-btn-primary" title="Busca Avançada Profunda">
                                 <i class="fas fa-search"></i>
                             </button>
-                            <button id="sispmg-dashboard-clear-cache" class="sispmg-dashboard-btn" style="background-color: #dc3545 !important; color: white !important;" title="Limpar Cache Local">
+                            <button id="sispmg-dashboard-clear-cache" class="sispmg-dashboard-btn" style="background-color: #5e5e5e !important; color: white !important;" title="Limpar Cache Local">
                                 <i class="fas fa-trash"></i>
                             </button>
                             <button id="sispmg-dashboard-back" class="sispmg-dashboard-btn" style="display: none; background-color: #6c757d !important; color: white !important;">
@@ -741,6 +750,10 @@ export class SirconvDashboardModule {
             });
 
             console.log(`[Dashboard] Auditoria: ${allToAudit.length} convênios selecionados.`);
+            
+            // Cancela sessão de auditoria anterior e reinicia a fila
+            this.currentQueueSessionId = Date.now();
+            this.isQueueProcessing = false;
             this.backgroundAuditQueue = this.sortConvenios(allToAudit).map(c => c.ID);
 
             if (waitForAudit && this.backgroundAuditQueue.length > 0) {
@@ -860,7 +873,9 @@ export class SirconvDashboardModule {
 
     async processBackgroundQueue(isSynchronous = false) {
         if (this.isQueueProcessing || this.backgroundAuditQueue.length === 0) return;
+        
         this.isQueueProcessing = true;
+        const sessionId = this.currentQueueSessionId;
         const total = this.backgroundAuditQueue.length;
         this.updateBackgroundStatus(true, `Auditoria: 0/${total}`);
         let processed = 0;
@@ -869,7 +884,7 @@ export class SirconvDashboardModule {
             this.ui.updateLoaderMessage(`Extração detalhada: 0/${total} convênios...`);
         }
 
-        while (this.backgroundAuditQueue.length > 0) {
+        while (this.backgroundAuditQueue.length > 0 && sessionId === this.currentQueueSessionId) {
             const convId = this.backgroundAuditQueue.shift();
             try {
                 const auditData = await this.performDeepAudit(convId);
@@ -890,6 +905,9 @@ export class SirconvDashboardModule {
                         tempDiv.innerHTML = this.renderRowHtml(entry);
                         row.replaceWith(tempDiv.firstChild);
                     }
+                    if (this.activeConvId === convId) {
+                        this.renderAuditSidebar(entry);
+                    }
                 }
             } catch (e) { console.error(e); }
             processed++;
@@ -900,10 +918,13 @@ export class SirconvDashboardModule {
             if (processed % 5 === 0) { this.updateSummaryCards(); await this.savePersistentCache(); }
             await new Promise(r => setTimeout(r, 600));
         }
-        this.isQueueProcessing = false;
-        this.updateBackgroundStatus(false);
-        this.updateSummaryCards();
-        await this.savePersistentCache();
+
+        if (sessionId === this.currentQueueSessionId) {
+            this.isQueueProcessing = false;
+            this.updateBackgroundStatus(false);
+            this.updateSummaryCards();
+            await this.savePersistentCache();
+        }
     }
 
     async performDeepAudit(convId, ignoreCache = false) {
@@ -936,9 +957,15 @@ export class SirconvDashboardModule {
                 const singleAudit = await this.fetchSingleAudit(currentId);
                 if (!singleAudit) break;
 
-                // 2. Data de Início Absoluta (A mais antiga da cadeia)
                 const entry = this.activeData[currentId] || this.inactiveData[currentId];
-                const dtIni = this.parseDate(entry?.DTINICIAL);
+
+                // 2. Data de Início Absoluta (A mais antiga da cadeia)
+                let dtIni = null;
+                if (singleAudit.dtInicial) {
+                    dtIni = this.parseDate(singleAudit.dtInicial);
+                } else {
+                    dtIni = this.parseDate(entry?.DTINICIAL);
+                }
                 if (dtIni && (!aggregatedAudit.dtInicialAbsoluta || dtIni < aggregatedAudit.dtInicialAbsoluta)) {
                     aggregatedAudit.dtInicialAbsoluta = dtIni;
                 }
@@ -1068,6 +1095,21 @@ export class SirconvDashboardModule {
             const res = await fetch(`https://intranet.policiamilitar.mg.gov.br/lite/convenio/web/convenio/view?id=${convId}`);
             const html = await res.text(), doc = new DOMParser().parseFromString(html, 'text/html');
             
+            let dtInicial = null;
+            let dtFinal = null;
+            doc.querySelectorAll('.info-convenio .flex-coluna').forEach(col => {
+                const tcMenor = col.querySelector('.tc.menor');
+                if (tcMenor) {
+                    const lbl = tcMenor.innerText.trim().toLowerCase();
+                    const val = col.innerText.replace(tcMenor.innerText, '').trim();
+                    if (lbl.includes('vigência inicial') || lbl.includes('início') || lbl.includes('inicial')) {
+                        dtInicial = val;
+                    } else if (lbl.includes('vigência final') || lbl.includes('término') || lbl.includes('final')) {
+                        dtFinal = val;
+                    }
+                }
+            });
+
             const historico = [];
             doc.querySelectorAll('#historico .item').forEach(row => {
                 const dEl = row.querySelector('.tc');
@@ -1155,7 +1197,7 @@ export class SirconvDashboardModule {
             });
 
             const vTotalEst = planoItens.reduce((sum, p) => sum + p.valorEstimado, 0);
-            return { cronogramas, planoItens, historico, valorEstimadoReal: vTotalEst };
+            return { cronogramas, planoItens, historico, valorEstimadoReal: vTotalEst, dtInicial, dtFinal };
         } catch (e) { console.error(`Erro fetchSingleAudit(${convId}):`, e); return null; }
     }
 
@@ -1545,11 +1587,11 @@ export class SirconvDashboardModule {
                 backBtn.style.setProperty('display', 'none', 'important');
                 globalClose.style.setProperty('display', 'inline-flex', 'important');
             } else if (this.currentView === 'adv') {
-                refreshBtn.style.setProperty('display', 'inline-flex', 'important');
-                consolidateBtn.style.setProperty('display', 'inline-flex', 'important');
+                refreshBtn.style.setProperty('display', 'none', 'important');
+                consolidateBtn.style.setProperty('display', 'none', 'important');
                 clearCacheBtn.style.setProperty('display', 'none', 'important');
                 backBtn.style.setProperty('display', 'inline-flex', 'important');
-                globalClose.style.setProperty('display', 'inline-flex', 'important');
+                globalClose.style.setProperty('display', 'none', 'important');
             } else if (this.currentView === 'consolidado') {
                 refreshBtn.style.setProperty('display', 'none', 'important');
                 consolidateBtn.style.setProperty('display', 'none', 'important');
