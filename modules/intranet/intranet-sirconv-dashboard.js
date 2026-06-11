@@ -108,6 +108,25 @@ export class SirconvDashboardModule {
             }
         }
         
+        // Substitui a data de início do convênio atual pela data de início mais antiga da cadeia se identificada na auditoria
+        if (entry.audit && entry.audit.dtInicialAbsoluta) {
+            let dtAntigaDate = entry.audit.dtInicialAbsoluta;
+            if (typeof dtAntigaDate === 'string') {
+                dtAntigaDate = new Date(dtAntigaDate);
+            }
+            if (dtAntigaDate instanceof Date && !isNaN(dtAntigaDate.getTime())) {
+                const dtAntigaStr = this.formatDate(dtAntigaDate.toISOString().split('T')[0]);
+                if (entry.DTINICIAL !== dtAntigaStr) {
+                    console.log(`[Dashboard] Data de início do convênio ${entry.ID} atualizada para a mais antiga da cadeia: ${dtAntigaStr} (era ${entry.DTINICIAL})`);
+                    entry.DTINICIAL = dtAntigaStr;
+                    // Força o recálculo da vigência com a nova data de início
+                    if (entry.audit.vigenciaInfo) {
+                        delete entry.audit.vigenciaInfo;
+                    }
+                }
+            }
+        }
+        
         entry.lastUpdate = agora;
 
         const vInfo = this.calculateVigencia(entry);
@@ -117,17 +136,6 @@ export class SirconvDashboardModule {
             const totalLiq = entry.audit.planoItens?.reduce((sum, p) => sum + (parseFloat(p.valorExecutado) || 0), 0);
             
             if (totalLiq > 0 && (!entry.LIQUIDADO || entry.LIQUIDADO === '-')) entry.LIQUIDADO = totalLiq;
-            
-            // Regra: Substitui a data de início se a descoberta na auditoria for mais antiga
-            if (vInfo.dtInicio) {
-                const dtRecenteStr = entry.DTINICIAL;
-                const dtRecente = this.parseDate(dtRecenteStr);
-                const dtAntiga = new Date(vInfo.dtInicio + 'T12:00:00');
-                if (!dtRecente || dtAntiga < dtRecente) {
-                    entry.DTINICIAL = this.formatDate(vInfo.dtInicio);
-                    console.log(`[Dashboard] Data de início do convênio ${entry.ID} atualizada para a mais antiga da cadeia: ${entry.DTINICIAL} (era ${dtRecenteStr})`);
-                }
-            }
         }
 
         return entry;
@@ -937,8 +945,13 @@ export class SirconvDashboardModule {
                 if (!singleAudit) break;
 
                 // 2. Data de Início Absoluta (A mais antiga da cadeia)
-                const entry = this.activeData[currentId] || this.inactiveData[currentId];
-                const dtIni = this.parseDate(entry?.DTINICIAL);
+                let dtIni = null;
+                if (singleAudit.dtInicial) {
+                    dtIni = this.parseDate(singleAudit.dtInicial);
+                } else {
+                    const entry = this.activeData[currentId] || this.inactiveData[currentId];
+                    dtIni = this.parseDate(entry?.DTINICIAL);
+                }
                 if (dtIni && (!aggregatedAudit.dtInicialAbsoluta || dtIni < aggregatedAudit.dtInicialAbsoluta)) {
                     aggregatedAudit.dtInicialAbsoluta = dtIni;
                 }
@@ -1068,6 +1081,21 @@ export class SirconvDashboardModule {
             const res = await fetch(`https://intranet.policiamilitar.mg.gov.br/lite/convenio/web/convenio/view?id=${convId}`);
             const html = await res.text(), doc = new DOMParser().parseFromString(html, 'text/html');
             
+            let dtInicial = null;
+            let dtFinal = null;
+            doc.querySelectorAll('.info-convenio .flex-coluna').forEach(col => {
+                const tcMenor = col.querySelector('.tc.menor');
+                if (tcMenor) {
+                    const lbl = tcMenor.innerText.trim().toLowerCase();
+                    const val = col.innerText.replace(tcMenor.innerText, '').trim();
+                    if (lbl.includes('vigência inicial') || lbl.includes('início') || lbl.includes('inicial')) {
+                        dtInicial = val;
+                    } else if (lbl.includes('vigência final') || lbl.includes('término') || lbl.includes('final')) {
+                        dtFinal = val;
+                    }
+                }
+            });
+
             const historico = [];
             doc.querySelectorAll('#historico .item').forEach(row => {
                 const dEl = row.querySelector('.tc');
@@ -1155,7 +1183,7 @@ export class SirconvDashboardModule {
             });
 
             const vTotalEst = planoItens.reduce((sum, p) => sum + p.valorEstimado, 0);
-            return { cronogramas, planoItens, historico, valorEstimadoReal: vTotalEst };
+            return { cronogramas, planoItens, historico, valorEstimadoReal: vTotalEst, dtInicial, dtFinal };
         } catch (e) { console.error(`Erro fetchSingleAudit(${convId}):`, e); return null; }
     }
 
