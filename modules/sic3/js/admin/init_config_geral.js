@@ -64,11 +64,7 @@ async function configurarEventListenersAdmin() {
       .off("click.admin")
       .on("click.admin", function () {
         sessionStorage.removeItem("userSelections");
-        mostrarCarregamento();
-        google.script.run
-          .withSuccessHandler((response) => includeHtmlBody(response))
-          .withFailureHandler((error) => manipularErro(error, "logoutUser"))
-          .logoutUser();
+        window.close();
       });
 
     $("#btnGerenciarItem99")

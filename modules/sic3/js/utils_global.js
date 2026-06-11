@@ -403,14 +403,18 @@ window.navegarPara = async function(action) {
     if (action === "voltar" && typeof window.salvarSelecaoUsuario === 'function') {
         window.salvarSelecaoUsuario();
     }
-    const authToken = sessionStorage.getItem('authToken') || '';
     
-    let serverFunctionPromise;
     if (action === "voltar") {
-        serverFunctionPromise = new Promise(resolve => google.script.run.withSuccessHandler(resolve).withFailureHandler(err => {console.error("Erro ao voltar:", err); resolve(false);}).voltarParaPainelAdmin(authToken));
+      window.ocultarCarregamento();
+      if (typeof window.navegarParaSic3 === 'function') {
+          // Recupera os convênios da memória se disponíveis, senão passa vazio para que sejam recarregados
+          window.navegarParaSic3('admin', { convenios: window.dadosConveniosPrepostos || [] });
+          return true;
+      }
     } else if (action === "sair") {
-      sessionStorage.removeItem('authToken');
-      serverFunctionPromise = new Promise(resolve => google.script.run.withSuccessHandler(resolve).withFailureHandler(err => {console.error("Erro ao sair:", err); resolve(false);}).logoutUser());
+      window.ocultarCarregamento();
+      window.close();
+      return true;
     } else {
       window.ocultarCarregamento();
       return false; 

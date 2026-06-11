@@ -295,9 +295,9 @@ export async function navegarPara(pagina, contexto = {}) {
     }
 }
 
-// Ouvinte para rebaixar sessões inválidas
+// Ouvinte para rebaixar sessões inválidas (redireciona para o admin em caso de falha de autenticação na extensão)
 document.addEventListener('sic3:unauthorized', () => {
-    navegarPara('login');
+    navegarPara('admin');
 });
 
 // Inicialização da barra de configuração de API
@@ -309,7 +309,7 @@ async function initConfigBar() {
         const url = apiUrlInput.value.trim();
         await saveGasApiUrl(url);
         alert("URL do Web App do GAS configurada com sucesso!");
-        navegarPara('login');
+        navegarPara('admin');
     });
 }
 
@@ -320,6 +320,50 @@ window.addEventListener('DOMContentLoaded', async () => {
     window.executarApiGas = executarApi;
     window.navegarParaSic3 = navegarPara;
 
-    // Inicia a aplicação na tela de login
-    navegarPara('login');
+    // Obtém o convenioId da Query String para abertura rápida via link da intranet
+    const urlParams = new URLSearchParams(window.location.search);
+    const convenioId = urlParams.get('convenioId');
+
+    if (convenioId) {
+        window.mostrarCarregamentoGlobal("Carregando dados do convênio...");
+        try {
+            // Executa chamada de API para obter os convênios
+            const result = await executarApi("carregarConveniosMunicipio", ["admin", { username: "extensao", municipio: "admin" }]);
+            if (result && Array.isArray(result)) {
+                // Encontra o convênio específico correspondente ao ID
+                const conv = result.find(c => c.convenio === convenioId);
+                if (conv) {
+                    const dataAtual = new Date();
+                    const meses = ['JANEIRO', 'FEVEREIRO', 'MARÇO', 'ABRIL', 'MAIO', 'JUNHO', 'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO'];
+                    // Lançamento abre por padrão no mês corrente
+                    const mesAtual = meses[dataAtual.getMonth()];
+                    const anoAtual = dataAtual.getFullYear().toString();
+
+                    // Salva a lista de convênios na memória global para que a navegação do botão "Voltar" funcione
+                    window.dadosConveniosPrepostos = result;
+
+                    await navegarPara('lancamentos', {
+                        municipio: conv.municipio,
+                        convenio: conv.convenio,
+                        ano: anoAtual,
+                        mes: mesAtual,
+                        acao: "lancar",
+                        nUser: "Operador Extensão",
+                        authToken: "bypass",
+                        idbase: ""
+                    });
+                    return;
+                }
+            }
+            alert(`Convênio ${convenioId} não foi localizado na base de dados do SIC3.`);
+        } catch (error) {
+            console.error("Erro ao carregar convênio via atalho:", error);
+            alert(`Erro ao comunicar com o servidor GAS: ${error.message}`);
+        } finally {
+            window.ocultarCarregamentoGlobal();
+        }
+    }
+
+    // Se não houver convenioId ou não for encontrado, inicia na tela do Painel Geral de administração
+    navegarPara('admin', { nUser: "Operador Extensão", authToken: "bypass" });
 });
