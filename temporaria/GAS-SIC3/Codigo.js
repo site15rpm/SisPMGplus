@@ -5,6 +5,8 @@
 
 // ID global da planilha ativa durante a execução da requisição
 var CURRENT_SPREADSHEET_ID = null;
+var CURRENT_RPM = "15";
+var CURRENT_ANO = new Date().getFullYear().toString();
 
 // ID da pasta pai do Google Drive onde as planilhas do SIC3 serão armazenadas
 const DRIVE_FOLDER_ID = "14TPdLFpf2bEMzWdLjxEtVIeUuoIrFuNu";
@@ -167,6 +169,33 @@ function handleApiAction(action, body) {
 // ========== GERENCIAMENTO DINÂMICO DE PLANILHAS (BANCO DE DADOS) ==========
 
 /**
+ * Formata e normaliza o nome da RPM para o padrão "XXRPM"
+ */
+function formatarNomeRPM(rpm) {
+  let r = String(rpm || "15").trim().toUpperCase();
+  if (/^\d+$/.test(r)) {
+    return r + "RPM";
+  }
+  return r;
+}
+
+/**
+ * Obtém ou cria a subpasta correspondente à RPM na pasta pai do SIC3
+ */
+function obterOuCriarPastaRPM(rpm) {
+  const folderName = formatarNomeRPM(rpm);
+  const rootFolder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
+  const subFolders = rootFolder.getFoldersByName(folderName);
+  
+  if (subFolders.hasNext()) {
+    return subFolders.next();
+  }
+  
+  const newFolder = rootFolder.createFolder(folderName);
+  return newFolder;
+}
+
+/**
  * Resolve o ID da planilha (banco de dados) correspondente ao contexto da requisição
  */
 function obterSpreadsheetIdDoContexto(body) {
@@ -177,110 +206,191 @@ function obterSpreadsheetIdDoContexto(body) {
   if ((!rpm || !ano) && body.authToken) {
     const usuarioInfo = validateAuthToken(body.authToken);
     if (usuarioInfo) {
-      if (!rpm) rpm = usuarioInfo.rpm || "15";
-      if (!ano) ano = usuarioInfo.ano || new Date().getFullYear().toString();
+      if (!rpm) rpm = usuarioInfo.rpm;
+      if (!ano) ano = usuarioInfo.ano;
     }
   }
 
   // Fallbacks padrão
   if (!rpm) rpm = "15";
-  if (!ano) ano = new Date().getFullYear().toString();
+  if (!ano) {
+    if (body.convenioUrl) {
+      const match = body.convenioUrl.match(/\b(202\d|203\d)\b/);
+      if (match) {
+        ano = match[1];
+      }
+    }
+    if (!ano) ano = new Date().getFullYear().toString();
+  }
 
-  return obterOuCriarPlanilha(rpm, ano);
+  CURRENT_RPM = formatarNomeRPM(rpm);
+  CURRENT_ANO = String(ano).replace(/[^\d]/g, "").trim();
+
+  return obterOuCriarPlanilhaAnual(CURRENT_RPM, CURRENT_ANO);
 }
 
 /**
- * Pesquisa ou inicializa arquivos permanentes e comuns do SIC3 no Drive
+ * Pesquisa ou inicializa arquivos permanentes e comuns do SIC3 no Drive (Locais por RPM ou Globais)
  */
-function obterIdArquivoCompartilhado(nomeBase) {
-  const folder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
-  const files = folder.getFilesByName(nomeBase);
+function obterIdArquivoCompartilhado(nomeBase, rpm) {
+  const isGlobal = nomeBase === "SIC3_TBPrimaria" || nomeBase === "SIC3_TBSecundaria" || nomeBase === "SIC3_BDLogins";
+  
+  if (isGlobal) {
+    const rootFolder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
+    const files = rootFolder.getFilesByName(nomeBase);
+    if (files.hasNext()) {
+      return files.next().getId();
+    }
+    
+    // Se não existir, cria a planilha permanente global na raiz do SIC3
+    const ss = SpreadsheetApp.create(nomeBase);
+    const file = DriveApp.getFileById(ss.getId());
+    rootFolder.addFile(file);
+    try {
+      DriveApp.getRootFolder().removeFile(file);
+    } catch(e) {}
+    
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    
+    let cabecalho = [];
+    let nomeAba = "";
+    if (nomeBase === "SIC3_TBPrimaria") {
+      nomeAba = "tb-primaria";
+      cabecalho = ["codigo", "especificacao", "elementosDespesa", "unidadesFornecimento"];
+    } else if (nomeBase === "SIC3_TBSecundaria") {
+      nomeAba = "tb-secundaria";
+      cabecalho = ["CÓDIGO", "DESCRIÇÃO", "VALOR", "UNIDADE"];
+    } else if (nomeBase === "SIC3_BDLogins") {
+      nomeAba = "login";
+      cabecalho = ["senha", "municipio"];
+    }
+    
+    if (nomeAba) {
+      let sheet = ss.getSheetByName(nomeAba);
+      if (!sheet) {
+        sheet = ss.insertSheet(nomeAba);
+      }
+      sheet.clear();
+      sheet.appendRow(cabecalho);
+      sheet.getRange(1, 1, 1, cabecalho.length).setFontWeight("bold").setNumberFormat("@STRING@");
+      
+      const defaultSheet = ss.getSheetByName("Página 1") || ss.getSheetByName("Sheet1");
+      if (defaultSheet && ss.getSheets().length > 1) {
+        ss.deleteSheet(defaultSheet);
+      }
+    }
+    
+    return ss.getId();
+  } else {
+    // Local: BDConvenios ou BDEnderecos. Fica dentro da pasta da RPM.
+    const rpmResolvida = rpm || CURRENT_RPM || "15";
+    const folderRPM = obterOuCriarPastaRPM(rpmResolvida);
+    const files = folderRPM.getFilesByName(nomeBase);
+    if (files.hasNext()) {
+      return files.next().getId();
+    }
+    
+    // Cria na subpasta se não existir
+    const ss = SpreadsheetApp.create(nomeBase);
+    const file = DriveApp.getFileById(ss.getId());
+    folderRPM.addFile(file);
+    try {
+      DriveApp.getRootFolder().removeFile(file);
+    } catch(e) {}
+    
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    
+    let cabecalho = [];
+    let nomeAba = "";
+    if (nomeBase === "SIC3_BDConvenios") {
+      nomeAba = "convenios";
+      cabecalho = ["municipio", "convenio", "preposto_n", "preposto_pg", "preposto", "unidade", "dataInicio", "dataFim"];
+    } else if (nomeBase === "SIC3_BDEnderecos") {
+      nomeAba = "enderecos";
+      cabecalho = ["municipio", "convenio", "endereco", "dtEndereco", "medidorAgua", "dtMedidorAgua", "medidorEnergia", "dtMedidorEnergia"];
+    }
+    
+    if (nomeAba) {
+      let sheet = ss.getSheetByName(nomeAba);
+      if (!sheet) {
+        sheet = ss.insertSheet(nomeAba);
+      }
+      sheet.clear();
+      sheet.appendRow(cabecalho);
+      sheet.getRange(1, 1, 1, cabecalho.length).setFontWeight("bold").setNumberFormat("@STRING@");
+      
+      const defaultSheet = ss.getSheetByName("Página 1") || ss.getSheetByName("Sheet1");
+      if (defaultSheet && ss.getSheets().length > 1) {
+        ss.deleteSheet(defaultSheet);
+      }
+    }
+    
+    return ss.getId();
+  }
+}
+
+/**
+ * Obtém ou cria o arquivo de log de acesso anual na pasta da RPM
+ */
+function obterIdLogAcesso(rpm, ano) {
+  const folderRPM = obterOuCriarPastaRPM(rpm);
+  const nomeLog = "LOG_" + String(ano).trim();
+  const files = folderRPM.getFilesByName(nomeLog);
+  
   if (files.hasNext()) {
     return files.next().getId();
   }
   
-  // Se não existir, cria a planilha permanente
-  const ss = SpreadsheetApp.create(nomeBase);
+  const ss = SpreadsheetApp.create(nomeLog);
   const file = DriveApp.getFileById(ss.getId());
-  folder.addFile(file);
+  folderRPM.addFile(file);
   try {
     DriveApp.getRootFolder().removeFile(file);
   } catch(e) {}
   
   file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
   
-  let cabecalho = [];
-  let nomeAba = "";
-  if (nomeBase === "SIC3_BDConvenios") {
-    nomeAba = "convenios";
-    cabecalho = ["municipio", "convenio", "preposto_n", "preposto_pg", "preposto", "unidade", "dataInicio", "dataFim"];
-  } else if (nomeBase === "SIC3_BDEnderecos") {
-    nomeAba = "enderecos";
-    cabecalho = ["municipio", "convenio", "endereco", "dtEndereco", "medidorAgua", "dtMedidorAgua", "medidorEnergia", "dtMedidorEnergia"];
-  } else if (nomeBase === "SIC3_TBPrimaria") {
-    nomeAba = "dt-primaria";
-    cabecalho = ["codigo", "especificacao", "elementosDespesa", "unidadesFornecimento"];
-  } else if (nomeBase === "SIC3_TBSecundaria") {
-    nomeAba = "login";
-    cabecalho = ["senha", "municipio"];
+  let sheet = ss.getSheetByName("acessos");
+  if (!sheet) {
+    sheet = ss.insertSheet("acessos");
   }
+  sheet.clear();
+  const acessosCabecalho = ["timestamp", "username", "municipio", "resultado", "operacao", "local"];
+  sheet.appendRow(acessosCabecalho);
+  sheet.getRange(1, 1, 1, acessosCabecalho.length).setFontWeight("bold").setNumberFormat("@STRING@");
   
-  if (nomeAba) {
-    let sheet = ss.getSheetByName(nomeAba);
-    if (!sheet) {
-      sheet = ss.insertSheet(nomeAba);
-    }
-    sheet.clear();
-    sheet.appendRow(cabecalho);
-    sheet.getRange(1, 1, 1, cabecalho.length).setFontWeight("bold").setNumberFormat("@STRING@");
-    
-    if (nomeBase === "SIC3_TBSecundaria") {
-      let acessosSheet = ss.getSheetByName("acessos");
-      if (!acessosSheet) {
-        acessosSheet = ss.insertSheet("acessos");
-      }
-      acessosSheet.clear();
-      const acessosCabecalho = ["timestamp", "username", "municipio", "resultado", "operacao", "local"];
-      acessosSheet.appendRow(acessosCabecalho);
-      acessosSheet.getRange(1, 1, 1, acessosCabecalho.length).setFontWeight("bold").setNumberFormat("@STRING@");
-    }
-    
-    const defaultSheet = ss.getSheetByName("Página 1") || ss.getSheetByName("Sheet1");
-    if (defaultSheet && ss.getSheets().length > 1) {
-      ss.deleteSheet(defaultSheet);
-    }
+  const defaultSheet = ss.getSheetByName("Página 1") || ss.getSheetByName("Sheet1");
+  if (defaultSheet && ss.getSheets().length > 1) {
+    ss.deleteSheet(defaultSheet);
   }
   
   return ss.getId();
 }
 
 /**
- * Obtém ou cria a planilha de banco de dados correspondente à RPM e ao Ano na pasta especificada
+ * Obtém ou cria a planilha de banco de dados correspondente ao Ano dentro da pasta da RPM
  */
-function obterOuCriarPlanilha(rpm, ano) {
-  const rpmFormatada = String(rpm).trim().toUpperCase();
-  const anoLimpo = String(ano).replace(/[^\d]/g, "").trim();
-  const nomePlanilha = "SIC3_" + rpmFormatada + "_" + anoLimpo;
-
-  const folder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
-  const files = folder.getFilesByName(nomePlanilha);
+function obterOuCriarPlanilhaAnual(rpm, ano) {
+  const folderRPM = obterOuCriarPastaRPM(rpm);
+  const nomePlanilha = String(ano).trim();
+  const files = folderRPM.getFilesByName(nomePlanilha);
 
   if (files.hasNext()) {
     return files.next().getId();
   }
 
-  // Se não existir, cria um novo Spreadsheet na raiz e move para a pasta
+  // Se não existir, cria um novo Spreadsheet na raiz e move para a pasta da RPM
   const ss = SpreadsheetApp.create(nomePlanilha);
   const file = DriveApp.getFileById(ss.getId());
   
-  folder.addFile(file);
+  folderRPM.addFile(file);
   try {
     DriveApp.getRootFolder().removeFile(file);
   } catch (e) {
     console.warn("Erro ao remover da raiz: " + e.message);
   }
 
-  // Compartilha como público para qualquer um com o link visualizar (leitura via Visualization API)
+  // Compartilha como público para leitura
   file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
 
   // Inicializa APENAS as abas transacionais anuais
@@ -302,7 +412,6 @@ function obterOuCriarPlanilha(rpm, ano) {
     sheet.getRange(1, 1, 1, abas[nomeAba].length).setFontWeight("bold").setNumberFormat("@STRING@");
   }
 
-  // Remove a aba padrão original do Google Sheets
   const defaultSheet = ss.getSheetByName("Página 1") || ss.getSheetByName("Sheet1");
   if (defaultSheet && ss.getSheets().length > 1) {
     ss.deleteSheet(defaultSheet);
@@ -312,17 +421,24 @@ function obterOuCriarPlanilha(rpm, ano) {
 }
 
 /**
- * Função da API para obter o ID da planilha atual (e criá-la se necessário) e seus arquivos compartilhados associados
+ * Função de compatibilidade mantida para chamadas legadas
+ */
+function obterOuCriarPlanilha(rpm, ano) {
+  return obterOuCriarPlanilhaAnual(rpm, ano);
+}
+
+/**
+ * Função da API para obter o ID da planilha atual e seus arquivos compartilhados associados
  */
 function obterIdPlanilha(rpm, ano) {
   try {
-    const id = obterOuCriarPlanilha(rpm, ano);
+    const id = obterOuCriarPlanilhaAnual(rpm, ano);
     return {
       success: true,
       spreadsheetId: id,
       arquivosCompartilhados: {
-        BDConvenios: obterIdArquivoCompartilhado("SIC3_BDConvenios"),
-        BDEnderecos: obterIdArquivoCompartilhado("SIC3_BDEnderecos"),
+        BDConvenios: obterIdArquivoCompartilhado("SIC3_BDConvenios", rpm),
+        BDEnderecos: obterIdArquivoCompartilhado("SIC3_BDEnderecos", rpm),
         TBPrimaria: obterIdArquivoCompartilhado("SIC3_TBPrimaria"),
         TBSecundaria: obterIdArquivoCompartilhado("SIC3_TBSecundaria")
       }
@@ -333,31 +449,22 @@ function obterIdPlanilha(rpm, ano) {
 }
 
 /**
- * Analisa a pasta do Drive do SIC3 e retorna os anos para os quais existem planilhas da RPM informada.
+ * Analisa a pasta da RPM no Drive do SIC3 e retorna os anos para os quais existem planilhas de dados.
  */
 function obterAnosDisponiveis(rpm) {
   try {
-    const folder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
-    const files = folder.getFiles();
+    const folderRPM = obterOuCriarPastaRPM(rpm);
+    const files = folderRPM.getFiles();
     const anosMap = {};
-    
-    // Normaliza a RPM para comparar com o nome do arquivo (ex: "15RPM" ou "15")
-    const rpmStr = String(rpm || "15").trim().toUpperCase();
-    const prefixo = "SIC3_" + rpmStr + "_";
     
     while (files.hasNext()) {
       const file = files.next();
       const name = file.getName();
-      if (name.startsWith(prefixo)) {
-        const partes = name.split("_");
-        const anoExtraido = partes[partes.length - 1];
-        if (/^\d{4}$/.test(anoExtraido)) {
-          anosMap[anoExtraido] = true;
-        }
+      if (/^\d{4}$/.test(name)) {
+        anosMap[name] = true;
       }
     }
     
-    // Garante que o ano atual esteja sempre contido na lista
     const anoAtual = new Date().getFullYear().toString();
     anosMap[anoAtual] = true;
     
@@ -522,7 +629,7 @@ function loginCheck(username, password) {
   const lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000);
-    const ss = SpreadsheetApp.openById(obterIdArquivoCompartilhado("SIC3_TBSecundaria"));
+    const ss = SpreadsheetApp.openById(obterIdArquivoCompartilhado("SIC3_BDLogins"));
     const login = ss.getSheetByName("login");
     const returnData = login.getRange("A2:A").createTextFinder(password).matchEntireCell(true).findAll();
 
@@ -1558,19 +1665,26 @@ function executarRebloqueioAutomatico(e) {
  */
 function bloquearRelatoriosAntigosAutomaticamente() {
   const folder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
-  const files = folder.getFiles();
+  const subfolders = folder.getFolders();
   let totalProcessado = 0;
 
-  while (files.hasNext()) {
-    const file = files.next();
-    const name = file.getName();
-    if (name.startsWith("SIC3_BD_RPM_")) {
-      const spreadsheetId = file.getId();
-      try {
-        bloquearRelatoriosAntigosNaPlanilha(spreadsheetId);
-        totalProcessado++;
-      } catch (e) {
-        console.error("Erro ao bloquear na planilha " + name + ": " + e.toString());
+  while (subfolders.hasNext()) {
+    const subfolder = subfolders.next();
+    const folderName = subfolder.getName();
+    if (folderName.endsWith("RPM")) {
+      const files = subfolder.getFiles();
+      while (files.hasNext()) {
+        const file = files.next();
+        const name = file.getName();
+        if (/^\d{4}$/.test(name)) {
+          const spreadsheetId = file.getId();
+          try {
+            bloquearRelatoriosAntigosNaPlanilha(spreadsheetId);
+            totalProcessado++;
+          } catch (e) {
+            console.error("Erro ao bloquear na planilha " + name + " da pasta " + folderName + ": " + e.toString());
+          }
+        }
       }
     }
   }
@@ -1682,14 +1796,17 @@ function buscarNoPortalCompras(termoBusca) {
 
 function registrarOperacao(local, username, municipio, operacao, resultado) {
   try {
-    const ss = SpreadsheetApp.openById(obterIdArquivoCompartilhado("SIC3_TBSecundaria"));
+    const rpm = CURRENT_RPM || "15";
+    const ano = CURRENT_ANO || new Date().getFullYear().toString();
+    const logId = obterIdLogAcesso(rpm, ano);
+    const ss = SpreadsheetApp.openById(logId);
     const sheet = ss.getSheetByName("acessos");
     
     const timestamp = Utilities.formatDate(new Date(), "America/Sao_Paulo", "dd/MM/yyyy HH:mm:ss");
     const rowData = [timestamp, String(username), String(municipio), String(resultado), String(operacao), local];
     appendRowAndFormatAsText(sheet, rowData);
   } catch (error) {
-    console.error("Erro ao registrar operação:", error);
+    console.error("Erro ao registrar operação no log de acesso:", error);
   }
 }
 
