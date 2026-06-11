@@ -2,7 +2,7 @@
 // Cliente de comunicação HTTP REST com a API do Google Apps Script (GAS) para o SIC3.
 
 // URL padrão de fallback (o usuário pode alterar nas configurações da extensão se necessário)
-const DEFAULT_GAS_URL = ""; 
+const DEFAULT_GAS_URL = "https://script.google.com/macros/s/AKfycbwL6OjarZR0B41c0Ii0eQu5tz4u7_fU8jGzVpnzVDSGKt8FS_TvWd3FoFOgO7SMQdZV6g/exec"; 
 
 /**
  * Obtém a URL configurada do Web App do GAS a partir do armazenamento da extensão.
