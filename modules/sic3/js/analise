@@ -1,0 +1,761 @@
+<!-- js/analise.html -->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Análise de Fluxo de Código JavaScript</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #2196f3;
+            --primary-dark: #1976d2;
+            --success-color: #4caf50;
+            --warning-color: #ff9800;
+            --error-color: #f44336;
+            --background-color: #f5f5f5;
+            --card-background: #ffffff;
+            --border-color: #e0e0e0;
+            --text-color: #333;
+            --text-secondary: #666;
+            --hover-bg: #f0f8ff;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+
+        .header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 15px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .title-section h1 {
+            font-size: 24px;
+            font-weight: 500;
+            margin-bottom: 5px;
+        }
+
+        .title-section p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .stats-toggle {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .stats-toggle:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .stats-panel {
+            background: rgba(255,255,255,0.95);
+            color: var(--text-color);
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+            animation: slideDown 0.3s ease;
+        }
+
+        .stats-panel.show {
+            display: block;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 10px;
+            background: white;
+            border-radius: 6px;
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .stat-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+
+        .selection-card {
+            background: var(--card-background);
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+
+        .card-title {
+            font-size: 20px;
+            font-weight: 500;
+            margin-bottom: 15px;
+            color: var(--primary-color);
+        }
+
+        .file-explorer {
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: white;
+            max-height: 500px;
+            overflow-y: auto;
+            margin: 20px 0;
+        }
+
+        .select-all-option {
+            padding: 15px;
+            border-bottom: 2px solid var(--border-color);
+            background: #f8f9fa;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+
+        .select-all-option:hover {
+            background: var(--hover-bg);
+        }
+
+        .select-all-option.selected {
+            background: rgba(33, 150, 243, 0.1);
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .file-category {
+            border-bottom: 1px solid #eee;
+        }
+
+        .category-header {
+            padding: 12px 15px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #fafafa;
+            border-left: 3px solid transparent;
+            transition: all 0.2s;
+            user-select: none;
+        }
+
+        .category-header:hover {
+            background: var(--hover-bg);
+            border-left-color: var(--primary-color);
+        }
+
+        .category-icon {
+            font-size: 16px;
+        }
+
+        .category-name {
+            font-weight: 500;
+            flex: 1;
+        }
+
+        .category-count {
+            font-size: 12px;
+            color: var(--text-secondary);
+            background: #e0e0e0;
+            padding: 2px 8px;
+            border-radius: 12px;
+        }
+
+        .toggle-icon {
+            font-size: 12px;
+            transition: transform 0.2s;
+        }
+
+        .category-header.collapsed .toggle-icon {
+            transform: rotate(-90deg);
+        }
+
+        .category-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+
+        .category-content.expanded {
+            max-height: 1000px;
+        }
+
+        .file-item {
+            padding: 8px 15px 8px 35px;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .file-item.selectable {
+            cursor: pointer;
+        }
+
+        .file-item.selectable:hover {
+            background: var(--hover-bg);
+        }
+
+        .file-item.selected {
+            background: rgba(33, 150, 243, 0.1);
+            border-left: 3px solid var(--primary-color);
+        }
+
+        .file-item.disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .file-info-line {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+
+        .file-icon {
+            font-size: 14px;
+        }
+
+        .file-name {
+            flex: 1;
+            font-weight: 400;
+        }
+
+        .file-stats {
+            font-size: 11px;
+            color: var(--text-secondary);
+            min-width: 80px;
+            text-align: right;
+        }
+
+        .file-item input[type="checkbox"] {
+            margin-left: auto;
+        }
+
+        .actions {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 30px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 14px;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+        }
+
+        .btn-primary:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: #f5f5f5;
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .result-section {
+            display: none;
+            margin-top: 30px;
+        }
+
+        .result-section.show {
+            display: block;
+        }
+
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .actions {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .btn {
+                width: 100%;
+                max-width: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <div class="title-section">
+                <h1>Análise de Fluxo de Código JavaScript</h1>
+                <p>Seleção de arquivos para análise de ramificações</p>
+            </div>
+            <button class="stats-toggle" onclick="toggleStats()">
+                📊 Estatísticas do Projeto
+            </button>
+        </div>
+        <div class="stats-panel" id="statsPanel">
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-value"><?= totalJS ?></div>
+                    <div class="stat-label">Arquivos JS</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">0</div>
+                    <div class="stat-label">Ramificações</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">0</div>
+                    <div class="stat-label">Pontos Entrada</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">0</div>
+                    <div class="stat-label">Indefinidas</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">0</div>
+                    <div class="stat-label">Circulares</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">0</div>
+                    <div class="stat-label">Duplicadas</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">0</div>
+                    <div class="stat-label">Não Utilizadas</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="selection-card">
+            <h2 class="card-title">Selecione os arquivos para análise</h2>
+            <p>Escolha quais arquivos JavaScript devem ser analisados. A análise irá rastrear todas as ramificações de funções criadas pelo programador a partir dos pontos de entrada encontrados.</p>
+            <div style="background: #e3f2fd; padding: 12px; border-radius: 6px; margin: 15px 0; font-size: 13px;">
+                <strong>💡 Nota:</strong> Apenas funções definidas pelo programador serão incluídas nas ramificações. Funções nativas do JavaScript, jQuery e Google Apps Script são ignoradas, mas suas chamadas para funções personalizadas são rastreadas.
+            </div>
+            
+            <div class="file-explorer">
+                <!-- CORREÇÃO 3: Botão "todos os arquivos" corrigido -->
+                <div class="select-all-option" id="selectAllOption" onclick="selectAllFiles(this)">
+                    <span class="file-icon">📁</span>
+                    <span class="file-name">Todos os arquivos JavaScript</span>
+                    <span class="file-stats">Analisar todos os arquivos JS disponíveis</span>
+                    <input type="checkbox" id="todos" value="todos" onclick="event.stopPropagation();">
+                </div>
+                
+                <?!= secaoArquivos ?>
+            </div>
+
+            <div class="actions">
+                <button class="btn btn-primary" id="analyzeBtn" onclick="startAnalysis()" disabled>
+                    🔍 Iniciar Análise
+                </button>
+                <a href="?page=arquivos" class="btn btn-secondary">
+                    📋 Ver Todos os Arquivos
+                </a>
+            </div>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Analisando código... Isso pode levar alguns momentos.</p>
+            <p id="loadingDetails" style="font-size: 12px; color: var(--text-secondary); margin-top: 10px;"></p>
+        </div>
+
+        <div class="result-section" id="resultSection">
+            <!-- Resultados serão carregados aqui -->
+        </div>
+    </div>
+
+    <script>
+        let selectedFiles = new Set();
+        let allJsFiles = [];
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Página carregada, inicializando...');
+            const jsCheckboxes = document.querySelectorAll('.file-item.selectable input[type="checkbox"]');
+            allJsFiles = Array.from(jsCheckboxes).map(cb => cb.value);
+            console.log('Arquivos JS encontrados:', allJsFiles);
+            const jsCategory = document.querySelector('.file-category .category-content');
+            if (jsCategory) {
+                jsCategory.classList.add('expanded');
+            }
+            const todosCheckbox = document.getElementById('todos');
+            if (todosCheckbox) {
+                todosCheckbox.addEventListener('change', function(e) {
+                    e.stopPropagation();
+                    handleSelectAllChange(this.checked);
+                });
+            }
+        });
+
+        function toggleStats() {
+            const panel = document.getElementById('statsPanel');
+            panel.classList.toggle('show');
+        }
+
+        function toggleCategory(header) {
+            const content = header.nextElementSibling;
+            const isExpanded = content.classList.contains('expanded');
+            
+            if (isExpanded) {
+                content.classList.remove('expanded');
+                header.classList.add('collapsed');
+            } else {
+                content.classList.add('expanded');
+                header.classList.remove('collapsed');
+            }
+        }
+
+        function selectAllFiles(element) {
+            const checkbox = element.querySelector('input');
+            if (!checkbox) return;
+            checkbox.checked = !checkbox.checked;
+            handleSelectAllChange(checkbox.checked);
+        }
+
+        function handleSelectAllChange(isChecked) {
+            console.log('Selecionar todos:', isChecked);
+            
+            const selectAllElement = document.getElementById('selectAllOption');
+            
+            selectedFiles.clear();
+            
+            if (isChecked) {
+                selectedFiles.add('todos');
+                selectAllElement.classList.add('selected');
+                document.querySelectorAll('.file-item.selectable').forEach(item => {
+                    item.classList.add('selected');
+                    const itemCheckbox = item.querySelector('input');
+                    if (itemCheckbox) {
+                        itemCheckbox.checked = true;
+                        selectedFiles.add(itemCheckbox.value);
+                    }
+                });
+                
+                console.log('Todos os arquivos selecionados:', Array.from(selectedFiles));
+            } else {
+                selectAllElement.classList.remove('selected');
+                
+                document.querySelectorAll('.file-item.selectable').forEach(item => {
+                    item.classList.remove('selected');
+                    const itemCheckbox = item.querySelector('input');
+                    if (itemCheckbox) {
+                        itemCheckbox.checked = false;
+                    }
+                });
+                
+                console.log('Todos os arquivos desmarcados');
+            }
+            
+            updateAnalyzeButton();
+        }
+
+        function selectFile(element, fileName) {
+            const checkbox = element.querySelector('input');
+            if (!checkbox) return;
+            
+            const isChecked = !checkbox.checked;
+            checkbox.checked = isChecked;
+            
+            if (isChecked) {
+                selectedFiles.add(fileName);
+                element.classList.add('selected');
+                const totalJsFiles = document.querySelectorAll('.file-item.selectable').length;
+                const selectedIndividualFiles = document.querySelectorAll('.file-item.selectable.selected').length;
+                
+                if (selectedIndividualFiles === totalJsFiles) {
+                    const selectAllElement = document.getElementById('selectAllOption');
+                    const todosCheckbox = document.getElementById('todos');
+                    selectAllElement.classList.add('selected');
+                    todosCheckbox.checked = true;
+                    selectedFiles.add('todos');
+                }
+            } else {
+                selectedFiles.delete(fileName);
+                element.classList.remove('selected');
+                const selectAllElement = document.getElementById('selectAllOption');
+                const todosCheckbox = document.getElementById('todos');
+                selectAllElement.classList.remove('selected');
+                todosCheckbox.checked = false;
+                selectedFiles.delete('todos');
+            }
+            
+            console.log('Arquivo selecionado:', fileName, 'Status:', isChecked);
+            console.log('Arquivos selecionados atualmente:', Array.from(selectedFiles));
+            
+            updateAnalyzeButton();
+        }
+
+        function updateAnalyzeButton() {
+            const analyzeBtn = document.getElementById('analyzeBtn');
+            const hasSelection = selectedFiles.size > 0;
+            analyzeBtn.disabled = !hasSelection;
+            
+            console.log('Botão analisar habilitado:', hasSelection);
+        }
+
+        function startAnalysis() {
+            if (selectedFiles.size === 0) {
+                alert('Por favor, selecione pelo menos um arquivo para análise.');
+                return;
+            }
+            
+            console.log('Iniciando análise com arquivos:', Array.from(selectedFiles));
+            let arquivosParaAnalise = Array.from(selectedFiles);
+            if (selectedFiles.has('todos')) {
+                arquivosParaAnalise = ['todos'];
+            }
+            
+            console.log('Enviando para análise:', arquivosParaAnalise);
+            document.getElementById('loading').classList.add('show');
+            document.getElementById('analyzeBtn').disabled = true;
+            const loadingDetails = document.getElementById('loadingDetails');
+            if (arquivosParaAnalise.includes('todos')) {
+                loadingDetails.textContent = 'Analisando todos os arquivos JavaScript do projeto...';
+            } else {
+                loadingDetails.textContent = `Analisando ${arquivosParaAnalise.length} arquivo(s) selecionado(s)...`;
+            }
+            try {
+                google.script.run
+                    .withSuccessHandler(onAnalysisSuccess)
+                    .withFailureHandler(onAnalysisError)
+                    .executarAnaliseArquivos(arquivosParaAnalise);
+            } catch (error) {
+                console.error('Erro ao executar análise:', error);
+                onAnalysisError(error);
+            }
+        }
+
+        function onAnalysisSuccess(result) {
+            console.log('Resultado da análise:', result);
+            
+            document.getElementById('loading').classList.remove('show');
+            document.getElementById('analyzeBtn').disabled = false;
+            
+            if (result && result.sucesso) {
+                showResults(result.dados, result.estatisticas);
+                updateHeaderStats(result.estatisticas);
+            } else {
+                const errorMsg = result ? result.erro : 'Erro desconhecido na análise';
+                alert('Erro na análise: ' + errorMsg);
+                console.error('Erro detalhado:', result);
+            }
+        }
+
+        function onAnalysisError(error) {
+            console.error('Erro ao executar análise:', error);
+            
+            document.getElementById('loading').classList.remove('show');
+            document.getElementById('analyzeBtn').disabled = false;
+            
+            alert('Erro ao executar análise: ' + error.toString());
+        }
+
+        function updateHeaderStats(stats) {
+            if (!stats) return;
+            
+            console.log('Atualizando estatísticas do cabeçalho:', stats);
+            
+            const statItems = document.querySelectorAll('.stat-item .stat-value');
+            if (statItems.length >= 7) {
+                statItems[1].textContent = stats.totalRamificacoes || 0;
+                statItems[2].textContent = stats.pontosEntrada || 0;
+                statItems[3].textContent = stats.funcoesIndefinidas || 0;
+                statItems[4].textContent = stats.referenciaCirculares || 0;
+                statItems[5].textContent = stats.funcoesDuplicadas || 0;
+                statItems[6].textContent = stats.funcoesNaoUtilizadas || 0;
+            }
+        }
+
+        function showResults(dados, estatisticas) {
+            if (!dados || dados.length === 0) {
+                alert('Nenhum resultado encontrado na análise.');
+                return;
+            }
+            
+            console.log('Exibindo resultados:', dados.length, 'ramificações');
+            
+            const resultSection = document.getElementById('resultSection');
+            let maxNivel = 0;
+            dados.forEach(item => {
+                Object.keys(item).forEach(key => {
+                    if (key.startsWith('nivel')) {
+                        const nivel = parseInt(key.replace('nivel', ''));
+                        if (nivel > maxNivel) maxNivel = nivel;
+                    }
+                });
+            });
+            
+            console.log('Número máximo de níveis encontrado:', maxNivel);
+            
+            let htmlTable = `
+                <div class="selection-card">
+                    <h2 class="card-title">Resultados da Análise</h2>
+                    <div style="margin-bottom: 15px;">
+                        <strong>Resumo:</strong> ${dados.length} ramificações encontradas em ${estatisticas.arquivosJS} arquivos JavaScript.
+                    </div>
+                    <div style="overflow-x: auto; max-height: 60vh; border: 1px solid var(--border-color); border-radius: 8px;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                            <thead style="background: #f8f9fa; position: sticky; top: 0; z-index: 10;">
+                                <tr>
+                                    <th style="padding: 12px 8px; border-bottom: 2px solid var(--border-color); text-align: left; font-weight: 600;">Arquivo</th>
+                                    <th style="padding: 12px 8px; border-bottom: 2px solid var(--border-color); text-align: left; font-weight: 600;">Ponto de Entrada</th>
+                                    <th style="padding: 12px 8px; border-bottom: 2px solid var(--border-color); text-align: left; font-weight: 600;">Função Inicial</th>
+                                    <th style="padding: 12px 8px; border-bottom: 2px solid var(--border-color); text-align: left; font-weight: 600;">Status</th>`;
+            
+            for (let i = 1; i <= maxNivel; i++) {
+                htmlTable += `<th style="padding: 12px 8px; border-bottom: 2px solid var(--border-color); text-align: left; font-weight: 600;">Nível ${i}</th>`;
+            }
+            
+            htmlTable += '</tr></thead><tbody>';
+            
+            dados.forEach((item, index) => {
+                const statusClass = item.status === 'indefinida' ? 'color: var(--error-color)' : 
+                                  item.status === 'circular' ? 'color: var(--warning-color)' : 
+                                  item.status === 'vazia' ? 'color: var(--text-secondary)' :
+                                  'color: var(--success-color)';
+                
+                const statusText = item.status === 'indefinida' ? 'INDEFINIDA' :
+                                 item.status === 'circular' ? 'CIRCULAR' :
+                                 item.status === 'vazia' ? 'VAZIA' :
+                                 item.status === 'sem_entrada' ? 'SEM ENTRADA' :
+                                 item.origem;
+                
+                htmlTable += `<tr style="border-bottom: 1px solid #eee; ${index % 2 === 0 ? 'background: #fafafa;' : ''}">
+                    <td style="padding: 10px 8px;">${item.arquivo}</td>
+                    <td style="padding: 10px 8px;">${item.pontoEntrada}</td>
+                    <td style="padding: 10px 8px;">${item.funcaoInicial}</td>
+                    <td style="padding: 10px 8px; ${statusClass}; font-weight: 500;">${statusText}</td>`;
+                
+                for (let i = 1; i <= maxNivel; i++) {
+                    const valor = item['nivel' + i] || '';
+                    htmlTable += `<td style="padding: 10px 8px;">${valor}</td>`;
+                }
+                
+                htmlTable += '</tr>';
+            });
+            
+            htmlTable += `
+                        </tbody>
+                    </table>
+                </div>
+                <div class="actions" style="margin-top: 20px;">
+                    <button class="btn btn-primary" onclick="exportResults()">💾 Exportar CSV</button>
+                    <button class="btn btn-secondary" onclick="location.reload()">🔄 Nova Análise</button>
+                </div>
+            </div>`;
+            
+            resultSection.innerHTML = htmlTable;
+            resultSection.classList.add('show');
+            resultSection.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function exportResults() {
+            alert('Função de exportação será implementada em uma próxima versão.');
+        }
+    </script>
+</body>
+</html>

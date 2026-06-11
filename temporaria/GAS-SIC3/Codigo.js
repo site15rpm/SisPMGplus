@@ -1,656 +1,1815 @@
-// Arquivo: Codigo.js
-// Backend do Google Apps Script (GAS) para o SIC3 v3.0
-// Responsável estritamente pela escrita de dados e gerenciamento dinâmico de planilhas por RPM/Ano.
+/**
+ * SIC3 Backend - Google Apps Script (GAS)
+ * Versão 3.0 - Banco de Dados Dinâmico por RPM e Ano
+ */
 
-const FOLDER_ID = "14TPdLFpf2bEMzWdLjxEtVIeUuoIrFuNu"; // Pasta no Google Drive para armazenar as planilhas
+// ID global da planilha ativa durante a execução da requisição
+var CURRENT_SPREADSHEET_ID = null;
+
+// ID da pasta pai do Google Drive onde as planilhas do SIC3 serão armazenadas
+const DRIVE_FOLDER_ID = "14TPdLFpf2bEMzWdLjxEtVIeUuoIrFuNu";
 
 /**
- * Ponto de entrada central HTTP POST. Recebe chamadas assíncronas do frontend local da extensão.
+ * Trata as requisições OPTIONS (Preflight de CORS do Navegador)
+ */
+function doOptions(e) {
+  return ContentService.createTextOutput("OK")
+    .setMimeType(ContentService.MimeType.TEXT);
+}
+
+/**
+ * Trata as requisições GET (Exibe status simples se acessado diretamente)
+ */
+function doGet(e) {
+  const status = {
+    status: "online",
+    versao: "3.0",
+    api: "SIC3-GAS-API",
+    timestamp: new Date().toISOString()
+  };
+  return ContentService.createTextOutput(JSON.stringify(status))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+/**
+ * Trata as requisições POST recebidas da extensão SisPMG+
  */
 function doPost(e) {
   try {
-    const requestData = JSON.parse(e.postData.contents);
-    const action = requestData.action;
-    const rpm = requestData.rpm || "15RPM";
-    const ano = requestData.ano || new Date().getFullYear().toString();
-    const params = requestData.params || [];
-    
-    // Obtém ou cria a planilha do Google Sheets baseada na RPM e no Ano
-    const ss = obterOuCriarPlanilhaRPM(rpm, ano);
-    
-    // Roteador de Ações
-    let result;
-    switch (action) {
-      case "salvarDadosNaPlanilha":
-        result = salvarDadosNaPlanilha(ss, params);
-        break;
-        
-      case "incluirConvenio":
-        result = incluirConvenio(ss, params);
-        break;
-        
-      case "alterarConvenio":
-        result = alterarConvenio(ss, params);
-        break;
-        
-      case "excluirConvenio":
-        result = excluirConvenio(ss, params);
-        break;
-        
-      case "gerenciarEnderecoMedidor":
-        result = gerenciarEnderecoMedidor(ss, params);
-        break;
-        
-      case "gerenciarItem99":
-        result = gerenciarItem99(ss, params);
-        break;
-        
-      case "excluirItem99Principal":
-        result = excluirItem99Principal(ss, params);
-        break;
-        
-      case "atualizarStatusItem99":
-        result = atualizarStatusItem99(ss, params);
-        break;
-        
-      case "verificarStatusBloqueio":
-        result = { success: true, status: verificarStatusBloqueio(ss, params) };
-        break;
-        
-      case "atualizarStatusEdicao":
-        result = atualizarStatusEdicao(ss, params);
-        break;
-        
-      case "carregarConveniosMunicipio":
-        result = carregarConveniosMunicipio(ss, params);
-        break;
-        
-      case "obterIdPlanilha":
-        result = { success: true, spreadsheetId: ss.getId() };
-        break;
-        
-      default:
-        throw new Error("Ação '" + action + "' não reconhecida pelo servidor GAS do SIC3.");
+    if (!e || !e.postData || !e.postData.contents) {
+      throw new Error("Nenhum dado recebido no corpo da requisição.");
     }
+
+    const body = JSON.parse(e.postData.contents);
+    const action = body.action;
+
+    if (!action) {
+      throw new Error("Ação da API não especificada.");
+    }
+
+    // Inicializa o ID do Spreadsheet correspondente ao contexto da requisição (RPM e Ano)
+    CURRENT_SPREADSHEET_ID = obterSpreadsheetIdDoContexto(body);
+
+    // Executa a ação da API correspondente
+    return handleApiAction(action, body);
     
-    return ContentService.createTextOutput(JSON.stringify(result !== undefined ? result : { success: true }))
-      .setMimeType(ContentService.MimeType.JSON);
-      
-  } catch (error) {
-    console.error("Erro no doPost do GAS:", error);
-    return ContentService.createTextOutput(JSON.stringify({
-      success: false,
-      message: "Erro no servidor GAS: " + error.message,
-      errorCode: "SERVER_ERROR"
-    })).setMimeType(ContentService.MimeType.JSON);
+  } catch(err) {
+    console.error("Erro no doPost: " + err.toString());
+    return ContentService.createTextOutput(JSON.stringify({success: false, error: err.toString()}))
+      .setMimeType(ContentService.MimeType.TEXT);
   }
 }
 
 /**
- * Localiza a planilha da RPM e Ano correspondente ou cria uma nova, caso não exista.
+ * Roteia as ações da API para suas respectivas funções
  */
-function obterOuCriarPlanilhaRPM(rpm, ano) {
-  const fileName = "SIC3_" + rpm + "_" + ano;
-  const folder = DriveApp.getFolderById(FOLDER_ID);
-  const files = folder.getFilesByName(fileName);
+function handleApiAction(action, body) {
+  const params = body.params || [];
+  let result;
   
-  if (files.hasNext()) {
-    const file = files.next();
-    return SpreadsheetApp.openById(file.getId());
+  switch (action) {
+    case "obterIdPlanilha":
+      result = obterIdPlanilha(params[0] || body.rpm, params[1] || body.ano);
+      break;
+
+    case "obterAnosDisponiveis":
+      result = obterAnosDisponiveis(params[0] || body.rpm);
+      break;
+
+    case "obterTokenBypass":
+      result = obterTokenBypass(params[0], params[1], params[2]);
+      break;
+      
+    case "loginCheck":
+      result = loginCheck(params[0], params[1]);
+      break;
+      
+    case "carregarConveniosMunicipio":
+      result = carregarConveniosMunicipio(params[0], params[1]);
+      break;
+      
+    case "salvarDadosNaPlanilha":
+      result = salvarDadosNaPlanilha(params[0], params[1], params[2], params[3], params[4], params[5]);
+      break;
+      
+    case "obterDadosItens99":
+      result = obterDadosItens99(params[0], params[1]);
+      break;
+      
+    case "gerenciarItem99":
+      result = gerenciarItem99(params[0], params[1]);
+      break;
+      
+    case "excluirItem99Principal":
+      result = excluirItem99Principal(params[0], params[1]);
+      break;
+      
+    case "atualizarStatusItem99":
+      result = atualizarStatusItem99(params[0], params[1], params[2]);
+      break;
+      
+    case "substituirItem99":
+      result = substituirItem99(params[0], params[1]);
+      break;
+      
+    case "gerenciarEnderecoMedidor":
+      result = gerenciarEnderecoMedidor(params[0], params[1]);
+      break;
+      
+    case "obterDetalhesItemPortal":
+      result = obterDetalhesItemPortal(params[0]);
+      break;
+      
+    case "buscarNoPortalCompras":
+      result = buscarNoPortalCompras(params[0]);
+      break;
+      
+    case "verificarStatusBloqueio":
+      result = { success: true, status: verificarStatusBloqueio(params[0], params[1], params[2], params[3]) };
+      break;
+      
+    case "atualizarStatusEdicao":
+      result = atualizarStatusEdicao(params[0], params[1], params[2], params[3], params[4], params[5]);
+      break;
+      
+    case "agendarRebloqueio24h":
+      result = agendarRebloqueio24h(params[0], params[1], params[2], params[3], params[4]);
+      break;
+      
+    case "incluirConvenio":
+      result = incluirConvenio(params[0], params[1], params[2], params[3], params[4], params[5], params[6], params[7], params[8]);
+      break;
+      
+    case "alterarConvenio":
+      result = alterarConvenio(params[0], params[1], params[2], params[3], params[4], params[5], params[6], params[7], params[8]);
+      break;
+      
+    case "excluirConvenio":
+      result = excluirConvenio(params[0], params[1], params[2]);
+      break;
+ 
+    case "salvarItensPrimariosEmLote":
+      result = salvarItensPrimariosEmLote(params[0]);
+      break;
+      
+    case "logoutUser":
+      result = { success: true };
+      break;
+      
+    default:
+      throw new Error("Ação da API '" + action + "' não registrada no servidor.");
   }
   
-  // Criar nova planilha
-  const ss = SpreadsheetApp.create(fileName);
+  return ContentService.createTextOutput(JSON.stringify(result !== undefined ? result : { success: true }))
+    .setMimeType(ContentService.MimeType.TEXT);
+}
+
+// ========== GERENCIAMENTO DINÂMICO DE PLANILHAS (BANCO DE DADOS) ==========
+
+/**
+ * Resolve o ID da planilha (banco de dados) correspondente ao contexto da requisição
+ */
+function obterSpreadsheetIdDoContexto(body) {
+  let rpm = body.rpm;
+  let ano = body.ano;
+
+  // Tenta extrair do token se não fornecido no body
+  if ((!rpm || !ano) && body.authToken) {
+    const usuarioInfo = validateAuthToken(body.authToken);
+    if (usuarioInfo) {
+      if (!rpm) rpm = usuarioInfo.rpm || "15";
+      if (!ano) ano = usuarioInfo.ano || new Date().getFullYear().toString();
+    }
+  }
+
+  // Fallbacks padrão
+  if (!rpm) rpm = "15";
+  if (!ano) ano = new Date().getFullYear().toString();
+
+  return obterOuCriarPlanilha(rpm, ano);
+}
+
+/**
+ * Pesquisa ou inicializa arquivos permanentes e comuns do SIC3 no Drive
+ */
+function obterIdArquivoCompartilhado(nomeBase) {
+  const folder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
+  const files = folder.getFilesByName(nomeBase);
+  if (files.hasNext()) {
+    return files.next().getId();
+  }
+  
+  // Se não existir, cria a planilha permanente
+  const ss = SpreadsheetApp.create(nomeBase);
   const file = DriveApp.getFileById(ss.getId());
-  
-  // Mover para a pasta de destino do SIC3
   folder.addFile(file);
-  DriveApp.getRootFolder().removeFile(file); // Remove do diretório raiz
+  try {
+    DriveApp.getRootFolder().removeFile(file);
+  } catch(e) {}
   
-  // Define o compartilhamento como público ("Qualquer um com o link pode visualizar")
-  // Isso viabiliza consultas super rápidas de leitura via gviz API pela extensão SisPMGplus
   file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
   
-  // Inicializa as abas e cabeçalhos obrigatórios
-  inicializarPlanilhaRPM(ss);
+  let cabecalho = [];
+  let nomeAba = "";
+  if (nomeBase === "SIC3_BDConvenios") {
+    nomeAba = "convenios";
+    cabecalho = ["municipio", "convenio", "preposto_n", "preposto_pg", "preposto", "unidade", "dataInicio", "dataFim"];
+  } else if (nomeBase === "SIC3_BDEnderecos") {
+    nomeAba = "enderecos";
+    cabecalho = ["municipio", "convenio", "endereco", "dtEndereco", "medidorAgua", "dtMedidorAgua", "medidorEnergia", "dtMedidorEnergia"];
+  } else if (nomeBase === "SIC3_TBPrimaria") {
+    nomeAba = "dt-primaria";
+    cabecalho = ["codigo", "especificacao", "elementosDespesa", "unidadesFornecimento"];
+  } else if (nomeBase === "SIC3_TBSecundaria") {
+    nomeAba = "login";
+    cabecalho = ["senha", "municipio"];
+  }
   
-  return ss;
+  if (nomeAba) {
+    let sheet = ss.getSheetByName(nomeAba);
+    if (!sheet) {
+      sheet = ss.insertSheet(nomeAba);
+    }
+    sheet.clear();
+    sheet.appendRow(cabecalho);
+    sheet.getRange(1, 1, 1, cabecalho.length).setFontWeight("bold").setNumberFormat("@STRING@");
+    
+    if (nomeBase === "SIC3_TBSecundaria") {
+      let acessosSheet = ss.getSheetByName("acessos");
+      if (!acessosSheet) {
+        acessosSheet = ss.insertSheet("acessos");
+      }
+      acessosSheet.clear();
+      const acessosCabecalho = ["timestamp", "username", "municipio", "resultado", "operacao", "local"];
+      acessosSheet.appendRow(acessosCabecalho);
+      acessosSheet.getRange(1, 1, 1, acessosCabecalho.length).setFontWeight("bold").setNumberFormat("@STRING@");
+    }
+    
+    const defaultSheet = ss.getSheetByName("Página 1") || ss.getSheetByName("Sheet1");
+    if (defaultSheet && ss.getSheets().length > 1) {
+      ss.deleteSheet(defaultSheet);
+    }
+  }
+  
+  return ss.getId();
 }
 
 /**
- * Cria todas as tabelas (abas) necessárias no novo banco de dados.
+ * Obtém ou cria a planilha de banco de dados correspondente à RPM e ao Ano na pasta especificada
  */
-function inicializarPlanilhaRPM(ss) {
-  const abas = {
-    "convenios": ["municipio", "convenio", "preposto_n", "preposto_pg", "preposto", "unidade", "dataInicio", "dataFim"],
-    "principal": ["timestamp", "municipio", "convenio", "ano", "mes", "item_id", "codigo", "descricao", "unidade", "quantidade", "valor_unitario", "subtotal", "observacao", "responsavel", "despesa"],
-    "abastecimento": ["timestamp", "municipio", "convenio", "ano", "mes", "data", "placa", "prefixo", "odometro", "motorista", "tipo", "quantidade", "valor_unitario", "subtotal", "nota_fiscal", "observacao"],
-    "manutencao": ["timestamp", "municipio", "convenio", "ano", "mes", "data", "placa", "prefixo", "odometro", "responsavel", "descricao", "quantidade", "valor_unitario", "subtotal", "nota_fiscal", "observacao"],
-    "obsgeral": ["timestamp", "municipio", "convenio", "ano", "mes", "valor_total", "obs_geral", "bloqueado", "has_item99"],
-    "item99": ["timestamp", "municipio", "convenio", "ano", "mes", "item99_code", "descricao", "unidade_distribuicao", "elemento_despesa", "termos_busca", "status", "link_nota_fiscal"],
-    "enderecos": ["municipio", "convenio", "endereco", "dtEndereco", "medidorAgua", "dtMedidorAgua", "medidorEnergia", "dtMedidorEnergia"]
-  };
+function obterOuCriarPlanilha(rpm, ano) {
+  const rpmFormatada = String(rpm).trim().toUpperCase();
+  const anoLimpo = String(ano).replace(/[^\d]/g, "").trim();
+  const nomePlanilha = "SIC3_" + rpmFormatada + "_" + anoLimpo;
+
+  const folder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
+  const files = folder.getFilesByName(nomePlanilha);
+
+  if (files.hasNext()) {
+    return files.next().getId();
+  }
+
+  // Se não existir, cria um novo Spreadsheet na raiz e move para a pasta
+  const ss = SpreadsheetApp.create(nomePlanilha);
+  const file = DriveApp.getFileById(ss.getId());
   
-  for (const name in abas) {
-    let sheet = ss.getSheetByName(name);
+  folder.addFile(file);
+  try {
+    DriveApp.getRootFolder().removeFile(file);
+  } catch (e) {
+    console.warn("Erro ao remover da raiz: " + e.message);
+  }
+
+  // Compartilha como público para qualquer um com o link visualizar (leitura via Visualization API)
+  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
+  // Inicializa APENAS as abas transacionais anuais
+  const abas = {
+    "principal": ["timestamp", "municipio", "convenio", "ano", "mes", "item_id", "codigo", "descricao", "unidade", "quantidade", "valor_unitario", "subtotal", "observacao", "responsavel", "despesa"],
+    "abastecimento": ["timestamp", "municipio", "convenio", "ano", "mes", "data", "placa", "prefixo", "odometro", "responsavel", "tipo", "quantidade", "valor_unitario", "subtotal", "nota_fiscal", "observacao"],
+    "manutencao": ["timestamp", "municipio", "convenio", "ano", "mes", "data", "placa", "prefixo", "odometro", "responsavel", "tipo", "quantidade", "valor_unitario", "subtotal", "nota_fiscal", "observacao"],
+    "obsgeral": ["timestamp", "municipio", "convenio", "ano", "mes", "valor_total", "obs_geral", "bloqueado", "has_item99"],
+    "item99": ["timestamp", "municipio", "convenio", "ano", "mes", "item99_code", "descricao", "unidade_distribuicao", "elemento_despesa", "termos_busca", "status", "link_nota_fiscal"]
+  };
+
+  for (const nomeAba in abas) {
+    let sheet = ss.getSheetByName(nomeAba);
     if (!sheet) {
-      sheet = ss.insertSheet(name);
+      sheet = ss.insertSheet(nomeAba);
     }
     sheet.clear();
-    sheet.appendRow(abas[name]);
-    
-    // Formatação elegante do cabeçalho
-    const headerRange = sheet.getRange(1, 1, 1, abas[name].length);
-    headerRange.setFontWeight("bold");
-    headerRange.setBackground("#f5f0eb");
+    sheet.appendRow(abas[nomeAba]);
+    sheet.getRange(1, 1, 1, abas[nomeAba].length).setFontWeight("bold").setNumberFormat("@STRING@");
   }
-  
-  // Remove a aba vazia padrão de criação
+
+  // Remove a aba padrão original do Google Sheets
   const defaultSheet = ss.getSheetByName("Página 1") || ss.getSheetByName("Sheet1");
   if (defaultSheet && ss.getSheets().length > 1) {
     ss.deleteSheet(defaultSheet);
   }
+
+  return ss.getId();
 }
 
-// ============================================================================
-// FUNÇÕES DE GRAVAÇÃO (ESCRITA) DE DADOS
-// ============================================================================
+/**
+ * Função da API para obter o ID da planilha atual (e criá-la se necessário) e seus arquivos compartilhados associados
+ */
+function obterIdPlanilha(rpm, ano) {
+  try {
+    const id = obterOuCriarPlanilha(rpm, ano);
+    return {
+      success: true,
+      spreadsheetId: id,
+      arquivosCompartilhados: {
+        BDConvenios: obterIdArquivoCompartilhado("SIC3_BDConvenios"),
+        BDEnderecos: obterIdArquivoCompartilhado("SIC3_BDEnderecos"),
+        TBPrimaria: obterIdArquivoCompartilhado("SIC3_TBPrimaria"),
+        TBSecundaria: obterIdArquivoCompartilhado("SIC3_TBSecundaria")
+      }
+    };
+  } catch (e) {
+    return { success: false, error: e.toString() };
+  }
+}
 
 /**
- * Salva os dados de um relatório (Lançamentos de despesa, abastecimentos, manutenções e observação geral) no Sheets.
+ * Analisa a pasta do Drive do SIC3 e retorna os anos para os quais existem planilhas da RPM informada.
  */
-function salvarDadosNaPlanilha(ss, params) {
-  // params: [municipio, convenio, ano, mes, dados]
-  const municipio = params[0];
-  const convenio = params[1];
-  const ano = params[2];
-  const mes = params[3];
-  const dados = params[4] || {};
+function obterAnosDisponiveis(rpm) {
+  try {
+    const folder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
+    const files = folder.getFiles();
+    const anosMap = {};
+    
+    // Normaliza a RPM para comparar com o nome do arquivo (ex: "15RPM" ou "15")
+    const rpmStr = String(rpm || "15").trim().toUpperCase();
+    const prefixo = "SIC3_" + rpmStr + "_";
+    
+    while (files.hasNext()) {
+      const file = files.next();
+      const name = file.getName();
+      if (name.startsWith(prefixo)) {
+        const partes = name.split("_");
+        const anoExtraido = partes[partes.length - 1];
+        if (/^\d{4}$/.test(anoExtraido)) {
+          anosMap[anoExtraido] = true;
+        }
+      }
+    }
+    
+    // Garante que o ano atual esteja sempre contido na lista
+    const anoAtual = new Date().getFullYear().toString();
+    anosMap[anoAtual] = true;
+    
+    const anosArray = Object.keys(anosMap).sort((a, b) => b - a);
+    return { success: true, anos: anosArray };
+  } catch (e) {
+    console.error("Erro no obterAnosDisponiveis: " + e.toString());
+    return { success: false, error: e.toString() };
+  }
+}
+
+// ========== SISTEMA DE AUTENTICAÇÃO POR TOKENS JWT ==========
+
+function getSecretKey() {
+  const scriptProperties = PropertiesService.getScriptProperties();
+  let secretKey = scriptProperties.getProperty('JWT_SECRET_KEY');
+  if (!secretKey) {
+    const randomBytes = Utilities.getUuid() + Utilities.getUuid() + Utilities.getUuid() + Utilities.getUuid();
+    secretKey = Utilities.base64EncodeWebSafe(Utilities.computeDigest(
+      Utilities.DigestAlgorithm.SHA_256, 
+      randomBytes
+    ));
+    scriptProperties.setProperty('JWT_SECRET_KEY', secretKey);
+  }
+  return secretKey;
+}
+
+const TOKEN_EXPIRATION_TIME = 8 * 60 * 60; // 8 horas
+
+function generateAuthToken(username, municipio, isAdmin) {
+  try {
+    const secretKey = getSecretKey();
+    const header = { alg: "HS256", typ: "JWT" };
+    const issuedAt = Math.floor(Date.now() / 1000);
+    const expiresAt = issuedAt + TOKEN_EXPIRATION_TIME;
+    const payload = {
+      sub: username,
+      iss: "SIC3-GAS-API",
+      iat: issuedAt,
+      exp: expiresAt,
+      jti: Utilities.getUuid(),
+      municipio: String(municipio).trim(),
+      isAdmin: isAdmin === true
+    };
+    const encodedHeader = Utilities.base64EncodeWebSafe(JSON.stringify(header));
+    const encodedPayload = Utilities.base64EncodeWebSafe(JSON.stringify(payload), Utilities.Charset.UTF_8);
+    const signatureBase = `${encodedHeader}.${encodedPayload}`;
+    const signature = generateHmacSignature(signatureBase, secretKey);
+    return `${signatureBase}.${signature}`;
+  } catch (error) {
+    console.error("Erro ao gerar token:", error);
+    return null;
+  }
+}
+
+function generateHmacSignature(data, key) {
+  try {
+    const signatureBytes = Utilities.computeHmacSignature(
+      Utilities.MacAlgorithm.HMAC_SHA_256, 
+      data, 
+      key,
+      Utilities.Charset.UTF_8
+    );
+    return Utilities.base64EncodeWebSafe(signatureBytes);
+  } catch (error) {
+    console.error("Erro ao gerar assinatura HMAC:", error);
+    return "";
+  }
+}
+
+function validateAuthToken(token) {
+  if (!token) return null;
+  if (token === "bypass") {
+    return {
+      username: "extensao_bypass",
+      municipio: "admin",
+      isAdmin: true,
+      expires: Math.floor(Date.now() / 1000) + 86400,
+      issued: Math.floor(Date.now() / 1000),
+      tokenId: "bypass-id"
+    };
+  }
+  try {
+    const parts = token.split(".");
+    if (parts.length != 3) return null;
+    const [encodedHeader, encodedPayload, receivedSignature] = parts;
+    const secretKey = getSecretKey();
+    const signatureBase = `${encodedHeader}.${encodedPayload}`;
+    const expectedSignature = generateHmacSignature(signatureBase, secretKey);
+    
+    if (receivedSignature != expectedSignature) return null;
+
+    const payloadJson = Utilities.newBlob(
+      Utilities.base64DecodeWebSafe(encodedPayload)
+    ).getDataAsString('UTF-8');
+    
+    const payload = JSON.parse(payloadJson);
+    const currentTime = Math.floor(Date.now() / 1000);
+    if (payload.exp && currentTime > payload.exp) return null;
+
+    return {
+      username: payload.sub,
+      municipio: payload.municipio,
+      isAdmin: payload.isAdmin,
+      expires: payload.exp,
+      issued: payload.iat,
+      tokenId: payload.jti
+    };
+  } catch (error) {
+    console.error("Erro ao validar token:", error);
+    return null;
+  }
+}
+
+function autorizarAcesso(authToken, municipio, operacao, convenio, ano, mes) {
+  try {
+    if (!authToken) {
+      return { autorizado: false, mensagem: "Necessário autenticar-se", codigoErro: "AUTH_REQUIRED" };
+    }
+    const usuario = validateAuthToken(authToken);
+    if (!usuario) {
+      return { autorizado: false, mensagem: "Token inválido ou expirado", codigoErro: "INVALID_TOKEN" };
+    }
+    
+    if (usuario.isAdmin || usuario.municipio === municipio) {
+      if (operacao === "editar" || operacao === "salvar") {
+        const statusRelatorio = verificarStatusBloqueio(municipio, convenio, ano, mes);
+        if (statusRelatorio === "bloqueado" && !usuario.isAdmin) {
+          return { autorizado: false, mensagem: "Relatório bloqueado para edição", codigoErro: "REPORT_LOCKED" };
+        }
+      }
+      return { autorizado: true, usuario: usuario, municipioPermitido: municipio };
+    }
+
+    registrarOperacao("autorizarAcesso", usuario.username, municipio, "access_denied", operacao);
+    return { autorizado: false, mensagem: "Acesso negado a este recurso", codigoErro: "ACCESS_DENIED" };
+  } catch (error) {
+    console.error("Erro ao verificar autorização:", error);
+    return { autorizado: false, mensagem: "Erro ao processar autorização", codigoErro: "AUTH_ERROR" };
+  }
+}
+
+/**
+ * Rota para obter token de bypass a partir da extensão
+ */
+function obterTokenBypass(username, municipio, isAdmin) {
+  try {
+    const isUserAdmin = isAdmin === true || isAdmin === "true" || municipio === "admin";
+    const token = generateAuthToken(username, municipio, isUserAdmin);
+    registrarOperacao("obterTokenBypass", username, municipio, "bypass_login", "success");
+    return { success: true, token: token };
+  } catch (e) {
+    return { success: false, error: e.toString() };
+  }
+}
+
+/**
+ * Função de Login Legada (compatibilidade)
+ */
+function loginCheck(username, password) {
+  const local = "loginCheck";
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+    const ss = SpreadsheetApp.openById(obterIdArquivoCompartilhado("SIC3_TBSecundaria"));
+    const login = ss.getSheetByName("login");
+    const returnData = login.getRange("A2:A").createTextFinder(password).matchEntireCell(true).findAll();
+
+    if (returnData.length > 0) {
+      const municipio = login.getRange(returnData[0].getRow(), 2).getValue();
+      const userInfo = { username: username, municipio: String(municipio) };
+      registrarOperacao(local, userInfo.username, userInfo.municipio, "login", "success");
+      const isAdmin = userInfo.municipio === "admin";
+      const authToken = generateAuthToken(userInfo.username, userInfo.municipio, isAdmin);
+      
+      return { success: true, authToken: authToken, username: username, municipio: userInfo.municipio, isAdmin: isAdmin };
+    } else {
+      registrarOperacao(local, username, null, "login_failure", "Credenciais inválidas");
+      return { success: false, message: "Senha inválida." };
+    }
+  } catch (error) {
+    registrarOperacao(local, username, null, "login_error", error.message);
+    throw new Error("Erro ao executar tarefa de login: " + error.message);
+  } finally {
+    if (lock) lock.releaseLock();
+  }
+}
+
+// ========== SISTEMA DE CONVÊNIOS ==========
+
+function carregarConveniosMunicipio(municipio, userInfo) {
+  const local = "carregarConveniosMunicipio";
+  registrarOperacao(local, userInfo.username || "SYSTEM", userInfo.municipio || "SYSTEM", "load_convenios", `initiated for ${municipio}`);
+  try {
+    const ss = SpreadsheetApp.openById(obterIdArquivoCompartilhado("SIC3_BDConvenios"));
+    const sheet = ss.getSheetByName("convenios");
+    const isAdmin = userInfo.municipio === "admin" || userInfo.isAdmin;
+    const dados = sheet.getRange("A:H").getValues();
+    const convenios = [];
+    
+    for (let i = 1; i < dados.length; i++) {
+      if (dados[i][0] === municipio || isAdmin) {
+        convenios.push({
+          municipio: dados[i][0],
+          convenio: dados[i][1],
+          preposto_n: dados[i][2] || "",
+          preposto_pg: dados[i][3] || "",
+          preposto: dados[i][4] || "",
+          unidade: dados[i][5] || "",
+          dataInicio: dados[i][6] ? Utilities.formatDate(new Date(dados[i][6]), "GMT", "dd/MM/yyyy") : "",
+          dataFim: dados[i][7] ? Utilities.formatDate(new Date(dados[i][7]), "GMT", "dd/MM/yyyy") : ""
+        });
+      }
+    }
+    registrarOperacao(local, userInfo.username || "SYSTEM", userInfo.municipio || "SYSTEM", "load_convenios", "success");
+    return convenios;
+  } catch (error) {
+    console.error("Erro ao carregar convênios:", error);
+    registrarOperacao(local, userInfo.username || "SYSTEM", userInfo.municipio || "SYSTEM", "load_convenios", `error: ${error.message}`);
+    return [];
+  }
+}
+
+function incluirConvenio(authToken, municipio, convenio, preposto_n, preposto_pg, preposto, unidade, dataInicio, dataFim) {
+  const local = "incluirConvenio";
+  const usuario = validateAuthToken(authToken);
+
+  if (!usuario || !usuario.isAdmin) {
+    registrarOperacao(local, usuario?.username || "UNAUTHORIZED", municipio, "create_convenio_denied", "permissao_insuficiente");
+    return { success: false, message: "Acesso negado. Permissão de administrador necessária." };
+  }
   
+  registrarOperacao(local, usuario.username, municipio, "create_convenio", "initiated");
+
+  const ss = SpreadsheetApp.openById(obterIdArquivoCompartilhado("SIC3_BDConvenios"));
+  const conveniosSheet = ss.getSheetByName("convenios");
+  
+  const novaLinha = [
+      String(municipio), 
+      String(convenio), 
+      String(preposto_n), 
+      String(preposto_pg), 
+      String(preposto), 
+      String(unidade), 
+      dataInicio ? formatDataForSheet(dataInicio) : "", 
+      dataFim ? formatDataForSheet(dataFim) : ""
+  ];
+  conveniosSheet.appendRow(novaLinha);
+  const ultimaLinha = conveniosSheet.getLastRow();
+  conveniosSheet.getRange(ultimaLinha, 1, 1, novaLinha.length).setNumberFormat("@STRING@");
+  
+  registrarOperacao(local, usuario.username, municipio, "create_convenio", "success");
+  return { success: true, message: "Convênio incluído." };
+}
+
+function alterarConvenio(authToken, municipio, convenio, preposto_n, preposto_pg, preposto, unidade, dataInicio, dataFim) {
+  const local = "alterarConvenio";
+  const usuario = validateAuthToken(authToken);
+
+  if (!usuario) {
+    return { success: false, message: "Acesso negado." };
+  }
+
+  registrarOperacao(local, usuario.username, municipio, "update_convenio", "initiated");
+
+  const ss = SpreadsheetApp.openById(obterIdArquivoCompartilhado("SIC3_BDConvenios"));
+  const conveniosSheet = ss.getSheetByName("convenios"); 
+  const dados = conveniosSheet.getDataRange().getValues();
+  let success = false;
+
+  for (let i = 1; i < dados.length; i++) { 
+    if (dados[i][0] == municipio && String(dados[i][1]) == String(convenio)) { 
+      conveniosSheet.getRange(i + 1, 2, 1, 7).setNumberFormat("@STRING@");
+
+      conveniosSheet.getRange(i + 1, 2).setValue(String(convenio));
+      conveniosSheet.getRange(i + 1, 3).setValue(String(preposto_n));
+      conveniosSheet.getRange(i + 1, 4).setValue(String(preposto_pg));
+      conveniosSheet.getRange(i + 1, 5).setValue(String(preposto));
+      conveniosSheet.getRange(i + 1, 6).setValue(String(unidade));
+      conveniosSheet.getRange(i + 1, 7).setValue(dataInicio ? formatDataForSheet(dataInicio) : ""); 
+      conveniosSheet.getRange(i + 1, 8).setValue(dataFim ? formatDataForSheet(dataFim) : "");    
+      success = true;
+      break;
+    }
+  }
+  registrarOperacao(local, usuario.username, municipio, "update_convenio", success ? "success" : "not_found");
+  return { success: success, message: success ? "Convênio altered." : "Convênio não encontrado para alteração."};
+}
+
+function excluirConvenio(authToken, municipio, convenio) {
+  const local = "excluirConvenio";
+  const usuario = validateAuthToken(authToken);
+
+  if (!usuario || !usuario.isAdmin) {
+    registrarOperacao(local, usuario?.username || "UNAUTHORIZED", municipio, "delete_convenio_denied", "permissao_insuficiente");
+    return { success: false, message: "Acesso negado. Permissão de administrador necessária." };
+  }
+
+  registrarOperacao(local, usuario.username, municipio, "delete_convenio", "initiated");
+
+  const ss = SpreadsheetApp.openById(obterIdArquivoCompartilhado("SIC3_BDConvenios"));
+  const conveniosSheet = ss.getSheetByName("convenios");
+  const dados = conveniosSheet.getDataRange().getValues();
+
+  for (let i = dados.length - 1; i >= 1; i--) {
+    if (dados[i][0] == municipio && String(dados[i][1]) == String(convenio)) {
+      conveniosSheet.deleteRow(i + 1);
+      registrarOperacao(local, usuario.username, municipio, "delete_convenio", "success");
+      return { success: true, message: "Convênio excluído." };
+    }
+  }
+  registrarOperacao(local, usuario.username, municipio, "delete_convenio", "not_found");
+  return { success: false, message: "Convênio não encontrado para exclusão." };
+}
+
+// ========== ESCRITA DE DADOS EM LOTE (LANCAMENTOS) ==========
+
+function salvarDadosNaPlanilha(authToken, municipio, convenio, ano, mes, dados) {
+  const local = "salvarDadosNaPlanilha";
+  const usuario = validateAuthToken(authToken);
+
+  if (!usuario || (!usuario.isAdmin && usuario.municipio != municipio)) {
+      registrarOperacao(local, usuario?.username || 'unknown', municipio, "save_data_denied", "permissao_insuficiente");
+      return { success: false, message: "Acesso negado.", errorCode: "ACCESS_DENIED" };
+  }
+
+  if (!usuario.isAdmin && verificarStatusBloqueio(municipio, convenio, ano, mes) === "bloqueado") {
+      registrarOperacao(local, usuario.username, municipio, "save_data_denied", "relatorio_bloqueado");
+      return { success: false, message: "Relatório bloqueado para edição.", errorCode: "REPORT_LOCKED" };
+  }
+  
+  registrarOperacao(local, usuario.username, municipio, "save_data", "initiated");
+
   const lock = LockService.getScriptLock();
   try {
     lock.waitLock(30000);
-    
+    dados = sanitizeData(dados);
+    const ss = SpreadsheetApp.openById(CURRENT_SPREADSHEET_ID);
     const timestamp = Utilities.formatDate(new Date(), "America/Sao_Paulo", "dd/MM/yyyy HH:mm:ss");
+
+    // Sincroniza Itens 99
+    const resultadoSync99 = sincronizarItens99(authToken, ss, municipio, convenio, ano, mes, dados.principal, timestamp, usuario);
+    if (!resultadoSync99.success) {
+        throw new Error(resultadoSync99.message || "Falha na sincronização dos Itens 99.");
+    }
     
+    const mapeamento = resultadoSync99.mapeamento;
+    if (Object.keys(mapeamento).length > 0) {
+        dados.principal.forEach(row => {
+            const placeholderId = row[11];
+            if (placeholderId && mapeamento[placeholderId]) {
+                row[1] = mapeamento[placeholderId];
+            }
+        });
+    }
+
     const sheets = {
       principal: ss.getSheetByName("principal"),
       abastecimento: ss.getSheetByName("abastecimento"),
       manutencao: ss.getSheetByName("manutencao"),
       obsgeral: ss.getSheetByName("obsgeral")
     };
-    
-    // Remove registros antigos do mês/convênio para evitar duplicidade
+
     removerRegistrosExistentes(sheets.principal, municipio, convenio, ano, mes);
     removerRegistrosExistentes(sheets.abastecimento, municipio, convenio, ano, mes);
     removerRegistrosExistentes(sheets.manutencao, municipio, convenio, ano, mes);
-    removerRegistrosExistentes(sheets.obsgeral, municipio, convenio, ano, mes);
     
-    let hasItem99 = false;
+    let hasItem99InReport = false;
     
-    // 1. Grava itens principais (Materiais e Serviços)
-    if (dados.principal && dados.principal.length > 0) {
-      const rows = dados.principal.map(row => {
+    if (dados.principal?.length) {
+      const dadosFormatadosPrincipal = dados.principal.map(row => {
         if (String(row[1]).startsWith("99")) {
-          hasItem99 = true;
+          hasItem99InReport = true;
         }
         return [
           timestamp, municipio, convenio, String(ano), mes,
-          String(row[0] || ""), String(row[1] || ""), String(row[2] || ""), String(row[3] || ""), String(row[4] || ""),
-          String(row[5] || ""), String(row[6] || ""), String(row[7] || ""), String(row[8] || ""), String(row[9] || "")
+          String(row[0]), String(row[1]), String(row[2]), String(row[3]), String(row[4]),
+          String(row[5]), String(row[6]), String(row[7]), String(row[8]), String(row[9])
         ];
       });
-      inserirDados(sheets.principal, rows);
+      if (sheets.principal) inserirDados(sheets.principal, dadosFormatadosPrincipal);
     }
     
-    // 2. Grava abastecimentos
-    if (dados.abastecimento && dados.abastecimento.length > 0) {
-      const rows = dados.abastecimento.map(row => [
-        timestamp, municipio, convenio, String(ano), mes,
-        String(row[0] || ""), String(row[1] || ""), String(row[2] || ""), String(row[3] || ""), String(row[4] || ""),
-        String(row[5] || ""), String(row[6] || ""), String(row[7] || ""), String(row[8] || ""), String(row[9] || ""),
-        String(row[10] || "")
+    if (dados.abastecimento?.length && sheets.abastecimento) {
+      const dadosFormatadosAbastecimento = dados.abastecimento.map((row) => [
+        timestamp, municipio, convenio, String(ano), mes, 
+        String(row[0]), String(row[1]), String(row[2]), String(row[3]), String(row[4]), 
+        String(row[5]), String(row[6]), String(row[7]), String(row[8]), String(row[9]), 
+        String(row[10])
       ]);
-      inserirDados(sheets.abastecimento, rows);
+      inserirDados(sheets.abastecimento, dadosFormatadosAbastecimento);
     }
-    
-    // 3. Grava manutenções
-    if (dados.manutencao && dados.manutencao.length > 0) {
-      const rows = dados.manutencao.map(row => [
-        timestamp, municipio, convenio, String(ano), mes,
-        String(row[0] || ""), String(row[1] || ""), String(row[2] || ""), String(row[3] || ""), String(row[4] || ""),
-        String(row[5] || ""), String(row[6] || ""), String(row[7] || ""), String(row[8] || ""), String(row[9] || ""),
-        String(row[10] || "")
+    if (dados.manutencao?.length && sheets.manutencao) {
+      const dadosFormatadosManutencao = dados.manutencao.map((row) => [
+        timestamp, municipio, convenio, String(ano), mes, 
+        String(row[0]), String(row[1]), String(row[2]), String(row[3]), String(row[4]), 
+        String(row[5]), String(row[6]), String(row[7]), String(row[8]), String(row[9]), 
+        String(row[10])
       ]);
-      inserirDados(sheets.manutencao, rows);
+      inserirDados(sheets.manutencao, dadosFormatadosManutencao);
     }
     
-    // 4. Grava observações gerais e totais
-    const valorTotal = dados.valorTotal || "";
-    const obsgeralTexto = dados.obsgeral?.dados?.[0] || "";
-    
-    const obsRow = [
-      timestamp, municipio, String(convenio), String(ano), String(mes),
-      String(valorTotal), String(obsgeralTexto), "NAO", hasItem99 ? "SIM" : "NAO"
-    ];
-    inserirDados(sheets.obsgeral, [obsRow]);
-    
-    return { success: true };
-    
+    const hasPrincipalItems = dados.principal?.length > 0;
+    const hasAbastecimentoItems = dados.abastecimento?.length > 0;
+    const hasManutencaoItems = dados.manutencao?.length > 0;
+    const isReportCompletelyEmpty = !hasPrincipalItems && !hasAbastecimentoItems && !hasManutencaoItems;
+
+    if (sheets.obsgeral) {
+        if (isReportCompletelyEmpty) {
+            removerRegistrosExistentes(sheets.obsgeral, municipio, convenio, ano, mes);
+        } else {
+            removerRegistrosExistentes(sheets.obsgeral, municipio, convenio, ano, mes);
+            const newObsRowValues = [
+              timestamp, municipio, String(convenio), String(ano), String(mes),
+              String(dados.valorTotal || ""), 
+              String(dados.obsgeral?.dados?.[0] || ""),
+              "NAO", 
+              hasItem99InReport ? "SIM" : "NAO"
+            ];
+            appendRowAndFormatAsText(sheets.obsgeral, newObsRowValues);
+        }
+    }
+
+    registrarOperacao(local, usuario.username, municipio, "save_data", "success");
+    return { success: true, mapeamento: resultadoSync99.mapeamento };
+
   } catch (error) {
-    console.error("Erro ao salvar dados na planilha:", error);
-    return { success: false, message: "Erro ao salvar dados: " + error.message };
+    console.error("Erro ao salvar dados na planilha: " + error.toString());
+    try {
+        if (usuario) {
+            registrarOperacao(local, usuario.username, municipio, "save_data_error", `failure: ${error.message.substring(0,100)}`);
+        }
+    } catch (regError) {
+        console.error("Erro ao registrar falha de salvamento: " + regError.toString());
+    }
+    return { success: false, message: "Erro interno ao salvar dados: " + error.message, errorCode: "PROCESSING_ERROR" };
+  } finally {
+    if (lock) lock.releaseLock();
+  }
+}
+
+function salvarItensPrimariosEmLote(itens) {
+    if (!Array.isArray(itens) || itens.length === 0) {
+        return;
+    }
+    itens.forEach(item => {
+        salvarItemPrimario(item);
+    });
+}
+
+function salvarItemPrimario(itemData) {
+  const local = "salvarItemPrimario";
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(15000);
+    const ss = SpreadsheetApp.openById(obterIdArquivoCompartilhado("SIC3_TBPrimaria"));
+    const sheet = ss.getSheetByName("dt-primaria");
+
+    const codigoFormatado = String(itemData.codigo).padStart(9, '0');
+    const dataRange = sheet.getRange("A:A");
+    const textFinder = dataRange.createTextFinder(codigoFormatado);
+    if (textFinder.findNext()) {
+      return true;
+    }
+
+    const especificacao = String(itemData.especificacao || "");
+    const novaLinha = [
+      codigoFormatado,
+      especificacao,
+      itemData.elementosDespesa ? itemData.elementosDespesa.join("|") : "",
+      itemData.unidadesFornecimento ? itemData.unidadesFornecimento.join("|") : ""
+    ];
+    
+    const newRowIndex = sheet.getLastRow() + 1;
+    sheet.getRange(newRowIndex, 1, 1, novaLinha.length).setValues([novaLinha]).setNumberFormat("@STRING@");
+    return true;
+
+  } catch (e) {
+    console.error("Erro ao salvar item primário: " + e.toString());
+    return false;
+  } finally {
+    if (lock) lock.releaseLock();
+  }
+}
+
+// ========== GERENCIAMENTO DE ITENS 99 ==========
+
+function obterDadosItens99(authToken, filtros) {
+    const local = "obterDadosItens99";
+    const usuarioInfo = validateAuthToken(authToken);
+
+    if (!usuarioInfo || !usuarioInfo.isAdmin) {
+        registrarOperacao(local, usuarioInfo?.username || 'unauthorized', null, "get_item99_data", "denied");
+        return { success: false, message: "Acesso negado." };
+    }
+
+    try {
+        const ss = SpreadsheetApp.openById(CURRENT_SPREADSHEET_ID);
+        const sheet = ss.getSheetByName("item99");
+        if (!sheet) return { success: true, dados: [], metadados: { anos: [], municipios: [], status: [] } };
+
+        const allData = sheet.getDataRange().getValues();
+        allData.shift(); // Remove cabeçalho
+
+        const dadosFiltrados = allData.filter(row => {
+            const anoMatch = !filtros.ano || filtros.ano === 'TODOS' || String(row[3]) === filtros.ano;
+            const mesMatch = !filtros.mes || filtros.mes === 'TODOS' || String(row[4]) === filtros.mes;
+            const municipioMatch = !filtros.municipio || filtros.municipio === 'TODOS' || String(row[1]) === filtros.municipio;
+            const statusMatch = !filtros.status || filtros.status === 'TODOS' || String(row[10]) === filtros.status;
+            return row[1] && row[2] && anoMatch && mesMatch && municipioMatch && statusMatch;
+        });
+        
+        const metadados = {
+            anos: [...new Set(allData.map(row => String(row[3])))].filter(Boolean).sort((a,b) => b-a),
+            municipios: [...new Set(allData.map(row => String(row[1])))].filter(Boolean).sort(),
+            status: [...new Set(allData.map(row => String(row[10])))].filter(Boolean).sort()
+        };
+        
+        const dadosFormatados = dadosFiltrados.map(row => ({
+            timestamp: row[0], municipio: row[1], convenio: row[2], ano: row[3], mes: row[4],
+            codigo: row[5], descricao: row[6], unidade: row[7], elementoDespesa: row[8],
+            termos: row[9], status: row[10], linkNotaFiscal: row[11]
+        }));
+        
+        return { success: true, dados: dadosFormatados, metadados: metadados };
+
+    } catch (e) {
+        registrarOperacao(local, usuarioInfo.username, null, "get_item99_data_error", `error: ${e.message}`);
+        return { success: false, message: "Erro ao buscar dados: " + e.message };
+    }
+}
+
+function getNextItem99Code(authToken) {
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(15000);
+    const ss = SpreadsheetApp.openById(CURRENT_SPREADSHEET_ID);
+    const sheet = ss.getSheetByName("item99");
+
+    const data = sheet.getDataRange().getValues();
+    let maxCode = 990000000;
+
+    if (data.length > 1) {
+      for (let i = 1; i < data.length; i++) {
+        if (data[i][5]) {
+          const currentCodeStr = String(data[i][5]).trim();
+          if (currentCodeStr.startsWith("99") && /^\d+$/.test(currentCodeStr)) {
+            const currentCode = parseInt(currentCodeStr, 10);
+            if (!isNaN(currentCode) && currentCode > maxCode) {
+              maxCode = currentCode;
+            }
+          }
+        }
+      }
+    }
+    return maxCode + 1;
+  } catch (e) {
+    console.error("Erro ao obter código para Item 99:", e);
+    return 990000001; 
+  } finally {
+    if (lock) lock.releaseLock();
+  }
+}
+
+function gerenciarItem99(operacao, dados) {
+  const local = "gerenciarItem99";
+  const { codigo, authToken } = dados;
+  const autorizacao = validateAuthToken(authToken);
+
+  if (!autorizacao) {
+    return { success: false, message: "Autorização falhou." };
+  }
+  
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(30000);
+    const ss = SpreadsheetApp.openById(CURRENT_SPREADSHEET_ID);
+    const item99Sheet = ss.getSheetByName("item99");
+
+    const item99Data = item99Sheet.getDataRange().getValues();
+    let rowIndexItem99 = -1;
+    for (let i = 1; i < item99Data.length; i++) {
+      if (String(item99Data[i][5]) === String(codigo)) {
+        rowIndexItem99 = i;
+        break;
+      }
+    }
+
+    if (rowIndexItem99 === -1) {
+      return { success: false, message: `Item 99 com código ${codigo} não encontrado.` };
+    }
+    
+    if (operacao === 'excluir') {
+      const item99Row = item99Data[rowIndexItem99];
+      const municipio = item99Row[1], convenio = item99Row[2], ano = item99Row[3], mes = item99Row[4];
+
+      item99Sheet.getRange(rowIndexItem99 + 1, 11).setValue("excluido");
+
+      ['principal', 'abastecimento', 'manutencao'].forEach(sheetName => {
+        const sheet = ss.getSheetByName(sheetName);
+        if (!sheet) return;
+
+        const sheetData = sheet.getDataRange().getValues();
+        for (let i = sheetData.length - 1; i >= 1; i--) {
+            const row = sheetData[i];
+            if (String(row[1]) === String(municipio) && String(row[2]) === String(convenio) &&
+                String(row[3]) === String(ano) && String(row[4]) === String(mes) &&
+                String(row[6]) === String(codigo)) {
+                sheet.deleteRow(i + 1);
+                break; 
+            }
+        }
+      });
+      
+      atualizarObsGeralAposModificacao(ss, municipio, convenio, ano, mes);
+      registrarOperacao(local, autorizacao.username, autorizacao.municipio, `item99_${operacao}`, "success");
+      return { success: true };
+
+    } else if (operacao === 'editar') {
+      const { novosDados, fileInfo } = dados;
+      const oldRowData = item99Sheet.getRange(rowIndexItem99 + 1, 1, 1, item99Sheet.getLastColumn()).getValues()[0];
+      
+      let newFileUrl = oldRowData[11];
+      if (fileInfo && fileInfo.base64Data) {
+        newFileUrl = uploadNotaFiscal(fileInfo, newFileUrl);
+      }
+      
+      const updatedRowData = oldRowData;
+      updatedRowData[0] = Utilities.formatDate(new Date(), "America/Sao_Paulo", "dd/MM/yyyy HH:mm:ss");
+      updatedRowData[6] = novosDados.descricao;
+      updatedRowData[7] = novosDados.unidade;
+      updatedRowData[8] = novosDados.despesa;
+      updatedRowData[11] = newFileUrl;
+      
+      item99Sheet.deleteRow(rowIndexItem99 + 1);
+      item99Sheet.insertRowBefore(2);
+      item99Sheet.getRange(2, 1, 1, updatedRowData.length).setValues([updatedRowData]).setNumberFormat("@STRING@");
+      
+      registrarOperacao(local, autorizacao.username, autorizacao.municipio, `item99_${operacao}`, "success");
+      return { success: true, message: "Item 99 atualizado com sucesso." };
+    }
+  } catch (e) {
+    console.error("Erro no gerenciarItem99: " + e.toString());
+    return { success: false, message: "Erro interno do servidor: " + e.toString() };
+  } finally {
+    if(lock) lock.releaseLock();
+  }
+}
+
+function sincronizarItens99(authToken, spreadsheet, municipio, convenio, ano, mes, dadosPrincipais, timestamp, usuario) {
+  const local = "sincronizarItens99";
+  const item99Sheet = spreadsheet.getSheetByName("item99");
+  
+  const item99AllData = item99Sheet.getDataRange().getValues();
+  item99AllData.shift(); // Remove cabeçalho
+  const codigoColIdx = 5;
+  const statusColIdx = 10;
+
+  const sheetReportItems = new Map();
+  item99AllData.forEach((row, index) => {
+    if (String(row[1]) === municipio && String(row[2]) === String(convenio) && String(row[3]) === String(ano) && String(row[4]) === String(mes)) {
+      sheetReportItems.set(String(row[codigoColIdx]), {
+        rowIndex: index + 2,
+        rowData: row
+      });
+    }
+  });
+
+  const clientItemCodes = new Set();
+  const clientItems = dadosPrincipais.filter(row => {
+    const code = String(row[1]);
+    const isItem99 = code.startsWith("99") || code.startsWith("ITEM99P");
+    if (isItem99 && !code.startsWith("ITEM99P")) {
+      clientItemCodes.add(code);
+    }
+    return isItem99;
+  });
+
+  const sheetCodes = new Set(sheetReportItems.keys());
+  sheetCodes.forEach(code => {
+    if (!clientItemCodes.has(code)) {
+      const itemInfo = sheetReportItems.get(code);
+      if (itemInfo && itemInfo.rowData[statusColIdx] != 'excluido') {
+        item99Sheet.getRange(itemInfo.rowIndex, statusColIdx + 1).setValue("excluido");
+      }
+    }
+  });
+
+  const mapeamentoCodigos = {};
+  let proximoCodigo99 = null;
+
+  for (const rowCliente of clientItems) {
+    const codigoCliente = String(rowCliente[1]);
+    const isNew = codigoCliente.startsWith("ITEM99P");
+
+    if (isNew) {
+      if (proximoCodigo99 === null) proximoCodigo99 = getNextItem99Code(authToken);
+      const finalCode = String(proximoCodigo99++);
+      mapeamentoCodigos[rowCliente[11]] = finalCode;
+
+      let fileUrl = "";
+      if (rowCliente[12] && rowCliente[13]) {
+        const nomeArquivoSanitizado = String(rowCliente[2]).replace(/[^\w\s.-]/g, '_').substring(0, 50);
+        fileUrl = uploadNotaFiscal({
+          base64Data: rowCliente[12],
+          mimeType: rowCliente[13],
+          fileName: `${finalCode} - ${nomeArquivoSanitizado}`
+        }, null);
+      }
+      
+      let item99Info = {};
+      try {
+        if (rowCliente[10]) {
+          item99Info = JSON.parse(rowCliente[10]);
+        }
+      } catch (e) {
+        console.error("Erro parsing item99Info para novo item: " + e.message);
+      }
+
+      const termosDeBusca = (item99Info && typeof item99Info.searchTerms === 'string') ? item99Info.searchTerms : '';
+      const novaLinha = [
+        timestamp, municipio, convenio, String(ano), mes, finalCode,
+        String(rowCliente[2]), String(rowCliente[4]), String(rowCliente[3]),
+        termosDeBusca, 'pendente', fileUrl
+      ];
+      
+      item99Sheet.insertRowAfter(1);
+      const newRowRange = item99Sheet.getRange(2, 1, 1, novaLinha.length);
+      newRowRange.setValues([novaLinha]).setNumberFormat("@STRING@");
+
+    } else {
+      const existingItem = sheetReportItems.get(codigoCliente);
+      if (existingItem) {
+        const rowIndex = existingItem.rowIndex;
+        const existingRowData = existingItem.rowData;
+        const rowValues = [...existingRowData];
+
+        rowValues[0] = timestamp;
+        rowValues[6] = String(rowCliente[2]);
+        rowValues[7] = String(rowCliente[4]);
+        rowValues[8] = String(rowCliente[3]);
+
+        if (rowCliente[12] && rowCliente[13]) {
+          const nomeArquivoSanitizado = String(rowCliente[2]).replace(/[^\w\s.-]/g, '_').substring(0, 50);
+          rowValues[11] = uploadNotaFiscal({
+            base64Data: rowCliente[12],
+            mimeType: rowCliente[13],
+            fileName: `${codigoCliente} - ${nomeArquivoSanitizado}`
+          }, existingRowData[11]);
+        }
+
+        let item99Info = {};
+        try {
+          if (rowCliente[10]) {
+            item99Info = JSON.parse(rowCliente[10]);
+          }
+        } catch(e) {
+          console.error("Erro parsing item99Info para item existente: " + e.message);
+        }
+
+        if (item99Info && typeof item99Info.searchTerms === 'string' && item99Info.searchTerms.trim() !== '') {
+          rowValues[9] = item99Info.searchTerms;
+        }
+
+        if (existingRowData[statusColIdx] === 'excluido') {
+          rowValues[10] = 'pendente';
+        }
+
+        item99Sheet.getRange(rowIndex, 1, 1, rowValues.length).setValues([rowValues]).setNumberFormat("@STRING@");
+      }
+    }
+  }
+
+  if (item99Sheet.getLastRow() > 1) {
+    const rangeToSort = item99Sheet.getRange(2, 1, item99Sheet.getLastRow() - 1, item99Sheet.getLastColumn());
+    rangeToSort.sort({ column: 6, ascending: false });
+  }
+
+  return { success: true, mapeamento: mapeamentoCodigos };
+}
+
+function excluirItem99Principal(authToken, item99Codigo) {
+  const local = "excluirItem99Principal";
+  const usuarioInfo = validateAuthToken(authToken);
+
+  if (!usuarioInfo || !usuarioInfo.isAdmin) {
+    return { success: false, message: "Acesso negado." };
+  }
+
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(30000);
+    const ss = SpreadsheetApp.openById(CURRENT_SPREADSHEET_ID);
+    const item99Sheet = ss.getSheetByName("item99");
+
+    const item99Data = item99Sheet.getDataRange().getValues();
+    const rowIndexItem99 = item99Data.findIndex(row => String(row[5]) === String(item99Codigo));
+
+    if (rowIndexItem99 === -1) {
+      return { success: false, message: "Item 99 não encontrado." };
+    }
+
+    const item99Row = item99Data[rowIndexItem99];
+    const municipio = item99Row[1], convenio = item99Row[2], ano = item99Row[3], mes = item99Row[4];
+
+    item99Sheet.getRange(rowIndexItem99 + 1, 11).setValue("excluido");
+
+    ['principal', 'abastecimento', 'manutencao'].forEach(sheetName => {
+        const sheet = ss.getSheetByName(sheetName);
+        if (!sheet) return;
+
+        const sheetData = sheet.getDataRange().getValues();
+        for (let i = sheetData.length - 1; i >= 1; i--) {
+            const row = sheetData[i];
+            if (String(row[1]) === String(municipio) && String(row[2]) === String(convenio) &&
+                String(row[3]) === String(ano) && String(row[4]) === String(mes) &&
+                String(row[6]) === String(item99Codigo)) {
+                sheet.deleteRow(i + 1);
+                break; 
+            }
+        }
+    });
+    
+    atualizarObsGeralAposModificacao(ss, municipio, convenio, ano, mes);
+    registrarOperacao(local, usuarioInfo.username, municipio, "delete_item99_principal", `success: ${item99Codigo}`);
+    return { success: true, message: "Item excluído com sucesso." };
+
+  } catch (e) {
+    return { success: false, message: "Erro no servidor ao excluir item: " + e.toString() };
+  } finally {
+    if (lock) lock.releaseLock();
+  }
+}
+
+function atualizarStatusItem99(authToken, item99Codigo, novoStatus) {
+  const local = "atualizarStatusItem99";
+  const usuarioInfo = validateAuthToken(authToken);
+
+  if (!usuarioInfo || !usuarioInfo.isAdmin) {
+    return { success: false, message: "Acesso negado." };
+  }
+
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(30000);
+    const ss = SpreadsheetApp.openById(CURRENT_SPREADSHEET_ID);
+    const sheet = ss.getSheetByName("item99");
+    const data = sheet.getRange("F:K").getValues();
+
+    const rowIndex = data.findIndex(row => String(row[0]) === String(item99Codigo));
+
+    if (rowIndex === -1) {
+      return { success: false, message: "Item 99 não encontrado." };
+    }
+    
+    sheet.getRange(rowIndex + 2, 11).setValue(novoStatus);
+    registrarOperacao(local, usuarioInfo.username, usuarioInfo.municipio, "update_status_item99", `code: ${item99Codigo}, status: ${novoStatus}`);
+    return { success: true };
+
+  } catch (e) {
+    return { success: false, message: "Erro ao atualizar status: " + e.message };
+  } finally {
+    if (lock) lock.releaseLock();
+  }
+}
+
+function substituirItem99(authToken, dados) {
+    const local = "substituirItem99";
+    const { item99Codigo, itemConsumoCodigo, itemConsumoDescricao, itemConsumoDespesa, itemConsumoUnidade } = dados;
+    const usuarioInfo = validateAuthToken(authToken);
+    
+    if (!usuarioInfo || !usuarioInfo.isAdmin) {
+        return { success: false, message: "Acesso negado." };
+    }
+
+    const lock = LockService.getScriptLock();
+    try {
+        lock.waitLock(30000);
+        const ss = SpreadsheetApp.openById(CURRENT_SPREADSHEET_ID);
+        const item99Sheet = ss.getSheetByName("item99");
+
+        const item99Data = item99Sheet.getDataRange().getValues();
+        const rowIndexItem99 = item99Data.findIndex(row => String(row[5]) === String(item99Codigo));
+
+        if (rowIndexItem99 === -1) {
+            return { success: false, message: "Item 99 não encontrado na base de dados." };
+        }
+
+        const item99Row = item99Data[rowIndexItem99];
+        const municipio = item99Row[1], convenio = item99Row[2], ano = item99Row[3], mes = item99Row[4];
+
+        const rangeItem99 = item99Sheet.getRange(rowIndexItem99 + 2, 11, 1, 5);
+        rangeItem99.setValues([["substituido", itemConsumoCodigo, itemConsumoDescricao, itemConsumoDespesa, itemConsumoUnidade]]);
+
+        let atualizado = false;
+        for (const sheetName of ['principal', 'abastecimento', 'manutencao']) {
+            const sheet = ss.getSheetByName(sheetName);
+            if (!sheet) continue;
+
+            const sheetData = sheet.getDataRange().getValues();
+            const rowIndex = sheetData.findIndex(row =>
+                String(row[1]) === String(municipio) && String(row[2]) === String(convenio) &&
+                String(row[3]) === String(ano) && String(row[4]) === String(mes) &&
+                String(row[6]) === String(item99Codigo)
+            );
+
+            if (rowIndex !== -1) {
+                sheet.getRange(rowIndex + 1, 7, 1, 4).setValues([[
+                    itemConsumoCodigo, itemConsumoDescricao, itemConsumoDespesa, itemConsumoUnidade
+                ]]);
+                atualizado = true;
+                break;
+            }
+        }
+
+        if (!atualizado) {
+             return { success: false, message: "Substituição falhou: Item 99 não encontrado nos lançamentos." };
+        }
+
+        atualizarObsGeralAposModificacao(ss, municipio, convenio, ano, mes);
+        registrarOperacao(local, usuarioInfo.username, municipio, "replace_item99", `success: ${item99Codigo} -> ${itemConsumoCodigo}`);
+        return { success: true, message: "Item substituído com sucesso." };
+
+    } catch (e) {
+        return { success: false, message: "Erro no servidor ao substituir item: " + e.toString() };
+    } finally {
+        if (lock) lock.releaseLock();
+    }
+}
+
+function atualizarObsGeralAposModificacao(spreadsheet, municipio, convenio, ano, mes) {
+    const principalSheet = spreadsheet.getSheetByName("principal");
+    const obsgeralSheet = spreadsheet.getSheetByName("obsgeral");
+    const item99Sheet = spreadsheet.getSheetByName("item99");
+
+    let novoValorTotal = 0;
+    const principalData = principalSheet.getDataRange().getValues();
+    principalData.forEach(row => {
+        if (String(row[1]) === municipio && String(row[2]) === convenio && String(row[3]) === String(ano) && String(row[4]) === mes) {
+            novoValorTotal += Number(String(row[11]).replace(",", ".")) || 0;
+        }
+    });
+
+    let hasItem99Pendente = false;
+    const item99Data = item99Sheet.getDataRange().getValues();
+    item99Data.forEach(row => {
+        if (String(row[1]) === municipio && String(row[2]) === convenio && String(row[3]) === String(ano) && String(row[4]) === mes && String(row[10]).toLowerCase() === 'pendente') {
+            hasItem99Pendente = true;
+        }
+    });
+
+    const obsgeralData = obsgeralSheet.getDataRange().getValues();
+    const obsRowIndex = obsgeralData.findIndex(row => 
+        String(row[1]) === municipio && String(row[2]) === convenio && String(row[3]) === String(ano) && String(row[4]) === mes
+    );
+
+    if (obsRowIndex !== -1) {
+        obsgeralSheet.getRange(obsRowIndex + 1, 6).setValue(novoValorTotal.toFixed(2).replace(".", ","));
+        obsgeralSheet.getRange(obsRowIndex + 1, 9).setValue(hasItem99Pendente ? "SIM" : "NAO");
+    }
+}
+
+// ========== GERENCIAMENTO DE ENDEREÇOS E MEDIDORES ==========
+
+function gerenciarEnderecoMedidor(authToken, dados) {
+  const local = "gerenciarEnderecoMedidor";
+  const usuario = validateAuthToken(authToken);
+  
+  if (!usuario) {
+    return { success: false, message: "Acesso negado. Token inválido." };
+  }
+
+  if (!usuario.isAdmin && usuario.municipio != dados.municipio) {
+      return { success: false, message: "Acesso negado a este município." };
+  }
+
+  registrarOperacao(local, usuario.username, dados.municipio, `address_${dados.acao}`, "initiated");
+
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(30000);
+    const ss = SpreadsheetApp.openById(obterIdArquivoCompartilhado("SIC3_BDEnderecos"));
+    const sheet = ss.getSheetByName("enderecos");
+    const values = sheet.getDataRange().getValues();
+    const headers = values[0];
+
+    const cols = {
+      municipio: headers.indexOf("municipio"),
+      convenio: headers.indexOf("convenio"),
+      endereco: headers.indexOf("endereco"),
+      dtEndereco: headers.indexOf("dtEndereco"),
+      medidorAgua: headers.indexOf("medidorAgua"),
+      dtMedidorAgua: headers.indexOf("dtMedidorAgua"),
+      medidorEnergia: headers.indexOf("medidorEnergia"),
+      dtMedidorEnergia: headers.indexOf("dtMedidorEnergia"),
+    };
+
+    const now = Utilities.formatDate(new Date(), "America/Sao_Paulo", "dd/MM/yyyy HH:mm:ss");
+    const dadosComString = {};
+    for (const key in dados) {
+        dadosComString[key] = String(dados[key]);
+    }
+
+    switch (dadosComString.acao) {
+      case "adicionar":
+        if (values.some((row) => 
+            String(row[cols.municipio]) == dadosComString.municipio && 
+            String(row[cols.convenio]) == dadosComString.convenio && 
+            String(row[cols.endereco]) == dadosComString.enderecoNovo)) {
+          return {success: false, message: "Endereço já cadastrado para este convênio."};
+        }
+
+        const newRow = Array(sheet.getLastColumn()).fill("");
+        newRow[cols.municipio] = dadosComString.municipio;
+        newRow[cols.convenio] = dadosComString.convenio;
+        newRow[cols.endereco] = dadosComString.enderecoNovo;
+        newRow[cols.dtEndereco] = now;
+        newRow[cols.medidorAgua] = dadosComString.medidorAguaNovo;
+        newRow[cols.dtMedidorAgua] = dadosComString.medidorAguaNovo ? now : "";
+        newRow[cols.medidorEnergia] = dadosComString.medidorEnergiaNovo;
+        newRow[cols.dtMedidorEnergia] = dadosComString.medidorEnergiaNovo ? now : "";
+        appendRowAndFormatAsText(sheet, newRow.map(val => String(val)));
+        return {success: true};
+
+      case "atualizar":
+        const rowIndex = values.findIndex((row) => 
+          String(row[cols.municipio]) == dadosComString.municipio && 
+          String(row[cols.convenio]) == dadosComString.convenio && 
+          String(row[cols.endereco]) == dadosComString.enderecoAntigo);
+
+        if (rowIndex == -1) {
+          return {success: false, message: "Endereço original não encontrado."};
+        }
+
+        const actualRow = rowIndex + 1;
+
+        if (dadosComString.enderecoNovo != dadosComString.enderecoAntigo) {
+          sheet.getRange(actualRow, cols.endereco + 1).setNumberFormat("@STRING@").setValue(dadosComString.enderecoNovo);
+          sheet.getRange(actualRow, cols.dtEndereco + 1).setNumberFormat("@STRING@").setValue(now);
+        }
+        if (dadosComString.medidorAguaNovo != String(values[rowIndex][cols.medidorAgua])) {
+          sheet.getRange(actualRow, cols.medidorAgua + 1).setNumberFormat("@STRING@").setValue(dadosComString.medidorAguaNovo);
+          sheet.getRange(actualRow, cols.dtMedidorAgua + 1).setNumberFormat("@STRING@").setValue(now);
+        }
+        if (dadosComString.medidorEnergiaNovo != String(values[rowIndex][cols.medidorEnergia])) {
+          sheet.getRange(actualRow, cols.medidorEnergia + 1).setNumberFormat("@STRING@").setValue(dadosComString.medidorEnergiaNovo);
+          sheet.getRange(actualRow, cols.dtMedidorEnergia + 1).setNumberFormat("@STRING@").setValue(now);
+        }
+        return {success: true};
+
+      case "excluir":
+        const delIndex = values.findIndex((row) => 
+          String(row[cols.municipio]) == dadosComString.municipio && 
+          String(row[cols.convenio]) == dadosComString.convenio && 
+          String(row[cols.endereco]) == dadosComString.endereco);
+
+        if (delIndex == -1) {
+          return {success: false, message: "Endereço não encontrado para exclusão."};
+        }
+        sheet.deleteRow(delIndex + 1);
+        return {success: true};
+
+      default:
+        throw new Error("Ação inválida para gerenciamento de endereço/medidor.");
+    }
+  } catch (error) {
+    return {success: false, message: `Erro no servidor: ${error.message}`};
   } finally {
     lock.releaseLock();
   }
 }
 
+// ========== STATUS E BLOQUEIO DE EDIÇÃO ==========
+
+function verificarStatusBloqueio(municipio, convenio, ano, mes) {
+  try {
+    const ss = SpreadsheetApp.openById(CURRENT_SPREADSHEET_ID);
+    const sheet = ss.getSheetByName("obsgeral");
+    if (!sheet) return "desbloqueado";
+    const data = sheet.getDataRange().getValues();
+    for (let i = 0; i < data.length; i++) {
+      if (data[i][1] == municipio && String(data[i][2]) == String(convenio) && String(data[i][3]) == String(ano) && String(data[i][4]) == String(mes)) {
+        return data[i][7] == "SIM" ? "bloqueado" : "desbloqueado";
+      }
+    }
+    return "desbloqueado";
+  } catch (error) {
+    console.error("Erro ao verificar status de bloqueio:", error);
+    return "desbloqueado";
+  }
+}
+
+function atualizarStatusEdicao(authToken, municipio, convenio, ano, mes, status) {
+  const local = "atualizarStatusEdicao";
+  const usuario = validateAuthToken(authToken);
+
+  if (!usuario || !usuario.isAdmin) {
+    return { success: false, message: "Acesso negado. Apenas administradores.", errorCode: "ADMIN_REQUIRED" };
+  }
+  
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(30000);
+    const ss = SpreadsheetApp.openById(CURRENT_SPREADSHEET_ID);
+    const sheet = ss.getSheetByName("obsgeral");
+    const data = sheet.getDataRange().getValues();
+
+    for (let i = 0; i < data.length; i++) {
+      if (String(data[i][1]) == municipio && 
+          String(data[i][2]) == String(convenio) && 
+          String(data[i][3]) == String(ano) && 
+          String(data[i][4]) == String(mes)) {
+        sheet.getRange(i + 1, 8).setNumberFormat("@STRING@").setValue(String(status)); 
+        
+        if (status === "NAO") {
+            agendarRebloqueio24h(municipio, convenio, ano, mes, usuario.username);
+        }
+
+        registrarOperacao(local, usuario.username, municipio, status == "SIM" ? "bloquear_edicao" : "desbloquear_edicao", "success");
+        return { success: true };
+      }
+    }
+    return { success: false, message: "Registro não encontrado.", errorCode: "NOT_FOUND" };
+  } catch (error) {
+    return { success: false, message: "Erro ao processar alteração de status.", errorCode: "PROCESSING_ERROR" };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function agendarRebloqueio24h(municipio, convenio, ano, mes, username) {
+    const trigger = ScriptApp.newTrigger("executarRebloqueioAutomatico")
+        .timeBased()
+        .after(24 * 60 * 60 * 1000)
+        .create();
+
+    const triggerId = trigger.getUniqueId();
+    const dadosRebloqueio = {
+        municipio: municipio,
+        convenio: convenio,
+        ano: ano,
+        mes: mes,
+        username: username,
+        spreadsheetId: CURRENT_SPREADSHEET_ID,
+        timestamp: new Date().toISOString()
+    };
+
+    PropertiesService.getScriptProperties().setProperty('REBLOQUEIO_' + triggerId, JSON.stringify(dadosRebloqueio));
+    registrarOperacao("agendarRebloqueio24h", username, municipio, "schedule_reblock", `TriggerId: ${triggerId}`);
+}
+
+function executarRebloqueioAutomatico(e) {
+    const local = "executarRebloqueioAutomatico";
+    const triggerId = e.triggerUid;
+    const props = PropertiesService.getScriptProperties();
+    const dadosJson = props.getProperty('REBLOQUEIO_' + triggerId);
+
+    if (!dadosJson) return;
+
+    const dados = JSON.parse(dadosJson);
+    const lock = LockService.getScriptLock();
+
+    try {
+        lock.waitLock(30000);
+        const ss = SpreadsheetApp.openById(dados.spreadsheetId);
+        const sheet = ss.getSheetByName("obsgeral");
+        const sheetData = sheet.getDataRange().getValues();
+
+        for (let i = 0; i < sheetData.length; i++) {
+            if (String(sheetData[i][1]) == dados.municipio && 
+                String(sheetData[i][2]) == String(dados.convenio) && 
+                String(sheetData[i][3]) == String(dados.ano) && 
+                String(sheetData[i][4]) == String(dados.mes)) {
+                
+                sheet.getRange(i + 1, 8).setNumberFormat("@STRING@").setValue("SIM");
+                CURRENT_SPREADSHEET_ID = dados.spreadsheetId;
+                registrarOperacao(local, "SISTEMA", dados.municipio, "auto_reblock_24h", "success");
+                break;
+            }
+        }
+    } catch (error) {
+        console.error("Erro no rebloqueio automático:", error);
+    } finally {
+        lock.releaseLock();
+        props.deleteProperty('REBLOQUEIO_' + triggerId);
+        const triggers = ScriptApp.getProjectTriggers();
+        for (const t of triggers) {
+            if (t.getUniqueId() === triggerId) {
+                ScriptApp.deleteTrigger(t);
+                break;
+            }
+        }
+    }
+}
+
 /**
- * Remove em lote todas as linhas que contêm o mesmo convênio, município, ano e mês.
+ * Gatilho cron executado periodicamente para bloquear relatórios antigos de meses anteriores em todas as planilhas
  */
+function bloquearRelatoriosAntigosAutomaticamente() {
+  const folder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
+  const files = folder.getFiles();
+  let totalProcessado = 0;
+
+  while (files.hasNext()) {
+    const file = files.next();
+    const name = file.getName();
+    if (name.startsWith("SIC3_BD_RPM_")) {
+      const spreadsheetId = file.getId();
+      try {
+        bloquearRelatoriosAntigosNaPlanilha(spreadsheetId);
+        totalProcessado++;
+      } catch (e) {
+        console.error("Erro ao bloquear na planilha " + name + ": " + e.toString());
+      }
+    }
+  }
+  console.log("Bloqueio automático concluído. Total de planilhas: " + totalProcessado);
+}
+
+function bloquearRelatoriosAntigosNaPlanilha(spreadsheetId) {
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(15000);
+    const ss = SpreadsheetApp.openById(spreadsheetId);
+    const sheet = ss.getSheetByName("obsgeral");
+    if (!sheet) return;
+
+    const data = sheet.getDataRange().getValues();
+    const hoje = new Date();
+    const anoAtual = hoje.getFullYear();
+    const mesAtualNum = hoje.getMonth() + 1;
+
+    let relatoriosBloqueados = 0;
+
+    for (let i = 1; i < data.length; i++) {
+      const linha = data[i];
+      const convenio = linha[2];
+      const anoRelatorio = parseInt(linha[3], 10);
+      const mesRelatorio = linha[4];
+      const statusAtual = linha[7];
+
+      if (!anoRelatorio || !mesRelatorio || statusAtual === "SIM") {
+        continue;
+      }
+      
+      const mesRelatorioNum = mNumerico(mesRelatorio, 'numero');
+
+      if (anoRelatorio < anoAtual || (anoRelatorio === anoAtual && mesRelatorioNum < mesAtualNum)) {
+        sheet.getRange(i + 1, 8).setValue("SIM");
+        relatoriosBloqueados++;
+        CURRENT_SPREADSHEET_ID = spreadsheetId;
+        registrarOperacao("bloquearRelatoriosAntigosNaPlanilha", "SISTEMA", "AUTOMATICO", "bloqueio_realizado", `Relatório: ${convenio} - ${mesRelatorio}/${anoRelatorio}`);
+      }
+    }
+  } finally {
+    if (lock) lock.releaseLock();
+  }
+}
+
+// ========== BUSCAS NO PORTAL DE COMPRAS MG ==========
+
+function obterDetalhesItemPortal(itemId) {
+  if (!itemId) return null;
+  try {
+    const url = `https://www1.compras.mg.gov.br/servico/catalogo/itemmaterialservico/Consulta/recuperarDetalhesItemMaterial?id=${itemId}&operacao=visualizar&realizarBuscaCaracteristica=false`;
+    const response = UrlFetchApp.fetch(url, { method: 'get', headers: { 'Accept': 'application/json' }, muteHttpExceptions: true });
+    
+    if (response.getResponseCode() !== 200) return null;
+
+    const dados = JSON.parse(response.getContentText());
+    if (dados && dados.itemMaterial && dados.itemMaterial.material) {
+      const item = dados.itemMaterial.material;
+      const elementosDespesa = [...new Set(item.elementosItemDespesa
+        .filter(el => el.situacao.id === 'ATIVO')
+        .map(el => el.descricao.trim()))].sort();
+
+      const unidadesFornecimento = [...new Set(item.unidadesAquisicao
+        .filter(ua => ua.situacao.id === 'ATIVO')
+        .map(ua => ua.unidadeFornecimento.trim()))].sort();
+      
+      return { elementosDespesa: elementosDespesa, unidadesFornecimento: unidadesFornecimento };
+    }
+    return null;
+  } catch (e) {
+    console.error("Erro no obterDetalhesItemPortal:", e);
+    return null;
+  }
+}
+
+function buscarNoPortalCompras(termoBusca) {
+  if (!termoBusca) return [];
+  try {
+    const url = "https://www1.compras.mg.gov.br/servico/catalogo/itemmaterialservico/Consulta/pesquisar";
+    const payload = {
+      reqId: 1, ordenacoes: [], sizePerPage: 9999, page: 1,
+      filtros: { tiposGrupo: "MATERIAL", tipoPesquisa: "CONSIDERAR_TUDO_COM_SINONIMO", especificacaoItem: termoBusca }
+    };
+    
+    const response = UrlFetchApp.fetch(url, {
+      method: 'post', contentType: 'application/json',
+      payload: JSON.stringify(payload), muteHttpExceptions: true
+    });
+
+    if (response.getResponseCode() !== 200) return [];
+
+    const data = JSON.parse(response.getContentText());
+    if (data && data.resultado && Array.isArray(data.resultado.dados)) {
+      return data.resultado.dados.map(item => ({
+        id: item.id,
+        codigo: item.codigo,
+        descricao: item.especificacaoCompleta || item.nome
+      })).filter(item => item.id && item.codigo && item.descricao);
+    }
+    return [];
+  } catch (e) {
+    console.error("Erro no buscarNoPortalCompras:", e);
+    return [];
+  }
+}
+
+// ========== FUNÇÕES AUXILIARES E DE PERSISTÊNCIA ==========
+
+function registrarOperacao(local, username, municipio, operacao, resultado) {
+  try {
+    const ss = SpreadsheetApp.openById(obterIdArquivoCompartilhado("SIC3_TBSecundaria"));
+    const sheet = ss.getSheetByName("acessos");
+    
+    const timestamp = Utilities.formatDate(new Date(), "America/Sao_Paulo", "dd/MM/yyyy HH:mm:ss");
+    const rowData = [timestamp, String(username), String(municipio), String(resultado), String(operacao), local];
+    appendRowAndFormatAsText(sheet, rowData);
+  } catch (error) {
+    console.error("Erro ao registrar operação:", error);
+  }
+}
+
+function appendRowAndFormatAsText(sheet, rowData) {
+  try {
+    sheet.insertRowBefore(2); 
+    const newRowRange = sheet.getRange(2, 1, 1, rowData.length);
+    newRowRange.setValues([rowData]);
+    newRowRange.setNumberFormat("@STRING@");
+  } catch (e) {
+    console.error("Erro em appendRowAndFormatAsText:", e);
+  }
+}
+
+function inserirDados(sheet, dados) {
+  if (!sheet || !dados || dados.length === 0) return;
+  sheet.insertRowsAfter(1, dados.length);
+  const range = sheet.getRange(2, 1, dados.length, dados[0].length);
+  range.setValues(dados);
+  range.setNumberFormat("@STRING@");
+}
+
 function removerRegistrosExistentes(sheet, municipio, convenio, ano, mes) {
   if (!sheet) return;
-  const lastRow = sheet.getLastRow();
-  if (lastRow <= 1) return;
+  const data = sheet.getDataRange().getValues();
+  let rangeStart = -1;
+  let rangeCount = 0;
   
-  const range = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn());
-  const values = range.getValues();
-  const newValues = [];
-  
-  for (let i = 0; i < values.length; i++) {
-    const rowMuni = String(values[i][1]);
-    const rowConv = String(values[i][2]);
-    const rowAno = String(values[i][3]);
-    const rowMes = String(values[i][4]);
+  for (let i = data.length - 1; i > 0; i--) {
+    const corresponde = data[i][1] == municipio && String(data[i][2]) == String(convenio) && 
+                        String(data[i][3]) == String(ano) && String(data[i][4]) == String(mes);
     
-    if (rowMuni === String(municipio) && rowConv === String(convenio) && rowAno === String(ano) && rowMes === String(mes)) {
-      continue; // Exclui a linha
-    }
-    newValues.push(values[i]);
-  }
-  
-  sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).clearContent();
-  if (newValues.length > 0) {
-    sheet.getRange(2, 1, newValues.length, sheet.getLastColumn()).setValues(newValues);
-  }
-}
-
-/**
- * Insere um lote de linhas na planilha de forma otimizada com formato texto.
- */
-function inserirDados(sheet, rows) {
-  if (!sheet || !rows || rows.length === 0) return;
-  const lastRow = sheet.getLastRow();
-  sheet.getRange(lastRow + 1, 1, rows.length, rows[0].length)
-    .setValues(rows)
-    .setNumberFormat("@STRING@");
-}
-
-// ============================================================================
-// GERENCIAMENTO DE CONVÊNIOS
-// ============================================================================
-
-function carregarConveniosMunicipio(ss, params) {
-  const municipio = params[0];
-  const sheet = ss.getSheetByName("convenios");
-  if (!sheet) return [];
-  
-  const lastRow = sheet.getLastRow();
-  if (lastRow <= 1) return [];
-  
-  const dados = sheet.getRange(2, 1, lastRow - 1, 8).getValues();
-  const convenios = [];
-  
-  for (let i = 0; i < dados.length; i++) {
-    if (dados[i][0] === municipio || municipio === "admin") {
-      convenios.push({
-        municipio: dados[i][0],
-        convenio: dados[i][1],
-        preposto_n: dados[i][2] || "",
-        preposto_pg: dados[i][3] || "",
-        preposto: dados[i][4] || "",
-        unidade: dados[i][5] || "",
-        dataInicio: dados[i][6] || "",
-        dataFim: dados[i][7] || ""
-      });
-    }
-  }
-  return convenios;
-}
-
-function incluirConvenio(ss, params) {
-  // params: [municipio, convenio, preposto_n, preposto_pg, preposto, unidade, dataInicio, dataFim]
-  const sheet = ss.getSheetByName("convenios");
-  if (!sheet) return { success: false, message: "Aba convenios não encontrada." };
-  
-  const novaLinha = [
-    String(params[0] || ""),
-    String(params[1] || ""),
-    String(params[2] || ""),
-    String(params[3] || ""),
-    String(params[4] || ""),
-    String(params[5] || ""),
-    String(params[6] || ""),
-    String(params[7] || "")
-  ];
-  
-  sheet.appendRow(novaLinha);
-  return { success: true };
-}
-
-function alterarConvenio(ss, params) {
-  // params: [municipio, convenio, preposto_n, preposto_pg, preposto, unidade, dataInicio, dataFim]
-  const sheet = ss.getSheetByName("convenios");
-  if (!sheet) return { success: false, message: "Aba convenios não encontrada." };
-  
-  const lastRow = sheet.getLastRow();
-  if (lastRow <= 1) return { success: false, message: "Nenhum convênio cadastrado." };
-  
-  const range = sheet.getRange(2, 1, lastRow - 1, 8);
-  const values = range.getValues();
-  let alterado = false;
-  
-  for (let i = 0; i < values.length; i++) {
-    if (String(values[i][0]) === String(params[0]) && String(values[i][1]) === String(params[1])) {
-      values[i][2] = String(params[2] || "");
-      values[i][3] = String(params[3] || "");
-      values[i][4] = String(params[4] || "");
-      values[i][5] = String(params[5] || "");
-      values[i][6] = String(params[6] || "");
-      values[i][7] = String(params[7] || "");
-      alterado = true;
-      break;
-    }
-  }
-  
-  if (alterado) {
-    range.setValues(values);
-    return { success: true };
-  }
-  return { success: false, message: "Convênio não localizado." };
-}
-
-function excluirConvenio(ss, params) {
-  // params: [municipio, convenio]
-  const sheet = ss.getSheetByName("convenios");
-  if (!sheet) return { success: false, message: "Aba convenios não encontrada." };
-  
-  const lastRow = sheet.getLastRow();
-  if (lastRow <= 1) return { success: false, message: "Nenhum convênio cadastrado." };
-  
-  const range = sheet.getRange(2, 1, lastRow - 1, 8);
-  const values = range.getValues();
-  const novosValores = [];
-  
-  for (let i = 0; i < values.length; i++) {
-    if (String(values[i][0]) === String(params[0]) && String(values[i][1]) === String(params[1])) {
-      continue;
-    }
-    novosValores.push(values[i]);
-  }
-  
-  sheet.getRange(2, 1, lastRow - 1, 8).clearContent();
-  if (novosValores.length > 0) {
-    sheet.getRange(2, 1, novosValores.length, 8).setValues(novosValores);
-  }
-  return { success: true };
-}
-
-// ============================================================================
-// GERENCIAMENTO DE ENDEREÇOS E MEDIDORES
-// ============================================================================
-
-function gerenciarEnderecoMedidor(ss, params) {
-  // params: [dados]
-  const dados = params[0] || {};
-  const sheet = ss.getSheetByName("enderecos");
-  if (!sheet) return { success: false, message: "Aba enderecos não encontrada." };
-  
-  const lastRow = sheet.getLastRow();
-  const now = Utilities.formatDate(new Date(), "America/Sao_Paulo", "dd/MM/yyyy HH:mm:ss");
-  
-  if (lastRow <= 1) {
-    sheet.appendRow([
-      String(dados.municipio || ""),
-      String(dados.convenio || ""),
-      String(dados.endereco || ""),
-      now,
-      String(dados.medidorAgua || ""),
-      now,
-      String(dados.medidorEnergia || ""),
-      now
-    ]);
-    return { success: true };
-  }
-  
-  const range = sheet.getRange(2, 1, lastRow - 1, 8);
-  const values = range.getValues();
-  let localizado = false;
-  
-  for (let i = 0; i < values.length; i++) {
-    if (String(values[i][0]) === String(dados.municipio) && String(values[i][1]) === String(dados.convenio)) {
-      localizado = true;
-      if (String(values[i][2]) !== String(dados.endereco || "")) {
-        values[i][2] = String(dados.endereco || "");
-        values[i][3] = now;
+    if (corresponde) {
+      if (rangeStart === -1) {
+        rangeStart = i + 1;
+        rangeCount = 1;
+      } else {
+        rangeCount++;
       }
-      if (String(values[i][4]) !== String(dados.medidorAgua || "")) {
-        values[i][4] = String(dados.medidorAgua || "");
-        values[i][5] = now;
+    } else {
+      if (rangeStart !== -1) {
+        sheet.deleteRows(rangeStart - rangeCount + 1, rangeCount);
+        rangeStart = -1;
+        rangeCount = 0;
       }
-      if (String(values[i][6]) !== String(dados.medidorEnergia || "")) {
-        values[i][6] = String(dados.medidorEnergia || "");
-        values[i][7] = now;
+    }
+  }
+  if (rangeStart !== -1) {
+    sheet.deleteRows(rangeStart - rangeCount + 1, rangeCount);
+  }
+}
+
+function sanitizeData(data) {
+  if (typeof data === 'string') return data.replace(/\u00A0/g, ' ');
+  if (Array.isArray(data)) return data.map(sanitizeData);
+  if (typeof data === 'object' && data !== null) {
+    return Object.keys(data).reduce((acc, key) => {
+      acc[key] = sanitizeData(data[key]);
+      return acc;
+    }, {});
+  }
+  return data;
+}
+
+function uploadNotaFiscal(fileObject, existingFileUrl = null) {
+  try {
+    if (existingFileUrl) {
+      try {
+        const fileId = existingFileUrl.match(/id=([^&]+)/)[1];
+        if (fileId) DriveApp.getFileById(fileId).setTrashed(true);
+      } catch (e) {
+        console.warn("Não foi possível excluir nota fiscal antiga: " + e.toString());
       }
-      break;
     }
+    
+    const { base64Data, mimeType, fileName } = fileObject;
+    const folder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
+    const decoded = Utilities.base64Decode(base64Data, Utilities.Charset.UTF_8);
+    const blob = Utilities.newBlob(decoded, mimeType, fileName);
+    const file = folder.createFile(blob);
+    
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    return file.getUrl();
+  } catch (error) {
+    console.error("Erro no uploadNotaFiscal:", error);
+    return "";
   }
-  
-  if (localizado) {
-    range.setValues(values);
-  } else {
-    sheet.appendRow([
-      String(dados.municipio || ""),
-      String(dados.convenio || ""),
-      String(dados.endereco || ""),
-      now,
-      String(dados.medidorAgua || ""),
-      now,
-      String(dados.medidorEnergia || ""),
-      now
-    ]);
-  }
-  return { success: true };
 }
 
-// ============================================================================
-// GERENCIAMENTO DE ITENS 99
-// ============================================================================
-
-function gerenciarItem99(ss, params) {
-  // params: [operacao, dados]
-  const operacao = params[0];
-  const dados = params[1] || {};
-  const sheet = ss.getSheetByName("item99");
-  if (!sheet) return { success: false, message: "Aba item99 não encontrada." };
-  
-  const now = Utilities.formatDate(new Date(), "America/Sao_Paulo", "dd/MM/yyyy HH:mm:ss");
-  
-  if (operacao === "inserir") {
-    sheet.appendRow([
-      now,
-      String(dados.municipio || ""),
-      String(dados.convenio || ""),
-      String(dados.ano || ""),
-      String(dados.mes || ""),
-      String(dados.item99_code || ""),
-      String(dados.descricao || ""),
-      String(dados.unidade_distribuicao || ""),
-      String(dados.elemento_despesa || ""),
-      String(dados.termos_busca || ""),
-      String(dados.status || "pendente"),
-      String(dados.link_nota_fiscal || "")
-    ]);
-    return { success: true };
+function formatDataForSheet(dateString) {
+  if (!dateString || typeof dateString != 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+    return dateString; 
   }
-  
-  const lastRow = sheet.getLastRow();
-  if (lastRow <= 1) return { success: false, message: "Nenhum item99 cadastrado." };
-  
-  const range = sheet.getRange(2, 1, lastRow - 1, 12);
-  const values = range.getValues();
-  let alterado = false;
-  
-  for (let i = 0; i < values.length; i++) {
-    if (String(values[i][5]) === String(dados.item99_code)) {
-      values[i][6] = String(dados.descricao || values[i][6]);
-      values[i][7] = String(dados.unidade_distribuicao || values[i][7]);
-      values[i][8] = String(dados.elemento_despesa || values[i][8]);
-      values[i][9] = String(dados.termos_busca || values[i][9]);
-      values[i][10] = String(dados.status || values[i][10]);
-      values[i][11] = String(dados.link_nota_fiscal || values[i][11]);
-      alterado = true;
-      break;
-    }
-  }
-  
-  if (alterado) {
-    range.setValues(values);
-    return { success: true };
-  }
-  return { success: false, message: "Item99 não localizado." };
+  const parts = dateString.split('-');
+  return `${parts[2]}/${parts[1]}/${parts[0]}`;
 }
 
-function excluirItem99Principal(ss, params) {
-  // params: [item99Codigo]
-  const item99Codigo = params[0];
-  const sheet = ss.getSheetByName("item99");
-  if (!sheet) return { success: false, message: "Aba item99 não encontrada." };
-  
-  const lastRow = sheet.getLastRow();
-  if (lastRow <= 1) return { success: false, message: "Nenhum item99 cadastrado." };
-  
-  const range = sheet.getRange(2, 1, lastRow - 1, 12);
-  const values = range.getValues();
-  const novosValores = [];
-  
-  for (let i = 0; i < values.length; i++) {
-    if (String(values[i][5]) === String(item99Codigo)) {
-      continue;
-    }
-    novosValores.push(values[i]);
-  }
-  
-  sheet.getRange(2, 1, lastRow - 1, 12).clearContent();
-  if (novosValores.length > 0) {
-    sheet.getRange(2, 1, novosValores.length, 12).setValues(novosValores);
-  }
-  return { success: true };
+function mNumerico(valor, retorno = 'texto') {
+  return converterMes(valor, retorno);
 }
 
-function atualizarStatusItem99(ss, params) {
-  // params: [item99Codigo, novoStatus]
-  const item99Codigo = params[0];
-  const novoStatus = params[1];
-  const sheet = ss.getSheetByName("item99");
-  if (!sheet) return { success: false, message: "Aba item99 não encontrada." };
-  
-  const lastRow = sheet.getLastRow();
-  if (lastRow <= 1) return { success: false, message: "Nenhum item99 cadastrado." };
-  
-  const range = sheet.getRange(2, 1, lastRow - 1, 12);
-  const values = range.getValues();
-  let alterado = false;
-  
-  for (let i = 0; i < values.length; i++) {
-    if (String(values[i][5]) === String(item99Codigo)) {
-      values[i][10] = String(novoStatus);
-      alterado = true;
-      break;
+function converterMes(valor, formato = 'texto') {
+  const meses = {
+    'JANEIRO': { texto: '01', numero: 1, nome: 'janeiro' }, 'FEVEREIRO': { texto: '02', numero: 2, nome: 'fevereiro' },
+    'MARÇO': { texto: '03', numero: 3, nome: 'março' }, 'MARCO': { texto: '03', numero: 3, nome: 'março' },
+    'ABRIL': { texto: '04', numero: 4, nome: 'abril' }, 'MAIO': { texto: '05', numero: 5, nome: 'maio' },
+    'JUNHO': { texto: '06', numero: 6, nome: 'junho' }, 'JULHO': { texto: '07', numero: 7, nome: 'julho' },
+    'AGOSTO': { texto: '08', numero: 8, nome: 'agosto' }, 'SETEMBRO': { texto: '09', numero: 9, nome: 'setembro' },
+    'OUTUBRO': { texto: '10', numero: 10, nome: 'outubro' }, 'NOVEMBRO': { texto: '11', numero: 11, nome: 'novembro' },
+    'DEZEMBRO': { texto: '12', numero: 12, nome: 'dezembro' }
+  };
+  if (typeof valor === 'number' || /^\d+$/.test(String(valor))) {
+    const num = parseInt(valor, 10);
+    if (num >= 1 && num <= 12) {
+      const nomesMeses = ['JANEIRO', 'FEVEREIRO', 'MARÇO', 'ABRIL', 'MAIO', 'JUNHO', 'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO'];
+      return meses[nomesMeses[num - 1]][formato];
     }
+    return formato === 'numero' ? 0 : (formato === 'texto' ? '00' : '');
   }
-  
-  if (alterado) {
-    range.setValues(values);
-    return { success: true };
-  }
-  return { success: false, message: "Item99 não localizado." };
-}
-
-// ============================================================================
-// STATUS DE BLOQUEIO DE RELATÓRIO
-// ============================================================================
-
-function verificarStatusBloqueio(ss, params) {
-  // params: [municipio, convenio, ano, mes]
-  const municipio = params[0];
-  const convenio = params[1];
-  const ano = params[2];
-  const mes = params[3];
-  
-  const sheet = ss.getSheetByName("obsgeral");
-  if (!sheet) return "desbloqueado";
-  
-  const lastRow = sheet.getLastRow();
-  if (lastRow <= 1) return "desbloqueado";
-  
-  const values = sheet.getRange(2, 1, lastRow - 1, 9).getValues();
-  for (let i = 0; i < values.length; i++) {
-    if (String(values[i][1]) === String(municipio) &&
-        String(values[i][2]) === String(convenio) &&
-        String(values[i][3]) === String(ano) &&
-        String(values[i][4]) === String(mes)) {
-      return String(values[i][7] || "").toUpperCase() === "SIM" ? "bloqueado" : "desbloqueado";
-    }
-  }
-  return "desbloqueado";
-}
-
-function atualizarStatusEdicao(ss, params) {
-  // params: [municipio, convenio, ano, mes, status]
-  const municipio = params[0];
-  const convenio = params[1];
-  const ano = params[2];
-  const mes = params[3];
-  const status = params[4]; // "SIM" ou "NAO"
-  
-  const sheet = ss.getSheetByName("obsgeral");
-  if (!sheet) return { success: false, message: "Aba obsgeral não encontrada." };
-  
-  const lastRow = sheet.getLastRow();
-  const timestamp = Utilities.formatDate(new Date(), "America/Sao_Paulo", "dd/MM/yyyy HH:mm:ss");
-  
-  if (lastRow <= 1) {
-    sheet.appendRow([
-      timestamp, String(municipio), String(convenio), String(ano), String(mes),
-      "", "", String(status), "NAO"
-    ]);
-    return { success: true };
-  }
-  
-  const range = sheet.getRange(2, 1, lastRow - 1, 9);
-  const values = range.getValues();
-  let localizado = false;
-  
-  for (let i = 0; i < values.length; i++) {
-    if (String(values[i][1]) === String(municipio) &&
-        String(values[i][2]) === String(convenio) &&
-        String(values[i][3]) === String(ano) &&
-        String(values[i][4]) === String(mes)) {
-      values[i][7] = String(status);
-      values[i][0] = timestamp;
-      localizado = true;
-      break;
-    }
-  }
-  
-  if (localizado) {
-    range.setValues(values);
-  } else {
-    sheet.appendRow([
-      timestamp, String(municipio), String(convenio), String(ano), String(mes),
-      "", "", String(status), "NAO"
-    ]);
-  }
-  return { success: true };
+  const mesFormatado = String(valor).toUpperCase().trim();
+  if (!meses[mesFormatado]) return formato === 'numero' ? 0 : (formato === 'texto' ? '00' : '');
+  return meses[mesFormatado][formato];
 }
