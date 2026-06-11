@@ -282,51 +282,49 @@ window.verificarDigitoVerificador = function(numero) {
 window.carregarDadosPlanilha = function(config) {
   return new Promise((resolve, reject) => {
     try {
-      const callbackName = 'loadSheetData_' + Math.floor(Math.random() * 1000000);
-      const tempoLimite = 30000;
-      let timeoutId = setTimeout(() => {
-        delete window[callbackName];
-        const scriptElement = document.getElementById('sheetScript_' + callbackName);
-        if (scriptElement?.parentNode) scriptElement.parentNode.removeChild(scriptElement);
-        reject(new Error('Tempo limite excedido ao carregar dados da planilha: ' + (config.sheet || config.sheetId) ));
-      }, tempoLimite);
-
-      window[callbackName] = function(response) {
-        clearTimeout(timeoutId);
-        try {
-          if (!response || !response.table || !response.table.rows) {
-            throw new Error('Dados inválidos recebidos da planilha: ' + (config.sheet || config.sheetId));
-          }
-          const rows = response.table.rows;
-          let processedData = config.processData ? config.processData(rows)
-            : rows.map(row => row.c ? row.c.map(cell => (cell ? cell.v : '')) : []);
-          resolve(processedData);
-        } catch (error) {
-          reject(error);
-        } finally {
-          const scriptElement = document.getElementById('sheetScript_' + callbackName);
-          if (scriptElement?.parentNode) scriptElement.parentNode.removeChild(scriptElement);
-          delete window[callbackName];
-        }
-      };
-
       const baseUrl = "https://docs.google.com/spreadsheets/d/";
       const queryParams = new URLSearchParams({
         tq: config.query || 'SELECT *',
         sheet: config.sheet || '',
-        tqx: `responseHandler:${callbackName}`
+        tqx: 'out:json'
       });
       const url = `${baseUrl}${config.sheetId}/gviz/tq?${queryParams}`;
-      const script = document.createElement('script');
-      script.id = 'sheetScript_' + callbackName;
-      script.src = url;
-      script.async = true;
-      script.onerror = () => {
-        clearTimeout(timeoutId);
-        delete window[callbackName];
-        reject(new Error('Erro ao carregar script da planilha: ' + (config.sheet || config.sheetId)));
-      };
-      document.body.appendChild(script);
+      const tempoLimite = 30000;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        controller.abort();
+      }, tempoLimite);
+
+      fetch(url, { signal: controller.signal })
+        .then(response => {
+          clearTimeout(timeoutId);
+          if (!response.ok) {
+            throw new Error(`Erro HTTP: ${response.status}`);
+          }
+          return response.text();
+        })
+        .then(text => {
+          const match = text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\);?/);
+          if (!match) {
+            throw new Error('Formato de resposta inválido da planilha.');
+          }
+          const responseJson = JSON.parse(match[1]);
+          if (!responseJson || !responseJson.table || !responseJson.table.rows) {
+            throw new Error('Dados inválidos recebidos da planilha: ' + (config.sheet || config.sheetId));
+          }
+          const rows = responseJson.table.rows;
+          let processedData = config.processData ? config.processData(rows)
+            : rows.map(row => row.c ? row.c.map(cell => (cell ? cell.v : '')) : []);
+          resolve(processedData);
+        })
+        .catch(error => {
+          clearTimeout(timeoutId);
+          if (error.name === 'AbortError') {
+            reject(new Error('Tempo limite excedido ao carregar dados da planilha: ' + (config.sheet || config.sheetId)));
+          } else {
+            reject(new Error('Erro ao carregar dados da planilha: ' + (config.sheet || config.sheetId) + ' - ' + error.message));
+          }
+        });
     } catch (error) {
       reject(error);
     }

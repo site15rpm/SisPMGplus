@@ -124,7 +124,6 @@ function gerarCampoFormulario(campo) {
   }
 
 function gerarInputFormulario(campo) {
-  const []);
   const regras = typeof obterRegrasValidacao === 'function' ? obterRegrasValidacao(campo.id) : { required: false };
   const baseAttrs = `
     id="${campo.id}"
