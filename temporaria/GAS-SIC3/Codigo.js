@@ -81,10 +81,7 @@ function handleApiAction(action, body) {
     case "obterTokenBypass":
       result = obterTokenBypass(params[0], params[1], params[2]);
       break;
-      
-    case "loginCheck":
-      result = loginCheck(params[0], params[1]);
-      break;
+
       
     case "carregarConveniosMunicipio":
       result = carregarConveniosMunicipio(params[0], params[1]);
@@ -233,7 +230,7 @@ function obterSpreadsheetIdDoContexto(body) {
  * Pesquisa ou inicializa arquivos permanentes e comuns do SIC3 no Drive (Locais por RPM ou Globais)
  */
 function obterIdArquivoCompartilhado(nomeBase, rpm) {
-  const isGlobal = nomeBase === "SIC3_TBPrimaria" || nomeBase === "SIC3_TBSecundaria" || nomeBase === "SIC3_BDLogins";
+  const isGlobal = nomeBase === "SIC3_TBPrimaria" || nomeBase === "SIC3_TBSecundaria";
   
   if (isGlobal) {
     const rootFolder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
@@ -260,9 +257,6 @@ function obterIdArquivoCompartilhado(nomeBase, rpm) {
     } else if (nomeBase === "SIC3_TBSecundaria") {
       nomeAba = "tb-secundaria";
       cabecalho = ["CÓDIGO", "DESCRIÇÃO", "VALOR", "UNIDADE"];
-    } else if (nomeBase === "SIC3_BDLogins") {
-      nomeAba = "login";
-      cabecalho = ["senha", "municipio"];
     }
     
     if (nomeAba) {
@@ -621,37 +615,7 @@ function obterTokenBypass(username, municipio, isAdmin) {
   }
 }
 
-/**
- * Função de Login Legada (compatibilidade)
- */
-function loginCheck(username, password) {
-  const local = "loginCheck";
-  const lock = LockService.getScriptLock();
-  try {
-    lock.waitLock(10000);
-    const ss = SpreadsheetApp.openById(obterIdArquivoCompartilhado("SIC3_BDLogins"));
-    const login = ss.getSheetByName("login");
-    const returnData = login.getRange("A2:A").createTextFinder(password).matchEntireCell(true).findAll();
 
-    if (returnData.length > 0) {
-      const municipio = login.getRange(returnData[0].getRow(), 2).getValue();
-      const userInfo = { username: username, municipio: String(municipio) };
-      registrarOperacao(local, userInfo.username, userInfo.municipio, "login", "success");
-      const isAdmin = userInfo.municipio === "admin";
-      const authToken = generateAuthToken(userInfo.username, userInfo.municipio, isAdmin);
-      
-      return { success: true, authToken: authToken, username: username, municipio: userInfo.municipio, isAdmin: isAdmin };
-    } else {
-      registrarOperacao(local, username, null, "login_failure", "Credenciais inválidas");
-      return { success: false, message: "Senha inválida." };
-    }
-  } catch (error) {
-    registrarOperacao(local, username, null, "login_error", error.message);
-    throw new Error("Erro ao executar tarefa de login: " + error.message);
-  } finally {
-    if (lock) lock.releaseLock();
-  }
-}
 
 // ========== SISTEMA DE CONVÊNIOS ==========
 
