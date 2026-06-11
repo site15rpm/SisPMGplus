@@ -221,7 +221,7 @@ export class SirconvDashboardModule {
                             <button id="sispmg-dashboard-refresh" class="sispmg-dashboard-btn sispmg-dashboard-btn-primary" title="Busca Avançada Profunda">
                                 <i class="fas fa-search"></i>
                             </button>
-                            <button id="sispmg-dashboard-clear-cache" class="sispmg-dashboard-btn" style="background-color: #dc3545 !important; color: white !important;" title="Limpar Cache Local">
+                            <button id="sispmg-dashboard-clear-cache" class="sispmg-dashboard-btn" style="background-color: #5e5e5e !important; color: white !important;" title="Limpar Cache Local">
                                 <i class="fas fa-trash"></i>
                             </button>
                             <button id="sispmg-dashboard-back" class="sispmg-dashboard-btn" style="display: none; background-color: #6c757d !important; color: white !important;">
