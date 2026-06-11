@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SIC3 v2.0 - Controle de Contas de Convênio</title>
+
+    <!-- Bibliotecas Externas (CDNs) - Mantidas exatamente as mesmas do projeto original para compatibilidade -->
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <link href="https://cdn.datatables.net/2.0.8/css/dataTables.dataTables.min.css" rel="stylesheet" />
+    <script src="https://cdn.datatables.net/2.0.8/js/dataTables.js"></script>
+    <link href="https://cdn.datatables.net/plug-ins/2.0.8/features/searchHighlight/dataTables.searchHighlight.css" rel="stylesheet" />
+    <script src="https://cdn.datatables.net/plug-ins/2.0.8/features/searchHighlight/dataTables.searchHighlight.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery-highlight@3.5.0/jquery.highlight.min.js"></script>
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css" />
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/3.0.1/jspdf.umd.min.js" integrity="sha512-ad3j5/L4h648YM/KObaUfjCsZRBP9sAOmpjaT2BDx6u9aBrKFp7SbeHykruy83rxfmG42+5QqeL/ngcojglbJw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/5.0.2/jspdf.plugin.autotable.min.js" integrity="sha512-JizZOUNesiGhMcp9fsA/9W31FOat6QysBM8hSj6ir8iIANIUJ2mhko7Lo1+j0ErftmJ8SebMZLm9iielKjeIEQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />
+
+    <!-- Estilo de Carregamento Global -->
+    <style>
+      .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(255, 255, 255, 0.7);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+      }
+      .loading {
+        border: 6px solid #f3f3f3;
+        border-radius: 50%;
+        border-top: 6px solid #1a73e8;
+        width: 50px;
+        height: 50px;
+        animation: spin 1s linear infinite;
+      }
+      .loading-container {
+        text-align: center;
+      }
+      .loading-message {
+        margin-top: 15px;
+        font-family: Arial, sans-serif;
+        color: #1a73e8;
+        font-weight: bold;
+      }
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: Arial, sans-serif;
+        background-color: #f8f9fa;
+      }
+      .config-api-container {
+        position: fixed;
+        bottom: 10px;
+        left: 10px;
+        background: white;
+        padding: 8px 12px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        font-size: 11px;
+        z-index: 1000;
+        display: flex;
+        gap: 5px;
+        align-items: center;
+      }
+      .config-api-container input {
+        width: 150px;
+        font-size: 11px;
+        padding: 2px 4px;
+        border: 1px solid #ccc;
+        border-radius: 2px;
+      }
+      .config-api-container button {
+        font-size: 11px;
+        padding: 2px 6px;
+        cursor: pointer;
+        background: #1a73e8;
+        color: white;
+        border: none;
+        border-radius: 2px;
+      }
+      .config-api-container button:hover {
+        background: #1557b0;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Overlay de Carregamento Global -->
+    <div id="loading-overlay-global" class="loading-overlay">
+      <div class="loading-container">
+        <div class="loading"></div>
+        <div id="loading-message-global" class="loading-message">Iniciando SIC3...</div>
+      </div>
+    </div>
+
+    <!-- Container da Aplicação (Onde as views serão injetadas) -->
+    <div id="sic3-app-container"></div>
+
+    <!-- Dialog de Mensagens do jQuery UI -->
+    <div id="dialog-message" style="display: none;"></div>
+
+    <!-- Configuração Rápida da API do GAS (Útil para facilitação de uso e testes) -->
+    <div class="config-api-container">
+      <span>API GAS:</span>
+      <input type="text" id="api-gas-url-input" placeholder="URL do Web App do GAS" />
+      <button id="api-gas-url-save-btn">Salvar</button>
+    </div>
+
+    <!-- Script de Inicialização da Aplicação Local (SPA) -->
+    <script type="module" src="sic3/sic3-app.js"></script>
+  </body>
+</html>
