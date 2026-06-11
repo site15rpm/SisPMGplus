@@ -1587,11 +1587,11 @@ export class SirconvDashboardModule {
                 backBtn.style.setProperty('display', 'none', 'important');
                 globalClose.style.setProperty('display', 'inline-flex', 'important');
             } else if (this.currentView === 'adv') {
-                refreshBtn.style.setProperty('display', 'inline-flex', 'important');
-                consolidateBtn.style.setProperty('display', 'inline-flex', 'important');
+                refreshBtn.style.setProperty('display', 'none', 'important');
+                consolidateBtn.style.setProperty('display', 'none', 'important');
                 clearCacheBtn.style.setProperty('display', 'none', 'important');
                 backBtn.style.setProperty('display', 'inline-flex', 'important');
-                globalClose.style.setProperty('display', 'inline-flex', 'important');
+                globalClose.style.setProperty('display', 'none', 'important');
             } else if (this.currentView === 'consolidado') {
                 refreshBtn.style.setProperty('display', 'none', 'important');
                 consolidateBtn.style.setProperty('display', 'none', 'important');
