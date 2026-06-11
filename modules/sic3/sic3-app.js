@@ -341,6 +341,12 @@ window.addEventListener('DOMContentLoaded', async () => {
         const resId = await executarApi("obterIdPlanilha", [rpmAtiva, anoAtivo]);
         if (resId && resId.success && resId.spreadsheetId) {
             window.idbase = resId.spreadsheetId;
+            if (resId.arquivosCompartilhados) {
+                window.idBDConvenios = resId.arquivosCompartilhados.BDConvenios;
+                window.idBDEnderecos = resId.arquivosCompartilhados.BDEnderecos;
+                window.idTBPrimaria = resId.arquivosCompartilhados.TBPrimaria;
+                window.idTBSecundaria = resId.arquivosCompartilhados.TBSecundaria;
+            }
         } else {
             console.warn("Não foi possível obter o ID da planilha do GAS. Usando fallback vazio.");
             window.idbase = "";
