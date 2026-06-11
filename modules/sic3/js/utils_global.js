@@ -295,7 +295,10 @@ window.carregarDadosPlanilha = function(config) {
         controller.abort();
       }, tempoLimite);
 
-      fetch(url, { signal: controller.signal })
+      fetch(url, { 
+        signal: controller.signal,
+        credentials: 'include'
+      })
         .then(response => {
           clearTimeout(timeoutId);
           if (!response.ok) {
