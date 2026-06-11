@@ -24,6 +24,7 @@ export class SirconvDashboardModule {
         this.activeConvId = null;
         this.backgroundAuditQueue = [];
         this.isQueueProcessing = false;
+        this.currentQueueSessionId = 0; // Identificador de sessão de fila
         this.CACHE_TTL = 8 * 60 * 60 * 1000; // 8 horas para validade da auditoria profunda
         this.DATA_TTL_ACTIVE = 12 * 60 * 60 * 1000; // 12 horas para manutenção dos ativos
         this.STORAGE_KEY_ACTIVE = 'sirconv_active_data';
@@ -749,6 +750,10 @@ export class SirconvDashboardModule {
             });
 
             console.log(`[Dashboard] Auditoria: ${allToAudit.length} convênios selecionados.`);
+            
+            // Cancela sessão de auditoria anterior e reinicia a fila
+            this.currentQueueSessionId = Date.now();
+            this.isQueueProcessing = false;
             this.backgroundAuditQueue = this.sortConvenios(allToAudit).map(c => c.ID);
 
             if (waitForAudit && this.backgroundAuditQueue.length > 0) {
@@ -868,7 +873,9 @@ export class SirconvDashboardModule {
 
     async processBackgroundQueue(isSynchronous = false) {
         if (this.isQueueProcessing || this.backgroundAuditQueue.length === 0) return;
+        
         this.isQueueProcessing = true;
+        const sessionId = this.currentQueueSessionId;
         const total = this.backgroundAuditQueue.length;
         this.updateBackgroundStatus(true, `Auditoria: 0/${total}`);
         let processed = 0;
@@ -877,7 +884,7 @@ export class SirconvDashboardModule {
             this.ui.updateLoaderMessage(`Extração detalhada: 0/${total} convênios...`);
         }
 
-        while (this.backgroundAuditQueue.length > 0) {
+        while (this.backgroundAuditQueue.length > 0 && sessionId === this.currentQueueSessionId) {
             const convId = this.backgroundAuditQueue.shift();
             try {
                 const auditData = await this.performDeepAudit(convId);
@@ -911,10 +918,13 @@ export class SirconvDashboardModule {
             if (processed % 5 === 0) { this.updateSummaryCards(); await this.savePersistentCache(); }
             await new Promise(r => setTimeout(r, 600));
         }
-        this.isQueueProcessing = false;
-        this.updateBackgroundStatus(false);
-        this.updateSummaryCards();
-        await this.savePersistentCache();
+
+        if (sessionId === this.currentQueueSessionId) {
+            this.isQueueProcessing = false;
+            this.updateBackgroundStatus(false);
+            this.updateSummaryCards();
+            await this.savePersistentCache();
+        }
     }
 
     async performDeepAudit(convId, ignoreCache = false) {
