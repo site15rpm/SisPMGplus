@@ -9,7 +9,7 @@
       $(".principal-container").hide(); $(".datatable-container").show();
       if ($("#filtro-unidade").length) { $("#filtro-unidade").remove(); $("#tabela-lancamentos thead th:first-child").html("MUNICÍPIO"); }
 
-      const initialData = await carregarDadosPlanilha({ sheetId: idbase, sheet: "dt-primaria", query: "SELECT A,B,C,D" });
+      const initialData = await carregarDadosPlanilha({ sheetId: window.idTBPrimaria || idbase, sheet: "tb-primaria", query: "SELECT A,B,C,D" });
       $("#dataTable").DataTable({
         data: initialData.slice(1), processing: true, serverSide: false, sort: false, searching: true, searchHighlight: true, pageLength: 50,
         lengthMenu: [[5, 25, 50, 100], [5, 25, 50, 100]], language: { url: "https://cdn.datatables.net/plug-ins/2.0.8/i18n/pt-BR.json" },
@@ -57,7 +57,7 @@
       const conditions = searchWords.map(word => `${searchColumn} CONTAINS UPPER('${word}')`).join(" AND ");
       const query = `SELECT A,B,C,D WHERE ${conditions}`;
       try {
-        const serverData = await carregarDadosPlanilha({ sheetId: "1JSea5w5dmuxO2svSVqVpNft4NUsKDCeWv5i3Rv_wRUM", sheet: "dt-secundaria", query: query });
+        const serverData = await carregarDadosPlanilha({ sheetId: window.idTBSecundaria || "1JSea5w5dmuxO2svSVqVpNft4NUsKDCeWv5i3Rv_wRUM", sheet: "tb-secundaria", query: query });
         const processedServerData = (serverData && serverData.length > 0 && serverData[0][0] === 'CÓDIGO') ? serverData.slice(1) : serverData || [];
         if (!processedServerData || processedServerData.length === 0) {
           $(".dt-empty, .dataTables_empty").css({ color: "red", "font-size": "120%" }).html("Nenhum resultado na Base de Dados Secundária.<br>Altere a busca ou tecle ENTER para nova busca.");
