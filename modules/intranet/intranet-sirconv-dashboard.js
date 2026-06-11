@@ -944,12 +944,13 @@ export class SirconvDashboardModule {
                 const singleAudit = await this.fetchSingleAudit(currentId);
                 if (!singleAudit) break;
 
+                const entry = this.activeData[currentId] || this.inactiveData[currentId];
+
                 // 2. Data de Início Absoluta (A mais antiga da cadeia)
                 let dtIni = null;
                 if (singleAudit.dtInicial) {
                     dtIni = this.parseDate(singleAudit.dtInicial);
                 } else {
-                    const entry = this.activeData[currentId] || this.inactiveData[currentId];
                     dtIni = this.parseDate(entry?.DTINICIAL);
                 }
                 if (dtIni && (!aggregatedAudit.dtInicialAbsoluta || dtIni < aggregatedAudit.dtInicialAbsoluta)) {
