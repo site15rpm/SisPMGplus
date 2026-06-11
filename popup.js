@@ -79,6 +79,11 @@ async function initializePopup() {
         sendMessageToBackground('openSettingsPage', { page: 'modules/abastecimentos/settings.html' });
     });
 
+    // Módulo SIC3
+    document.getElementById('sic3-open-btn').addEventListener('click', () => {
+        sendMessageToBackground('openSettingsPage', { page: 'modules/sic3.html' });
+    });
+
     // Reset de Dados
     document.getElementById('reset-aniver-btn').addEventListener('click', async () => {
         const confirmed = await showModal("Tem certeza que deseja restaurar as configurações do módulo de Aniversariantes?", 'confirm');
