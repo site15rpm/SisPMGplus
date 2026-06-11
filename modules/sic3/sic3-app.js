@@ -320,9 +320,37 @@ window.addEventListener('DOMContentLoaded', async () => {
     window.executarApiGas = executarApi;
     window.navegarParaSic3 = navegarPara;
 
-    // Obtém o convenioId da Query String para abertura rápida via link da intranet
+    // Obtém parâmetros da Query String para abertura rápida e contexto de RPM/Ano
     const urlParams = new URLSearchParams(window.location.search);
     const convenioId = urlParams.get('convenioId');
+    const urlRpm = urlParams.get('rpm');
+    const urlAno = urlParams.get('ano');
+
+    if (urlRpm) {
+        window.rpm = urlRpm;
+    }
+    if (urlAno) {
+        window.ano = urlAno;
+    }
+
+    // Resolve dinamicamente o ID do banco de dados (Spreadsheet) correspondente à RPM e ao Ano ativos
+    window.mostrarCarregamentoGlobal("Inicializando banco de dados do SIC3...");
+    try {
+        const rpmAtiva = window.rpm || "15";
+        const anoAtivo = window.ano || new Date().getFullYear().toString();
+        const resId = await executarApi("obterIdPlanilha", [rpmAtiva, anoAtivo]);
+        if (resId && resId.success && resId.spreadsheetId) {
+            window.idbase = resId.spreadsheetId;
+        } else {
+            console.warn("Não foi possível obter o ID da planilha do GAS. Usando fallback vazio.");
+            window.idbase = "";
+        }
+    } catch (e) {
+        console.error("Erro ao resolver ID do banco de dados:", e);
+        window.idbase = "";
+    } finally {
+        window.ocultarCarregamentoGlobal();
+    }
 
     if (convenioId) {
         window.mostrarCarregamentoGlobal("Carregando dados do convênio...");
@@ -337,7 +365,7 @@ window.addEventListener('DOMContentLoaded', async () => {
                     const meses = ['JANEIRO', 'FEVEREIRO', 'MARÇO', 'ABRIL', 'MAIO', 'JUNHO', 'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO'];
                     // Lançamento abre por padrão no mês corrente
                     const mesAtual = meses[dataAtual.getMonth()];
-                    const anoAtual = dataAtual.getFullYear().toString();
+                    const anoAtual = window.ano || dataAtual.getFullYear().toString();
 
                     // Salva a lista de convênios na memória global para que a navegação do botão "Voltar" funcione
                     window.dadosConveniosPrepostos = result;
@@ -350,7 +378,7 @@ window.addEventListener('DOMContentLoaded', async () => {
                         acao: "lancar",
                         nUser: "Operador Extensão",
                         authToken: "bypass",
-                        idbase: ""
+                        idbase: window.idbase
                     });
                     return;
                 }
@@ -365,5 +393,5 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Se não houver convenioId ou não for encontrado, inicia na tela do Painel Geral de administração
-    navegarPara('admin', { nUser: "Operador Extensão", authToken: "bypass" });
+    navegarPara('admin', { nUser: "Operador Extensão", authToken: "bypass", idbase: window.idbase });
 });
