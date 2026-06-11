@@ -31,6 +31,32 @@ export class SirconvModule {
     }
 
     injectSirconvButtons() {
+        // Botão do SIC3 no título principal da página do convênio
+        document.querySelectorAll('h2').forEach(h2 => {
+            const text = h2.textContent || '';
+            if (text.includes('Convênio')) {
+                const parentSpan = h2.querySelector('span');
+                if (parentSpan && !parentSpan.querySelector('.sispmg-sic3-btn')) {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const convenioId = urlParams.get('id') || document.querySelector('input[name="id"]')?.value;
+                    if (convenioId) {
+                        const sic3Btn = document.createElement('button');
+                        sic3Btn.className = 'sispmg-sic3-btn';
+                        sic3Btn.title = 'Editar convênio no SIC3 v3.0';
+                        sic3Btn.innerHTML = this.iconSVG;
+                        
+                        sic3Btn.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            sendMessageToBackground('openSettingsPage', { page: `modules/sic3.html?convenioId=${convenioId}` });
+                        });
+                        
+                        parentSpan.insertBefore(sic3Btn, parentSpan.firstChild);
+                    }
+                }
+            }
+        });
+
         // Botão para períodos abertos (inserção)
         document.querySelectorAll('h2 > span').forEach(parentSpan => {
             const addButton = parentSpan.querySelector('a[id^="bntmateriais-"]');

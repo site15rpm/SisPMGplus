@@ -8,7 +8,7 @@ h2 > span {
     vertical-align: middle !important;
 }
 
-.sispmg-sirconv-btn {
+.sispmg-sirconv-btn, .sispmg-sic3-btn {
     height: 22px;
     background-color: transparent;
     border: none;
@@ -22,7 +22,7 @@ h2 > span {
     transition: opacity 0.2s, transform 0.2s;
 }
 
-.sispmg-sirconv-btn:hover {
+.sispmg-sirconv-btn:hover, .sispmg-sic3-btn:hover {
     opacity: 1;
     transform: scale(1.1);
 }
