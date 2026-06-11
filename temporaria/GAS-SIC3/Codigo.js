@@ -5,8 +5,8 @@
 
 // ID global da planilha ativa durante a execução da requisição
 var CURRENT_SPREADSHEET_ID = null;
-var CURRENT_RPM = "15";
-var CURRENT_ANO = new Date().getFullYear().toString();
+var CURRENT_RPM = null;
+var CURRENT_ANO = null;
 
 // ID da pasta pai do Google Drive onde as planilhas do SIC3 serão armazenadas
 const DRIVE_FOLDER_ID = "14TPdLFpf2bEMzWdLjxEtVIeUuoIrFuNu";
