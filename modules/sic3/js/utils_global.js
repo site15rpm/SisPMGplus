@@ -288,7 +288,30 @@ window.carregarDadosPlanilha = function(config) {
         sheet: config.sheet || '',
         tqx: 'out:json'
       });
-      const url = `${baseUrl}${config.sheetId}/gviz/tq?${queryParams}`;
+
+      // Proteção de IDs Dinâmicos contra sobrescritas no escopo global
+      let targetSheetId = config.sheetId;
+      const cachedBDConvenios = sessionStorage.getItem("sic3_idBDConvenios") || window.idBDConvenios;
+      const cachedBDEnderecos = sessionStorage.getItem("sic3_idBDEnderecos") || window.idBDEnderecos;
+      const cachedTBPrimaria = sessionStorage.getItem("sic3_idTBPrimaria") || window.idTBPrimaria;
+      const cachedTBSecundaria = sessionStorage.getItem("sic3_idTBSecundaria") || window.idTBSecundaria;
+
+      if (config.sheet === "enderecos") {
+        targetSheetId = cachedBDEnderecos || targetSheetId;
+      } else if (config.sheet === "convenios") {
+        targetSheetId = cachedBDConvenios || targetSheetId;
+      } else if (config.sheet === "tb-primaria" || config.sheet === "dt-primaria") {
+        targetSheetId = cachedTBPrimaria || targetSheetId;
+      } else if (config.sheet === "tb-secundaria" || config.sheet === "dt-secundaria") {
+        targetSheetId = cachedTBSecundaria || targetSheetId;
+      }
+
+      // Se ainda estiver nulo ou vazio, usa o idbase (que é a planilha do ano)
+      if (!targetSheetId) {
+        targetSheetId = window.idbase;
+      }
+
+      const url = `${baseUrl}${targetSheetId}/gviz/tq?${queryParams}`;
       const tempoLimite = 30000;
       const controller = new AbortController();
       const timeoutId = setTimeout(() => {

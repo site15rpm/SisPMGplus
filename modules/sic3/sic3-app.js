@@ -282,6 +282,11 @@ export async function navegarPara(pagina, contexto = {}) {
                         window.idBDEnderecos = resId.arquivosCompartilhados.BDEnderecos;
                         window.idTBPrimaria = resId.arquivosCompartilhados.TBPrimaria;
                         window.idTBSecundaria = resId.arquivosCompartilhados.TBSecundaria;
+
+                        sessionStorage.setItem("sic3_idBDConvenios", resId.arquivosCompartilhados.BDConvenios);
+                        sessionStorage.setItem("sic3_idBDEnderecos", resId.arquivosCompartilhados.BDEnderecos);
+                        sessionStorage.setItem("sic3_idTBPrimaria", resId.arquivosCompartilhados.TBPrimaria);
+                        sessionStorage.setItem("sic3_idTBSecundaria", resId.arquivosCompartilhados.TBSecundaria);
                     }
                 }
             } catch (apiErr) {
@@ -323,13 +328,14 @@ export async function navegarPara(pagina, contexto = {}) {
             }
 
             await carregarJS('sic3/js/utils_global.js');
-            await carregarJS('sic3/js/admin/init_config_geral.js');
+            await carregarJS('sic3/js/form_validation.js');
             await carregarJS('sic3/js/admin/interface_ui.js');
             await carregarJS('sic3/js/admin/carreg_manip_dados.js');
             await carregarJS('sic3/js/admin/utilitarios.js');
             await carregarJS('sic3/js/admin/crud_convenios.js');
             await carregarJS('sic3/js/admin/datatables.js');
             await carregarJS('sic3/js/admin/gerarpdf.js');
+            await carregarJS('sic3/js/admin/init_config_geral.js');
             
         } else if (pagina === 'lancamentos') {
             const html = await obterHtmlLocal('sic3/html/lancamentos.html');
@@ -352,6 +358,7 @@ export async function navegarPara(pagina, contexto = {}) {
             window.preposto = "";
 
             await carregarJS('sic3/js/utils_global.js');
+            await carregarJS('sic3/js/form_validation.js');
             await carregarJS('sic3/js/lancamentos/global_vars_and_init.js');
             await carregarJS('sic3/js/lancamentos/address_manager.js');
             await carregarJS('sic3/js/lancamentos/data_main.js');
@@ -361,8 +368,8 @@ export async function navegarPara(pagina, contexto = {}) {
             await carregarJS('sic3/js/lancamentos/form_manutencao.js');
             await carregarJS('sic3/js/lancamentos/form_outros_itens.js');
             await carregarJS('sic3/js/lancamentos/form_material.js');
-            await carregarJS('sic3/js/lancamentos/system_init.js');
             await carregarJS('sic3/js/lancamentos/autocompletar.js');
+            await carregarJS('sic3/js/lancamentos/system_init.js');
         }
         
     } catch (error) {
@@ -429,6 +436,11 @@ window.addEventListener('DOMContentLoaded', async () => {
                 window.idBDEnderecos = resId.arquivosCompartilhados.BDEnderecos;
                 window.idTBPrimaria = resId.arquivosCompartilhados.TBPrimaria;
                 window.idTBSecundaria = resId.arquivosCompartilhados.TBSecundaria;
+
+                sessionStorage.setItem("sic3_idBDConvenios", resId.arquivosCompartilhados.BDConvenios);
+                sessionStorage.setItem("sic3_idBDEnderecos", resId.arquivosCompartilhados.BDEnderecos);
+                sessionStorage.setItem("sic3_idTBPrimaria", resId.arquivosCompartilhados.TBPrimaria);
+                sessionStorage.setItem("sic3_idTBSecundaria", resId.arquivosCompartilhados.TBSecundaria);
             }
         } else {
             console.warn("Não foi possível obter o ID da planilha do GAS. Usando fallback vazio.");
@@ -452,22 +464,28 @@ window.addEventListener('DOMContentLoaded', async () => {
                 if (conv) {
                     const dataAtual = new Date();
                     const meses = ['JANEIRO', 'FEVEREIRO', 'MARÇO', 'ABRIL', 'MAIO', 'JUNHO', 'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO'];
-                    // Lançamento abre por padrão no mês corrente
+                    // Abre por padrão no mês corrente
                     const mesAtual = meses[dataAtual.getMonth()];
                     const anoAtual = window.ano || dataAtual.getFullYear().toString();
 
                     // Salva a lista de convênios na memória global para que a navegação do botão "Voltar" funcione
                     window.dadosConveniosPrepostos = result;
 
-                    await navegarPara('lancamentos', {
+                    // Salva a seleção no sessionStorage para o Painel Administrativo pré-selecionar
+                    const userSel = {
                         municipio: conv.municipio,
                         convenio: conv.convenio,
                         ano: anoAtual,
-                        mes: mesAtual,
-                        acao: "lancar",
+                        mes: mesAtual
+                    };
+                    sessionStorage.setItem("userSelections", JSON.stringify(userSel));
+
+                    // Navega para o painel administrativo
+                    await navegarPara('admin', {
                         nUser: "Operador Extensão",
                         authToken: "bypass",
-                        idbase: window.idbase
+                        idbase: window.idbase,
+                        convenios: result
                     });
                     return;
                 }
