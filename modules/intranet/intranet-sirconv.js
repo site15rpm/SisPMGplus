@@ -581,80 +581,157 @@ export class SirconvModule {
     }
     
     createPreReportMessage(validItems, invalidItems, sirconvItems, comparisonResult) {
-        let message = '';
         const parseValue = (item) => parseFloat((item.valorTotal || String(item.valor || '0').replace('R$', '').trim().replace(/\./g, '').replace(',', '.')) || '0');
+        const formatCurrency = (value) => value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
+        const totalValueSic3 = [...validItems, ...invalidItems].reduce((sum, item) => sum + parseValue(item), 0);
+        const formattedTotalSic3 = formatCurrency(totalValueSic3);
+
+        let sirconvCardHTML = '';
         if (sirconvItems.length > 0) {
             const totalValueSirconv = sirconvItems.reduce((sum, item) => sum + parseValue(item), 0);
             const divergentCount = sirconvItems.length - comparisonResult.compliantCount;
-            const formattedTotal = totalValueSirconv.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            const formattedTotalSirconv = formatCurrency(totalValueSirconv);
 
-            message += `Foram encontrados <strong>${sirconvItems.length} itens já lançados</strong> no SIRCONV, totalizando <strong>${formattedTotal}</strong>:<br>`;
-            const divergentText = divergentCount > 0 ? `<strong style="color: var(--theme-danger);">${divergentCount} item(ns) divergente(s)</strong>` : 'nenhum item divergente';
-            message += `${comparisonResult.compliantCount} itens em conformidade com o SIC3 e ${divergentText}.<br>`;
+            sirconvCardHTML = `
+            <div style="background: #fff; border: 1px solid var(--theme-border); border-radius: 6px; padding: 12px; margin-bottom: 12px; text-align: left;">
+                <h4 style="margin: 0 0 8px 0; color: var(--theme-dark-gold); border: none; padding: 0; display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: bold;">
+                    🌐 Lançamentos no SIRCONV
+                </h4>
+                <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
+                    <span>Itens já lançados:</span>
+                    <strong>${sirconvItems.length} (Total: ${formattedTotalSirconv})</strong>
+                </div>
+                <div style="font-size: 13px; border-top: 1px solid #eee; padding-top: 6px; display: flex; justify-content: space-between;">
+                    <span style="color: #2e7d32;">✔️ Em conformidade: <strong>${comparisonResult.compliantCount}</strong></span>
+                    <span style="${divergentCount > 0 ? 'color: var(--theme-danger); font-weight: bold;' : 'color: #777;'}">⚠️ Divergentes: <strong>${divergentCount}</strong></span>
+                </div>
+            </div>`;
         }
 
-        const totalValueSic3 = [...validItems, ...invalidItems].reduce((sum, item) => sum + parseValue(item), 0);
-        const formattedTotalSic3 = totalValueSic3.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-
-        message += `Foram encontrados <strong>${validItems.length + invalidItems.length}</strong> itens no SIC3, totalizando <strong>${formattedTotalSic3}</strong>:<br>`;
-        message += `<strong style="color: green;">${validItems.length} itens são válidos</strong> e estão prontos para serem inseridos.<br>`;
+        let invalidItemsHTML = '';
         if (invalidItems.length > 0) {
-            message += `<strong style="color: red;">${invalidItems.length} itens são inválidos</strong> e serão ignorados:`;
-            message += `<ul class="sispmg-sirconv-report-list">${invalidItems.map(item => `<li><strong>${this.escapeHtml(item.descricao.substring(0, 50))}...</strong><br><small>Motivo: ${this.escapeHtml(item.motivo)}</small></li>`).join('')}</ul>`;
-            message += `* Antes de prosseguir com os lançamentos no SIRCONV os itens inválidos devem ser corrigidos no SIC3 e novos Anexos "D" e "Único" devem ser gerados.<br>`;
+            invalidItemsHTML = `
+            <div style="background: #fff5f5; border: 1px solid #feb2b2; border-radius: 6px; padding: 12px; margin-top: 12px; text-align: left;">
+                <strong style="color: var(--theme-danger); font-size: 13px; display: block; margin-bottom: 6px;">⚠️ ${invalidItems.length} item(ns) inválido(s) no SIC3 (serão ignorados):</strong>
+                <ul class="sispmg-sirconv-report-list" style="margin: 0; background: #fff; max-height: 120px;">
+                    ${invalidItems.map(item => `<li><strong>${this.escapeHtml(item.descricao.substring(0, 50))}...</strong><br><small>Motivo: ${this.escapeHtml(item.motivo)}</small></li>`).join('')}
+                </ul>
+                <small style="color: #666; display: block; margin-top: 8px; font-size: 11px; font-style: italic;">* Antes de prosseguir, corrija os itens inválidos no SIC3 e gere novos anexos.</small>
+            </div>`;
         }
-        
-        message += `<br>Deseja prosseguir com a inserção dos itens válidos agora?`;
-        
+
+        let message = `
+        <div style="display: flex; flex-direction: column; gap: 4px; font-family: inherit;">
+            ${sirconvCardHTML}
+
+            <div style="background: #fff; border: 1px solid var(--theme-border); border-radius: 6px; padding: 12px; text-align: left;">
+                <h4 style="margin: 0 0 8px 0; color: var(--theme-dark-gold); border: none; padding: 0; display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: bold;">
+                    📊 Planejado no SIC3
+                </h4>
+                <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
+                    <span>Total de itens no SIC3:</span>
+                    <strong>${validItems.length + invalidItems.length} (Total: ${formattedTotalSic3})</strong>
+                </div>
+                <div style="font-size: 13px; border-top: 1px solid #eee; padding-top: 6px; display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: #2e7d32; font-weight: bold;">✔️ Válidos para envio:</span>
+                    <strong style="color: #2e7d32;">${validItems.length} itens</strong>
+                </div>
+            </div>
+
+            ${invalidItemsHTML}
+
+            <p style="margin: 15px 0 0 0; text-align: center; font-weight: bold; font-size: 13px; color: var(--theme-dark-gold);">Deseja prosseguir com a inserção dos itens válidos agora?</p>
+        </div>`;
+
         return message;
     }
 
     createComparisonReportMessage(validItems, invalidItems, sirconvItems, comparisonResult) {
         const parseValue = (item) => parseFloat((item.valorTotal || String(item.valor || '0').replace('R$', '').trim().replace(/\./g, '').replace(',', '.')) || '0');
+        const formatCurrency = (value) => value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
         if (comparisonResult.areIdentical && invalidItems.length === 0) {
             const totalValue = validItems.reduce((sum, item) => sum + parseValue(item), 0);
-            const formattedTotal = totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            const formattedTotal = formatCurrency(totalValue);
             return `<div style="color: green; font-weight: bold; text-align: center; margin: 10px 0; font-size: 1.1em; line-height: 1.5;">
                 ✔️ As informações do SIRCONV são idênticas às do SIC3.<br><br>
                 Todos os <strong>${validItems.length} itens</strong> estão em conformidade total, totalizando <strong>${formattedTotal}</strong>. Nenhuma ação é necessária.
             </div>`;
         }
 
-        let message = '';
+        const totalValueSic3 = [...validItems, ...invalidItems].reduce((sum, item) => sum + parseValue(item), 0);
+        const formattedTotalSic3 = formatCurrency(totalValueSic3);
 
-        // Seção para dados do SIRCONV
+        let sirconvCardHTML = '';
         if (sirconvItems.length > 0) {
             const totalValueSirconv = sirconvItems.reduce((sum, item) => sum + parseValue(item), 0);
             const divergentCountSirconv = sirconvItems.length - comparisonResult.compliantCount;
-            const formattedTotal = totalValueSirconv.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            const formattedTotalSirconv = formatCurrency(totalValueSirconv);
 
-            message += `Foram encontrados <strong>${sirconvItems.length} itens já lançados</strong> no SIRCONV, totalizando <strong>${formattedTotal}</strong>:<br>`;
-            const divergentText = divergentCountSirconv > 0 ? `<strong style="color: var(--theme-danger);">${divergentCountSirconv} item(ns) divergente(s)</strong>` : 'nenhum item divergente';
-            message += `${comparisonResult.compliantCount} itens em conformidade com o SIC3 e ${divergentText}.<br>`;
+            sirconvCardHTML = `
+            <div style="background: #fff; border: 1px solid var(--theme-border); border-radius: 6px; padding: 12px; margin-bottom: 12px; text-align: left;">
+                <h4 style="margin: 0 0 8px 0; color: var(--theme-dark-gold); border: none; padding: 0; display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: bold;">
+                    🌐 Lançamentos no SIRCONV
+                </h4>
+                <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
+                    <span>Itens já lançados:</span>
+                    <strong>${sirconvItems.length} (Total: ${formattedTotalSirconv})</strong>
+                </div>
+                <div style="font-size: 13px; border-top: 1px solid #eee; padding-top: 6px; display: flex; justify-content: space-between;">
+                    <span style="color: #2e7d32;">✔️ Em conformidade: <strong>${comparisonResult.compliantCount}</strong></span>
+                    <span style="${divergentCountSirconv > 0 ? 'color: var(--theme-danger); font-weight: bold;' : 'color: #777;'}">⚠️ Divergentes: <strong>${divergentCountSirconv}</strong></span>
+                </div>
+            </div>`;
         } else {
-            message += `Nenhum item encontrado no SIRCONV para este período.<br>`;
+            sirconvCardHTML = `
+            <div style="background: #fff; border: 1px solid var(--theme-border); border-radius: 6px; padding: 12px; margin-bottom: 12px; color: #777; text-align: center; font-size: 13px;">
+                Nenhum item encontrado no SIRCONV para este período.
+            </div>`;
         }
 
-        // Seção para dados do SIC3
-        const totalValueSic3 = [...validItems, ...invalidItems].reduce((sum, item) => sum + parseValue(item), 0);
-        const formattedTotalSic3 = totalValueSic3.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-
-        message += `Foram encontrados <strong>${validItems.length + invalidItems.length}</strong> itens no SIC3, totalizando <strong>${formattedTotalSic3}</strong>:<br>`;
-        message += `<strong style="color: green;">${validItems.length} itens são válidos</strong>.<br>`;
-        
-        // Detalhes das divergências agora aqui
-        if (!comparisonResult.areIdentical) {
-            message += `<h4>Detalhes das Divergências:</h4>${comparisonResult.details}`;
-        }
-        
-        // Itens inválidos
+        let invalidItemsHTML = '';
         if (invalidItems.length > 0) {
-            message += `<strong style="color: red; display: block; margin-top: 15px;">${invalidItems.length} itens são inválidos</strong>:`;
-            message += `<ul class="sispmg-sirconv-report-list">${invalidItems.map(item => `<li><strong>${this.escapeHtml(item.descricao.substring(0, 50))}...</strong><br><small>Motivo: ${this.escapeHtml(item.motivo)}</small></li>`).join('')}</ul>`;
+            invalidItemsHTML = `
+            <div style="background: #fff5f5; border: 1px solid #feb2b2; border-radius: 6px; padding: 12px; margin-top: 12px; text-align: left;">
+                <strong style="color: var(--theme-danger); font-size: 13px; display: block; margin-bottom: 6px;">⚠️ ${invalidItems.length} item(ns) inválido(s) no SIC3:</strong>
+                <ul class="sispmg-sirconv-report-list" style="margin: 0; background: #fff; max-height: 120px;">
+                    ${invalidItems.map(item => `<li><strong>${this.escapeHtml(item.descricao.substring(0, 50))}...</strong><br><small>Motivo: ${this.escapeHtml(item.motivo)}</small></li>`).join('')}
+                </ul>
+            </div>`;
         }
-        
+
+        let diffDetailsHTML = '';
+        if (!comparisonResult.areIdentical) {
+            diffDetailsHTML = `
+            <div style="margin-top: 12px; text-align: left;">
+                <h4 style="margin: 0 0 6px 0; font-size: 14px; font-weight: bold; color: var(--theme-dark-gold); border: none; padding: 0;">Detalhes das Divergências:</h4>
+                ${comparisonResult.details}
+            </div>`;
+        }
+
+        let message = `
+        <div style="display: flex; flex-direction: column; gap: 4px; font-family: inherit;">
+            ${sirconvCardHTML}
+
+            <div style="background: #fff; border: 1px solid var(--theme-border); border-radius: 6px; padding: 12px; text-align: left;">
+                <h4 style="margin: 0 0 8px 0; color: var(--theme-dark-gold); border: none; padding: 0; display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: bold;">
+                    📊 Planejado no SIC3
+                </h4>
+                <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
+                    <span>Total de itens no SIC3:</span>
+                    <strong>${validItems.length + invalidItems.length} (Total: ${formattedTotalSic3})</strong>
+                </div>
+                <div style="font-size: 13px; border-top: 1px solid #eee; padding-top: 6px; display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: #2e7d32; font-weight: bold;">✔️ Válidos:</span>
+                    <strong style="color: #2e7d32;">${validItems.length} itens</strong>
+                </div>
+            </div>
+
+            ${diffDetailsHTML}
+            ${invalidItemsHTML}
+        </div>`;
+
         return message;
     }
 
