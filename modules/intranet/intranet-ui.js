@@ -742,7 +742,7 @@ export class UIModule {
             });
             
             await sendMessageToBackground('openSettingsPage', {
-                page: `modules/sic3.html?${queryParams.toString()}`
+                page: `modules/sic3/sic3.html?${queryParams.toString()}`
             });
             
         } catch (error) {

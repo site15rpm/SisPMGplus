@@ -59,6 +59,7 @@
         "offscreen.html",
         "common/*.css",
         "modules/*.html",
+        "modules/sic3/*.html",
         "modules/*.css",
         "modules/abastecimentos/*.html",
         "modules/abastecimentos/*.css",

@@ -73,7 +73,7 @@ export class SirconvModule {
                                 if (anoMatch) {
                                     ano = anoMatch[1];
                                 }
-                                sendMessageToBackground('openSettingsPage', { page: `modules/sic3.html?convenioId=${convenioId}&rpm=${rpm}&ano=${ano}` });
+                                sendMessageToBackground('openSettingsPage', { page: `modules/sic3/sic3.html?convenioId=${convenioId}&rpm=${rpm}&ano=${ano}` });
                             });
                             
                             parentSpan.insertBefore(sic3Btn, parentSpan.firstChild);

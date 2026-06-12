@@ -81,7 +81,7 @@ async function initializePopup() {
 
     // Módulo SIC3
     document.getElementById('sic3-open-btn').addEventListener('click', () => {
-        sendMessageToBackground('openSettingsPage', { page: 'modules/sic3.html' });
+        sendMessageToBackground('openSettingsPage', { page: 'modules/sic3/sic3.html' });
     });
 
     // Reset de Dados
