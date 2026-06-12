@@ -183,13 +183,13 @@ export async function handleIntranetMessages(request, sender) {
              });
         }
         case 'sic3-v3-identify-user': {
-            const { u, c } = restOfPayload;
-            console.log(`[SIC3 v3.0 Log] Iniciando identificação no background para u: ${u}, c: ${c}`);
+            const { e, c } = restOfPayload;
+            console.log(`[SIC3 v3.0 Log] Iniciando identificação no background para e: ${e}, c: ${c}`);
             try {
                 const url = "https://intranet.policiamilitar.mg.gov.br/legado/operacoes/unidades/default.asp";
                 const bodyParams = new URLSearchParams({
                     acao: 'Consulta',
-                    cUEOp: u,
+                    cUEOp: e,
                     ExibeCodigo: '1'
                 });
                 
@@ -227,8 +227,8 @@ export async function handleIntranetMessages(request, sender) {
                 const targetUnit = parsedData.find(unit => String(unit.code) === String(c));
                 
                 if (!targetUnit) {
-                    console.warn(`[SIC3 v3.0 Log] Unidade do usuário com código c: ${c} não encontrada nas subunidades da região u: ${u}.`);
-                    return { success: false, error: `Unidade/seção do usuário (${c}) não encontrada na árvore da região/unidade (${u}).` };
+                    console.warn(`[SIC3 v3.0 Log] Unidade do usuário com código c: ${c} não encontrada nas subunidades da região e: ${e}.`);
+                    return { success: false, error: `Unidade/seção do usuário (${c}) não encontrada na árvore da região/unidade (${e}).` };
                 }
                 
                 console.log(`[SIC3 v3.0 Log] Unidade do usuário correspondente encontrada:`, targetUnit);
