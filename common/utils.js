@@ -94,3 +94,51 @@ export function decodeJwt(token) {
     }
 }
 
+/**
+ * Mapeia e traduz de forma organizada as chaves do Tokiuz JWT:
+ * g: Número PM
+ * t: Posto/Graduação
+ * n: Nome do usuário
+ * e: Código da RPM (Região)
+ * r: Nome da RPM
+ * p: Nome da Unidade
+ * u: Código da Unidade (Unidade Contábil)
+ * c: Código da Seção/Fração/Município (Unidade Administrativa)
+ * f: Array de funções no formato Local.Função
+ * 
+ * @param {object} decoded - O payload JWT decodificado
+ * @returns {object|null} Objeto traduzido das chaves do tokiuz
+ */
+export function parseTokiuzPayload(decoded) {
+    if (!decoded) return null;
+    
+    const funcoes = Array.isArray(decoded.f) ? decoded.f.map(String) : [];
+    const locais = [];
+    const funcoesLista = [];
+    
+    funcoes.forEach(func => {
+        const parts = func.split('.');
+        if (parts.length > 1) {
+            locais.push(parts[0]);
+            funcoesLista.push(parts.slice(1).join('.'));
+        } else {
+            locais.push(func);
+            funcoesLista.push("");
+        }
+    });
+    
+    return {
+        numeroPM: String(decoded.g || ''),
+        postoGraduacao: String(decoded.t || ''),
+        nome: String(decoded.n || ''),
+        codigoRPM: String(decoded.e || ''),
+        nomeRPM: String(decoded.r || ''),
+        nomeUnidade: String(decoded.p || ''),
+        codigoUnidadeContabil: String(decoded.u || ''),
+        codigoSecao: String(decoded.c || ''),
+        funcoesCompleto: funcoes,
+        locais: locais,
+        funcoesLista: funcoesLista
+    };
+}
+
