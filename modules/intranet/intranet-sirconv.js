@@ -1,7 +1,7 @@
 // Arquivo: modules/intranet/intranet-sirconv.js
 // Lógica para o módulo SIRCONV+ que automatiza o preenchimento de materiais e serviços.
 
-import { sendMessageToBackground, getCookie } from '../../common/utils.js';
+import { sendMessageToBackground, getCookie, decodeJwt } from '../../common/utils.js';
 
 export class SirconvModule {
     constructor(config) {
@@ -31,39 +31,53 @@ export class SirconvModule {
     }
 
     injectSirconvButtons() {
+        let userPM = '';
+        try {
+            const token = getCookie('tokiuz');
+            if (token) {
+                const decoded = decodeJwt(token);
+                userPM = String(decoded?.g || '');
+            }
+        } catch (e) {
+            console.error('SisPMG+ [SIRCONV]: Falha ao ler número PM do token', e);
+        }
+
         // Botão do SIC3 no título principal da página do convênio
         document.querySelectorAll('h2').forEach(h2 => {
             const text = h2.textContent || '';
             if (text.includes('Convênio')) {
                 const parentSpan = h2.querySelector('span');
                 if (parentSpan && !parentSpan.querySelector('.sispmg-sic3-btn')) {
-                    const urlParams = new URLSearchParams(window.location.search);
-                    const convenioId = urlParams.get('id') || document.querySelector('input[name="id"]')?.value;
-                    if (convenioId) {
-                        const sic3Btn = document.createElement('button');
-                        sic3Btn.className = 'sispmg-sic3-btn';
-                        sic3Btn.title = 'Editar convênio no SIC3 v2.0';
-                        sic3Btn.innerHTML = this.iconSVG;
-                        
-                        sic3Btn.addEventListener('click', (e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            // Extração dinâmica de RPM e Ano da página do convênio
-                            let rpm = "15RPM"; // Fallback padrão
-                            const textBody = document.body.innerText || "";
-                            const rpmMatch = textBody.match(/(EM)?(\d+)RPM/i);
-                            if (rpmMatch) {
-                                rpm = rpmMatch[2] + "RPM";
-                            }
-                            let ano = new Date().getFullYear().toString();
-                            const anoMatch = textBody.match(/Cronograma.*(20\d{2})/i) || textBody.match(/Plano.*(20\d{2})/i) || textBody.match(/(20[2-3]\d)/);
-                            if (anoMatch) {
-                                ano = anoMatch[1];
-                            }
-                            sendMessageToBackground('openSettingsPage', { page: `modules/sic3.html?convenioId=${convenioId}&rpm=${rpm}&ano=${ano}` });
-                        });
-                        
-                        parentSpan.insertBefore(sic3Btn, parentSpan.firstChild);
+                    // O botão do SIC3 v3.0 (em construção) só é visível para o PM de testes 1453208
+                    if (userPM === '1453208') {
+                        const urlParams = new URLSearchParams(window.location.search);
+                        const convenioId = urlParams.get('id') || document.querySelector('input[name="id"]')?.value;
+                        if (convenioId) {
+                            const sic3Btn = document.createElement('button');
+                            sic3Btn.className = 'sispmg-sic3-btn';
+                            sic3Btn.title = 'Editar convênio no SIC3 v3.0';
+                            sic3Btn.innerHTML = this.iconSVG;
+                            
+                            sic3Btn.addEventListener('click', (e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                // Extração dinâmica de RPM e Ano da página do convênio
+                                let rpm = "15RPM"; // Fallback padrão
+                                const textBody = document.body.innerText || "";
+                                const rpmMatch = textBody.match(/(EM)?(\d+)RPM/i);
+                                if (rpmMatch) {
+                                    rpm = rpmMatch[2] + "RPM";
+                                }
+                                let ano = new Date().getFullYear().toString();
+                                const anoMatch = textBody.match(/Cronograma.*(20\d{2})/i) || textBody.match(/Plano.*(20\d{2})/i) || textBody.match(/(20[2-3]\d)/);
+                                if (anoMatch) {
+                                    ano = anoMatch[1];
+                                }
+                                sendMessageToBackground('openSettingsPage', { page: `modules/sic3.html?convenioId=${convenioId}&rpm=${rpm}&ano=${ano}` });
+                            });
+                            
+                            parentSpan.insertBefore(sic3Btn, parentSpan.firstChild);
+                        }
                     }
                 }
             }
