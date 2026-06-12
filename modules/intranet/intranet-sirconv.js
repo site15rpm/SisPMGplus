@@ -42,7 +42,7 @@ export class SirconvModule {
                     if (convenioId) {
                         const sic3Btn = document.createElement('button');
                         sic3Btn.className = 'sispmg-sic3-btn';
-                        sic3Btn.title = 'Editar convênio no SIC3 v3.0';
+                        sic3Btn.title = 'Editar convênio no SIC3 v2.0';
                         sic3Btn.innerHTML = this.iconSVG;
                         
                         sic3Btn.addEventListener('click', (e) => {
