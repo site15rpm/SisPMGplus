@@ -712,16 +712,14 @@ export class UIModule {
                 return local === '29' || local === '126';
             });
             
-            // Extrai o número amigável da RPM a partir da string em decoded.r (ex: "15ª RPM" -> "15")
-            let rpmNumero = "15";
+            // Extrai a RPM amigável a partir da string em decoded.r (ex: "15ª RPM" ou "15 RPM" -> "15 RPM")
+            let rpmNome = "15 RPM";
             if (decoded.r) {
-                const match = String(decoded.r).match(/\d+/);
-                if (match) rpmNumero = match[0];
+                rpmNome = String(decoded.r).replace('ª', '').trim();
             } else if (decoded.e) {
-                const match = String(decoded.e).match(/\d+/);
-                if (match) rpmNumero = match[0];
+                rpmNome = String(decoded.e).trim() + " RPM";
             }
-            console.log(`[SIC3 v3.0 Log] RPM amigável extraída para a planilha: ${rpmNumero} (obtida a partir de r: "${decoded.r}", e: "${decoded.e}")`);
+            console.log(`[SIC3 v3.0 Log] RPM extraída para a planilha: "${rpmNome}" (obtida a partir de r: "${decoded.r}", e: "${decoded.e}")`);
 
             // Salvar informações no storage para uso posterior do SIC3 v3.0
             await sendMessageToBackground('setStorage', {
@@ -735,7 +733,7 @@ export class UIModule {
                     numeroPM: decoded.g || '',
                     postoGraduacao: decoded.t || '',
                     nome: decoded.n || '',
-                    codigoRPM: rpmNumero,
+                    codigoRPM: rpmNome,
                     nomeRPM: decoded.r || '',
                     isAdmin: isAdmin,
                     timestamp: Date.now()
@@ -748,7 +746,7 @@ export class UIModule {
             // Abre a página de configurações em uma nova aba passando o município como query param
             const queryParams = new URLSearchParams({
                 municipio: response.municipio,
-                rpm: rpmNumero,
+                rpm: rpmNome,
                 secao: response.nomenclatura
             });
             
