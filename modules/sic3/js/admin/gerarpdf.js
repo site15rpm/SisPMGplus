@@ -107,7 +107,7 @@ async function obterInformacoesConvenio(municipio, convenio) {
     const convenioLocal = ADMIN_CONFIG.dados.convenios.find(c => c.municipio === municipio && c.convenio === convenio);
     if (convenioLocal) return { ...convenioLocal };
     
-    const conveniosData = await carregarDadosPlanilha({ sheetId: idbase, sheet: 'convenios', query: `SELECT A,B,C,D,E,F,G,H WHERE A='${municipio}' AND B='${convenio}'` });
+    const conveniosData = await carregarDadosPlanilha({ sheetId: window.idBDConvenios || idbase, sheet: 'convenios', query: `SELECT A,B,C,D,E,F,G,H WHERE A='${municipio}' AND B='${convenio}'` });
     if (conveniosData && conveniosData.length > 0) {
       const [m, c, pn, ppg, p, u, di, df] = conveniosData[0];
       return { municipio: m, convenio: c, preposto_n: pn || "", preposto_pg: ppg || "", preposto: p || "", unidade: u || "", dataInicio: di || "", dataFim: df || "" };

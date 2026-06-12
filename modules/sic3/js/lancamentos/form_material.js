@@ -343,7 +343,7 @@ async function extrairDadosLinhaMaterial(rowElement) {
       }
       if (!itemDataFromSource) {
         const secundarioData = await carregarDadosPlanilha({
-          sheetId: "1JSea5w5dmuxO2svSVqVpNft4NUsKDCeWv5i3Rv_wRUM",
+          sheetId: window.idTBSecundaria || "1JSea5w5dmuxO2svSVqVpNft4NUsKDCeWv5i3Rv_wRUM",
           sheet: "dt-secundaria",
           query: `SELECT A,B,C,D WHERE A='${codigoItem}'`
         });

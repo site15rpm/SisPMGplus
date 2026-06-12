@@ -16,7 +16,7 @@ async function inicializarDadosEnderecos() {
           return false;
       }
       const rows = await carregarDadosPlanilha({
-          sheetId: idbase,
+          sheetId: window.idBDEnderecos || idbase,
           sheet: "enderecos",
           query: `SELECT C,E,G WHERE A = '${municipio}' AND B = '${convenio}'`
       });

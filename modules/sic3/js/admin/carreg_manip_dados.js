@@ -9,7 +9,7 @@ async function carregarInformacoesAdmin() {
 
     const [conveniosData, anosData] = await Promise.all([
       carregarDadosPlanilha({
-        sheetId: idbase,
+        sheetId: window.idBDConvenios || idbase,
         sheet: "convenios",
         query: `SELECT A,B,C,D,E,F,G,H WHERE ${condicaoWhere}`,
       }),

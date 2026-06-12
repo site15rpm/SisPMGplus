@@ -22,7 +22,7 @@ async function carregarPesquisaMaterial() {
     });
 
     const initialData = await carregarDadosPlanilha({
-      sheetId: idbase,
+      sheetId: window.idTBPrimaria || idbase,
       sheet: "dt-primaria",
       query: "SELECT A,B,C,D",
     });
@@ -262,7 +262,7 @@ async function buscarNaBaseSecundaria(searchTerm, colIndex, table) {
     const query = `SELECT A,B,C,D WHERE ${conditions}`;
     
     try {
-        const serverData = await carregarDadosPlanilha({ sheetId: "1JSea5w5dmuxO2svSVqVpNft4NUsKDCeWv5i3Rv_wRUM", sheet: "dt-secundaria", query: query });
+        const serverData = await carregarDadosPlanilha({ sheetId: window.idTBSecundaria || "1JSea5w5dmuxO2svSVqVpNft4NUsKDCeWv5i3Rv_wRUM", sheet: "dt-secundaria", query: query });
         const processedServerData = (serverData && serverData.length > 0 && serverData[0][0] === 'CÓDIGO') 
           ? serverData.slice(1).map(row => { row.isSecondary = true; return row; }) 
           : (serverData || []).map(row => { row.isSecondary = true; return row; });
