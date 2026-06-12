@@ -129,26 +129,25 @@ async function obterHtmlLocal(url) {
 // ============================================================================
 const scriptRunShim = {
     _successHandler: null,
-    _failureHandler: null,
-    
-    withSuccessHandler(handler) {
-        this._successHandler = handler;
-        return this;
-    },
-    
-    withFailureHandler(handler) {
-        this._failureHandler = handler;
-        return this;
-    }
+    _failureHandler: null
 };
 
 const runProxy = new Proxy(scriptRunShim, {
     get(target, propKey) {
-        if (propKey === 'withSuccessHandler' || propKey === 'withFailureHandler') {
-            return target[propKey].bind(target);
+        if (propKey === 'withSuccessHandler') {
+            return function(handler) {
+                target._successHandler = handler;
+                return runProxy; // Retorna o Proxy para manter o encadeamento
+            };
+        }
+        if (propKey === 'withFailureHandler') {
+            return function(handler) {
+                target._failureHandler = handler;
+                return runProxy; // Retorna o Proxy para manter o encadeamento
+            };
         }
         
-        // Retorna uma função dinâmica correspondente a rota do GAS
+        // Retorna uma função dinâmica correspondente à rota do GAS
         return function(...args) {
             const successHandler = target._successHandler;
             const failureHandler = target._failureHandler;
@@ -179,7 +178,7 @@ const runProxy = new Proxy(scriptRunShim, {
                                 const pageTarget = matchPage[1].split('/').pop(); // 'admin' ou 'login'
                                 const tokenMatch = result.content.match(/var authToken = "([^"]*)"/);
                                 const mLogMatch = result.content.match(/var mLog = "([^"]*)"/);
-                                const nUserMatch = response.content?.match(/var nUser = "([^"]*)"/) || [];
+                                const nUserMatch = result.content.match(/var nUser = "([^"]*)"/) || [];
                                 
                                 navegarPara(pageTarget, {
                                     authToken: tokenMatch ? tokenMatch[1] : '',
