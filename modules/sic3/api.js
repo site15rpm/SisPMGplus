@@ -51,8 +51,30 @@ export async function executarApi(action, params = {}) {
     }
 
     const token = sessionStorage.getItem('authToken') || '';
-    const rpm = window.rpm || "15RPM";
-    const ano = window.ano || new Date().getFullYear().toString();
+    
+    // Resolve o ano com prioridade máxima para sessionStorage para evitar colisões com DOM
+    let ano = sessionStorage.getItem('sic3_ano');
+    if (!ano) {
+        if (window.ano && typeof window.ano === 'string') {
+            ano = window.ano;
+        } else if (window.ano && typeof window.ano === 'object' && window.ano.value) {
+            ano = window.ano.value;
+        } else {
+            ano = new Date().getFullYear().toString();
+        }
+    }
+
+    // Resolve a RPM com prioridade máxima para sessionStorage
+    let rpm = sessionStorage.getItem('sic3_rpm');
+    if (!rpm) {
+        if (window.rpm && typeof window.rpm === 'string') {
+            rpm = window.rpm;
+        } else if (window.rpm && typeof window.rpm === 'object' && window.rpm.value) {
+            rpm = window.rpm.value;
+        } else {
+            rpm = "15 RPM";
+        }
+    }
     
     console.log(`[SIC3 v3.0 Log] [API Request] executando action: "${action}" para RPM: ${rpm}, Ano: ${ano} na URL: ${apiUrl}. Params:`, params);
     const startTime = Date.now();
