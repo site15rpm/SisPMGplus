@@ -121,12 +121,17 @@ export class TerminalModule {
                 console.log('SisPMG+: Dados de notas detectados no storage. Ativando auto-login SIEP.');
                 this.autoLoginSystem = 'SIEP';
                 
+                const notas = data.sispmg_intranet_notas_data;
+                const routine = data.sispmg_terminal_routine;
+                const param = data.sispmg_terminal_param;
+
+                // Limpa os dados do storage imediatamente para evitar que outra aba ou recarregamento re-execute a rotina
+                await this.sendMessagePromise('removeStorage', { 
+                    keys: ['sispmg_intranet_notas_data', 'sispmg_terminal_routine', 'sispmg_terminal_param'] 
+                });
+                
                 // Aguarda o terminal estar logado e pronto
                 this.waitForSystemReady().then(async () => {
-                    const notas = data.sispmg_intranet_notas_data;
-                    const routine = data.sispmg_terminal_routine;
-                    const param = data.sispmg_terminal_param;
-                    
                     this.exibirNotificacao("Iniciando processamento automático de notas...", true);
                     
                     try {
@@ -137,11 +142,6 @@ export class TerminalModule {
                     } catch (error) {
                         console.error("SisPMG+: Erro ao executar rotina de notas.", error);
                         this.exibirNotificacao(`Falha ao processar notas: ${error.message}`, false);
-                    } finally {
-                        // Limpa os dados do storage para evitar re-execução
-                        await this.sendMessagePromise('removeStorage', { 
-                            keys: ['sispmg_intranet_notas_data', 'sispmg_terminal_routine', 'sispmg_terminal_param'] 
-                        });
                     }
                 });
             }
