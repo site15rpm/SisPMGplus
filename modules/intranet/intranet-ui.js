@@ -375,6 +375,17 @@ export class UIModule {
 
     async getHeaderMenuContent() {
         let moduleItems = '';
+        
+        // SIC3 v3.0 Botão
+        moduleItems += `
+            <div id="sic3-v3-btn" class="sispmg-menu-item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+                </svg>
+                <span>SIC3 v3.0</span>
+            </div>
+        `;
+
         const isPrincipalPage = window.location.hostname === 'principal.policiamilitar.mg.gov.br';
         const isSicorPage = window.location.pathname.startsWith('/SICOR/');
 
@@ -474,6 +485,14 @@ export class UIModule {
 
 
     attachMenuEventListeners(menu) {
+        const sic3V3Button = menu.querySelector('#sic3-v3-btn');
+        if (sic3V3Button) {
+            sic3V3Button.addEventListener('click', async () => {
+                this.closeHeaderMenu();
+                await this.iniciarSic3V3();
+            });
+        }
+
         const birthdaysButton = menu.querySelector('#config-birthdays-btn');
         if (birthdaysButton && this.modules['Aniversariantes']) {
             birthdaysButton.addEventListener('click', () => {
@@ -652,6 +671,71 @@ export class UIModule {
         const menu = document.getElementById('sispmg-plus-header-menu');
         if (menu) {
             menu.remove();
+        }
+    }
+
+    async iniciarSic3V3() {
+        console.log("[SIC3 v3.0 Log] Iniciando fluxo de ativação do SIC3 v3.0...");
+        this.showLoader("Identificando sua unidade e município...");
+        
+        try {
+            const token = getCookie('tokiuz');
+            if (!token) {
+                console.error("[SIC3 v3.0 Log] Cookie tokiuz não encontrado.");
+                alert("Token de autenticação 'tokiuz' não encontrado. Faça login no portal da Intranet novamente.");
+                this.hideLoader();
+                return;
+            }
+            
+            const decoded = decodeJwt(token);
+            if (!decoded || !decoded.u || !decoded.c) {
+                console.error("[SIC3 v3.0 Log] Token tokiuz inválido ou sem chaves u/c:", decoded);
+                alert("Não foi possível extrair os dados do usuário a partir do token. Tente recarregar a página.");
+                this.hideLoader();
+                return;
+            }
+            
+            console.log(`[SIC3 v3.0 Log] Token decodificado com sucesso. u: ${decoded.u}, c: ${decoded.c}. Solicitando busca de unidades ao background...`);
+            
+            const response = await sendMessageToBackground('sic3-v3-identify-user', { u: decoded.u, c: decoded.c });
+            
+            if (!response || !response.success) {
+                throw new Error(response?.error || "Falha na resposta do background ao identificar unidade.");
+            }
+            
+            console.log("[SIC3 v3.0 Log] Identificação realizada com sucesso pelo background:", response);
+            
+            // Salvar informações no storage para uso posterior do SIC3 v3.0
+            await sendMessageToBackground('setStorage', {
+                sic3_v3_user_info: {
+                    codigoUnidade: response.codigoUnidade,
+                    nomenclatura: response.nomenclatura,
+                    municipio: response.municipio,
+                    codigoMunicipio: response.codigoMunicipio,
+                    hierarchyPath: response.hierarchyPath,
+                    timestamp: Date.now()
+                }
+            });
+            
+            this.updateLoaderMessage("Carregando o SIC3 v3.0...");
+            console.log(`[SIC3 v3.0 Log] Abrindo SIC3 v3.0 para o município: ${response.municipio}`);
+            
+            // Abre a página de configurações em uma nova aba passando o município como query param
+            const queryParams = new URLSearchParams({
+                municipio: response.municipio,
+                rpm: decoded.u,
+                secao: response.nomenclatura
+            });
+            
+            await sendMessageToBackground('openSettingsPage', {
+                page: `modules/sic3_v3.html?${queryParams.toString()}`
+            });
+            
+        } catch (error) {
+            console.error("[SIC3 v3.0 Log] Erro no fluxo iniciarSic3V3:", error);
+            alert("Erro ao iniciar o SIC3 v3.0: " + error.message);
+        } finally {
+            this.hideLoader();
         }
     }
 }
