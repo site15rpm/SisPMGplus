@@ -57,7 +57,7 @@ function extrairRpmDoToken() {
 }
 
 // Elementos do DOM
-const appContainer = document.getElementById('sic3-app-container');
+const appContainer = document.getElementById('sic3-views-container') || document.getElementById('sic3-app-container');
 const globalOverlay = document.getElementById('loading-overlay-global');
 const globalOverlayMessage = document.getElementById('loading-message-global');
 const apiUrlInput = document.getElementById('api-gas-url-input');
@@ -267,6 +267,7 @@ export async function navegarPara(pagina, contexto = {}) {
         // Propaga o RPM e Ano vindos do contexto para o escopo global
         if (contexto.rpm) window.rpm = contexto.rpm;
         if (contexto.ano) window.ano = contexto.ano;
+        if (contexto.mLog) window.mLog = contexto.mLog;
 
         // Resolve dinamicamente os IDs específicos das planilhas compartilhadas
         const rpmAtiva = window.rpm || "15";
@@ -317,7 +318,7 @@ export async function navegarPara(pagina, contexto = {}) {
             carregarCSS('sic3/css/admin.css');
             
             window.pUser = contexto.pUser || "html/admin";
-            window.mLog = contexto.mLog || "";
+            window.mLog = contexto.mLog || window.mLog || "";
             window.nUser = contexto.nUser || "";
             window.authToken = contexto.authToken || "";
             window.idbase = contexto.idbase || "";
@@ -326,6 +327,20 @@ export async function navegarPara(pagina, contexto = {}) {
             if (contexto.convenios) {
                 window.convenios = typeof contexto.convenios === 'string' ? contexto.convenios : JSON.stringify(contexto.convenios);
             }
+
+            window.ADMIN_CONFIG = window.ADMIN_CONFIG || {
+                adminInicializado: false,
+                lancamentosCarregados: false,
+                dados: {
+                    convenios: [],
+                    lancamentos: [],
+                    anos: [],
+                },
+                estados: {
+                    carregando: 0,
+                    telaAtual: "lancamentos",
+                },
+            };
 
             await carregarJS('sic3/js/utils_global.js');
             await carregarJS('sic3/js/form_validation.js');
@@ -344,7 +359,7 @@ export async function navegarPara(pagina, contexto = {}) {
             carregarCSS('sic3/css/lancamentos.css');
             
             window.pUser = contexto.pUser || "html/lancamentos";
-            window.mLog = contexto.mLog || "";
+            window.mLog = contexto.mLog || window.mLog || "";
             window.nUser = contexto.nUser || "";
             window.municipio = contexto.municipio || "";
             window.convenio = contexto.convenio || "";
@@ -394,7 +409,7 @@ async function initConfigBar() {
         const url = apiUrlInput.value.trim();
         await saveGasApiUrl(url);
         alert("URL do Web App do GAS configurada com sucesso!");
-        navegarPara('admin');
+        navegarPara('admin', { nUser: window.userNome || "Operador Extensão", mLog: window.mLog, authToken: "bypass", idbase: window.idbase });
     });
 }
 
@@ -405,22 +420,71 @@ window.addEventListener('DOMContentLoaded', async () => {
     window.executarApiGas = executarApi;
     window.navegarParaSic3 = navegarPara;
 
-    // Obtém parâmetros da Query String para abertura rápida e contexto de RPM/Ano
-    const urlParams = new URLSearchParams(window.location.search);
-    const convenioId = urlParams.get('convenioId');
-    const urlRpm = urlParams.get('rpm');
-    const urlAno = urlParams.get('ano');
-
-    if (urlRpm) {
-        window.rpm = urlRpm;
-    } else {
-        const rpmToken = extrairRpmDoToken();
-        if (rpmToken) {
-            window.rpm = rpmToken;
+    // 1. Extrair os parâmetros da Query String ou do Storage
+    try {
+        const urlParams = new URLSearchParams(window.location.search);
+        let municipioParam = urlParams.get('municipio');
+        let rpmParam = urlParams.get('rpm');
+        let secaoParam = urlParams.get('secao');
+        
+        // Sempre tenta ler do storage local para obter as informações completas do usuário
+        const storageResult = await browser.storage.local.get('sic3_v3_user_info');
+        const info = (storageResult && storageResult.sic3_v3_user_info) ? storageResult.sic3_v3_user_info : null;
+        
+        if (info) {
+            window.userPM = info.numeroPM || "";
+            window.userNome = info.nome || "";
+            window.userSecao = info.secaoUsuario || info.nomenclatura || "";
+            window.userRegiao = info.nomeRPM || "";
+            window.isAdmin = info.isAdmin === true;
+            
+            window.municipio = municipioParam ? decodeURIComponent(municipioParam).toUpperCase() : info.municipio.toUpperCase();
+            window.rpm = rpmParam ? rpmParam : (info.codigoRPM || "15");
+            window.secao = secaoParam ? decodeURIComponent(secaoParam) : (info.nomenclatura || "");
+        } else {
+            // Fallback de teste
+            window.municipio = municipioParam ? decodeURIComponent(municipioParam).toUpperCase() : "PARÁ DE MINAS";
+            window.rpm = rpmParam || "19";
+            window.secao = secaoParam ? decodeURIComponent(secaoParam) : "19º BPM";
         }
-    }
-    if (urlAno) {
-        window.ano = urlAno;
+        
+        // Define o filtro de município com base no privilégio de administrador
+        window.mLog = window.isAdmin ? "admin" : window.municipio;
+        
+        // Atualiza a exibição no cabeçalho superior
+        document.getElementById('user-municipio-display').textContent = window.municipio;
+        document.getElementById('user-rpm-display').textContent = /^\d+$/.test(window.rpm) ? window.rpm + "ª RPM" : window.rpm;
+        document.getElementById('user-secao-display').textContent = window.secao || "Geral";
+        
+        // Preenche e exibe o Painel de Perfil de Usuário Premium
+        if (info) {
+            const panel = document.getElementById('user-profile-panel');
+            const nameEl = document.getElementById('user-profile-name');
+            const pmEl = document.getElementById('user-profile-pm');
+            const secaoMuniEl = document.getElementById('user-profile-secao-municipio');
+            const regiaoEl = document.getElementById('user-profile-regiao');
+            const statusEl = document.getElementById('user-profile-admin-status');
+            
+            if (panel) {
+                if (nameEl) nameEl.textContent = `${info.postoGraduacao || ''} ${info.nome || 'Usuário'}`.trim();
+                if (pmEl) pmEl.textContent = `PM nº ${info.numeroPM || '-'}`;
+                if (secaoMuniEl) secaoMuniEl.textContent = `${info.secaoUsuario || info.nomenclatura || '-'} / ${info.municipio}`;
+                if (regiaoEl) regiaoEl.textContent = info.nomeRPM || `${info.codigoRPM || '-'}ª RPM`;
+                
+                if (statusEl) {
+                    if (window.isAdmin) {
+                        statusEl.innerHTML = `<span class="admin-badge"><i class="fas fa-user-shield"></i> Administrador</span>`;
+                    } else {
+                        statusEl.innerHTML = '';
+                    }
+                }
+                
+                panel.style.display = 'flex';
+            }
+        }
+        
+    } catch (e) {
+        console.error("[SIC3 v3.0 Log] Falha ao configurar contexto do usuário:", e);
     }
 
     // Resolve dinamicamente o ID do banco de dados (Spreadsheet) correspondente à RPM e ao Ano ativos
@@ -453,52 +517,6 @@ window.addEventListener('DOMContentLoaded', async () => {
         window.ocultarCarregamentoGlobal();
     }
 
-    if (convenioId) {
-        window.mostrarCarregamentoGlobal("Carregando dados do convênio...");
-        try {
-            // Executa chamada de API para obter os convênios
-            const result = await executarApi("carregarConveniosMunicipio", ["admin", { username: "extensao", municipio: "admin" }]);
-            if (result && Array.isArray(result)) {
-                // Encontra o convênio específico correspondente ao ID
-                const conv = result.find(c => c.convenio === convenioId);
-                if (conv) {
-                    const dataAtual = new Date();
-                    const meses = ['JANEIRO', 'FEVEREIRO', 'MARÇO', 'ABRIL', 'MAIO', 'JUNHO', 'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO'];
-                    // Abre por padrão no mês corrente
-                    const mesAtual = meses[dataAtual.getMonth()];
-                    const anoAtual = window.ano || dataAtual.getFullYear().toString();
-
-                    // Salva a lista de convênios na memória global para que a navegação do botão "Voltar" funcione
-                    window.dadosConveniosPrepostos = result;
-
-                    // Salva a seleção no sessionStorage para o Painel Administrativo pré-selecionar
-                    const userSel = {
-                        municipio: conv.municipio,
-                        convenio: conv.convenio,
-                        ano: anoAtual,
-                        mes: mesAtual
-                    };
-                    sessionStorage.setItem("userSelections", JSON.stringify(userSel));
-
-                    // Navega para o painel administrativo
-                    await navegarPara('admin', {
-                        nUser: "Operador Extensão",
-                        authToken: "bypass",
-                        idbase: window.idbase,
-                        convenios: result
-                    });
-                    return;
-                }
-            }
-            alert(`Convênio ${convenioId} não foi localizado na base de dados do SIC3.`);
-        } catch (error) {
-            console.error("Erro ao carregar convênio via atalho:", error);
-            alert(`Erro ao comunicar com o servidor GAS: ${error.message}`);
-        } finally {
-            window.ocultarCarregamentoGlobal();
-        }
-    }
-
-    // Se não houver convenioId ou não for encontrado, inicia na tela do Painel Geral de administração
-    navegarPara('admin', { nUser: "Operador Extensão", authToken: "bypass", idbase: window.idbase });
+    // Navega diretamente para a tela do Painel Geral de administração original do v2 (formato de tabela)
+    navegarPara('admin', { nUser: window.userNome || "Operador Extensão", mLog: window.mLog, authToken: "bypass", idbase: window.idbase });
 });

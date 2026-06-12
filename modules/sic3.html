@@ -1,11 +1,17 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SIC3 v2.0 - Controle de Contas de Convênio</title>
+    <meta name="description" content="SIC3 v3.0 - Lançamentos e Controle de Convênios." />
+    <title>SIC3 v3.0 - Controle de Contas de Convênio</title>
 
-    <!-- Bibliotecas Locais (Empacotadas na Extensão para CSP do Manifest V3) -->
+    <!-- Google Fonts para uma tipografia moderna e elegante -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Bibliotecas Locais (CSP Compliant para Manifest V3) -->
     <script src="lib/jquery-3.7.0.min.js"></script>
     <link href="lib/dataTables.dataTables.min.css" rel="stylesheet" />
     <script src="lib/dataTables.js"></script>
@@ -18,106 +24,92 @@
     <script src="lib/jspdf.plugin.autotable.min.js"></script>
     <link rel="stylesheet" href="lib/font-awesome-all.min.css" />
 
-    <!-- Estilo de Carregamento Global -->
-    <style>
-      .loading-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(255, 255, 255, 0.7);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 9999;
-      }
-      .loading {
-        border: 6px solid #f3f3f3;
-        border-radius: 50%;
-        border-top: 6px solid #1a73e8;
-        width: 50px;
-        height: 50px;
-        animation: spin 1s linear infinite;
-      }
-      .loading-container {
-        text-align: center;
-      }
-      .loading-message {
-        margin-top: 15px;
-        font-family: Arial, sans-serif;
-        color: #1a73e8;
-        font-weight: bold;
-      }
-      @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-      }
-      body {
-        margin: 0;
-        padding: 0;
-        font-family: Arial, sans-serif;
-        background-color: #f8f9fa;
-      }
-      .config-api-container {
-        position: fixed;
-        bottom: 10px;
-        left: 10px;
-        background: white;
-        padding: 8px 12px;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        font-size: 11px;
-        z-index: 1000;
-        display: flex;
-        gap: 5px;
-        align-items: center;
-      }
-      .config-api-container input {
-        width: 150px;
-        font-size: 11px;
-        padding: 2px 4px;
-        border: 1px solid #ccc;
-        border-radius: 2px;
-      }
-      .config-api-container button {
-        font-size: 11px;
-        padding: 2px 6px;
-        cursor: pointer;
-        background: #1a73e8;
-        color: white;
-        border: none;
-        border-radius: 2px;
-      }
-      .config-api-container button:hover {
-        background: #1557b0;
-      }
-    </style>
+    <!-- Estilo Premium para o SIC3 v3.0 -->
+    <link rel="stylesheet" href="sic3/styles.css" />
   </head>
   <body>
-    <!-- Overlay de Carregamento Global -->
+    <!-- Overlay de Carregamento Premium -->
     <div id="loading-overlay-global" class="loading-overlay">
       <div class="loading-container">
-        <div class="loading"></div>
-        <div id="loading-message-global" class="loading-message">Iniciando SIC3...</div>
+        <div class="spinner-premium"></div>
+        <div id="loading-message-global" class="loading-message">Carregando o SIC3 v3.0...</div>
       </div>
     </div>
 
-    <!-- Container da Aplicação (Onde as views serão injetadas) -->
-    <div id="sic3-app-container"></div>
+    <!-- Barra de Navegação/Header -->
+    <header class="main-header">
+      <div class="header-brand">
+        <div class="brand-logo">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5zm0 2.18l8 3.6v8.55c0 4.45-3.08 8.64-7.5 9.65v-9.98H10v9.98C5.58 24.97 2.5 20.78 2.5 16.33V7.78l8-3.6z" fill="currentColor"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1>SIC3 <span class="version-badge">v3.0</span></h1>
+          <p>Controle de Contas de Convênio</p>
+        </div>
+      </div>
+
+      <div class="user-context-display">
+        <div class="context-pill">
+          <i class="fas fa-map-marker-alt"></i>
+          <span id="user-municipio-display">Buscando município...</span>
+        </div>
+        <div class="context-pill">
+          <i class="fas fa-shield-alt"></i>
+          <span id="user-rpm-display">Buscando RPM...</span>
+        </div>
+        <div class="context-pill">
+          <i class="fas fa-sitemap"></i>
+          <span id="user-secao-display">Buscando seção...</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Container da Aplicação -->
+    <main id="sic3-app-container" class="app-main-content">
+      <!-- Painel de Perfil de Usuário Premium -->
+      <div class="user-profile-bar" id="user-profile-panel" style="display: none;">
+        <div class="profile-main">
+          <div class="profile-avatar">
+            <i class="fas fa-user-shield"></i>
+          </div>
+          <div class="profile-info">
+            <span class="profile-name" id="user-profile-name">Carregando...</span>
+            <div class="profile-meta">
+              <span><i class="fas fa-id-badge"></i> <strong id="user-profile-pm">PM nº -</strong></span>
+              <span class="profile-meta-separator">&bull;</span>
+              <span><i class="fas fa-map-marker-alt"></i> <span id="user-profile-secao-municipio">Seção/Município: -</span></span>
+              <span class="profile-meta-separator">&bull;</span>
+              <span><i class="fas fa-shield-alt"></i> <strong id="user-profile-regiao">Região: -</strong></span>
+            </div>
+          </div>
+        </div>
+        <div class="profile-status" id="user-profile-admin-status">
+          <!-- Badge de Administrador -->
+        </div>
+      </div>
+
+      <!-- Área de injeção dinâmica de convênios -->
+      <div id="sic3-views-container"></div>
+    </main>
 
     <!-- Dialog de Mensagens do jQuery UI -->
     <div id="dialog-message" style="display: none;"></div>
 
-    <!-- Configuração Rápida da API do GAS (Útil para facilitação de uso e testes) -->
-    <div class="config-api-container">
-      <span>API GAS:</span>
-      <input type="text" id="api-gas-url-input" placeholder="URL do Web App do GAS" />
-      <button id="api-gas-url-save-btn">Salvar</button>
-    </div>
+    <!-- Configuração Rápida da API do GAS (Rodapé discreto e moderno) -->
+    <footer class="app-footer">
+      <div class="config-api-container">
+        <label for="api-gas-url-input">API GAS v3:</label>
+        <input type="text" id="api-gas-url-input" placeholder="URL do Web App do Google Apps Script v3" />
+        <button id="api-gas-url-save-btn" class="btn-save">Salvar</button>
+      </div>
+      <div class="footer-credits">
+        <span>SisPMG+ Extension</span>
+      </div>
+    </footer>
 
-    <!-- Script de Inicialização da Aplicação Local (SPA) -->
+    <!-- Script Principal da Aplicação SPA (sic3_v3) -->
     <script type="module" src="sic3/sic3-app.js"></script>
   </body>
 </html>

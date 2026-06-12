@@ -63,7 +63,7 @@ async function preencherSelectsAdmin(data) {
             .filter((m) => m && m !== "ADMIN")
         ),
       ].sort((a, b) => a.localeCompare(b));
-      municios.forEach((mun) =>
+      municipios.forEach((mun) =>
         municipioSelect.append(`<option value="${mun}">${mun}</option>`)
       );
       municipioSelect.val("TODOS");
