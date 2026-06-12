@@ -317,30 +317,74 @@ export class SirconvModule {
     compareData(sic3Items, sirconvItems) {
         const differences = [];
         let compliantCount = 0;
-        const normalizeString = (str) => (str || '').trim().replace(/\s+/g, ' ');
+        const normalizeString = (str) => {
+            if (!str) return '';
+            return str
+                .trim()
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "") // Remove acentos
+                .replace(/\s+/g, ' ')            // Remove múltiplos espaços
+                .toLowerCase();                  // Case-insensitive
+        };
         const formatCurrency = (value) => parseFloat(value).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         const formatQuantity = (value) => parseFloat(value).toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 });
 
-        const sirconvItemsMap = new Map();
-        sirconvItems.forEach(item => {
-            sirconvItemsMap.set(normalizeString(item.descricao), item);
-        });
+        // Cópia dos itens do SIRCONV para controle de associação
+        let availableSirconv = sirconvItems.map((item, index) => ({ ...item, originalIndex: index, matched: false }));
 
+        // 1ª Passada: Busca por correspondência exata (descrição + quantidade + valor)
         for (const sic3Item of sic3Items) {
-            const normalizedDesc = normalizeString(sic3Item.descricao);
-            const sirconvItem = sirconvItemsMap.get(normalizedDesc);
+            const normalizedSic3Desc = normalizeString(sic3Item.descricao);
+            const sic3Qtd = parseFloat(sic3Item.quantidade);
+            const sic3Valor = parseFloat(sic3Item.valorTotal);
 
-            if (!sirconvItem) {
-                differences.push(`<li><strong>Item do SIC3 não encontrado no SIRCONV:</strong> ${this.escapeHtml(sic3Item.descricao)}</li>`);
+            const matchIndex = availableSirconv.findIndex(sirconvItem => {
+                if (sirconvItem.matched) return false;
+                const normalizedSirconvDesc = normalizeString(sirconvItem.descricao);
+                const sirconvQtd = parseFloat(sirconvItem.quantidade);
+                const sirconvValor = parseFloat(sirconvItem.valorTotal);
+
+                return normalizedSirconvDesc === normalizedSic3Desc &&
+                       sirconvQtd.toFixed(4) === sic3Qtd.toFixed(4) &&
+                       sirconvValor.toFixed(2) === sic3Valor.toFixed(2);
+            });
+
+            if (matchIndex !== -1) {
+                availableSirconv[matchIndex].matched = true;
+                sic3Item.matched = true;
+                compliantCount++;
             } else {
-                let itemDiffs = [];
-                const qtdMatch = parseFloat(sirconvItem.quantidade).toFixed(4) === parseFloat(sic3Item.quantidade).toFixed(4);
-                const valorMatch = parseFloat(sirconvItem.valorTotal).toFixed(2) === parseFloat(sic3Item.valorTotal).toFixed(2);
+                sic3Item.matched = false;
+            }
+        }
 
-                if (!qtdMatch) {
+        // 2ª Passada: Para itens não combinados, busca por correspondência de descrição normalizada
+        for (const sic3Item of sic3Items) {
+            if (sic3Item.matched) continue;
+
+            const normalizedSic3Desc = normalizeString(sic3Item.descricao);
+            const sic3Qtd = parseFloat(sic3Item.quantidade);
+            const sic3Valor = parseFloat(sic3Item.valorTotal);
+
+            const matchIndex = availableSirconv.findIndex(sirconvItem => {
+                if (sirconvItem.matched) return false;
+                const normalizedSirconvDesc = normalizeString(sirconvItem.descricao);
+                return normalizedSirconvDesc === normalizedSic3Desc;
+            });
+
+            if (matchIndex !== -1) {
+                const sirconvItem = availableSirconv[matchIndex];
+                sirconvItem.matched = true;
+                sic3Item.matched = true;
+
+                let itemDiffs = [];
+                const sirconvQtd = parseFloat(sirconvItem.quantidade);
+                const sirconvValor = parseFloat(sirconvItem.valorTotal);
+
+                if (sirconvQtd.toFixed(4) !== sic3Qtd.toFixed(4)) {
                     itemDiffs.push(`Quantidade diverge (SIC3: ${formatQuantity(sic3Item.quantidade)}, SIRCONV: ${formatQuantity(sirconvItem.quantidade)})`);
                 }
-                if (!valorMatch) {
+                if (sirconvValor.toFixed(2) !== sic3Valor.toFixed(2)) {
                     itemDiffs.push(`Valor diverge (SIC3: R$ ${formatCurrency(sic3Item.valorTotal)}, SIRCONV: R$ ${formatCurrency(sirconvItem.valorTotal)})`);
                 }
 
@@ -349,12 +393,21 @@ export class SirconvModule {
                 } else {
                     compliantCount++;
                 }
-                sirconvItemsMap.delete(normalizedDesc);
             }
         }
 
-        for (const sirconvItem of sirconvItemsMap.values()) {
-            differences.push(`<li><strong>Item do SIRCONV não encontrado no SIC3:</strong> ${this.escapeHtml(sirconvItem.descricao)}</li>`);
+        // 3ª Passada: Itens do SIC3 sem correspondência no SIRCONV
+        for (const sic3Item of sic3Items) {
+            if (!sic3Item.matched) {
+                differences.push(`<li><strong>Item do SIC3 não encontrado no SIRCONV:</strong> ${this.escapeHtml(sic3Item.descricao)} (Qtd: ${formatQuantity(sic3Item.quantidade)}, Valor: R$ ${formatCurrency(sic3Item.valorTotal)})</li>`);
+            }
+        }
+
+        // 4ª Passada: Itens do SIRCONV sem correspondência no SIC3
+        for (const sirconvItem of availableSirconv) {
+            if (!sirconvItem.matched) {
+                differences.push(`<li><strong>Item do SIRCONV não encontrado no SIC3:</strong> ${this.escapeHtml(sirconvItem.descricao)} (Qtd: ${formatQuantity(sirconvItem.quantidade)}, Valor: R$ ${formatCurrency(sirconvItem.valorTotal)})</li>`);
+            }
         }
         
         if (sic3Items.length !== sirconvItems.length && differences.length === 0) {
