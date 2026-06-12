@@ -68,7 +68,30 @@
 
     <!-- Container da Aplicação -->
     <main id="sic3-app-container" class="app-main-content">
-      <!-- O conteúdo dinâmico (Views) será injetado aqui -->
+      <!-- Painel de Perfil de Usuário Premium -->
+      <div class="user-profile-bar" id="user-profile-panel" style="display: none;">
+        <div class="profile-main">
+          <div class="profile-avatar">
+            <i class="fas fa-user-shield"></i>
+          </div>
+          <div class="profile-info">
+            <span class="profile-name" id="user-profile-name">Carregando...</span>
+            <div class="profile-meta">
+              <span><i class="fas fa-id-badge"></i> <strong id="user-profile-pm">PM nº -</strong></span>
+              <span class="profile-meta-separator">&bull;</span>
+              <span><i class="fas fa-map-marker-alt"></i> <span id="user-profile-secao-municipio">Seção/Município: -</span></span>
+              <span class="profile-meta-separator">&bull;</span>
+              <span><i class="fas fa-shield-alt"></i> <strong id="user-profile-regiao">Região: -</strong></span>
+            </div>
+          </div>
+        </div>
+        <div class="profile-status" id="user-profile-admin-status">
+          <!-- Badge de Administrador -->
+        </div>
+      </div>
+
+      <!-- Área de injeção dinâmica de convênios -->
+      <div id="sic3-views-container"></div>
     </main>
 
     <!-- Dialog de Mensagens do jQuery UI -->
