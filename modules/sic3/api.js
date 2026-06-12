@@ -54,6 +54,9 @@ export async function executarApi(action, params = {}) {
     const rpm = window.rpm || "15RPM";
     const ano = window.ano || new Date().getFullYear().toString();
     
+    console.log(`[SIC3 v3.0 Log] [API Request] executando action: "${action}" para RPM: ${rpm}, Ano: ${ano} na URL: ${apiUrl}. Params:`, params);
+    const startTime = Date.now();
+
     try {
         const response = await fetch(apiUrl, {
             method: 'POST',
@@ -75,16 +78,21 @@ export async function executarApi(action, params = {}) {
         }
 
         const responseText = await response.text();
+        console.log(`[SIC3 v3.0 Log] [API Response Raw] Recebido em ${Date.now() - startTime}ms para action "${action}":`, responseText.substring(0, 500) + (responseText.length > 500 ? "..." : ""));
+        
         let data;
         try {
             data = JSON.parse(responseText);
         } catch (e) {
-            console.error("Erro ao fazer parse da resposta do GAS. Resposta bruta:", responseText);
+            console.error("[SIC3 v3.0 Log] Erro ao fazer parse da resposta do GAS. Resposta bruta:", responseText);
             throw new Error("Resposta inválida do servidor. Verifique se o Web App do GAS está implantado corretamente.");
         }
 
+        console.log(`[SIC3 v3.0 Log] [API Response Object] Parsed com sucesso para action "${action}":`, data);
+
         // Se a resposta indicar erro de autorização expirada
         if (data && data.errorCode === "UNAUTHORIZED") {
+            console.warn(`[SIC3 v3.0 Log] [API Warning] Acesso não autorizado (UNAUTHORIZED) retornado pela action "${action}". Expulsando usuário para a tela admin.`);
             sessionStorage.removeItem('authToken');
             // Redireciona para a tela de login local caso o token seja inválido
             document.dispatchEvent(new CustomEvent('sic3:unauthorized'));
@@ -92,7 +100,7 @@ export async function executarApi(action, params = {}) {
 
         return data;
     } catch (error) {
-        console.error(`Erro ao chamar a API [${action}]:`, error);
+        console.error(`[SIC3 v3.0 Log] [API Error] Falha ao chamar a API para action "${action}" após ${Date.now() - startTime}ms:`, error);
         throw error;
     }
 }

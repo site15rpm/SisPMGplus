@@ -276,14 +276,24 @@ window.includeHtmlBody = function(contentHtml) {
  * @param {object} [contexto={}] - Variáveis de contexto para passar à página
  */
 export async function navegarPara(pagina, contexto = {}) {
+    console.log(`[SIC3 v3.0 Log] navegarPara iniciado. Destino: "${pagina}". Contexto:`, contexto);
     window.mostrarCarregamentoGlobal(`Carregando painel ${pagina}...`);
     limparRecursosInjetados();
 
     try {
         // Propaga o RPM e Ano vindos do contexto para o escopo global
-        if (contexto.rpm) window.rpm = contexto.rpm;
-        if (contexto.ano) window.ano = contexto.ano;
-        if (contexto.mLog) window.mLog = contexto.mLog;
+        if (contexto.rpm) {
+            window.rpm = contexto.rpm;
+            console.log(`[SIC3 v3.0 Log] RPM definida globalmente: ${window.rpm}`);
+        }
+        if (contexto.ano) {
+            window.ano = contexto.ano;
+            console.log(`[SIC3 v3.0 Log] Ano definido globalmente: ${window.ano}`);
+        }
+        if (contexto.mLog) {
+            window.mLog = contexto.mLog;
+            console.log(`[SIC3 v3.0 Log] mLog definido globalmente: ${window.mLog}`);
+        }
 
         // Resolve dinamicamente os IDs específicos das planilhas compartilhadas
         const rpmAtiva = window.rpm || "15";
@@ -291,9 +301,12 @@ export async function navegarPara(pagina, contexto = {}) {
 
         if (!window.idBDConvenios || !window.idBDEnderecos || !window.idTBPrimaria || !window.idTBSecundaria || contexto.idbase) {
             try {
+                console.log(`[SIC3 v3.0 Log] Requisitando obterIdPlanilha para RPM: ${rpmAtiva}, Ano: ${anoAtivo}`);
                 const resId = await executarApi("obterIdPlanilha", [rpmAtiva, anoAtivo]);
+                console.log("[SIC3 v3.0 Log] Resultado obterIdPlanilha:", resId);
                 if (resId && resId.success) {
                     window.idbase = contexto.idbase || resId.spreadsheetId || window.idbase;
+                    console.log(`[SIC3 v3.0 Log] ID da planilha anual (idbase) definido: ${window.idbase}`);
                     if (resId.arquivosCompartilhados) {
                         window.idBDConvenios = resId.arquivosCompartilhados.BDConvenios;
                         window.idBDEnderecos = resId.arquivosCompartilhados.BDEnderecos;
@@ -304,18 +317,25 @@ export async function navegarPara(pagina, contexto = {}) {
                         sessionStorage.setItem("sic3_idBDEnderecos", resId.arquivosCompartilhados.BDEnderecos);
                         sessionStorage.setItem("sic3_idTBPrimaria", resId.arquivosCompartilhados.TBPrimaria);
                         sessionStorage.setItem("sic3_idTBSecundaria", resId.arquivosCompartilhados.TBSecundaria);
+                        
+                        console.log(`[SIC3 v3.0 Log] Planilhas Compartilhadas resolvidas:
+                          - BDConvenios: ${window.idBDConvenios}
+                          - BDEnderecos: ${window.idBDEnderecos}
+                          - TBPrimaria: ${window.idTBPrimaria}
+                          - TBSecundaria: ${window.idTBSecundaria}`);
                     }
                 }
             } catch (apiErr) {
-                console.error("Erro ao obter IDs das planilhas compartilhadas no roteador:", apiErr);
+                console.error("[SIC3 v3.0 Log] Erro ao obter IDs das planilhas compartilhadas no roteador:", apiErr);
             }
         }
 
         if (pagina === 'login') {
-            const html = await obterHtmlLocal('sic3/html/login.html');
+            console.log("[SIC3 v3.0 Log] Carregando fragmento HTML local de login...");
+            const html = await obterHtmlLocal('html/login.html');
             appContainer.innerHTML = html;
             
-            carregarCSS('sic3/css/login.css');
+            carregarCSS('css/login.css');
             
             window.pUser = contexto.pUser || "html/login";
             window.mLog = contexto.mLog || "";
@@ -323,15 +343,17 @@ export async function navegarPara(pagina, contexto = {}) {
             window.authToken = contexto.authToken || "";
             window.idbase = contexto.idbase || "";
 
-            await carregarJS('sic3/js/utils_global.js');
-            await carregarJS('sic3/js/form_validation.js');
-            await carregarJS('sic3/js/login-controller.js');
+            await carregarJS('js/utils_global.js');
+            await carregarJS('js/form_validation.js');
+            await carregarJS('js/login-controller.js');
+            console.log("[SIC3 v3.0 Log] Scripts do Login injetados com sucesso.");
             
         } else if (pagina === 'admin') {
-            const html = await obterHtmlLocal('sic3/html/admin.html');
+            console.log("[SIC3 v3.0 Log] Carregando fragmento HTML local de admin...");
+            const html = await obterHtmlLocal('html/admin.html');
             appContainer.innerHTML = html;
             
-            carregarCSS('sic3/css/admin.css');
+            carregarCSS('css/admin.css');
             
             window.pUser = contexto.pUser || "html/admin";
             window.mLog = contexto.mLog || window.mLog || "";
@@ -358,21 +380,23 @@ export async function navegarPara(pagina, contexto = {}) {
                 },
             };
 
-            await carregarJS('sic3/js/utils_global.js');
-            await carregarJS('sic3/js/form_validation.js');
-            await carregarJS('sic3/js/admin/interface_ui.js');
-            await carregarJS('sic3/js/admin/carreg_manip_dados.js');
-            await carregarJS('sic3/js/admin/utilitarios.js');
-            await carregarJS('sic3/js/admin/crud_convenios.js');
-            await carregarJS('sic3/js/admin/datatables.js');
-            await carregarJS('sic3/js/admin/gerarpdf.js');
-            await carregarJS('sic3/js/admin/init_config_geral.js');
+            await carregarJS('js/utils_global.js');
+            await carregarJS('js/form_validation.js');
+            await carregarJS('js/admin/interface_ui.js');
+            await carregarJS('js/admin/carreg_manip_dados.js');
+            await carregarJS('js/admin/utilitarios.js');
+            await carregarJS('js/admin/crud_convenios.js');
+            await carregarJS('js/admin/datatables.js');
+            await carregarJS('js/admin/gerarpdf.js');
+            await carregarJS('js/admin/init_config_geral.js');
+            console.log("[SIC3 v3.0 Log] Scripts do Admin injetados com sucesso.");
             
         } else if (pagina === 'lancamentos') {
-            const html = await obterHtmlLocal('sic3/html/lancamentos.html');
+            console.log("[SIC3 v3.0 Log] Carregando fragmento HTML local de lancamentos...");
+            const html = await obterHtmlLocal('html/lancamentos.html');
             appContainer.innerHTML = html;
             
-            carregarCSS('sic3/css/lancamentos.css');
+            carregarCSS('css/lancamentos.css');
             
             window.pUser = contexto.pUser || "html/lancamentos";
             window.mLog = contexto.mLog || window.mLog || "";
@@ -388,24 +412,26 @@ export async function navegarPara(pagina, contexto = {}) {
             window.preposto_pg = "";
             window.preposto = "";
 
-            await carregarJS('sic3/js/utils_global.js');
-            await carregarJS('sic3/js/form_validation.js');
-            await carregarJS('sic3/js/lancamentos/global_vars_and_init.js');
-            await carregarJS('sic3/js/lancamentos/address_manager.js');
-            await carregarJS('sic3/js/lancamentos/data_main.js');
-            await carregarJS('sic3/js/lancamentos/form_generic.js');
-            await carregarJS('sic3/js/lancamentos/datatable_material_init.js');
-            await carregarJS('sic3/js/lancamentos/form_abastecimento.js');
-            await carregarJS('sic3/js/lancamentos/form_manutencao.js');
-            await carregarJS('sic3/js/lancamentos/form_outros_itens.js');
-            await carregarJS('sic3/js/lancamentos/form_material.js');
-            await carregarJS('sic3/js/lancamentos/autocompletar.js');
-            await carregarJS('sic3/js/lancamentos/system_init.js');
+            await carregarJS('js/utils_global.js');
+            await carregarJS('js/form_validation.js');
+            await carregarJS('js/lancamentos/global_vars_and_init.js');
+            await carregarJS('js/lancamentos/address_manager.js');
+            await carregarJS('js/lancamentos/data_main.js');
+            await carregarJS('js/lancamentos/form_generic.js');
+            await carregarJS('js/lancamentos/datatable_material_init.js');
+            await carregarJS('js/lancamentos/form_abastecimento.js');
+            await carregarJS('js/lancamentos/form_manutencao.js');
+            await carregarJS('js/lancamentos/form_outros_itens.js');
+            await carregarJS('js/lancamentos/form_material.js');
+            await carregarJS('js/lancamentos/autocompletar.js');
+            await carregarJS('js/lancamentos/system_init.js');
+            console.log("[SIC3 v3.0 Log] Scripts do Lançamento injetados com sucesso.");
         } else if (pagina === 'item99') {
-            const html = await obterHtmlLocal('sic3/html/item99.html');
+            console.log("[SIC3 v3.0 Log] Carregando fragmento HTML local de item99...");
+            const html = await obterHtmlLocal('html/item99.html');
             appContainer.innerHTML = html;
             
-            carregarCSS('sic3/css/item99.css');
+            carregarCSS('css/item99.css');
             
             window.pUser = contexto.pUser || "html/item99";
             window.mLog = contexto.mLog || window.mLog || "";
@@ -413,13 +439,14 @@ export async function navegarPara(pagina, contexto = {}) {
             window.authToken = contexto.authToken || "";
             window.idbase = contexto.idbase || "";
 
-            await carregarJS('sic3/js/utils_global.js');
-            await carregarJS('sic3/js/form_validation.js');
-            await carregarJS('sic3/js/item99.js');
+            await carregarJS('js/utils_global.js');
+            await carregarJS('js/form_validation.js');
+            await carregarJS('js/item99.js');
+            console.log("[SIC3 v3.0 Log] Scripts de Itens 99 injetados com sucesso.");
         }
         
     } catch (error) {
-        console.error("Erro na navegação do SIC3:", error);
+        console.error("[SIC3 v3.0 Log] Erro na navegação do SIC3:", error);
         alert(`Ocorreu um erro ao carregar a página: ${error.message}`);
     } finally {
         window.ocultarCarregamentoGlobal();
@@ -446,6 +473,7 @@ async function initConfigBar() {
 
 // Inicializa a aplicação
 window.addEventListener('DOMContentLoaded', async () => {
+    console.log("[SIC3 v3.0 Log] DOMContentLoaded disparado no sic3.html. Inicializando barra de configurações de API.");
     await initConfigBar();
 
     window.executarApiGas = executarApi;
@@ -458,9 +486,11 @@ window.addEventListener('DOMContentLoaded', async () => {
         let rpmParam = urlParams.get('rpm');
         let secaoParam = urlParams.get('secao');
         
+        console.log("[SIC3 v3.0 Log] Extraindo dados do browser.storage.local para 'sic3_v3_user_info'...");
         // Sempre tenta ler do storage local para obter as informações completas do usuário
         const storageResult = await browser.storage.local.get('sic3_v3_user_info');
         const info = (storageResult && storageResult.sic3_v3_user_info) ? storageResult.sic3_v3_user_info : null;
+        console.log("[SIC3 v3.0 Log] Dados recuperados do storage local:", info);
         
         if (info) {
             window.userPM = info.numeroPM || "";
@@ -473,16 +503,19 @@ window.addEventListener('DOMContentLoaded', async () => {
             window.rpm = rpmParam ? rpmParam : (info.codigoRPM || "15");
             window.secao = secaoParam ? decodeURIComponent(secaoParam) : (info.nomenclatura || "");
         } else {
+            console.warn("[SIC3 v3.0 Log] Nenhuma credencial 'sic3_v3_user_info' no storage local. Aplicando fallback de teste.");
             // Fallback de teste
             window.municipio = municipioParam ? decodeURIComponent(municipioParam).toUpperCase() : "PARÁ DE MINAS";
             window.rpm = rpmParam || "19";
             window.secao = secaoParam ? decodeURIComponent(secaoParam) : "19º BPM";
+            window.isAdmin = false;
         }
         
         // Define o filtro de município com base no privilégio de administrador
         window.mLog = window.isAdmin ? "admin" : window.municipio;
+        console.log(`[SIC3 v3.0 Log] Definidos globais: window.municipio=${window.municipio}, window.rpm=${window.rpm}, window.isAdmin=${window.isAdmin}, window.mLog=${window.mLog}`);
         
-        // Atualiza a exibição no cabeçalho superior
+        // Updates de display no cabeçalho superior
         document.getElementById('user-municipio-display').textContent = window.municipio;
         document.getElementById('user-rpm-display').textContent = /^\d+$/.test(window.rpm) ? window.rpm + "ª RPM" : window.rpm;
         document.getElementById('user-secao-display').textContent = window.secao || "Geral";
@@ -511,6 +544,7 @@ window.addEventListener('DOMContentLoaded', async () => {
                 }
                 
                 panel.style.display = 'flex';
+                console.log("[SIC3 v3.0 Log] Painel de Perfil do usuário renderizado com sucesso.");
             }
         }
         
@@ -523,9 +557,12 @@ window.addEventListener('DOMContentLoaded', async () => {
     try {
         const rpmAtiva = window.rpm || "15";
         const anoAtivo = window.ano || new Date().getFullYear().toString();
+        console.log(`[SIC3 v3.0 Log] Inicialização: requisitando obterIdPlanilha para RPM: ${rpmAtiva}, Ano: ${anoAtivo}`);
         const resId = await executarApi("obterIdPlanilha", [rpmAtiva, anoAtivo]);
+        console.log("[SIC3 v3.0 Log] Inicialização obterIdPlanilha result:", resId);
         if (resId && resId.success && resId.spreadsheetId) {
             window.idbase = resId.spreadsheetId;
+            console.log(`[SIC3 v3.0 Log] Inicialização idbase definida: ${window.idbase}`);
             if (resId.arquivosCompartilhados) {
                 window.idBDConvenios = resId.arquivosCompartilhados.BDConvenios;
                 window.idBDEnderecos = resId.arquivosCompartilhados.BDEnderecos;
@@ -536,18 +573,25 @@ window.addEventListener('DOMContentLoaded', async () => {
                 sessionStorage.setItem("sic3_idBDEnderecos", resId.arquivosCompartilhados.BDEnderecos);
                 sessionStorage.setItem("sic3_idTBPrimaria", resId.arquivosCompartilhados.TBPrimaria);
                 sessionStorage.setItem("sic3_idTBSecundaria", resId.arquivosCompartilhados.TBSecundaria);
+                
+                console.log(`[SIC3 v3.0 Log] Inicialização planilhas compartilhadas armazenadas no sessionStorage:
+                  - BDConvenios: ${window.idBDConvenios}
+                  - BDEnderecos: ${window.idBDEnderecos}
+                  - TBPrimaria: ${window.idTBPrimaria}
+                  - TBSecundaria: ${window.idTBSecundaria}`);
             }
         } else {
-            console.warn("Não foi possível obter o ID da planilha do GAS. Usando fallback vazio.");
+            console.warn("[SIC3 v3.0 Log] Não foi possível obter o ID da planilha do GAS. Usando fallback vazio.");
             window.idbase = "";
         }
     } catch (e) {
-        console.error("Erro ao resolver ID do banco de dados:", e);
+        console.error("[SIC3 v3.0 Log] Erro ao resolver ID do banco de dados na inicialização:", e);
         window.idbase = "";
     } finally {
         window.ocultarCarregamentoGlobal();
     }
 
     // Navega diretamente para a tela do Painel Geral de administração original do v2 (formato de tabela)
+    console.log("[SIC3 v3.0 Log] Navegando automaticamente para o painel admin.");
     navegarPara('admin', { nUser: window.userNome || "Operador Extensão", mLog: window.mLog, authToken: "bypass", idbase: window.idbase });
 });

@@ -312,6 +312,12 @@ window.carregarDadosPlanilha = function(config) {
       }
 
       const url = `${baseUrl}${targetSheetId}/gviz/tq?${queryParams}`;
+      console.log(`[SIC3 v3.0 Log] [Planilha Request] Requisitando dados gviz para sheet: "${config.sheet || 'idbase'}".
+        - Target Sheet ID: ${targetSheetId}
+        - Query: ${config.query || 'SELECT *'}
+        - URL gviz: ${url}`);
+      
+      const startTime = Date.now();
       const tempoLimite = 30000;
       const controller = new AbortController();
       const timeoutId = setTimeout(() => {
@@ -339,12 +345,17 @@ window.carregarDadosPlanilha = function(config) {
             throw new Error('Dados inválidos recebidos da planilha: ' + (config.sheet || config.sheetId));
           }
           const rows = responseJson.table.rows;
+          console.log(`[SIC3 v3.0 Log] [Planilha Response Raw] Recebido em ${Date.now() - startTime}ms para a aba "${config.sheet || 'idbase'}". Quantidade de linhas brutas: ${rows.length}`);
+          
           let processedData = config.processData ? config.processData(rows)
             : rows.map(row => row.c ? row.c.map(cell => (cell ? cell.v : '')) : []);
+          
+          console.log(`[SIC3 v3.0 Log] [Planilha Processed] Sucesso para a aba "${config.sheet || 'idbase'}". Linhas processadas: ${processedData.length}`);
           resolve(processedData);
         })
         .catch(error => {
           clearTimeout(timeoutId);
+          console.error(`[SIC3 v3.0 Log] [Planilha Error] Erro ao carregar gviz para a aba "${config.sheet || 'idbase'}":`, error);
           if (error.name === 'AbortError') {
             reject(new Error('Tempo limite excedido ao carregar dados da planilha: ' + (config.sheet || config.sheetId)));
           } else {
