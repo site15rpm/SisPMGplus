@@ -1,0 +1,196 @@
+<!-- css\item99.html -->
+<style>
+/* =======================================================
+   ESTILOS GERAIS E BASE (Padrão Admin)
+   v2.0 - Alinhado com o design do Painel Administrativo
+   ======================================================= */
+* {
+    box-sizing: border-box;
+}
+
+html {
+    font-family: 'Roboto', Verdana, Arial, sans-serif;
+    font-size: 10px;
+}
+
+body {
+    margin: 10px;
+    padding: 0;
+    color: #333;
+    background-color: #e9e9f0; /* Cor de fundo do admin */
+}
+
+h2 {
+    font-size: 2rem;
+    font-weight: 500;
+    color: #23385c;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+h3 {
+    font-size: 1.6rem;
+    font-weight: 500;
+    color: #344767;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+i.fas {
+    font-size: 1.4rem;
+}
+
+/* =======================================================
+   COMPONENTES DE UI (Botões, Overlays, Diálogos)
+   ======================================================= */
+button, .btn {
+    display: inline-flex;
+    padding: 8px 16px;
+    font-weight: 500;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    gap: 8px;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 1.3rem;
+}
+
+button:hover, .btn:hover {
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+    transform: translateY(-1px);
+}
+
+button:disabled, .btn:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+    background-color: #adb5bd;
+    box-shadow: none;
+    transform: none;
+}
+
+.btn-sm { padding: 5px 10px; font-size: 1.2rem; }
+.btn-primary { background-color: #0d6efd; color: #fff; }
+.btn-secondary { background-color: #6c757d; color: #fff; }
+.btn-success { background-color: #198754; color: #fff; }
+.btn-danger { background-color: #dc3545; color: #fff; }
+.btn-warning { background-color: #ffc107; color: #000; }
+.btn-info { background-color: #0dcaf0; color: #000; }
+.btn-dark { background-color: #212529; color: #fff; }
+
+.loading-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.5); display: none; justify-content: center;
+    align-items: center; z-index: 9999;
+}
+.loading {
+    width: 50px; height: 50px; border: 5px solid rgba(255, 255, 255, 0.3);
+    border-top-color: #fff; border-radius: 50%; animation: spin 1s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* =======================================================
+   LAYOUT PRINCIPAL E CARDS (Estilo Admin)
+   ======================================================= */
+.container { max-width: 1600px; margin: 0 auto; padding: 15px; }
+.menu {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 20px; padding: 15px 20px; background-color: #fff;
+    border-radius: 8px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+.menu div { display: flex; gap: 10px; }
+.card {
+    background: #fff; border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    margin-bottom: 20px;
+}
+.card-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 20px; background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6; border-radius: 8px 8px 0 0;
+}
+.card-body { padding: 20px; }
+.info-convenio { /* Reutilizado para filtros */
+    max-width: none; margin: 0 0 20px 0; padding: 15px;
+    background-color: #f8f9fa; border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+.linha-1 { display: flex; gap: 20px; align-items: flex-end; }
+.coluna { display: flex; flex-direction: column; flex: 1; }
+.coluna label { font-size: 1.2rem; color: #344767; margin-bottom: 5px; }
+.coluna select {
+    width: 100%; padding: 8px; border: 1px solid #ced4da;
+    border-radius: 4px; font-size: 1.3rem;
+}
+
+/* =======================================================
+   ESTILOS DAS TABELAS (Principal e DataTables)
+   ======================================================= */
+.tabela-lancamentos, .display { width: 100%; border-collapse: collapse; font-size: 1.3rem; }
+.tabela-lancamentos thead th, table.dataTable thead th {
+    background-color: #e9ecef; color: #344767; font-weight: 600;
+    border-bottom: 2px solid #dee2e6; padding: 12px 10px; text-align: left;
+}
+.tabela-lancamentos tbody tr, table.dataTable tbody tr { border-bottom: 1px solid #f0f0f0; }
+.tabela-lancamentos tbody tr:hover, table.dataTable tbody tr:hover { background-color: #f5f5f5; }
+.tabela-lancamentos tbody td, table.dataTable tbody td { padding: 10px; vertical-align: middle; }
+.cell-actions { text-align: center; }
+
+/* DataTables específico */
+.dataTables_wrapper .dataTables_length select,
+.dataTables_wrapper .dataTables_filter input {
+    border: 1px solid #ced4da; border-radius: 4px; padding: 6px 8px; margin: 0 5px;
+}
+.dataTables_wrapper .dataTables_paginate .paginate_button {
+    padding: 5px 12px; margin: 0 2px; border-radius: 4px; border: 1px solid #dee2e6;
+}
+.dataTables_wrapper .dataTables_paginate .paginate_button.current {
+    background: #0d6efd; color: white !important; border-color: #0d6efd;
+}
+
+/* =======================================================
+   ELEMENTOS ESPECÍFICOS DA PÁGINA ITEM 99
+   ======================================================= */
+.status-pendente { color: #ff9800; font-weight: bold; }
+.status-aprovado { color: #198754; font-weight: bold; }
+.status-reprovado { color: #dc3545; font-weight: bold; }
+.status-excluido, .status-substituido { color: #6c757d; font-weight: bold; text-decoration: line-through; }
+.status-aprovado\/liberado { color: #0d6efd; font-weight: bold; }
+
+.detalhes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 15px;
+    font-size: 1.4rem;
+    line-height: 1.8;
+}
+.detalhes-grid .full-width {
+    grid-column: 1 / -1;
+}
+.detalhes-grid div {
+    background-color: #f8f9fa;
+    padding: 10px;
+    border-radius: 4px;
+    border-left: 3px solid #0d6efd;
+}
+.detalhes-acoes {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #dee2e6;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+#tabelaMateriais .dt-select {
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px solid #ced4da;
+    background-color: #fff;
+    width: 100%;
+}
+

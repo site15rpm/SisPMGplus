@@ -1,4 +1,7 @@
-function mostrarErroValidacao(campo, mensagem) {
+// Arquivo: modules/sic3/js/form_validation.js
+// Utilitários de validação de formulários migrados para a extensão.
+
+window.mostrarErroValidacao = function(campo, mensagem) {
   if (!campo) return;
   campo.classList.add('is-invalid');
   let feedbackElement = campo.nextElementSibling;
@@ -15,7 +18,7 @@ function mostrarErroValidacao(campo, mensagem) {
   feedbackElement.style.visibility = 'visible';
 }
 
-function limparValidacoes(form) {
+window.limparValidacoes = function(form) {
   if (!form) return;
   form.querySelectorAll('.form-control, input, select, textarea').forEach(input => {
     input.classList.remove('is-invalid');
@@ -27,7 +30,7 @@ function limparValidacoes(form) {
   });
 }
 
-function obterRegrasValidacao(fieldId) {
+window.obterRegrasValidacao = function(fieldId) {
   const rules = { required: false };
 
   if (!window.regrasValidacao) {
@@ -71,7 +74,7 @@ function obterRegrasValidacao(fieldId) {
   return rules;
 }
 
-function validarCampo(campo, contexto = {}) {
+window.validarCampo = function(campo, contexto = {}) {
   if (!campo || campo.offsetParent === null) {
       return { valid: true, message: "" };
   }
@@ -85,7 +88,7 @@ function validarCampo(campo, contexto = {}) {
 
   const id = campo.id;
   let value = campo.value;
-  const regras = obterRegrasValidacao(id);
+  const regras = window.obterRegrasValidacao(id);
 
   if (regras.required && !campo.disabled) {
     if (campo.type === 'file') {
@@ -116,7 +119,7 @@ function validarCampo(campo, contexto = {}) {
     case 'responsavel':
     case 'motorista':
       if (value.trim() && /^0+$/.test(value)) return { valid: false, message: "Número PM não pode ser somente zeros" };
-      if (typeof verificarDigitoVerificador === 'function' && value.trim() && !verificarDigitoVerificador(value)) {
+      if (typeof window.verificarDigitoVerificador === 'function' && value.trim() && !window.verificarDigitoVerificador(value)) {
         return { valid: false, message: "Número PM inválido" };
       }
       break;
@@ -185,7 +188,7 @@ function validarCampo(campo, contexto = {}) {
       break;
     case "data":
     case "mesRef":
-      if (value && typeof mes !== 'undefined' && typeof ano !== 'undefined') { 
+      if (value && typeof window.mes !== 'undefined' && typeof window.ano !== 'undefined') { 
         try {
           const dataObj = new Date(value + (id === "data" ? "T00:00:00" : "-01T00:00:00"));
           if (isNaN(dataObj.valueOf())) return { valid: false, message: "Data inválida" };
@@ -193,15 +196,15 @@ function validarCampo(campo, contexto = {}) {
           const anoLancamento = dataObj.getFullYear();
           const mesLancamento = dataObj.getMonth() + 1;
 
-          const mesRelatorioNum = parseInt(mNumerico(mes, "numero"));
-          const anoRelatorioNum = parseInt(ano);
+          const mesRelatorioNum = parseInt(window.mNumerico(window.mes, "numero"));
+          const anoRelatorioNum = parseInt(window.ano);
 
           const form = campo.closest("form");
           const temMesRefNoForm = form ? form.querySelector("#mesRef") : null;
 
           if (id === "data") {
             if (!temMesRefNoForm && (mesLancamento !== mesRelatorioNum || anoLancamento !== anoRelatorioNum)) {
-              return { valid: false, message: `Data fora do período do relatório (${mes}/${ano})` };
+              return { valid: false, message: `Data fora do período do relatório (${window.mes}/${window.ano})` };
             }
             if (temMesRefNoForm) {
                 const mesRefValue = temMesRefNoForm.value;
@@ -210,14 +213,14 @@ function validarCampo(campo, contexto = {}) {
                     if (anoMesRef === anoRelatorioNum && mesMesRef === mesRelatorioNum) {
                         const inicioMesRelatorio = new Date(anoRelatorioNum, mesRelatorioNum - 1, 1);
                         if (dataObj < inicioMesRelatorio) {
-                             return { valid: false, message: `Data não pode ser anterior a ${mNumerico(mesRelatorioNum, 'nome')}/${anoRelatorioNum}` };
+                             return { valid: false, message: `Data não pode ser anterior a ${window.mNumerico(mesRelatorioNum, 'nome')}/${anoRelatorioNum}` };
                         }
                     }
                 }
             }
           } else if (id === "mesRef") {
             if (anoLancamento !== anoRelatorioNum || mesLancamento !== mesRelatorioNum) {
-              return { valid: false, message: `Mês de referência deve ser ${mes}/${ano}` };
+              return { valid: false, message: `Mês de referência deve ser ${window.mes}/${window.ano}` };
             }
           }
         } catch (e) {
@@ -238,7 +241,7 @@ function validarCampo(campo, contexto = {}) {
   return { valid: true, message: "" };
 }
 
-function configurarValidacoesFormulario(formElement = null) {
+window.configurarValidacoesFormulario = function(formElement = null) {
   const form = formElement || document.querySelector('#modal-base form');
   if (!form) {
     console.warn("Formulário não encontrado para configurar validações.");
@@ -283,22 +286,24 @@ function configurarValidacoesFormulario(formElement = null) {
       }
       if (["valorTotal", "quantidade", "consumo"].includes(this.id)) {
         formatarCampoDecimal(this);
-        calcularTotalFormulario();
+        if (typeof window.calcularTotalFormulario === 'function') {
+            window.calcularTotalFormulario();
+        }
       }
     });
 
     campo.addEventListener('blur', function() {
-      const validacao = validarCampo(this);
+      const validacao = window.validarCampo(this);
       if (!validacao.valid) {
-        mostrarErroValidacao(this, validacao.message);
+        window.mostrarErroValidacao(this, validacao.message);
       }
     });
 
     if (campo.tagName === 'SELECT') {
       campo.addEventListener('change', function() {
-        const validacao = validarCampo(this);
+        const validacao = window.validarCampo(this);
         if (!validacao.valid) {
-          mostrarErroValidacao(this, validacao.message);
+          window.mostrarErroValidacao(this, validacao.message);
         } else {
             this.classList.remove('is-invalid');
             const feedback = this.nextElementSibling;
@@ -311,10 +316,10 @@ function configurarValidacoesFormulario(formElement = null) {
     }
   });
 
-  configurarValidacaoTiposCampo(form);
+  window.configurarValidacaoTiposCampo(form);
 }
 
-function configurarValidacaoTiposCampo(form) {
+window.configurarValidacaoTiposCampo = function(form) {
   if (!form) return;
   form.querySelectorAll('#preposto-n, [id^="responsavel"], [id^="motorista"]').forEach(campo => {
     campo.addEventListener('input', function() { this.value = this.value.replace(/\D/g, '').substring(0, 7); });
@@ -351,13 +356,13 @@ function configurarValidacaoTiposCampo(form) {
   });
 }
 
-function validarFormulario(contexto = {}, formElement = null) {
+window.validarFormulario = function(contexto = {}, formElement = null) {
   const form = formElement || document.querySelector('#modal-base form');
   if (!form) {
     console.error("Formulário não encontrado para validação completa.");
     return false;
   }
-  limparValidacoes(form);
+  window.limparValidacoes(form);
   let isValid = true;
   form.querySelectorAll("input:not([type=hidden]):not(:disabled), select:not(:disabled), textarea:not(:disabled)").forEach(campo => {
     if ((campo.id === "medidor-O33903912" || campo.id === "medidor-O33903913") && campo.disabled) {
@@ -370,11 +375,11 @@ function validarFormulario(contexto = {}, formElement = null) {
         return;
     }
 
-    const validacao = validarCampo(campo, contexto);
+    const validacao = window.validarCampo(campo, contexto);
     if (!validacao.valid) {
-      mostrarErroValidacao(campo, validacao.message);
+      window.mostrarErroValidacao(campo, validacao.message);
       if (isValid) { 
-          mostrarDialogo("Atenção!", "Preencha todos os campos obrigatórios (*) corretamente antes de prosseguir.");
+          window.mostrarDialogo("Atenção!", "Preencha todos os campos obrigatórios (*) corretamente antes de prosseguir.");
       }
       isValid = false;
     }
@@ -382,7 +387,7 @@ function validarFormulario(contexto = {}, formElement = null) {
   return isValid;
 }
 
-function validarDuplicidadeEndereco(dadosItem, linhaEditadaId = null, isOutroItem = false) {
+window.validarDuplicidadeEndereco = function(dadosItem, linhaEditadaId = null, isOutroItem = false) {
   if (!isOutroItem || !dadosItem.endereco) return true;
 
   const [anoRef, mesRef] = (dadosItem.data.split("-")).slice(0, 2);
@@ -394,7 +399,6 @@ function validarDuplicidadeEndereco(dadosItem, linhaEditadaId = null, isOutroIte
     const codigoLinha = $tr.find(".codigo-item").text();
     if (!codigoLinha.startsWith('O')) return false;
 
-    // Se não for item de telefonia, usa a lógica original
     if (codigoLinha !== 'O33903914' && codigoLinha !== 'O33904004') {
         if (codigoLinha !== dadosItem.codigo) return false;
         
@@ -407,7 +411,7 @@ function validarDuplicidadeEndereco(dadosItem, linhaEditadaId = null, isOutroIte
         if (enderecoLinha === dadosItem.endereco && anoLinha === anoRef && mesLinha === mesRef) {
             return true;
         }
-    } else { // Lógica para telefonia
+    } else { 
         if (codigoLinha !== dadosItem.codigo) return false;
 
         const descricaoLinha = $tr.find(".descricao-item").text();
@@ -429,13 +433,13 @@ function validarDuplicidadeEndereco(dadosItem, linhaEditadaId = null, isOutroIte
   });
 
   if (registroDuplicado) {
-    const mesNome = typeof mes !== 'undefined' ? mes.toLowerCase() : mNumerico(mesRef, 'nome');
-    const anoNome = typeof ano !== 'undefined' ? ano : anoRef;
+    const mesNome = typeof window.mes !== 'undefined' ? window.mes.toLowerCase() : window.mNumerico(mesRef, 'nome');
+    const anoNome = typeof window.ano !== 'undefined' ? window.ano : anoRef;
     let msg = `Já existe um lançamento para este serviço/endereço no período de ${mesNome}/${anoNome}.`;
     if (dadosItem.codigo === 'O33903914' || dadosItem.codigo === 'O33904004') {
         msg = `Já existe um lançamento para este número de telefone (${dadosItem.telefone}) neste endereço e período.`;
     }
-    mostrarDialogo("Aviso de Duplicidade", msg);
+    window.mostrarDialogo("Aviso de Duplicidade", msg);
     return false;
   }
   return true;

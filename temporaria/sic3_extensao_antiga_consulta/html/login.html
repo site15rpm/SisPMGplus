@@ -1,0 +1,26 @@
+<!-- modules/sic3/html/login.html -->
+<form>
+  <div class="card">
+    <div class="card-header">
+      <strong>
+        Sistema Informatizado de<br />
+        Controle de Contas de Convênio<br />
+        SIC3 v2.0
+      </strong>
+    </div>
+    <img src="https://i.postimg.cc/hP7dc36g/logo15.png" alt="logo15rpm" class="logo" />
+    <div class="card-body">
+      <div class="input-group">
+        <span>Usuário</span>
+        <input type="text" class="form-control" id="uid" required placeholder="Número PM" autocomplete="username" onchange="ClearText()" oninput="this.value = this.value.replace(/\D/g, '')" />
+      </div>
+      <div class="input-group">
+        <span>Senha</span>
+        <input type="password" class="form-control" id="pass" required placeholder="Senha Mestra" autocomplete="current-password" onchange="ClearText()" />
+      </div>
+      <div id="info">Para utilizar solicite acesso ao Almox/15ª RPM</div>
+      <div id="RetMsg" class="alert" role="alert"></div>
+      <button type="button" onclick="login()" class="btn btn-primary">Login</button>
+    </div>
+  </div>
+</form>

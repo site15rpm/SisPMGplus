@@ -1,0 +1,234 @@
+<!-- modules/sic3/html/lancamentos.html -->
+<div class="loading-overlay">
+  <div class="loading-container">
+    <div class="loading"></div>
+    <div class="loading-message">Aguarde...</div>
+  </div>
+</div>
+
+<div class="menu">
+  <button class="btn-voltar btn-info" type="button"><i class="fas fa-arrow-left"></i> VOLTAR</button>
+  <h2 class="titulo">PAINEL DE LANÇAMENTOS</h2>
+  <button class="btn-sair btn-dark"><i class="fas fa-sign-out-alt"></i> SAIR</button>
+</div>
+
+<div class="botoes-container">
+  <div class="botoes-principais">
+    <button class="btn-infoConvenio"><i class="fas fa-eye"></i> INFO CONVÊNIO</button>
+    <button class="btn-inserirAbastecimento" data-tipo="abastecimento" style="display: none;"><i class="fas fa-gas-pump"></i> ABASTECIMENTOS</button>
+    <button class="btn-inserirManutencao" data-tipo="manutencao" style="display: none;"><i class="fas fa-car"></i> MÃO DE OBRA VTR</button>
+
+    <div class="outrosDropdown">
+      <button class="outrosDropdown-toggle" style="display: none;"><i class="fas fa-tools"></i> OUTROS</button>
+      <div class="outrosDropdown-content" style="display: none;">
+        <div class="outrosDropdown-group">
+          <div class="group-title">SERVIÇOS BÁSICOS</div>
+          <a data-tipo="O33903912">TARIFA DE ENERGIA ELÉTRICA</a>
+          <a data-tipo="O33903913">TARIFA DE ÁGUA E ESGOTO</a>
+          <a data-tipo="O33903914">SERVIÇO DE TELEFONIA (TELEFONE FIXO)</a>
+          <a data-tipo="O33904004a">SERVIÇO DE TELEFONIA (TELEFONE MÓVEL)</a>
+          <a data-tipo="O33904004b">SERVIÇO DE TELECOMUNICAÇÃO (INTERNET)</a>
+        </div>
+
+        <div class="outrosDropdown-group">
+          <div class="group-title">SERVIÇOS DIVERSOS</div>
+          <a data-tipo="O33903961">SERVIÇOS DE CONSERVAÇÃO E LIMPEZA</a>
+          <a data-tipo="O33903702">LOCAÇÃO DE SERVIÇOS DE APOIO ADMINISTRATIVO</a>
+          <a data-tipo="O33903701">LOCAÇÃO DE SERVIÇOS DE CONSERVAÇÃO E LIMPEZA</a>
+          <a data-tipo="O33903611">LOCAÇÃO DE BENS IMÓVEIS - PESSOA FÍSICA</a>
+          <a data-tipo="O33903920">LOCAÇÃO DE BENS IMÓVEIS - PESSOA JURÍDICA</a>
+          <a data-tipo="O33903919">LOCAÇÃO DE MÁQUINAS E EQUIPAMENTOS</a>
+          <a data-tipo="O33903922">REPAROS DE BENS IMÓVEIS</a>
+        </div>
+
+        <div class="outrosDropdown-group">
+          <div class="group-title">MATERIAIS PERMANENTES</div>
+          <a data-tipo="O44905214">MOBILIÁRIO</a>
+          <a data-tipo="O44905207">EQUIPAMENTOS DE INFORMÁTICA</a>
+          <a data-tipo="O44905220">EQUIPAMENTOS DE SEGURANÇA ELETRÔNICA</a>
+          <a data-tipo="O44905203">ARMAMENTO E EQUIPAMENTO DE USO POLICIAL</a>
+          <a data-tipo="O44905112">MATERIAL PARA OBRAS - BENS NÃO PATRIMONIÁVEIS</a>
+          <a data-tipo="O44905110">MATERIAL PARA OBRAS - BENS PATRIMONIÁVEIS</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="botoes-secundarios">
+    <button class="btn-editarDados btn-warning" style="display: none;"><i class="fas fa-edit"></i> EDITAR</button>
+    <button class="btn-salvarDados btn-success" style="display: none;"><i class="fas fa-save"></i> SALVAR</button>
+    <button class="btn-cancelarEdicao btn-danger" style="display: none;"><i class="fas fa-times"></i> CANCELAR</button>
+  </div>
+</div>
+
+<div class="convenio-info" style="display: none;">
+  <div class="form-row">
+    <div class="form-group">
+      <label for="ano">Ano:</label>
+      <input type="text" id="ano-info" class="form-control" disabled /> </div>
+    <div class="form-group">
+      <label for="mes">Mês:</label>
+      <input type="text" id="mes-info" class="form-control" disabled /> </div>
+    <div class="form-group">
+      <label for="municipio">Município:</label>
+      <input type="text" id="municipio-info" class="form-control" disabled /> </div>
+    <div class="form-group">
+      <label for="convenio">Convênio:</label>
+      <input type="text" id="convenio-info-val" class="form-control" disabled /> </div>
+  </div>
+  <div class="form-row">
+    <div class="form-group">
+      <label for="preposto">Preposto:</label>
+      <input type="text" id="preposto-info" class="form-control" disabled /> </div>
+    <div class="form-group">
+      <label for="unidade">Unidade:</label>
+      <input type="text" id="unidade-info" class="form-control" disabled /> </div>
+  </div>
+</div>
+
+<div class="principal-container" style="display: none;">
+  <div class="principal-header">
+    <div class="principal-title">
+      <h3>Lançamentos Gerais</h3>
+    </div>
+  </div>
+  <table class="principal-table">
+    <thead>
+      <tr>
+        <th class="numero-item">#</th>
+        <th class="codigo-item">CÓD. ITEM</th>
+        <th class="descricao-item">DESCRIÇÃO COMPLETA</th>
+        <th class="despesa-item">ELEMENTO DESPESA</th>
+        <th class="unidade-item">UNID. DISTRIBUIÇÃO</th>
+        <th class="data-item">DATA</th>
+        <th class="quantidade-item">QTD</th>
+        <th class="valorUnitario-item">VALOR UNIT.</th>
+        <th class="subtotal-item">SUBTOTAL</th>
+        <th class="observacao-item">OBS.</th>
+        <th class="acao-item">AÇÃO</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+    <tfoot>
+      <tr>
+        <td colspan="2" class="obsgeral-titulo">OBS. GERAL:</td>
+        <td colspan="3" class="obsgeral">SEM OBSERVACOES</td>
+        <td colspan="2" class="total-valor-titulo">TOTAL:</td>
+        <td colspan="4" class="total-valor">R$ 0,00</td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+
+<div class="abastecimento-container" style="display: none;">
+  <div class="abastecimento-info">
+    <div class="left">
+      <span>
+        <i class="fas fa-gas-pump"></i>
+        Total Quantidade: <span class="total-quantidade">0,00</span> Litro(s)
+      </span>
+      <span>
+        <i class="fas fa-dollar-sign"></i>
+        Valor Total: <span class="total-valor">R$ 0,00</span>
+      </span>
+    </div>
+    <h3>Controle de Abastecimentos</h3>
+    <div class="right">
+      <button type="button" class="btn-expandir-recolher btn-secondary">
+        <i class="fas fa-chevron-down"></i>
+      </button>
+      <button class="btn-inserirAbastecimento btn-primary" data-tipo="abastecimento" style="display: none;">
+        <i class="fas fa-plus"></i>
+      </button>
+    </div>
+  </div>
+
+  <table class="abastecimento-table">
+    <thead>
+      <tr>
+        <th class="numero-item">#</th>
+        <th class="data-item">DATA</th>
+        <th class="placa-item">PLACA</th>
+        <th class="prefixo-item">PREFIXO</th>
+        <th class="odometro-item">ODÔMETRO</th>
+        <th class="motorista-item">MOTORISTA</th>
+        <th class="tipo-item">TIPO</th>
+        <th class="quantidade-item">QTD (L)</th>
+        <th class="valorUnitario-item">VALOR UNIT.</th>
+        <th class="subtotal-item">SUBTOTAL</th>
+        <th class="notaFiscal-item">Nº NF</th>
+        <th class="acao-item">AÇÃO</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<div class="manutencao-container" style="display: none;">
+  <div class="manutencao-info">
+    <div class="left">
+      <span>
+        <i class="fas fa-wrench"></i>
+        Total Quantidade: <span class="total-quantidade">0</span> Serviço(s)
+      </span>
+      <span>
+        <i class="fas fa-dollar-sign"></i>
+        Valor Total: <span class="total-valor">R$ 0,00</span>
+      </span>
+    </div>
+    <h3>Controle de Manutenção de Viaturas</h3>
+    <div class="right">
+      <button type="button" class="btn-expandir-recolher btn-secondary">
+        <i class="fas fa-chevron-down"></i>
+      </button>
+      <button class="btn-inserirManutencao btn-primary" data-tipo="manutencao" style="display: none;">
+        <i class="fas fa-plus"></i>
+      </button>
+    </div>
+  </div>
+
+  <table class="manutencao-table">
+    <thead>
+      <tr>
+        <th class="numero-item">#</th>
+        <th class="data-item">DATA</th>
+        <th class="placa-item">PLACA</th>
+        <th class="prefixo-item">PREFIXO</th>
+        <th class="odometro-item">ODÔMETRO</th>
+        <th class="responsavel-item">RESPONSÁVEL</th>
+        <th class="descricao-item">DESCRIÇÃO</th>
+        <th class="quantidade-item">QTD</th>
+        <th class="valorUnitario-item">VALOR UNIT.</th>
+        <th class="subtotal-item">SUBTOTAL</th>
+        <th class="notaFiscal-item">Nº NF</th>
+        <th class="acao-item">AÇÃO</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<div class="pesquisa-container" style="display: none;">
+  <div class="pesquisa-header">
+    <div class="pesquisa-title">
+      <h3>Pesquisa de Materiais de Consumo</h3>
+    </div>
+  </div>
+  <table id="dataTable" class="display dataTable" width="100%" aria-describedby="dataTable_info"></table>
+</div>
+
+<div id="modal-base" class="modal" style="display: none;">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2></h2>
+    </div>
+    <div class="modal-body">
+    </div>
+    <div class="modal-footer">
+      <span class="info">* Campos obrigatórios</span>
+      <div class="buttons-container">
+        <button type="button" class="btn-secondary">Cancelar</button>
+        <button type="submit" class="btn-primary">Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>

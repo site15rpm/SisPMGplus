@@ -59,7 +59,7 @@ async function configurarAcaoInicial() {
 async function carregarInformacoes() {
   try {
     const conveniosData = await carregarDadosPlanilha({
-      sheetId: idbase,
+      sheetId: window.idBDConvenios || idbase,
       sheet: "convenios",
       query: `SELECT A,B,C,D,E,F WHERE A='${municipio}' AND B='${convenio}'`
     });

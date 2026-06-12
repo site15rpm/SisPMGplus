@@ -1,0 +1,62 @@
+<!-- modules/sic3/html/item99.html -->
+<div id="loading-overlay" class="loading-overlay"><div class="loading"></div></div>
+<div id="dialog-message"></div>
+
+<div class="container">
+    <div class="menu">
+        <h2><i class="fas fa-cogs"></i> Gerenciamento de Itens 99</h2>
+        <div class="menu-nav-buttons">
+            <button id="btn-voltar" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Voltar ao Painel</button>
+            <button id="btn-sair" class="btn btn-dark"><i class="fas fa-sign-out-alt"></i> Sair</button>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="info-convenio">
+        <div class="linha-1">
+            <div class="coluna ano"><label for="filtro-ano">Ano:</label><select id="filtro-ano"></select></div>
+            <div class="coluna mes"><label for="filtro-mes">Mês:</label><select id="filtro-mes"></select></div>
+            <div class="coluna municipio"><label for="filtro-municipio">Município:</label><select id="filtro-municipio"></select></div>
+            <div class="coluna"><label for="filtro-status">Status:</label><select id="filtro-status"></select></div>
+        </div>
+    </div>
+
+    <!-- Tabela Principal de Itens 99 -->
+    <div class="principal-container" id="container-tabela-principal">
+        <table id="tabela-itens-99" class="tabela-lancamentos">
+            <thead>
+                <tr>
+                    <th>Data Registro</th>
+                    <th>Município</th>
+                    <th>Ano</th>
+                    <th>Mês</th>
+                    <th>Código Item 99</th>
+                    <th>Descrição</th>
+                    <th>Status</th>
+                    <th>Ação</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <!-- Detalhes do Item e Pesquisa de Material -->
+    <div class="detalhes-container" id="container-detalhes-item" style="display: none;">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-info-circle"></i> Detalhes do Item 99</h3>
+            </div>
+            <div class="card-body" id="detalhes-item-body">
+                <!-- Conteúdo preenchido dinamicamente via JS -->
+            </div>
+        </div>
+        <div class="card" id="card-catalogo">
+             <div class="card-header">
+                <h3><i class="fas fa-book"></i> Catálogo de Materiais - Substituir Item</h3>
+            </div>
+            <div class="card-body">
+                <table id="tabelaMateriais" class="display" style="width:100%"></table>
+            </div>
+        </div>
+    </div>
+</div>

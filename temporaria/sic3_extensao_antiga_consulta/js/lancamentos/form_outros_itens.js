@@ -146,7 +146,7 @@ async function configurarEventosFormularioOutros() {
       }
     } catch (error) {
       console.error("Erro ao editar item:", error);
-      mostrarDialogo("Erro", "Não foi possível editar este item");
+      mostrarDialogo("Erro", "Não foi possível editar this item");
     }
   });
 

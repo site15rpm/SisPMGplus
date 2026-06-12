@@ -1,555 +1,555 @@
 var dadosEnderecos = {
-  enderecos: [],
-  agua: new Map(),
-  energia: new Map()
-};
-var inicializadoEnderecos = false;
-var modoEdicaoEndereco = null;
-var originalSubmitAction = null;
-var originalCancelAction = null;
-
-async function inicializarDadosEnderecos() {
-  if (inicializadoEnderecos) return true;
-  try {
-      if (typeof municipio === 'undefined' || typeof convenio === 'undefined') {
-          console.error("Variáveis 'municipio' ou 'convenio' não definidas globalmente para inicializarDadosEnderecos.");
-          return false;
-      }
-      const rows = await carregarDadosPlanilha({
-          sheetId: window.idBDEnderecos || idbase,
-          sheet: "enderecos",
-          query: `SELECT C,E,G WHERE A = '${municipio}' AND B = '${convenio}'`
-      });
-      const enderecosProcessados = rows
-      .map((row) => ({
-          endereco: row[0]?.toString().trim() || "",
-          medidorAgua: row[1]?.toString().trim() || "",
-          medidorEnergia: row[2]?.toString().trim() || ""
-      }))
-      .filter((item) => item.endereco);
-
-      dadosEnderecos.enderecos = enderecosProcessados.map((e) => e.endereco).sort();
-      dadosEnderecos.agua.clear();
-      dadosEnderecos.energia.clear();
-      enderecosProcessados.forEach((e) => {
-      if (e.medidorAgua) dadosEnderecos.agua.set(e.endereco, e.medidorAgua);
-      if (e.medidorEnergia) dadosEnderecos.energia.set(e.endereco, e.medidorEnergia);
-      });
-      inicializadoEnderecos = true;
-      return true;
-  } catch (error) {
-      console.error("Erro na inicialização de endereços:", error);
-      inicializadoEnderecos = false;
-      dadosEnderecos = { enderecos: [], agua: new Map(), energia: new Map() };
-      manipularErro(error, "inicializarDadosEnderecos");
-      return false;
-  }
-}
-
-async function buscarEnderecos() {
-  try {
-      if (!inicializadoEnderecos) {
-      await inicializarDadosEnderecos();
-      }
-      return {
-      enderecos: [...dadosEnderecos.enderecos],
-      agua: new Map(dadosEnderecos.agua),
-      energia: new Map(dadosEnderecos.energia)
-      };
-  } catch (error) {
-      console.error("Erro ao buscar endereços:", error);
-      manipularErro(error, "buscarEnderecos");
-      return { enderecos: [], agua: new Map(), energia: new Map() };
-  }
-}
-
-async function gerarSecaoEnderecoMedidor(tipo) {
-  let enderecos = [];
-  let htmlConteudo = '';
-
-  try {
-    const dados = await buscarEnderecos();
-    enderecos = dados.enderecos || [];
-  } catch (error) {
-    console.error("Erro crítico ao buscar endereços para gerar seção. A seção de endereço pode não funcionar corretamente.", error);
-    manipularErro(error, "gerarSecaoEnderecoMedidor_buscarEnderecos");
-  }
-
-  htmlConteudo = `
-    <div class="container-endereco-medidor">
-      <div class="form-group">
-        <label for="endereco">Endereço da Instalação<span class="info">*</span></label>
-        <select id="endereco" class="form-control" required>
-          <option value="">Selecione o endereço...</option>
-          ${enderecos.map((end) => `<option value="${end}">${end}</option>`).join("")}
-        </select>
-        <div class="invalid-feedback"></div>
-        <div id="endereco-edit" style="display:none;">
-          <input type="text" id="endereco-input" class="form-control">
-          <div class="invalid-feedback"></div>
-        </div>
-      </div>
-      <div class="container-medidor-btn">
-        <div id="group-energia" class="medidor-group form-group" ${tipo === "O33903912" ? "" : 'style="display:none"'}>
-          <label for="medidor-O33903912">Nº do Medidor de Energia<span class="info">*</span></label>
-          <input type="text" id="medidor-O33903912" class="form-control" required disabled>
-          <div class="invalid-feedback"></div>
-        </div>
-        <div id="group-agua" class="medidor-group form-group" ${tipo === "O33903913" ? "" : 'style="display:none"'}>
-          <label for="medidor-O33903913">Nº do Hidrômetro de Água<span class="info">*</span></label>
-          <input type="text" id="medidor-O33903913" class="form-control" required disabled>
-          <div class="invalid-feedback"></div>
-        </div>
-        <div class="form-group-btn">
-          <button type="button" class="btn-adicionar btn-success" title="Adicionar Novo Endereço"><i class="fas fa-plus"></i></button>
-          <button type="button" class="btn-editar btn-warning" title="Editar Endereço Selecionado" disabled><i class="fas fa-edit"></i></button>
-          <button type="button" class="btn-excluir btn-danger" title="Excluir Endereço Selecionado" disabled><i class="fas fa-trash"></i></button>
-        </div>
-      </div>
-    </div>
-  `;
-  return htmlConteudo;
-}
-
-async function gerenciarEnderecoMedidor(dados) {
-  try {
-      if (typeof convenio === 'undefined' && !dados.convenio) {
-           dados.convenio = dados.convenio || 'N/A';
-      } else if (typeof convenio !== 'undefined' && !dados.convenio) {
-          dados.convenio = convenio;
-      }
-
-      switch (dados.acao) {
-      case "adicionar":
-          if (!dados.municipio || !dados.enderecoNovo) throw new Error("Dados inválidos para adição de endereço.");
-          break;
-      case "atualizar":
-          if (!dados.municipio || !dados.enderecoNovo || !dados.enderecoAntigo) throw new Error("Dados inválidos para atualização de endereço.");
-          break;
-      case "excluir":
-          if (!dados.municipio || !dados.endereco) throw new Error("Dados inválidos para exclusão de endereço.");
-          break;
-      default:
-          throw new Error("Ação de gerenciamento de endereço inválida.");
-      }
-
-      const authToken = sessionStorage.getItem('authToken'); // Obtém o token
-      if (!authToken) {
-        throw new Error("Token de autenticação não encontrado na sessão.");
-      }
-
-      const result = await new Promise((resolve, reject) => {
-      google.script.run
-          .withSuccessHandler(response => {
-              if (response && (response.success !== undefined ? response.success : response)) {
-                  resolve(true);
-              } else {
-                  const errorMessage = (response && response.message) ? response.message : "Falha na operação do servidor ao gerenciar endereço.";
-                  console.error(errorMessage);
-                  reject(new Error(errorMessage));
-              }
-          })
-          .withFailureHandler(error => {
-          console.error("Erro de comunicação ao gerenciar endereço:", error);
-          reject(error);
-          })
-          .gerenciarEnderecoMedidor(authToken, dados);
-      });
-
-      if (result) {
-      await atualizarDadosLocaisEndereco(dados);
-      }
-      return true;
-  } catch (error) {
-      console.error("Erro em gerenciarEnderecoMedidor:", error.message || error);
-      manipularErro(error, "gerenciarEnderecoMedidor");
-      return false;
-  }
-}
-
-async function atualizarDadosLocaisEndereco(dados) {
-  switch (dados.acao) {
-      case "adicionar":
-      if (!dadosEnderecos.enderecos.includes(dados.enderecoNovo)) {
-          dadosEnderecos.enderecos.push(dados.enderecoNovo);
-          dadosEnderecos.enderecos.sort();
-      }
-      if (dados.medidorAguaNovo) dadosEnderecos.agua.set(dados.enderecoNovo, dados.medidorAguaNovo);
-      else dadosEnderecos.agua.delete(dados.enderecoNovo);
-
-      if (dados.medidorEnergiaNovo) dadosEnderecos.energia.set(dados.enderecoNovo, dados.medidorEnergiaNovo);
-      else dadosEnderecos.energia.delete(dados.enderecoNovo);
-      break;
-      case "atualizar":
-      const index = dadosEnderecos.enderecos.indexOf(dados.enderecoAntigo);
-      if (index > -1) {
-          if (dados.enderecoAntigo !== dados.enderecoNovo) {
-              dadosEnderecos.enderecos.splice(index, 1, dados.enderecoNovo);
-              dadosEnderecos.enderecos.sort();
-              dadosEnderecos.agua.delete(dados.enderecoAntigo);
-              dadosEnderecos.energia.delete(dados.enderecoAntigo);
-          }
-          if (dados.medidorAguaNovo) dadosEnderecos.agua.set(dados.enderecoNovo, dados.medidorAguaNovo);
-          else dadosEnderecos.agua.delete(dados.enderecoNovo);
-          if (dados.medidorEnergiaNovo) dadosEnderecos.energia.set(dados.enderecoNovo, dados.medidorEnergiaNovo);
-          else dadosEnderecos.energia.delete(dados.enderecoNovo);
-      }
-      break;
-      case "excluir":
-      const idx = dadosEnderecos.enderecos.indexOf(dados.endereco);
-      if (idx > -1) {
-          dadosEnderecos.enderecos.splice(idx, 1);
-          dadosEnderecos.agua.delete(dados.endereco);
-          dadosEnderecos.energia.delete(dados.endereco);
-      }
-      break;
-  }
-}
-
-async function configurarFormularioEndereco(form, tipoItem) {
-  if (!form) return;
-  const selectEndereco = form.querySelector("#endereco");
-  const btnAdicionar = form.querySelector(".container-endereco-medidor .btn-adicionar");
-  const btnEditar = form.querySelector(".container-endereco-medidor .btn-editar");
-  const btnExcluir = form.querySelector(".container-endereco-medidor .btn-excluir");
-  const medidorInputId = tipoItem === "O33903913" ? "medidor-O33903913" : (tipoItem === "O33903912" ? "medidor-O33903912" : null);
-  const medidorInput = medidorInputId ? form.querySelector(`#${medidorInputId}`) : null;
-
-  form.setAttribute("data-tipo-item-endereco", tipoItem);
-
-  if(selectEndereco) {
-      selectEndereco.addEventListener("change", async (e) => {
-          const enderecoSelecionado = e.target.value;
-          if(btnEditar) btnEditar.disabled = !enderecoSelecionado;
-          if(btnExcluir) btnExcluir.disabled = !enderecoSelecionado;
-          limparValidacoes(form);
-
-          if (!enderecoSelecionado) {
-          if (medidorInput) medidorInput.value = "";
-          return;
-          }
-          const { agua, energia } = await buscarEnderecos();
-          const medidorValor = tipoItem === "O33903913" ? agua.get(enderecoSelecionado)
-                          : tipoItem === "O33903912" ? energia.get(enderecoSelecionado)
-                          : "";
-          if (medidorInput) {
-              medidorInput.value = medidorValor || "";
-              const validacao = validarCampo(medidorInput);
-              if (!validacao.valid) mostrarErroValidacao(medidorInput, validacao.message);
-          }
-      });
-  }
-
-
-  btnAdicionar?.addEventListener("click", () => {
-      limparValidacoes(form);
-      abrirModoEdicaoEndereco(form, "novo");
-  });
-  btnEditar?.addEventListener("click", () => {
-      if (!selectEndereco || !selectEndereco.value) {
-      if(selectEndereco) mostrarErroValidacao(selectEndereco, "Selecione um endereço para editar");
-      return;
-      }
-      limparValidacoes(form);
-      abrirModoEdicaoEndereco(form, "atualizar");
-  });
-  btnExcluir?.addEventListener("click", async () => {
-      if (!selectEndereco || !selectEndereco.value) {
-      if(selectEndereco) mostrarErroValidacao(selectEndereco, "Selecione um endereço para excluir");
-      return;
-      }
-      await excluirEnderecoMedidor(form);
-  });
-
-  const enderecoInputManual = form.querySelector("#endereco-input");
-  if (enderecoInputManual) {
-      enderecoInputManual.addEventListener("blur", () => {
-      if(typeof validarCampo === 'function'){
-          const validacao = validarCampo(enderecoInputManual);
-          if (!validacao.valid && typeof mostrarErroValidacao === 'function') mostrarErroValidacao(enderecoInputManual, validacao.message);
-      }
-      });
-  }
-  [form.querySelector("#medidor-O33903912"), form.querySelector("#medidor-O33903913")].forEach(mInput => {
-      if (mInput) {
-          mInput.addEventListener("blur", () => {
-              if (!mInput.disabled) {
-                  if(typeof validarCampo === 'function'){
-                      const validacao = validarCampo(mInput);
-                      if (!validacao.valid && typeof mostrarErroValidacao === 'function') mostrarErroValidacao(mInput, validacao.message);
-                  }
-              }
-          });
-      }
-  });
-}
-
-async function abrirModoEdicaoEndereco(form, modo) {
-  if (!form) {
-      console.error("Formulário não fornecido para abrirModoEdicaoEndereco.");
-      return;
-  }
-  modoEdicaoEndereco = modo;
-  form.setAttribute("data-modo-edicao-endereco", modo);
-
-  const selectEndereco = form.querySelector("#endereco");
-  const enderecoEditDiv = form.querySelector("#endereco-edit");
-  const enderecoInput = form.querySelector("#endereco-input");
-  const medidorAguaInput = form.querySelector("#medidor-O33903913");
-  const medidorEnergiaInput = form.querySelector("#medidor-O33903912");
-  const formContentDiv = form.querySelector(".form-content");
-  const enderecoButtonsDiv = form.querySelector(".container-endereco-medidor .form-group-btn");
-  const modalBase = document.getElementById('modal-base');
-  const modalSubmitBtn = modalBase?.querySelector('.modal-footer button[type="submit"]');
-  const modalCancelBtn = modalBase?.querySelector('.modal-footer button[type="button"]');
-
-  if (!selectEndereco || !enderecoEditDiv || !enderecoInput || !modalSubmitBtn || !modalCancelBtn) {
-      console.error("Elementos essenciais do formulário de endereço não encontrados.");
-      mostrarDialogo("Erro de Interface", "Elementos do formulário de endereço não encontrados.");
-      return;
-  }
-
-  selectEndereco.style.display = "none";
-
-  if (enderecoEditDiv) enderecoEditDiv.style.display = "block";
-  if (formContentDiv) formContentDiv.style.display = "none";
-  if (enderecoButtonsDiv) enderecoButtonsDiv.style.display = "none";
-
-  [medidorAguaInput, medidorEnergiaInput].forEach(input => {
-      if (input) {
-          const group = input.closest(".medidor-group");
-          if (group?.style) group.style.display = "block";
-          input.disabled = false;
-      }
-  });
-
-  if (modo === "atualizar" && selectEndereco.value) {
-      enderecoInput.value = selectEndereco.value;
-      try {
-          const { agua, energia } = await buscarEnderecos();
-          if (medidorAguaInput) medidorAguaInput.value = agua.get(selectEndereco.value) || "";
-          if (medidorEnergiaInput) medidorEnergiaInput.value = energia.get(selectEndereco.value) || "";
-      } catch (e) {
-           console.error("Erro ao buscar endereços para preencher medidores:", e);
-      }
-  } else {
-      enderecoInput.value = "";
-      if (medidorAguaInput) medidorAguaInput.value = "";
-      if (medidorEnergiaInput) medidorEnergiaInput.value = "";
-  }
-
-  if (modalSubmitBtn) {
-      $(modalSubmitBtn).off('click').on('click', function(e) {
-          e.preventDefault();
-          e.stopPropagation();
-          confirmarAlteracaoEndereco(form);
-      });
-  }
-
-  if (modalCancelBtn) {
-      $(modalCancelBtn).off('click').on('click', function(e) {
-          e.preventDefault();
-          e.stopPropagation();
-          cancelarAlteracaoEndereco(form);
-      });
-  }
-}
-
-async function cancelarAlteracaoEndereco(form) {
-  if (!form) {
-      console.error("Formulário não fornecido para cancelarAlteracaoEndereco.");
-      return;
-  }
-  limparValidacoes(form);
-
-  modoEdicaoEndereco = null;
-  form.removeAttribute("data-modo-edicao-endereco");
-
-  const selectEndereco = form.querySelector("#endereco");
-  const enderecoEditDiv = form.querySelector("#endereco-edit");
-  const formContentDiv = form.querySelector(".form-content");
-  const enderecoButtonsDiv = form.querySelector(".container-endereco-medidor .form-group-btn");
-  const medidorAguaInput = form.querySelector("#medidor-O33903913");
-  const medidorEnergiaInput = form.querySelector("#medidor-O33903912");
-  const tipoItem = form.getAttribute("data-tipo-item-endereco");
-
-  if (selectEndereco) selectEndereco.style.display = "block";
-  if (enderecoEditDiv) enderecoEditDiv.style.display = "none";
-  if (formContentDiv) formContentDiv.style.display = "grid";
-  if (enderecoButtonsDiv) enderecoButtonsDiv.style.display = "flex";
-
-  if (medidorAguaInput && medidorEnergiaInput) {
-      const medidorAguaGroup = medidorAguaInput.closest(".medidor-group");
-      const medidorEnergiaGroup = medidorEnergiaInput.closest(".medidor-group");
-
-      medidorAguaInput.disabled = true;
-      medidorAguaInput.value = "";
-      medidorEnergiaInput.disabled = true;
-      medidorEnergiaInput.value = "";
-
-      if (tipoItem === "O33903913") {
-          if (medidorAguaGroup?.style) medidorAguaGroup.style.display = "block";
-          if (medidorEnergiaGroup?.style) medidorEnergiaGroup.style.display = "none";
-      } else if (tipoItem === "O33903912") {
-          if (medidorAguaGroup?.style) medidorAguaGroup.style.display = "none";
-          if (medidorEnergiaGroup?.style) medidorEnergiaGroup.style.display = "block";
-      } else {
-          if (medidorAguaGroup?.style) medidorAguaGroup.style.display = "none";
-          if (medidorEnergiaGroup?.style) medidorEnergiaGroup.style.display = "none";
-      }
-  }
-
-  const modalBase = document.getElementById('modal-base');
-  const modalSubmitBtn = modalBase?.querySelector('.modal-footer button[type="submit"]');
-  const modalCancelBtn = modalBase?.querySelector('.modal-footer button[type="button"]');
-  const originalConfig = $(form).data('formConfig');
-
-  if (modalSubmitBtn && originalConfig) {
-      $(modalSubmitBtn).off('click').on('click', function(e) {
-          e.preventDefault();
-          processarSubmissaoFormulario(e, originalConfig);
-      });
-      modalSubmitBtn.textContent = "Salvar";
-  }
-
-  if (modalCancelBtn) {
-      $(modalCancelBtn).off('click').on('click', function(e) {
-          e.preventDefault();
-            fecharModal();
-      });
-      modalCancelBtn.textContent = "Cancelar";
-  }
-
-  if (selectEndereco?.value) {
-      selectEndereco.dispatchEvent(new Event('change'));
-  }
-}
-
-async function confirmarAlteracaoEndereco(form) {
-  if (!form) return;
-  let isValid = true;
-  const enderecoInput = form.querySelector("#endereco-input");
-  const medidorAguaInput = form.querySelector("#medidor-O33903913");
-  const medidorEnergiaInput = form.querySelector("#medidor-O33903912");
-  if (enderecoInput && $(enderecoInput).is(':visible') && !enderecoInput.disabled) {
-      const validacaoEndereco = validarCampo(enderecoInput);
-      if (!validacaoEndereco.valid) {
-          mostrarErroValidacao(enderecoInput, validacaoEndereco.message || "Endereço inválido ou obrigatório.");
-          isValid = false;
-      }
-  }
-  if (isValid && medidorAguaInput && $(medidorAguaInput).is(':visible') && !medidorAguaInput.disabled) {
-      const validacaoAgua = validarCampo(medidorAguaInput);
-      if (!validacaoAgua.valid) {
-          mostrarErroValidacao(medidorAguaInput, validacaoAgua.message);
-          isValid = false;
-      }
-  }
-
-  if (isValid && medidorEnergiaInput && $(medidorEnergiaInput).is(':visible') && !medidorEnergiaInput.disabled) {
-      const validacaoEnergia = validarCampo(medidorEnergiaInput);
-      if (!validacaoEnergia.valid) {
-          mostrarErroValidacao(medidorEnergiaInput, validacaoEnergia.message);
-          isValid = false;
-      }
-  }
-  
-  if (!isValid) {
-      return;
-  }
-
-  const modo = form.getAttribute("data-modo-edicao-endereco");
-  const dadosOperacao = {
-      municipio: typeof municipio !== 'undefined' ? municipio : '',
-      convenio: typeof convenio !== 'undefined' ? convenio : '',
-      enderecoNovo: enderecoInput.value.trim(),
-      medidorAguaNovo: medidorAguaInput ? medidorAguaInput.value.trim() : "",
-      medidorEnergiaNovo: medidorEnergiaInput ? medidorEnergiaInput.value.trim() : "",
-      acao: modo === "novo" ? "adicionar" : "atualizar"
+    enderecos: [],
+    agua: new Map(),
+    energia: new Map()
   };
+  var inicializadoEnderecos = false;
+  var modoEdicaoEndereco = null;
+  var originalSubmitAction = null;
+  var originalCancelAction = null;
 
-  if (modo === "atualizar") {
-      const selectEndereco = form.querySelector("#endereco");
-      if (selectEndereco) {
-          dadosOperacao.enderecoAntigo = selectEndereco.value;
-          if (dadosOperacao.enderecoNovo === dadosOperacao.enderecoAntigo) {
-              const { agua, energia } = await buscarEnderecos(); 
-              dadosOperacao.medidorAguaAntigo = agua.get(dadosOperacao.enderecoAntigo) || "";
-              dadosOperacao.medidorEnergiaAntigo = energia.get(dadosOperacao.enderecoAntigo) || "";
-          } else {
-              dadosOperacao.medidorAguaAntigo = "";
-              dadosOperacao.medidorEnergiaAntigo = "";
-          }
-      } else {
-          console.error("selectEndereco não encontrado para obter enderecoAntigo.");
-          mostrarDialogo("Erro", "Não foi possível identificar o endereço original para atualização.");
-          return;
-      }
+  async function inicializarDadosEnderecos() {
+    if (inicializadoEnderecos) return true;
+    try {
+        if (typeof municipio === 'undefined' || typeof convenio === 'undefined') {
+            console.error("Variáveis 'municipio' ou 'convenio' não definidas globalmente para inicializarDadosEnderecos.");
+            return false;
+        }
+        const rows = await carregarDadosPlanilha({
+            sheetId: idbase,
+            sheet: "enderecos",
+            query: `SELECT C,E,G WHERE A = '${municipio}' AND B = '${convenio}'`
+        });
+        const enderecosProcessados = rows
+        .map((row) => ({
+            endereco: row[0]?.toString().trim() || "",
+            medidorAgua: row[1]?.toString().trim() || "",
+            medidorEnergia: row[2]?.toString().trim() || ""
+        }))
+        .filter((item) => item.endereco);
+
+        dadosEnderecos.enderecos = enderecosProcessados.map((e) => e.endereco).sort();
+        dadosEnderecos.agua.clear();
+        dadosEnderecos.energia.clear();
+        enderecosProcessados.forEach((e) => {
+        if (e.medidorAgua) dadosEnderecos.agua.set(e.endereco, e.medidorAgua);
+        if (e.medidorEnergia) dadosEnderecos.energia.set(e.endereco, e.medidorEnergia);
+        });
+        inicializadoEnderecos = true;
+        return true;
+    } catch (error) {
+        console.error("Erro na inicialização de endereços:", error);
+        inicializadoEnderecos = false;
+        dadosEnderecos = { enderecos: [], agua: new Map(), energia: new Map() };
+        manipularErro(error, "inicializarDadosEnderecos");
+        return false;
+    }
   }
 
-  mostrarCarregamento();
-  const sucesso = await gerenciarEnderecoMedidor(dadosOperacao);
-  ocultarCarregamento();
-
-  if (sucesso) {
-      await atualizarInterfaceEnderecos(form, dadosOperacao.enderecoNovo);
-      mostrarDialogo("Sucesso", "Endereço salvo com sucesso!");
-  } else {
-      mostrarDialogo("Erro", "Falha ao salvar o endereço. Verifique os dados ou tente novamente.");
+  async function buscarEnderecos() {
+    try {
+        if (!inicializadoEnderecos) {
+        await inicializarDadosEnderecos();
+        }
+        return {
+        enderecos: [...dadosEnderecos.enderecos],
+        agua: new Map(dadosEnderecos.agua),
+        energia: new Map(dadosEnderecos.energia)
+        };
+    } catch (error) {
+        console.error("Erro ao buscar endereços:", error);
+        manipularErro(error, "buscarEnderecos");
+        return { enderecos: [], agua: new Map(), energia: new Map() };
+    }
   }
+
+  async function gerarSecaoEnderecoMedidor(tipo) {
+    let enderecos = [];
+    let htmlConteudo = '';
+
+    try {
+      const dados = await buscarEnderecos();
+      enderecos = dados.enderecos || [];
+    } catch (error) {
+      console.error("Erro crítico ao buscar endereços para gerar seção. A seção de endereço pode não funcionar corretamente.", error);
+      manipularErro(error, "gerarSecaoEnderecoMedidor_buscarEnderecos");
+    }
+
+    htmlConteudo = `
+      <div class="container-endereco-medidor">
+        <div class="form-group">
+          <label for="endereco">Endereço da Instalação<span class="info">*</span></label>
+          <select id="endereco" class="form-control" required>
+            <option value="">Selecione o endereço...</option>
+            ${enderecos.map((end) => `<option value="${end}">${end}</option>`).join("")}
+          </select>
+          <div class="invalid-feedback"></div>
+          <div id="endereco-edit" style="display:none;">
+            <input type="text" id="endereco-input" class="form-control">
+            <div class="invalid-feedback"></div>
+          </div>
+        </div>
+        <div class="container-medidor-btn">
+          <div id="group-energia" class="medidor-group form-group" ${tipo === "O33903912" ? "" : 'style="display:none"'}>
+            <label for="medidor-O33903912">Nº do Medidor de Energia<span class="info">*</span></label>
+            <input type="text" id="medidor-O33903912" class="form-control" required disabled>
+            <div class="invalid-feedback"></div>
+          </div>
+          <div id="group-agua" class="medidor-group form-group" ${tipo === "O33903913" ? "" : 'style="display:none"'}>
+            <label for="medidor-O33903913">Nº do Hidrômetro de Água<span class="info">*</span></label>
+            <input type="text" id="medidor-O33903913" class="form-control" required disabled>
+            <div class="invalid-feedback"></div>
+          </div>
+          <div class="form-group-btn">
+            <button type="button" class="btn-adicionar btn-success" title="Adicionar Novo Endereço"><i class="fas fa-plus"></i></button>
+            <button type="button" class="btn-editar btn-warning" title="Editar Endereço Selecionado" disabled><i class="fas fa-edit"></i></button>
+            <button type="button" class="btn-excluir btn-danger" title="Excluir Endereço Selecionado" disabled><i class="fas fa-trash"></i></button>
+          </div>
+        </div>
+      </div>
+    `;
+    return htmlConteudo;
+  }
+
+  async function gerenciarEnderecoMedidor(dados) {
+    try {
+        if (typeof convenio === 'undefined' && !dados.convenio) {
+             dados.convenio = dados.convenio || 'N/A';
+        } else if (typeof convenio !== 'undefined' && !dados.convenio) {
+            dados.convenio = convenio;
+        }
+
+        switch (dados.acao) {
+        case "adicionar":
+            if (!dados.municipio || !dados.enderecoNovo) throw new Error("Dados inválidos para adição de endereço.");
+            break;
+        case "atualizar":
+            if (!dados.municipio || !dados.enderecoNovo || !dados.enderecoAntigo) throw new Error("Dados inválidos para atualização de endereço.");
+            break;
+        case "excluir":
+            if (!dados.municipio || !dados.endereco) throw new Error("Dados inválidos para exclusão de endereço.");
+            break;
+        default:
+            throw new Error("Ação de gerenciamento de endereço inválida.");
+        }
+
+        const authToken = sessionStorage.getItem('authToken'); // Obtém o token
+        if (!authToken) {
+          throw new Error("Token de autenticação não encontrado na sessão.");
+        }
+
+        const result = await new Promise((resolve, reject) => {
+        google.script.run
+            .withSuccessHandler(response => {
+                if (response && (response.success !== undefined ? response.success : response)) {
+                    resolve(true);
+                } else {
+                    const errorMessage = (response && response.message) ? response.message : "Falha na operação do servidor ao gerenciar endereço.";
+                    console.error(errorMessage);
+                    reject(new Error(errorMessage));
+                }
+            })
+            .withFailureHandler(error => {
+            console.error("Erro de comunicação ao gerenciar endereço:", error);
+            reject(error);
+            })
+            .gerenciarEnderecoMedidor(authToken, dados);
+        });
+
+        if (result) {
+        await atualizarDadosLocaisEndereco(dados);
+        }
+        return true;
+    } catch (error) {
+        console.error("Erro em gerenciarEnderecoMedidor:", error.message || error);
+        manipularErro(error, "gerenciarEnderecoMedidor");
+        return false;
+    }
+  }
+
+  async function atualizarDadosLocaisEndereco(dados) {
+    switch (dados.acao) {
+        case "adicionar":
+        if (!dadosEnderecos.enderecos.includes(dados.enderecoNovo)) {
+            dadosEnderecos.enderecos.push(dados.enderecoNovo);
+            dadosEnderecos.enderecos.sort();
+        }
+        if (dados.medidorAguaNovo) dadosEnderecos.agua.set(dados.enderecoNovo, dados.medidorAguaNovo);
+        else dadosEnderecos.agua.delete(dados.enderecoNovo);
+
+        if (dados.medidorEnergiaNovo) dadosEnderecos.energia.set(dados.enderecoNovo, dados.medidorEnergiaNovo);
+        else dadosEnderecos.energia.delete(dados.enderecoNovo);
+        break;
+        case "atualizar":
+        const index = dadosEnderecos.enderecos.indexOf(dados.enderecoAntigo);
+        if (index > -1) {
+            if (dados.enderecoAntigo !== dados.enderecoNovo) {
+                dadosEnderecos.enderecos.splice(index, 1, dados.enderecoNovo);
+                dadosEnderecos.enderecos.sort();
+                dadosEnderecos.agua.delete(dados.enderecoAntigo);
+                dadosEnderecos.energia.delete(dados.enderecoAntigo);
+            }
+            if (dados.medidorAguaNovo) dadosEnderecos.agua.set(dados.enderecoNovo, dados.medidorAguaNovo);
+            else dadosEnderecos.agua.delete(dados.enderecoNovo);
+            if (dados.medidorEnergiaNovo) dadosEnderecos.energia.set(dados.enderecoNovo, dados.medidorEnergiaNovo);
+            else dadosEnderecos.energia.delete(dados.enderecoNovo);
+        }
+        break;
+        case "excluir":
+        const idx = dadosEnderecos.enderecos.indexOf(dados.endereco);
+        if (idx > -1) {
+            dadosEnderecos.enderecos.splice(idx, 1);
+            dadosEnderecos.agua.delete(dados.endereco);
+            dadosEnderecos.energia.delete(dados.endereco);
+        }
+        break;
+    }
+  }
+
+  async function configurarFormularioEndereco(form, tipoItem) {
+    if (!form) return;
+    const selectEndereco = form.querySelector("#endereco");
+    const btnAdicionar = form.querySelector(".container-endereco-medidor .btn-adicionar");
+    const btnEditar = form.querySelector(".container-endereco-medidor .btn-editar");
+    const btnExcluir = form.querySelector(".container-endereco-medidor .btn-excluir");
+    const medidorInputId = tipoItem === "O33903913" ? "medidor-O33903913" : (tipoItem === "O33903912" ? "medidor-O33903912" : null);
+    const medidorInput = medidorInputId ? form.querySelector(`#${medidorInputId}`) : null;
+
+    form.setAttribute("data-tipo-item-endereco", tipoItem);
+
+    if(selectEndereco) {
+        selectEndereco.addEventListener("change", async (e) => {
+            const enderecoSelecionado = e.target.value;
+            if(btnEditar) btnEditar.disabled = !enderecoSelecionado;
+            if(btnExcluir) btnExcluir.disabled = !enderecoSelecionado;
+            limparValidacoes(form);
+
+            if (!enderecoSelecionado) {
+            if (medidorInput) medidorInput.value = "";
+            return;
+            }
+            const { agua, energia } = await buscarEnderecos();
+            const medidorValor = tipoItem === "O33903913" ? agua.get(enderecoSelecionado)
+                            : tipoItem === "O33903912" ? energia.get(enderecoSelecionado)
+                            : "";
+            if (medidorInput) {
+                medidorInput.value = medidorValor || "";
+                const validacao = validarCampo(medidorInput);
+                if (!validacao.valid) mostrarErroValidacao(medidorInput, validacao.message);
+            }
+        });
+    }
+
+
+    btnAdicionar?.addEventListener("click", () => {
+        limparValidacoes(form);
+        abrirModoEdicaoEndereco(form, "novo");
+    });
+    btnEditar?.addEventListener("click", () => {
+        if (!selectEndereco || !selectEndereco.value) {
+        if(selectEndereco) mostrarErroValidacao(selectEndereco, "Selecione um endereço para editar");
+        return;
+        }
+        limparValidacoes(form);
+        abrirModoEdicaoEndereco(form, "atualizar");
+    });
+    btnExcluir?.addEventListener("click", async () => {
+        if (!selectEndereco || !selectEndereco.value) {
+        if(selectEndereco) mostrarErroValidacao(selectEndereco, "Selecione um endereço para excluir");
+        return;
+        }
+        await excluirEnderecoMedidor(form);
+    });
+
+    const enderecoInputManual = form.querySelector("#endereco-input");
+    if (enderecoInputManual) {
+        enderecoInputManual.addEventListener("blur", () => {
+        if(typeof validarCampo === 'function'){
+            const validacao = validarCampo(enderecoInputManual);
+            if (!validacao.valid && typeof mostrarErroValidacao === 'function') mostrarErroValidacao(enderecoInputManual, validacao.message);
+        }
+        });
+    }
+    [form.querySelector("#medidor-O33903912"), form.querySelector("#medidor-O33903913")].forEach(mInput => {
+        if (mInput) {
+            mInput.addEventListener("blur", () => {
+                if (!mInput.disabled) {
+                    if(typeof validarCampo === 'function'){
+                        const validacao = validarCampo(mInput);
+                        if (!validacao.valid && typeof mostrarErroValidacao === 'function') mostrarErroValidacao(mInput, validacao.message);
+                    }
+                }
+            });
+        }
+    });
+  }
+
+  async function abrirModoEdicaoEndereco(form, modo) {
+    if (!form) {
+        console.error("Formulário não fornecido para abrirModoEdicaoEndereco.");
+        return;
+    }
+    modoEdicaoEndereco = modo;
+    form.setAttribute("data-modo-edicao-endereco", modo);
+
+    const selectEndereco = form.querySelector("#endereco");
+    const enderecoEditDiv = form.querySelector("#endereco-edit");
+    const enderecoInput = form.querySelector("#endereco-input");
+    const medidorAguaInput = form.querySelector("#medidor-O33903913");
+    const medidorEnergiaInput = form.querySelector("#medidor-O33903912");
+    const formContentDiv = form.querySelector(".form-content");
+    const enderecoButtonsDiv = form.querySelector(".container-endereco-medidor .form-group-btn");
+    const modalBase = document.getElementById('modal-base');
+    const modalSubmitBtn = modalBase?.querySelector('.modal-footer button[type="submit"]');
+    const modalCancelBtn = modalBase?.querySelector('.modal-footer button[type="button"]');
+
+    if (!selectEndereco || !enderecoEditDiv || !enderecoInput || !modalSubmitBtn || !modalCancelBtn) {
+        console.error("Elementos essenciais do formulário de endereço não encontrados.");
+        mostrarDialogo("Erro de Interface", "Elementos do formulário de endereço não encontrados.");
+        return;
+    }
+
+    selectEndereco.style.display = "none";
+
+    if (enderecoEditDiv) enderecoEditDiv.style.display = "block";
+    if (formContentDiv) formContentDiv.style.display = "none";
+    if (enderecoButtonsDiv) enderecoButtonsDiv.style.display = "none";
+
+    [medidorAguaInput, medidorEnergiaInput].forEach(input => {
+        if (input) {
+            const group = input.closest(".medidor-group");
+            if (group?.style) group.style.display = "block";
+            input.disabled = false;
+        }
+    });
+
+    if (modo === "atualizar" && selectEndereco.value) {
+        enderecoInput.value = selectEndereco.value;
+        try {
+            const { agua, energia } = await buscarEnderecos();
+            if (medidorAguaInput) medidorAguaInput.value = agua.get(selectEndereco.value) || "";
+            if (medidorEnergiaInput) medidorEnergiaInput.value = energia.get(selectEndereco.value) || "";
+        } catch (e) {
+             console.error("Erro ao buscar endereços para preencher medidores:", e);
+        }
+    } else {
+        enderecoInput.value = "";
+        if (medidorAguaInput) medidorAguaInput.value = "";
+        if (medidorEnergiaInput) medidorEnergiaInput.value = "";
+    }
+
+    if (modalSubmitBtn) {
+        $(modalSubmitBtn).off('click').on('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            confirmarAlteracaoEndereco(form);
+        });
+    }
+
+    if (modalCancelBtn) {
+        $(modalCancelBtn).off('click').on('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            cancelarAlteracaoEndereco(form);
+        });
+    }
 }
 
-async function excluirEnderecoMedidor(form) {
-  const selectEndereco = form.querySelector("#endereco");
-  if (!selectEndereco || !selectEndereco.value) {
-      mostrarDialogo("Aviso", "Nenhum endereço selecionado para excluir.");
-      return;
-  }
-  const enderecoSelecionado = selectEndereco.value;
+  async function cancelarAlteracaoEndereco(form) {
+    if (!form) {
+        console.error("Formulário não fornecido para cancelarAlteracaoEndereco.");
+        return;
+    }
+    limparValidacoes(form);
 
-  const confirmado = await confirmarAcao("Confirmar Exclusão", `Deseja realmente excluir o endereço "${enderecoSelecionado}" e seus medidores associados? Esta ação não pode ser desfeita.`);
-  if (confirmado) {
-      mostrarCarregamento();
-      const sucesso = await gerenciarEnderecoMedidor({
-      municipio: typeof municipio !== 'undefined' ? municipio : '',
-      convenio: typeof convenio !== 'undefined' ? convenio : '',
-      endereco: enderecoSelecionado,
-      acao: "excluir"
-      });
-      ocultarCarregamento();
+    modoEdicaoEndereco = null;
+    form.removeAttribute("data-modo-edicao-endereco");
 
-      if (sucesso) {
-      await atualizarInterfaceEnderecos(form);
-      mostrarDialogo("Sucesso", "Endereço excluído com sucesso!");
-      } else {
-      mostrarDialogo("Erro", "Falha ao excluir o endereço.");
-      }
-  }
+    const selectEndereco = form.querySelector("#endereco");
+    const enderecoEditDiv = form.querySelector("#endereco-edit");
+    const formContentDiv = form.querySelector(".form-content");
+    const enderecoButtonsDiv = form.querySelector(".container-endereco-medidor .form-group-btn");
+    const medidorAguaInput = form.querySelector("#medidor-O33903913");
+    const medidorEnergiaInput = form.querySelector("#medidor-O33903912");
+    const tipoItem = form.getAttribute("data-tipo-item-endereco");
+
+    if (selectEndereco) selectEndereco.style.display = "block";
+    if (enderecoEditDiv) enderecoEditDiv.style.display = "none";
+    if (formContentDiv) formContentDiv.style.display = "grid";
+    if (enderecoButtonsDiv) enderecoButtonsDiv.style.display = "flex";
+
+    if (medidorAguaInput && medidorEnergiaInput) {
+        const medidorAguaGroup = medidorAguaInput.closest(".medidor-group");
+        const medidorEnergiaGroup = medidorEnergiaInput.closest(".medidor-group");
+
+        medidorAguaInput.disabled = true;
+        medidorAguaInput.value = "";
+        medidorEnergiaInput.disabled = true;
+        medidorEnergiaInput.value = "";
+
+        if (tipoItem === "O33903913") {
+            if (medidorAguaGroup?.style) medidorAguaGroup.style.display = "block";
+            if (medidorEnergiaGroup?.style) medidorEnergiaGroup.style.display = "none";
+        } else if (tipoItem === "O33903912") {
+            if (medidorAguaGroup?.style) medidorAguaGroup.style.display = "none";
+            if (medidorEnergiaGroup?.style) medidorEnergiaGroup.style.display = "block";
+        } else {
+            if (medidorAguaGroup?.style) medidorAguaGroup.style.display = "none";
+            if (medidorEnergiaGroup?.style) medidorEnergiaGroup.style.display = "none";
+        }
+    }
+
+    const modalBase = document.getElementById('modal-base');
+    const modalSubmitBtn = modalBase?.querySelector('.modal-footer button[type="submit"]');
+    const modalCancelBtn = modalBase?.querySelector('.modal-footer button[type="button"]');
+    const originalConfig = $(form).data('formConfig');
+
+    if (modalSubmitBtn && originalConfig) {
+        $(modalSubmitBtn).off('click').on('click', function(e) {
+            e.preventDefault();
+            processarSubmissaoFormulario(e, originalConfig);
+        });
+        modalSubmitBtn.textContent = "Salvar";
+    }
+
+    if (modalCancelBtn) {
+        $(modalCancelBtn).off('click').on('click', function(e) {
+            e.preventDefault();
+              fecharModal();
+        });
+        modalCancelBtn.textContent = "Cancelar";
+    }
+
+    if (selectEndereco?.value) {
+        selectEndereco.dispatchEvent(new Event('change'));
+    }
 }
 
-async function atualizarInterfaceEnderecos(form, enderecoSelecionado = null) {
-  if (!form) return;
-  const selectEndereco = form.querySelector("#endereco");
-  if (!selectEndereco) {
-      console.error("selectEndereco não encontrado em atualizarInterfaceEnderecos.");
-      return;
+  async function confirmarAlteracaoEndereco(form) {
+    if (!form) return;
+    let isValid = true;
+    const enderecoInput = form.querySelector("#endereco-input");
+    const medidorAguaInput = form.querySelector("#medidor-O33903913");
+    const medidorEnergiaInput = form.querySelector("#medidor-O33903912");
+    if (enderecoInput && $(enderecoInput).is(':visible') && !enderecoInput.disabled) {
+        const validacaoEndereco = validarCampo(enderecoInput);
+        if (!validacaoEndereco.valid) {
+            mostrarErroValidacao(enderecoInput, validacaoEndereco.message || "Endereço inválido ou obrigatório.");
+            isValid = false;
+        }
+    }
+    if (isValid && medidorAguaInput && $(medidorAguaInput).is(':visible') && !medidorAguaInput.disabled) {
+        const validacaoAgua = validarCampo(medidorAguaInput);
+        if (!validacaoAgua.valid) {
+            mostrarErroValidacao(medidorAguaInput, validacaoAgua.message);
+            isValid = false;
+        }
+    }
+
+    if (isValid && medidorEnergiaInput && $(medidorEnergiaInput).is(':visible') && !medidorEnergiaInput.disabled) {
+        const validacaoEnergia = validarCampo(medidorEnergiaInput);
+        if (!validacaoEnergia.valid) {
+            mostrarErroValidacao(medidorEnergiaInput, validacaoEnergia.message);
+            isValid = false;
+        }
+    }
+    
+    if (!isValid) {
+        return;
+    }
+
+    const modo = form.getAttribute("data-modo-edicao-endereco");
+    const dadosOperacao = {
+        municipio: typeof municipio !== 'undefined' ? municipio : '',
+        convenio: typeof convenio !== 'undefined' ? convenio : '',
+        enderecoNovo: enderecoInput.value.trim(),
+        medidorAguaNovo: medidorAguaInput ? medidorAguaInput.value.trim() : "",
+        medidorEnergiaNovo: medidorEnergiaInput ? medidorEnergiaInput.value.trim() : "",
+        acao: modo === "novo" ? "adicionar" : "atualizar"
+    };
+
+    if (modo === "atualizar") {
+        const selectEndereco = form.querySelector("#endereco");
+        if (selectEndereco) {
+            dadosOperacao.enderecoAntigo = selectEndereco.value;
+            if (dadosOperacao.enderecoNovo === dadosOperacao.enderecoAntigo) {
+                const { agua, energia } = await buscarEnderecos(); 
+                dadosOperacao.medidorAguaAntigo = agua.get(dadosOperacao.enderecoAntigo) || "";
+                dadosOperacao.medidorEnergiaAntigo = energia.get(dadosOperacao.enderecoAntigo) || "";
+            } else {
+                dadosOperacao.medidorAguaAntigo = "";
+                dadosOperacao.medidorEnergiaAntigo = "";
+            }
+        } else {
+            console.error("selectEndereco não encontrado para obter enderecoAntigo.");
+            mostrarDialogo("Erro", "Não foi possível identificar o endereço original para atualização.");
+            return;
+        }
+    }
+
+    mostrarCarregamento();
+    const sucesso = await gerenciarEnderecoMedidor(dadosOperacao);
+    ocultarCarregamento();
+
+    if (sucesso) {
+        await atualizarInterfaceEnderecos(form, dadosOperacao.enderecoNovo);
+        mostrarDialogo("Sucesso", "Endereço salvo com sucesso!");
+    } else {
+        mostrarDialogo("Erro", "Falha ao salvar o endereço. Verifique os dados ou tente novamente.");
+    }
   }
-  const { enderecos } = await buscarEnderecos();
 
-  selectEndereco.innerHTML = `<option value="">Selecione o endereço...</option>` +
-                              enderecos.map((end) => `<option value="${end}">${end}</option>`).join("");
+  async function excluirEnderecoMedidor(form) {
+    const selectEndereco = form.querySelector("#endereco");
+    if (!selectEndereco || !selectEndereco.value) {
+        mostrarDialogo("Aviso", "Nenhum endereço selecionado para excluir.");
+        return;
+    }
+    const enderecoSelecionado = selectEndereco.value;
 
-  if (enderecoSelecionado && enderecos.includes(enderecoSelecionado)) {
-      selectEndereco.value = enderecoSelecionado;
-  } else {
-      selectEndereco.value = "";
+    const confirmado = await confirmarAcao("Confirmar Exclusão", `Deseja realmente excluir o endereço "${enderecoSelecionado}" e seus medidores associados? Esta ação não pode ser desfeita.`);
+    if (confirmado) {
+        mostrarCarregamento();
+        const sucesso = await gerenciarEnderecoMedidor({
+        municipio: typeof municipio !== 'undefined' ? municipio : '',
+        convenio: typeof convenio !== 'undefined' ? convenio : '',
+        endereco: enderecoSelecionado,
+        acao: "excluir"
+        });
+        ocultarCarregamento();
+
+        if (sucesso) {
+        await atualizarInterfaceEnderecos(form);
+        mostrarDialogo("Sucesso", "Endereço excluído com sucesso!");
+        } else {
+        mostrarDialogo("Erro", "Falha ao excluir o endereço.");
+        }
+    }
   }
 
-  await cancelarAlteracaoEndereco(form);
+  async function atualizarInterfaceEnderecos(form, enderecoSelecionado = null) {
+    if (!form) return;
+    const selectEndereco = form.querySelector("#endereco");
+    if (!selectEndereco) {
+        console.error("selectEndereco não encontrado em atualizarInterfaceEnderecos.");
+        return;
+    }
+    const { enderecos } = await buscarEnderecos();
 
-  const btnEditar = form.querySelector(".container-endereco-medidor .btn-editar");
-  const btnExcluir = form.querySelector(".container-endereco-medidor .btn-excluir");
+    selectEndereco.innerHTML = `<option value="">Selecione o endereço...</option>` +
+                                enderecos.map((end) => `<option value="${end}">${end}</option>`).join("");
 
-  if (btnEditar) btnEditar.disabled = !selectEndereco.value;
-  if (btnExcluir) btnExcluir.disabled = !selectEndereco.value;
-}
+    if (enderecoSelecionado && enderecos.includes(enderecoSelecionado)) {
+        selectEndereco.value = enderecoSelecionado;
+    } else {
+        selectEndereco.value = "";
+    }
+
+    await cancelarAlteracaoEndereco(form);
+
+    const btnEditar = form.querySelector(".container-endereco-medidor .btn-editar");
+    const btnExcluir = form.querySelector(".container-endereco-medidor .btn-excluir");
+
+    if (btnEditar) btnEditar.disabled = !selectEndereco.value;
+    if (btnExcluir) btnExcluir.disabled = !selectEndereco.value;
+  }

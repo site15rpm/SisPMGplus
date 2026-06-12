@@ -705,9 +705,9 @@ export class UIModule {
             
             console.log("[SIC3 v3.0 Log] Identificação realizada com sucesso pelo background:", response);
             
-            // Identifica se possui local 29 ou 126 no array de funções f
+            // Identifica se possui local 29 ou 126 no array de funções f ou se o código do local c é 29 ou 126
             const funcoes = Array.isArray(decoded.f) ? decoded.f.map(String) : [];
-            const isAdmin = funcoes.some(func => {
+            const isAdmin = String(decoded.c) === '29' || String(decoded.c) === '126' || funcoes.some(func => {
                 const local = func.split('.')[0];
                 return local === '29' || local === '126';
             });

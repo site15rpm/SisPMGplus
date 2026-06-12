@@ -219,22 +219,6 @@ window.google = {
 window.includeHtmlBody = function(contentHtml) {
     if (!contentHtml || typeof contentHtml !== 'string') return;
     
-    // Intercepta a tela de gerenciamento de itens 99
-    if (contentHtml.includes("tabela-itens-99") || contentHtml.includes("Gerenciamento de Itens 99")) {
-        const tokenMatch = contentHtml.match(/var authToken = "([^"]*)"/);
-        const mLogMatch = contentHtml.match(/var mLog = "([^"]*)"/);
-        const nUserMatch = contentHtml.match(/var nUser = "([^"]*)"/);
-        const idbaseMatch = contentHtml.match(/var idbase = "([^"]*)"/);
-
-        navegarPara('item99', {
-            authToken: tokenMatch ? tokenMatch[1] : '',
-            mLog: mLogMatch ? mLogMatch[1] : '',
-            nUser: nUserMatch ? nUserMatch[1] : '',
-            idbase: idbaseMatch ? idbaseMatch[1] : ''
-        });
-        return;
-    }
-    
     // Tenta identificar qual tela renderizar a partir da variável pUser do HTML recebido
     const matchPage = contentHtml.match(/var pUser = "([^"]*)"/);
     if (matchPage && matchPage[1]) {
@@ -401,21 +385,6 @@ export async function navegarPara(pagina, contexto = {}) {
             await carregarJS('sic3/js/lancamentos/form_material.js');
             await carregarJS('sic3/js/lancamentos/autocompletar.js');
             await carregarJS('sic3/js/lancamentos/system_init.js');
-        } else if (pagina === 'item99') {
-            const html = await obterHtmlLocal('sic3/html/item99.html');
-            appContainer.innerHTML = html;
-            
-            carregarCSS('sic3/css/item99.css');
-            
-            window.pUser = contexto.pUser || "html/item99";
-            window.mLog = contexto.mLog || window.mLog || "";
-            window.nUser = contexto.nUser || "";
-            window.authToken = contexto.authToken || "";
-            window.idbase = contexto.idbase || "";
-
-            await carregarJS('sic3/js/utils_global.js');
-            await carregarJS('sic3/js/form_validation.js');
-            await carregarJS('sic3/js/item99.js');
         }
         
     } catch (error) {
