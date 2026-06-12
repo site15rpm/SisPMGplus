@@ -712,6 +712,17 @@ export class UIModule {
                 return local === '29' || local === '126';
             });
             
+            // Extrai o número amigável da RPM a partir da string em decoded.r (ex: "15ª RPM" -> "15")
+            let rpmNumero = "15";
+            if (decoded.r) {
+                const match = String(decoded.r).match(/\d+/);
+                if (match) rpmNumero = match[0];
+            } else if (decoded.e) {
+                const match = String(decoded.e).match(/\d+/);
+                if (match) rpmNumero = match[0];
+            }
+            console.log(`[SIC3 v3.0 Log] RPM amigável extraída para a planilha: ${rpmNumero} (obtida a partir de r: "${decoded.r}", e: "${decoded.e}")`);
+
             // Salvar informações no storage para uso posterior do SIC3 v3.0
             await sendMessageToBackground('setStorage', {
                 sic3_v3_user_info: {
@@ -724,7 +735,7 @@ export class UIModule {
                     numeroPM: decoded.g || '',
                     postoGraduacao: decoded.t || '',
                     nome: decoded.n || '',
-                    codigoRPM: decoded.e || '',
+                    codigoRPM: rpmNumero,
                     nomeRPM: decoded.r || '',
                     isAdmin: isAdmin,
                     timestamp: Date.now()
@@ -737,7 +748,7 @@ export class UIModule {
             // Abre a página de configurações em uma nova aba passando o município como query param
             const queryParams = new URLSearchParams({
                 municipio: response.municipio,
-                rpm: decoded.e,
+                rpm: rpmNumero,
                 secao: response.nomenclatura
             });
             
