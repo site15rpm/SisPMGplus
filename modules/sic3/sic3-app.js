@@ -264,6 +264,31 @@ export async function navegarPara(pagina, contexto = {}) {
     limparRecursosInjetados();
 
     try {
+        // Propaga o RPM e Ano vindos do contexto para o escopo global
+        if (contexto.rpm) window.rpm = contexto.rpm;
+        if (contexto.ano) window.ano = contexto.ano;
+
+        // Resolve dinamicamente os IDs específicos das planilhas compartilhadas
+        const rpmAtiva = window.rpm || "15";
+        const anoAtivo = window.ano || new Date().getFullYear().toString();
+
+        if (!window.idBDConvenios || !window.idBDEnderecos || !window.idTBPrimaria || !window.idTBSecundaria || contexto.idbase) {
+            try {
+                const resId = await executarApi("obterIdPlanilha", [rpmAtiva, anoAtivo]);
+                if (resId && resId.success) {
+                    window.idbase = contexto.idbase || resId.spreadsheetId || window.idbase;
+                    if (resId.arquivosCompartilhados) {
+                        window.idBDConvenios = resId.arquivosCompartilhados.BDConvenios;
+                        window.idBDEnderecos = resId.arquivosCompartilhados.BDEnderecos;
+                        window.idTBPrimaria = resId.arquivosCompartilhados.TBPrimaria;
+                        window.idTBSecundaria = resId.arquivosCompartilhados.TBSecundaria;
+                    }
+                }
+            } catch (apiErr) {
+                console.error("Erro ao obter IDs das planilhas compartilhadas no roteador:", apiErr);
+            }
+        }
+
         if (pagina === 'login') {
             const html = await obterHtmlLocal('sic3/html/login.html');
             appContainer.innerHTML = html;
