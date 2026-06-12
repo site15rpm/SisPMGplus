@@ -688,22 +688,29 @@ export class UIModule {
             }
             
             const decoded = decodeJwt(token);
-            if (!decoded || !decoded.u || !decoded.c) {
-                console.error("[SIC3 v3.0 Log] Token tokiuz inválido ou sem chaves u/c:", decoded);
+            if (!decoded || !decoded.e || !decoded.c) {
+                console.error("[SIC3 v3.0 Log] Token tokiuz inválido ou sem chaves e/c:", decoded);
                 alert("Não foi possível extrair os dados do usuário a partir do token. Tente recarregar a página.");
                 this.hideLoader();
                 return;
             }
             
-            console.log(`[SIC3 v3.0 Log] Token decodificado com sucesso. u: ${decoded.u}, c: ${decoded.c}. Solicitando busca de unidades ao background...`);
+            console.log(`[SIC3 v3.0 Log] Token decodificado com sucesso. e: ${decoded.e}, c: ${decoded.c}. Solicitando busca de unidades ao background...`);
             
-            const response = await sendMessageToBackground('sic3-v3-identify-user', { u: decoded.u, c: decoded.c });
+            const response = await sendMessageToBackground('sic3-v3-identify-user', { e: decoded.e, c: decoded.c });
             
             if (!response || !response.success) {
                 throw new Error(response?.error || "Falha na resposta do background ao identificar unidade.");
             }
             
             console.log("[SIC3 v3.0 Log] Identificação realizada com sucesso pelo background:", response);
+            
+            // Identifica se possui local 29 ou 126 no array de funções f
+            const funcoes = Array.isArray(decoded.f) ? decoded.f.map(String) : [];
+            const isAdmin = funcoes.some(func => {
+                const local = func.split('.')[0];
+                return local === '29' || local === '126';
+            });
             
             // Salvar informações no storage para uso posterior do SIC3 v3.0
             await sendMessageToBackground('setStorage', {
@@ -713,17 +720,24 @@ export class UIModule {
                     municipio: response.municipio,
                     codigoMunicipio: response.codigoMunicipio,
                     hierarchyPath: response.hierarchyPath,
+                    // Informações do tokiuz do usuário para o painel
+                    numeroPM: decoded.g || '',
+                    postoGraduacao: decoded.t || '',
+                    nome: decoded.n || '',
+                    codigoRPM: decoded.e || '',
+                    nomeRPM: decoded.r || '',
+                    isAdmin: isAdmin,
                     timestamp: Date.now()
                 }
             });
             
             this.updateLoaderMessage("Carregando o SIC3 v3.0...");
-            console.log(`[SIC3 v3.0 Log] Abrindo SIC3 v3.0 para o município: ${response.municipio}`);
+            console.log(`[SIC3 v3.0 Log] Abrindo SIC3 v3.0 para o município: ${response.municipio}. Admin: ${isAdmin}`);
             
             // Abre a página de configurações em uma nova aba passando o município como query param
             const queryParams = new URLSearchParams({
                 municipio: response.municipio,
-                rpm: decoded.u,
+                rpm: decoded.e,
                 secao: response.nomenclatura
             });
             
