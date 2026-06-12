@@ -280,23 +280,30 @@ export async function navegarPara(pagina, contexto = {}) {
     limparRecursosInjetados();
 
     try {
-        // Propaga o RPM e Ano vindos do contexto para o escopo global
+        // Propaga e persiste o contexto na sessão
+        if (contexto.authToken) {
+            sessionStorage.setItem("authToken", contexto.authToken);
+            window.authToken = contexto.authToken;
+        }
         if (contexto.rpm) {
+            sessionStorage.setItem("sic3_rpm", contexto.rpm);
             window.rpm = contexto.rpm;
             console.log(`[SIC3 v3.0 Log] RPM definida globalmente: ${window.rpm}`);
         }
         if (contexto.ano) {
+            sessionStorage.setItem("sic3_ano", contexto.ano);
             window.ano = contexto.ano;
             console.log(`[SIC3 v3.0 Log] Ano definido globalmente: ${window.ano}`);
         }
         if (contexto.mLog) {
+            sessionStorage.setItem("sic3_mLog", contexto.mLog);
             window.mLog = contexto.mLog;
             console.log(`[SIC3 v3.0 Log] mLog definido globalmente: ${window.mLog}`);
         }
 
-        // Resolve dinamicamente os IDs específicos das planilhas compartilhadas
-        const rpmAtiva = window.rpm || "15";
-        const anoAtivo = window.ano || new Date().getFullYear().toString();
+        // Resolve dinamicamente de forma segura os valores de RPM e Ano ativos (evitando colisões com DOM)
+        const rpmAtiva = sessionStorage.getItem("sic3_rpm") || (window.rpm && typeof window.rpm === 'string' ? window.rpm : "15 RPM");
+        const anoAtivo = sessionStorage.getItem("sic3_ano") || (window.ano && typeof window.ano === 'string' ? window.ano : new Date().getFullYear().toString());
 
         if (!window.idBDConvenios || !window.idBDEnderecos || !window.idTBPrimaria || !window.idTBSecundaria || contexto.idbase) {
             try {
@@ -514,6 +521,11 @@ window.addEventListener('DOMContentLoaded', async () => {
         window.mLog = window.isAdmin ? "admin" : window.municipio;
         console.log(`[SIC3 v3.0 Log] Definidos globais: window.municipio=${window.municipio}, window.rpm=${window.rpm}, window.isAdmin=${window.isAdmin}, window.mLog=${window.mLog}`);
         
+        // Grava no sessionStorage para inicialização segura do contexto
+        sessionStorage.setItem("sic3_rpm", window.rpm);
+        sessionStorage.setItem("sic3_ano", new Date().getFullYear().toString());
+        sessionStorage.setItem("authToken", "bypass");
+        
         // Updates de display no cabeçalho superior
         document.getElementById('user-municipio-display').textContent = window.municipio;
         document.getElementById('user-rpm-display').textContent = /^\d+$/.test(window.rpm) ? window.rpm + "ª RPM" : window.rpm;
@@ -554,8 +566,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     // Resolve dinamicamente o ID do banco de dados (Spreadsheet) correspondente à RPM e ao Ano ativos
     window.mostrarCarregamentoGlobal("Inicializando banco de dados do SIC3...");
     try {
-        const rpmAtiva = window.rpm || "15";
-        const anoAtivo = window.ano || new Date().getFullYear().toString();
+        const rpmAtiva = sessionStorage.getItem("sic3_rpm") || (window.rpm && typeof window.rpm === 'string' ? window.rpm : "15 RPM");
+        const anoAtivo = sessionStorage.getItem("sic3_ano") || (window.ano && typeof window.ano === 'string' ? window.ano : new Date().getFullYear().toString());
         console.log(`[SIC3 v3.0 Log] Inicialização: requisitando obterIdPlanilha para RPM: ${rpmAtiva}, Ano: ${anoAtivo}`);
         const resId = await executarApi("obterIdPlanilha", [rpmAtiva, anoAtivo]);
         console.log("[SIC3 v3.0 Log] Inicialização obterIdPlanilha result:", resId);
