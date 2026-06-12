@@ -155,6 +155,61 @@ const runProxy = new Proxy(scriptRunShim, {
             target._successHandler = null;
             target._failureHandler = null;
             
+            // Intercepta e simula rotas de navegação localmente para evitar latência e erros do GAS
+            if (propKey === 'irParaPainelLancamentos') {
+                const [authToken, municipio, convenio, ano, mes, acao] = args;
+                console.log(`[SIC3 v3.0 Log] Interceptando navegação local para Lançamentos: ${municipio} - ${convenio} (${mes}/${ano}) [${acao}]`);
+                
+                navegarPara('lancamentos', {
+                    authToken: authToken || sessionStorage.getItem('authToken') || 'bypass',
+                    municipio: municipio,
+                    convenio: convenio,
+                    ano: ano,
+                    mes: mes,
+                    acao: acao,
+                    mLog: sessionStorage.getItem('sic3_mLog') || window.mLog,
+                    nUser: window.userNome || "Operador Extensão",
+                    idbase: window.idbase
+                }).then(() => {
+                    if (successHandler) {
+                        successHandler(""); // Retorna vazio para o includeHtmlBody legado ignorar
+                    }
+                }).catch(err => {
+                    if (failureHandler) failureHandler(err);
+                });
+                return;
+            }
+
+            if (propKey === 'voltarParaPainelAdmin') {
+                console.log("[SIC3 v3.0 Log] Interceptando navegação local de volta para Admin.");
+                navegarPara('admin', {
+                    authToken: sessionStorage.getItem('authToken') || 'bypass',
+                    mLog: sessionStorage.getItem('sic3_mLog') || window.mLog,
+                    nUser: window.userNome || "Operador Extensão",
+                    idbase: window.idbase
+                }).then(() => {
+                    if (successHandler) {
+                        successHandler(""); // Ignora
+                    }
+                }).catch(err => {
+                    if (failureHandler) failureHandler(err);
+                });
+                return;
+            }
+
+            if (propKey === 'logoutUser') {
+                console.log("[SIC3 v3.0 Log] Interceptando logout local do usuário.");
+                sessionStorage.clear();
+                navegarPara('login').then(() => {
+                    if (successHandler) {
+                        successHandler("");
+                    }
+                }).catch(err => {
+                    if (failureHandler) failureHandler(err);
+                });
+                return;
+            }
+            
             // Exibe feedback visual de carregamento para operações de gravação pesadas
             if (['salvarDadosNaPlanilha', 'incluirConvenio', 'alterarConvenio', 'excluirConvenio'].includes(propKey)) {
                 if (typeof window.mostrarCarregamento === 'function') {
