@@ -264,7 +264,8 @@ export class TerminalModule {
                 setTimeout(() => this.reloadPage(), 2000);
                 return;
             }
-
+//  Funcionalidades desativadas para testes de estabilidade
+/*
             const reloadPatterns = [
                 /conex.*com o mainframe encerrada/i,
                 /press.*to reconnect/i
@@ -289,7 +290,7 @@ export class TerminalModule {
                     return;
                 }
             }
-
+*/
             const isLoginState = await this.handleLoginScreen();
 
             // Garante que o Keep-Alive inicie/reinicie corretamente

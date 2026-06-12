@@ -1,0 +1,125 @@
+<!-- html\login.html -->
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <base target="_top" />
+
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <link href="https://cdn.datatables.net/2.0.8/css/dataTables.dataTables.min.css" rel="stylesheet" />
+    <script src="https://cdn.datatables.net/2.0.8/js/dataTables.js"></script>
+    <link href="https://cdn.datatables.net/plug-ins/2.0.8/features/searchHighlight/dataTables.searchHighlight.css" rel="stylesheet" />
+    <script src="https://cdn.datatables.net/plug-ins/2.0.8/features/searchHighlight/dataTables.searchHighlight.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery-highlight@3.5.0/jquery.highlight.min.js"></script>
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css" />
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/3.0.1/jspdf.umd.min.js" integrity="sha512-ad3j5/L4h648YM/KObaUfjCsZRBP9sAOmpjaT2BDx6u9aBrKFp7SbeHykruy83rxfmG42+5QqeL/ngcojglbJw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/5.0.2/jspdf.plugin.autotable.min.js" integrity="sha512-JizZOUNesiGhMcp9fsA/9W31FOat6QysBM8hSj6ir8iIANIUJ2mhko7Lo1+j0ErftmJ8SebMZLm9iielKjeIEQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />
+
+    <?!= include('js/01.utils_global'); ?>
+    <?!= include('js/02.form_validation'); ?>
+
+  </head>
+
+  <body>
+    <?!= include('css/login') ?>
+
+    <div class="loading-overlay" style="display: flex;">
+      <div class="loading"></div>
+    </div>
+
+    <form>
+      <div class="card">
+        <div class="card-header">
+          <strong>
+            Sistema Informatizado de<br />
+            Controle de Contas de Convênio<br />
+            SIC3 v2.0
+          </strong>
+        </div>
+        <img src="https://i.postimg.cc/hP7dc36g/logo15.png" alt="logo15rpm" class="logo" />
+        <a style="display: none;" id="myid" href="<?= myURL(); ?>" target="_top">Link</a>
+        <div class="card-body">
+          <div class="input-group">
+            <span>Usuário</span>
+            <input type="text" class="form-control" id="uid" required placeholder="Número PM" autocomplete="username" onchange="ClearText()" oninput="this.value = this.value.replace(/\D/g, '')" />
+          </div>
+          <div class="input-group">
+            <span>Senha</span>
+            <input type="password" class="form-control" id="pass" required placeholder="Senha Mestra" autocomplete="current-password" onchange="ClearText()" />
+          </div>
+          <div id="info">Para utilizar solicite acesso ao Almox/15ª RPM</div>
+          <div id="RetMsg" class="alert" role="alert"></div>
+          <button type="button" onclick="login()" class="btn btn-primary">Login</button>
+        </div>
+      </div>
+    </form>
+     <div id="dialog-message"></div> <script>
+
+      function login() {
+        var username = document.getElementById("uid").value;
+        var password = document.getElementById("pass").value;
+        var loginButton = document.querySelector(".btn-primary");
+
+        if (!username || !password) {
+          $("#RetMsg").removeClass("alert-danger").removeClass("alert-success").addClass("alert-danger");
+          $("#RetMsg").html("Digite o Número PM e a Senha");
+          $("#RetMsg").css("visibility", "visible");
+          return;
+        }
+
+        // CORREÇÃO 1.1: Validação no lado do cliente para garantir que apenas números sejam enviados
+        if (!/^\d+$/.test(username)) {
+            $("#RetMsg").removeClass("alert-danger").removeClass("alert-success").addClass("alert-danger");
+            $("#RetMsg").html("Usuário deve conter apenas números.");
+            $("#RetMsg").css("visibility", "visible");
+            return;
+        }
+
+        if (!verificarDigitoVerificador(username)) {
+          $("#RetMsg").removeClass("alert-danger").removeClass("alert-success").addClass("alert-danger");
+          $("#RetMsg").html("Número PM incorreto");
+          $("#RetMsg").css("visibility", "visible");
+        } else {
+          loginButton.disabled = true;
+          loginButton.style.backgroundColor = "#cccccc";
+          loginButton.innerHTML = '<div class="loading-spinner"></div>';
+
+          google.script.run
+            .withSuccessHandler(function (response) {
+              loginButton.disabled = false;
+              loginButton.style.backgroundColor = "#0d6efd";
+              loginButton.innerHTML = "Login";
+
+              if (response.success) {
+                const authTokenMatch = response.content.match(/var authToken = "([^"]*)"/);
+                if (authTokenMatch && authTokenMatch[1]) {
+                  sessionStorage.setItem('authToken', authTokenMatch[1]);
+                } else {
+                  console.error("Erro: Token não encontrado na resposta");
+                }
+                
+                includeHtmlBody(response.content);
+              } else {
+                $("#RetMsg").removeClass("alert-danger").removeClass("alert-success").addClass("alert-danger");
+                $("#RetMsg").html(response.message || "Senha inválida");
+                $("#RetMsg").css("visibility", "visible");
+              }
+            })
+            .loginCheck(username, password);
+        }
+        return true;
+      }
+
+      function ClearText() {
+        $("#RetMsg").html("");
+        $("#RetMsg").css("visibility", "hidden"); 
+      }
+      $(document).ready(function() {
+        sessionStorage.removeItem("userSelections");
+        ocultarCarregamento();
+      });
+    </script>
+  </body>
+</html>

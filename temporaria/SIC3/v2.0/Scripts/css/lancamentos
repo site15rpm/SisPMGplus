@@ -1,0 +1,1031 @@
+<!-- css\lancamentos.html -->
+<!-- Reset e Estilos Base -->
+<style>
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    font-family: Verdana, Arial, Helvetica, sans-serif;
+    font-size: 10px;
+  }
+
+  body {
+    margin: 10px;
+    padding: 0;
+    color: #000;
+    background-color: #d1d1d1;
+  }
+
+  h2 {
+    font-size: 2rem;
+    text-align: center;
+    color: #23385c;
+    margin: 0;
+  }
+
+  h3 {
+    font-size: 1.8rem;
+    text-align: center;
+    color: #344767;
+    margin: 0;
+  }
+
+  .logo {
+    height: 44px;
+  }
+
+  .loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9998;
+  }
+
+  .loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    z-index: 9999;
+  }
+
+  .loading {
+    width: 50px;
+    height: 50px;
+    border: 10px solid rgba(26, 67, 102, 0.2);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.9s linear infinite;
+  }
+
+  .loading-message {
+    margin-top: 15px;
+    font-size: 1.4rem;
+    font-weight: 500;
+    text-align: center;
+    color: #ffffff; /* Cor branca padrão */
+  }
+
+  @keyframes spin {
+    0% {
+      transform: rotate(0deg);
+    }
+
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+
+  /* Menu Principal */
+  .menu {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: #e9e9f0;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .menu .logo {
+    height: 44px;
+  }
+
+  .menu .titulo {
+    font-size: 2rem;
+    color: #23385c;
+    margin: 0;
+    flex: 1;
+    text-align: center;
+    padding: 0 20px;
+  }
+
+  .botoes-container {
+    display: flex;
+    max-width: 1200px;
+    margin: 0 auto 20px;
+    justify-content: space-between;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .botoes-principais,
+  .botoes-secundarios {
+    display: flex;
+    gap: 10px;
+  }
+
+  .convenio-info {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    padding: 1.5rem;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    max-width: 1000px;
+    margin: 0 auto 20px;
+    transition: all 0.3s ease;
+  }
+
+  .convenio-info .form-row {
+    display: contents;
+  }
+
+  .convenio-info .form-group {
+    margin: 0;
+  }
+
+  .convenio-info label {
+    display: block;
+    margin-bottom: 0.25rem;
+    font-size: 1.2rem;
+    font-weight: 500;
+    color: #495057;
+  }
+
+  .convenio-info input {
+    width: 100%;
+    padding: 0.375rem 0.75rem;
+    font-size: 0.8rem;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    background-color: #e9ecef;
+    font-size: 1.3rem;
+  }
+
+  input[disabled] {
+    color: #495057;
+    cursor: not-allowed;
+    background-color: lightgray;
+  }
+
+  /* Responsividade Base */
+  @media (max-width: 768px) {
+    .convenio-info {
+      grid-template-columns: 1fr;
+    }
+
+    .botoes-container {
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .botoes-principais,
+    .botoes-secundarios {
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+  }
+</style>
+
+<!-- Botões Base -->
+<style>
+  button {
+    display: inline-flex;
+    padding: 8px 16px;
+    font-weight: 500;
+    color: white;
+    background-color: #0d6efd;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    gap: 4px;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  button:hover {
+    box-shadow: 0 0 6px black;
+  }
+
+  button:active {
+    box-shadow: 0 0 10px black;
+  }
+
+  button:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+    background-color: #8a8a8a;
+  }
+
+  /* Variantes de Botões */
+  .btn-primary { background-color: #0d6efd; color: #fff; }
+  .btn-secondary { background-color: #6c757d; color: #fff; }
+  .btn-success { background-color: #28a745; color: #fff; }
+  .btn-warning { background-color: #ffc107; color: #000; }
+  .btn-danger { background-color: #dc3545; color: #fff; }
+  .btn-dark { background-color: #343a40;color: #fff; }
+  .btn-info { background-color: #17a2b8; color: #fff; }
+
+  .principal-table .acao-item button,
+  .abastecimento-table .acao-item button,
+  .manutencao-table .acao-item button,
+  #dataTable .dt-col-acoes button {
+    width: 20px;
+    height: 20px;
+  }
+</style>
+
+<!-- Tabela de Abastecimento -->
+<style>
+  .principal-container,
+  .abastecimento-container,
+  .manutencao-container,
+  .pesquisa-container {
+    width: 100%;
+    padding: 20px;
+    margin-top: 20px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    overflow-x: auto;
+  }
+
+  .principal-header,
+  .pesquisa-header {
+    display: flex;
+    width: 100%;
+    justify-content: center;
+    align-items: center;
+    padding: 10px;
+    background-color: #e9e9f0;
+    border-radius: 8px 8px 0 0;
+    border: 1px solid #dee2e6;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .principal-table,
+  .abastecimento-table,
+  .manutencao-table {
+    width: 100%;
+    margin-top: 10px;
+    background-color: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 0 0 8px 8px;
+    border-collapse: collapse;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+
+  .principal-table th,
+  .principal-table td,
+  .abastecimento-table th,
+  .abastecimento-table td,
+  .manutencao-table th,
+  .manutencao-table td {
+    padding: 8px 4px;
+    border-top: 1px solid #e0e0e0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .principal-table th,
+  .abastecimento-table th,
+  .manutencao-table th {
+    background-color: #e9e9f0;
+    color: #344767;
+    font-weight: 600;
+    text-align: center;
+  }
+
+  .numero-item {
+    min-width: 35px;
+    max-width: 35px;
+    text-align: center;
+  }
+
+  .codigo-item,
+  .data-item,
+  .placa-item,
+  .prefixo-item {
+    min-width: 70px;
+    max-width: 70px;
+    text-align: center;
+  }
+
+  .quantidade-item {
+    width: 70px;
+    min-width: 50px;
+    text-align: right;
+  }
+
+  .valorUnitario-item {
+    width: 90px;
+    min-width: 60px;
+    text-align: right;
+  }
+
+  .subtotal-item {
+    width: 100px;
+    min-width: 70px;
+    text-align: right;
+  }
+
+  .observacao-item {
+    max-width: 90px;
+    min-width: 60px;
+  }
+
+  td.descricao-item,
+  td.despesa-item,
+  td.unidade-item,
+  td.observacao-item {
+    cursor: pointer;
+  }
+
+  td.descricao-item:hover,
+  td.despesa-item:hover,
+  td.unidade-item:hover,
+  td.observacao-item:hover {
+    background-color: #fff3cd;
+  }
+
+  .descricao-item,
+  .tipo-item {
+    width: 50%;
+    max-width: 150px;
+  }
+
+  .despesa-item {
+    width: 30%;
+    max-width: 60px;
+  }
+
+  .unidade-item {
+    width: 20%;
+    max-width: 60px;
+  }
+
+  .responsavel-item,
+  .motorista-item {
+    width: 100px;
+    max-width: 100px;
+    text-align: center;
+  }
+
+  .odometro-item {
+    width: 100px;
+    max-width: 100px;
+    text-align: right;
+  }
+
+  .notaFiscal-item {
+    width: 70px;
+    max-width: 70px;
+    text-align: left;
+  }
+
+  .principal-table tbody tr,
+  .abastecimento-table tbody tr,
+  .manutencao-table tbody tr {
+    height: 37px;
+  }
+
+  .principal-table tbody tr:nth-child(even),
+  .abastecimento-table tbody tr:nth-child(even),
+  .manutencao-table tbody tr:nth-child(even) {
+    background-color: #f5f5f5;
+  }
+
+  .principal-table tbody tr:hover,
+  .abastecimento-table tbody tr:hover,
+  .manutencao-table tbody tr:hover {
+    background-color: #add6ff;
+  }
+
+  @media screen and (max-width: 1200px) {
+    .principal-table th,
+    .principal-table td,
+    .abastecimento-table th,
+    .abastecimento-table td,
+    .manutencao-table th,
+    .manutencao-table td {
+      font-size: 1em;
+    }
+  }
+
+  @media screen and (max-width: 992px) {
+    .principal-table th,
+    .principal-table td,
+    .abastecimento-table th,
+    .abastecimento-table td,
+    .manutencao-table th,
+    .manutencao-table td {
+      padding: 6px 3px;
+      font-size: 0.9em;
+    }
+  }
+
+  @media screen and (max-width: 768px) {
+    .principal-table th,
+    .principal-table td,
+    .abastecimento-table th,
+    .abastecimento-table td,
+    .manutencao-table th,
+    .manutencao-table td {
+      padding: 4px 2px;
+      font-size: 0.8em;
+    }
+  }
+
+  .principal-table tfoot {
+    display: table-footer-group;
+  }
+
+  .principal-table tfoot tr {
+    background-color: #e9e9f0;
+    color: #344767;
+    height: 30px;
+  }
+
+  .obsgeral-titulo {
+    text-align: right;
+    font-weight: bold;
+  }
+
+  .obsgeral {
+    cursor: pointer;
+    max-width: 600px;
+  }
+
+  .obsgeral:hover {
+    background-color: #fff3cd;
+  }
+
+  .editavel {
+    background-color: #fff3cd !important;
+  }
+
+  .total-valor-titulo {
+    text-align: right;
+    font-weight: bold;
+  }
+
+  .principal-table .total-valor {
+    text-align: center;
+    color: #0d6efd;
+    font-weight: bold;
+    font-size: 1.2rem;
+  }
+
+  .abastecimento-info,
+  .manutencao-info {
+    display: flex;
+    width: 100%;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+    padding: 10px 15px;
+    background-color: #e9e9f0;
+    border-radius: 8px 8px 0 0;
+    border: 1px solid #dee2e6;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .abastecimento-info .left,
+  .abastecimento-info .right,
+  .manutencao-info .left,
+  .manutencao-info .right {
+    display: flex;
+    font-size: 1rem;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .abastecimento-info .total-quantidade,
+  .manutencao-info .total-quantidade,
+  .abastecimento-info .total-valor,
+  .manutencao-info .total-valor {
+    font-size: 1.15rem;
+    color: #0d6efd;
+    font-weight: bold;
+  }
+
+  .abastecimento-info button,
+  .manutencao-info button {
+    padding: 4px 16px;
+  }
+
+  .acao-item {
+    gap: 5px;
+    text-align: right;
+  }
+</style>
+
+<!-- DataTables Customização -->
+<style>
+  .dt-container {
+    background-color: #e9e9f0;
+  }
+
+  #dataTable input {
+    width: 100%;
+  }
+
+  div.dt-container div.top,
+  div.dt-container div.bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: white;
+    color: #707070;
+    padding: 5px;
+  }
+
+  /* Estilização da coluna de ações do DataTable */
+  .dt-col-acoes {
+    text-align: center !important;
+  }
+
+  .dt-col-acoes i.fas {
+    font-size: 0.8em;
+    opacity: 0.7;
+  }
+
+  div.dt-container .dt-paging .dt-paging-button {
+    color: white !important;
+    background-color: #0d6efd;
+  }
+
+  div.dt-container .dt-paging .dt-paging-button.current {
+    color: white !important;
+    background-color: gray;
+  }
+
+</style>
+
+<!-- Dialog UI -->
+<style>
+  .ui-dialog {
+    border-radius: 8px;
+    padding: 0;
+    z-index: 900;
+  }
+
+  .ui-dialog .ui-dialog-titlebar {
+    background-color: #0d6efd;
+    border-radius: 8px 8px 0 0;
+  }
+
+  .ui-dialog .ui-dialog-title {
+    color: white;
+    font-size: 1.4rem;
+    text-align: left;
+  }
+
+  .ui-dialog .ui-dialog-titlebar-close {
+    display: none;
+  }
+
+  .ui-dialog-content {
+    display: flex;
+    font-size: 1.3rem;
+    align-items: center;
+    text-align: left;
+  }
+
+  .ui-dialog .ui-dialog-buttonpane {
+    background-color: #f8f9fa;
+    border-top: 1px solid #dee2e6;
+    margin: 0;
+    padding: 5px;
+  }
+
+  .ui-dialog .ui-button {
+    margin: 0 0 0 0.5rem;
+    padding: 10px;
+    font-size: 1.3rem;
+    min-width: 100px;
+  }
+
+  .ui-widget-overlay {
+    background: rgba(0, 0, 0, 0.5);
+    opacity: 1;
+  }
+
+  @media (max-width: 576px) {
+    .ui-dialog {
+      width: calc(100% - 20px) !important;
+      max-width: none;
+    }
+  }
+</style>
+
+<!-- Modal -->
+<style>
+  .modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    justify-content: center;
+    align-items: center;
+    z-index: 800;
+    padding: 20px;
+  }
+
+  .modal-content {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 500px;
+    max-height: calc(100vh - 40px); /* Altura máxima considerando padding */
+    margin: 0 auto;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    position: relative;
+  }
+
+  .modal-header {
+    background-color: #0d6efd;
+    padding: 1rem;
+    border-radius: 8px 8px 0 0;
+    border-bottom: 1px solid #dee2e6;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+  
+  .modal-header h2 {
+    color: white;
+    font-size: 1.4rem;
+    margin: 0;
+    text-align: left;
+  }
+
+  .modal-body {
+    padding: 2rem 2rem 0 2rem;
+    overflow-y: auto;
+    max-height: 100vh;
+  }
+
+  /* Estilização da scrollbar */
+  .modal-body::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .modal-body::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .modal-body::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
+  }
+
+  .modal-body::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(0, 0, 0, 0.5);
+  }
+
+  /* Suporte para Firefox */
+  .modal-body {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 0, 0, 0.3) transparent;
+  }
+
+  .modal-footer {
+    margin-top: 1rem;
+    padding: 1rem 2rem;
+    border-top: 1px solid #dee2e6;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 2rem;
+    position: sticky;
+    bottom: 0;
+    background-color: #fff;
+    border-radius: 0 0 8px 8px;
+  }
+
+  .modal-footer .info { order: -1; font-size: 1.1rem; color: #dc3545; }
+  .modal-footer .buttons-container { display: flex; gap: 10px; margin-left: auto; }
+
+  .buttons-container {
+    margin-left: auto; /* Alinha o container de botões à direita */
+    display: flex;
+    gap: 10px; /* Reduzido o gap entre os botões principais */
+  }
+
+  .form-group-btn {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+  }
+
+  .form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: #344767;
+    font-weight: 500;
+    font-size: 1.2rem;
+  }
+
+  span.info {
+    color: #dc3545;
+  }
+
+  .form-control {
+    margin: 0;
+    width: 100%;
+    height: 35px;
+    padding: 0.5rem 1rem;
+    font-size: 1.3rem;
+    color: #495057;
+    background-color: #fff;
+    border: 1px solid #ced4da;
+    box-sizing: border-box;
+    border-radius: 4px;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+  }
+
+  .form-control:focus {
+    border-color: #0d6efd;
+    outline: none;
+    box-shadow: 0 0 0 0.5rem rgba(13, 110, 253, 0.25);
+  }
+
+  .invalid-feedback {
+    visibility: hidden;
+    margin-top: 0.5rem;
+    font-size: 1.1rem;
+    color: #dc3545;
+    height: 15px;
+  }
+
+  .form-control.is-invalid {
+    border-color: #dc3545;
+  }
+
+  .form-control.is-invalid ~ .invalid-feedback {
+    visibility: visible;
+  }
+
+  .form-grid,
+  .form-content {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem 2rem;
+  }
+
+  .form-group-pair {
+    grid-column: 1 / -1;
+    display: flex;
+    gap: 2rem;
+    align-items: flex-start;
+  }
+
+  .form-group-pair .form-group {
+      flex: 1;
+      margin-bottom: 0;
+  }
+
+  .form-group.form-full {
+    grid-column: 1 / -1 !important;
+    width: 100%;
+  }
+
+  .form-full *:not(button),
+  .form-full .form-group *,
+  .form-grid > * {
+    grid-column: 1 / -1;
+    box-sizing: border-box;
+  }
+
+  .botoes-confirmacao {
+    align-items: center;
+    justify-content: center;
+  }
+
+  .total-container {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    border-top: 1px solid #dee2e6;
+    font-weight: 600;
+    text-align: right;
+  }
+
+  .total-container .info {
+    flex: 1; /* Garante que "info" ocupe o espaço à esquerda */
+    text-align: left;
+  }
+
+  .total-container .total-label-valor {
+    display: flex;
+    gap: 5px; /* Espaço entre o label e o valor */
+    align-items: center;
+    justify-content: flex-end;
+    flex-shrink: 0; /* Impede que encolha */
+  }
+
+  .total-container .label {
+    color: #344767;
+    font-size: 1.2rem;
+  }
+
+  .total-container .total-valor {
+    color: #0d6efd;
+    font-size: 1.4rem;
+    min-width: 120px;
+  }
+
+  @media (max-width: 576px) {
+    .form-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .form-group-pair {
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .modal-footer {
+      flex-direction: column-reverse;
+    }
+
+    .modal-footer button {
+      width: 100%;
+    }
+  }
+
+  /* ===================== CSS SECUNDÁRIO ===================== */
+
+  /* Alterações específicas para o modo de Edição de Endereços */
+  .container-endereco-medidor {
+    background-color: #f8f9fa;
+    padding: 1rem;
+    border-radius: 4px;
+    border: 1px solid #dee2e6;
+    margin-bottom: 15px;
+  }
+
+  .container-endereco-medidor .container-medidor-btn {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+  }
+
+  .container-endereco-medidor .medidor-group {
+    flex: 1;
+  }
+</style>
+
+<style>
+  /* ===================== CSS NOVO - Dropdown ===================== */
+  .outrosDropdown {
+    position: relative;
+  }
+
+  .outrosDropdown-content {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background-color: #ffffff;
+    width: 320px;
+    height: 360px;
+    margin-top: 5px;
+    padding: 8px 0;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    z-index: 700;
+    border-radius: 8px;
+    overflow-y: auto;
+    border: 1px solid #e0e0e0;
+    cursor: default;
+  }
+
+  .outrosDropdown-group {
+    margin-bottom: 4px;
+  }
+
+  .outrosDropdown-group:last-child {
+    margin-bottom: 0;
+  }
+
+  .group-title {
+    background-color: #f8f9fa;
+    color: #344767;
+    font-weight: 600;
+    font-size: 1.2rem;
+    padding: 8px 16px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid #edf2f7;
+  }
+
+  .outrosDropdown-content a {
+    display: block;
+    position: relative;
+    padding: 6px 16px;
+    font-size: 1.1rem;
+    color: #495057;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+  }
+
+  .outrosDropdown-content a:hover {
+    background-color: #f8f9fa;
+    color: #0d6efd;
+    padding-left: 20px;
+  }
+
+  .outrosDropdown-content a:before {
+    content: "";
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background-color: #ddd;
+    transform: translateY(-50%);
+    transition: all 0.2s ease;
+  }
+
+  .outrosDropdown-content a:hover:before {
+    background-color: #0d6efd;
+  }
+
+  /* Estilização da scrollbar */
+  .outrosDropdown-content::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .outrosDropdown-content::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .outrosDropdown-content::-webkit-scrollbar-thumb {
+    background: #ddd;
+    border-radius: 3px;
+  }
+
+  .outrosDropdown-content::-webkit-scrollbar-thumb:hover {
+    background: #bbb;
+  }
+
+  .outrosDropdown-content.show {
+    display: block;
+    animation: outrosDropdownFadeIn 0.2s ease-out;
+  }
+
+  @keyframes outrosDropdownFadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(5px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+</style>
+
+<style>
+  /* Modal de Observação */
+  .dialog-form textarea {
+    width: 400px;
+    min-height: 100px;
+    padding: 10px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 1.3rem;
+    resize: vertical;
+  }
+
+  .dialog-form textarea:focus {
+    border-color: #0d6efd;
+    outline: none;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+  }
+
+  #dataTable tr.portal-item {
+    background-color: #fffacd !important; /* Amarelo claro (LightGoldenRodYellow) */
+  }
+
+  #dataTable tr.portal-item:hover {
+      background-color: #f5e5a0 !important; /* Amarelo um pouco mais escuro para hover */
+  }
+</style>

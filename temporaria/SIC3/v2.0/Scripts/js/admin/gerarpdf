@@ -1,0 +1,500 @@
+<script>
+  /**
+   * ESTILOS PADRONIZADOS PARA GERAÇÃO DE PDF
+   * Centraliza todas as definições de cores, fontes e estilos para os anexos.
+   */
+  var PDF_STYLES = {
+    headerFillColor: '#d9d9d9',
+    textColor: [0, 0, 0], // Cor do texto preta
+    headerTextColor: [0, 0, 0],
+    borderColor: '#646464',
+    font: 'helvetica',
+    baseFontSize: 8,
+    // Estilos base para todas as tabelas
+    baseTableConfig: {
+      theme: "grid",
+      styles: {
+        font: 'helvetica',
+        fontSize: 8,
+        textColor: [0, 0, 0],
+        lineColor: '#646464',
+        lineWidth: 0.1,
+        cellPadding: 1,
+        minCellHeight: 3.5,
+      },
+      headStyles: {
+        fillColor: '#d9d9d9',
+        textColor: [0, 0, 0],
+        fontStyle: 'bold',
+        halign: 'center',
+        valign: 'middle',
+      },
+      footStyles: { 
+        fillColor: '#d9d9d9',
+        textColor: [0, 0, 0],
+        fontStyle: 'bold',
+        fontSize: 8,
+        halign: 'center',
+        lineWidth: 0.1,
+        lineColor: '#646464',
+        cellPadding: 1, // Altura mínima para a linha de total
+        minCellHeight: 3.5,
+      }
+    }
+  };
+
+  // ======================== GERAÇÃO DE ANEXOS 'D' E 'ÚNICO' ========================
+  $(document).off('click.anexoPDF').on('click.anexoPDF', '.btn-anexo-d, .btn-anexo-u', async function() {
+    const $button = $(this);
+    const municipio = $button.data('municipio');
+    const convenio = $button.data('convenio');
+    const ano = $button.data('ano');
+    const mes = $button.data('mes');
+
+    if (convenio === "-" || convenio === "TODOS") {
+      mostrarDialogo("Aviso", "Não é possível gerar anexo para município sem convênio ou com convênio 'TODOS'.");
+      return;
+    }
+
+    try {
+      mostrarCarregamento();
+      
+      const convenioInfo = await obterInformacoesConvenio(municipio, convenio);
+      if (!convenioInfo) throw new Error('Não foi possível obter informações do convênio.');
+
+      const dadosAnexo = await obterDadosAnexo(municipio, convenio, ano, mes);
+      if (!dadosAnexo || (!dadosAnexo.principal?.length && !dadosAnexo.abastecimento?.length && !dadosAnexo.manutencao?.length)) {
+        mostrarDialogo('Aviso', 'Não há dados para gerar o anexo.');
+        ocultarCarregamento();
+        return;
+      }
+
+      const isAnexoD = $button.hasClass('btn-anexo-d');
+      if (isAnexoD) {
+        await gerarAnexoDAdmin(municipio, convenio, ano, mes, convenioInfo, dadosAnexo);
+      } else {
+        await gerarAnexoUnicoAdmin(municipio, convenio, ano, mes, convenioInfo, dadosAnexo);
+      }
+    } catch (error) {
+      manipularErro(error, 'gerarAnexoPDF');
+    } finally {
+      ocultarCarregamento();
+    }
+  });
+
+  // ======================== FUNÇÕES AUXILIARES DE FORMATAÇÃO ========================
+  function getNomeMesComum(mesNumero) {
+    const meses = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+    return meses[parseInt(mesNumero, 10) - 1];
+  }
+
+  function formatarDataPDF(data) {
+    const dia = String(data.getDate()).padStart(2, "0");
+    const mes = String(data.getMonth() + 1).padStart(2, "0");
+    const ano = data.getFullYear();
+    return `${dia} de ${obterNomeMes(mes)} de ${ano}`;
+  }
+
+  function formatarMunicipioPDF(municipio) {
+    return municipio.split(" ").map((word) => {
+        if (["DE", "DA", "DO"].includes(word.toUpperCase())) { return word.toLowerCase(); }
+        return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+      }).join(" ");
+  }
+
+  // ======================== OBTENÇÃO DE DADOS ========================
+  async function obterInformacoesConvenio(municipio, convenio) {
+    try {
+      const convenioLocal = ADMIN_CONFIG.dados.convenios.find(c => c.municipio === municipio && c.convenio === convenio);
+      if (convenioLocal) return { ...convenioLocal };
+      
+      const conveniosData = await carregarDadosPlanilha({ sheetId: idbase, sheet: 'convenios', query: `SELECT A,B,C,D,E,F,G,H WHERE A='${municipio}' AND B='${convenio}'` });
+      if (conveniosData && conveniosData.length > 0) {
+        const [m, c, pn, ppg, p, u, di, df] = conveniosData[0];
+        return { municipio: m, convenio: c, preposto_n: pn || "", preposto_pg: ppg || "", preposto: p || "", unidade: u || "", dataInicio: di || "", dataFim: df || "" };
+      }
+      return null;
+    } catch (error) {
+      manipularErro(error, 'obterInformacoesConvenio');
+      return null;
+    }
+  }
+
+  async function obterDadosAnexo(municipio, convenio, ano, mes) {
+    try {
+      const [principalData, abastecimentoData, manutencaoData, obsgeralRaw] = await Promise.all([
+        carregarDadosPlanilha({ sheetId: idbase, sheet: 'principal', query: `SELECT G,H,I,J,K,L,M,N,O WHERE B='${municipio}' AND C='${convenio}' AND D='${ano}' AND E='${mes}'` }),
+        carregarDadosPlanilha({ sheetId: idbase, sheet: 'abastecimento', query: `SELECT G,H,I,J,K,L,M,N,O,P WHERE B='${municipio}' AND C='${convenio}' AND D='${ano}' AND E='${mes}'` }),
+        carregarDadosPlanilha({ sheetId: idbase, sheet: 'manutencao', query: `SELECT G,H,I,J,K,L,M,N,O,P WHERE B='${municipio}' AND C='${convenio}' AND D='${ano}' AND E='${mes}'` }),
+        carregarDadosPlanilha({ sheetId: idbase, sheet: 'obsgeral', query: `SELECT A,G WHERE B='${municipio}' AND C='${convenio}' AND D='${ano}' AND E='${mes}'` })
+      ]);
+      const principal = principalData.map(row => ({ codigo: row[0] || "", descricao: row[1] || "", despesa: row[2] || "", unidade: row[3] || "", data: row[4] || "", quantidade: row[5] || "", valorUnitario: row[6] || "", subtotal: row[7] || 0, observacao: row[8] || "" }));
+      const abastecimento = abastecimentoData.map(row => ({ data: row[0] || "", placa: row[1] || "", prefixo: row[2] || "", odometro: row[3] || "", motorista: row[4] || "", tipo: row[5] || "", quantidade: row[6] || "", valorUnitario: row[7] || "", subtotal: row[8] || "", notaFiscal: row[9] || "" }));
+      const manutencao = manutencaoData.map(row => {
+        const descricaoCompleta = row[5] || ""; let tipo = "", descricao = "";
+        if (descricaoCompleta.includes(" - ")) { const parts = descricaoCompleta.split(" - "); tipo = parts[0].trim(); descricao = parts.slice(1).join(" - ").trim(); }
+        else { tipo = "MANUTENÇÃO"; descricao = descricaoCompleta; }
+        return { data: row[0] || "", placa: row[1] || "", prefixo: row[2] || "", odometro: row[3] || "", responsavel: row[4] || "", tipo: tipo, descricao: descricao, quantidade: row[6] || "", valorUnitario: row[7] || "", subtotal: row[8] || "", notaFiscal: row[9] || "" };
+      });
+      const obsgeralTimestamp = obsgeralRaw.length > 0 && obsgeralRaw[0][0] ? obsgeralRaw[0][0] : "";
+      const obsgeralTexto = obsgeralRaw.length > 0 && obsgeralRaw[0][1] ? obsgeralRaw[0][1] : "SEM OBSERVACOES";
+      return { principal, abastecimento, manutencao, obsgeral: { texto: obsgeralTexto, timestamp: obsgeralTimestamp } };
+    } catch (error) {
+      manipularErro(error, 'obterDadosAnexo');
+      return null;
+    }
+  }
+
+  // ======================== GERADOR ANEXO D ========================
+  async function gerarAnexoDAdmin(municipio, convenio, ano, mes, convenioInfo, dadosAnexo) {
+    try {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ orientation: "l", unit: "mm", format: "a4", compress: true });
+      const startY = 20, pageWidth = doc.internal.pageSize.getWidth(), pageCenter = pageWidth / 2;
+
+      doc.setFontSize(12);
+      doc.text('ANEXO "D" (Demonstrativo de material recebido em convênio) à Instrução Conjunta Nº 06/DAL-DF', pageCenter, startY, { align: "center" });
+      doc.setFont(PDF_STYLES.font, "bold");
+      doc.text("POLÍCIA MILITAR DO ESTADO DE MINAS GERAIS", pageCenter, 30, { align: "center" });
+      doc.text(`${convenioInfo.unidade}`, pageCenter, 35, { align: "center" });
+      doc.setFont(PDF_STYLES.font, "normal");
+      doc.text(`Demonstrativo do material recebido da Prefeitura Municipal de ${formatarMunicipioPDF(municipio)}`, pageCenter, 45, { align: "center" });
+      doc.text(`no mês ${mes} de ${ano}, conforme convênio nº ${convenio}`, pageCenter, 50, { align: "center" });
+      
+      const tableData = dadosAnexo.principal.map((item, index) => {
+        let obs = item.observacao || '';
+        if (item.despesa && (item.despesa.startsWith("3914") || item.despesa.startsWith("4004"))) {
+            const telMatch = obs.match(/Tel\.:\s*\S+/);
+            if (telMatch) {
+                const telLine = telMatch[0];
+                const otherLines = obs.replace(telLine, '').split('\n').filter(line => line.trim() !== '').join('\n');
+                obs = `${telLine}\n${otherLines}`.trim();
+            }
+        }
+        return [(index + 1).toString(), item.data, item.quantidade, item.quantidade, `CD: ${item.codigo} | ED: ${item.despesa.substring(0, 4)} | UD: ${item.unidade.substring(0, 5)}\n${item.descricao}`, item.subtotal, obs];
+      });
+      
+      autoTable(doc, { 
+        ...PDF_STYLES.baseTableConfig,
+        startY: 60, 
+        head: [["Nº DE\nORDEM", "DATA\nRECEB", "QTD RECEB MÊS", "QTD GASTA MÊS", "DESCRIÇÃO DO MATERIAL OU SERVIÇO RECEBIDO", "VALOR\nEM R$", "OBSERVAÇÃO"]], 
+        body: tableData, 
+        columnStyles: { 0: { cellWidth: 15 }, 1: { cellWidth: 20 }, 2: { cellWidth: 15, halign: "right" }, 3: { cellWidth: 15, halign: "right" }, 4: { cellWidth: "auto", halign: "left" }, 5: { minCellWidth: 20, halign: "right" }, 6: { minCellWidth: 50, halign: "left" } }, 
+      });
+      
+      // Função auxiliar para identificar óleo lubrificante
+      const isOleoLubrificante = (item) => {
+        const desc = String(item.descricao || "").toUpperCase();
+        return desc.includes("OLEO LUBRIFICANTE") || desc.includes("ÓLEO LUBRIFICANTE");
+      };
+
+      // Lógica de cálculo ajustada para evitar somatório duplicado
+      const totalAbastecimentos = dadosAnexo.principal
+        .filter(item => {
+          const despesa = String(item.despesa).trim();
+          // Pertence ao total de abastecimentos se for 3026 E NÃO for óleo lubrificante
+          return despesa.startsWith("3026") && !isOleoLubrificante(item);
+        })
+        .reduce((acc, item) => acc + (parseFloat(String(item.subtotal).replace(/[^\d,-]/g, "").replace(",", ".")) || 0), 0);
+      
+      const totalConsumo = dadosAnexo.principal
+        .filter(item => {
+          const despesa = String(item.despesa).trim();
+          // Pertence ao total de materiais se for do grupo 30 (exceto 3026) OU se for explicitamente Óleo Lubrificante
+          const isConsumoGeral = despesa.startsWith("30") && !item.descricao.includes("ABASTECIMENTO");
+          return isConsumoGeral || isOleoLubrificante(item);
+        })
+        .reduce((acc, item) => acc + (parseFloat(String(item.subtotal).replace(/[^\d,-]/g, "").replace(",", ".")) || 0), 0);
+      
+      const totalServicos = dadosAnexo.principal
+        .filter(item => {
+          const despesa = String(item.despesa).trim();
+          // Pertence ao total de serviços se NÃO for do grupo 30 E NÃO for óleo lubrificante
+          return !despesa.startsWith("30") && !isOleoLubrificante(item);
+        })
+        .reduce((acc, item) => acc + (parseFloat(String(item.subtotal).replace(/[^\d,-]/g, "").replace(",", ".")) || 0), 0);
+      
+      const totalGeral = totalConsumo + totalAbastecimentos + totalServicos;
+      
+      const totalConsumoFormatado = formatarNumero(totalConsumo, "moeda");
+      const totalAbastecimentosFormatado = formatarNumero(totalAbastecimentos, "moeda");
+      const totalServicosFormatado = formatarNumero(totalServicos, "moeda");
+      const totalGeralFormatado = formatarNumero(totalGeral, "moeda");
+      
+      const summaryStyles = { ...PDF_STYLES.baseTableConfig.footStyles, halign: 'right' };
+      const obsStyles = { ...summaryStyles, halign: 'justify', valign: 'top', fontStyle: 'normal' };
+
+      const summaryBody = [
+        [{ content: `OBS.: ${dadosAnexo.obsgeral.texto || 'SEM OBSERVAÇÕES'}`, rowSpan: 4, styles: obsStyles },
+         { content: "TOTAL DE MATERIAIS", styles: summaryStyles },
+         { content: totalConsumoFormatado, styles: summaryStyles }],
+        [{ content: "TOTAL DE ABASTECIMENTOS", styles: summaryStyles }, { content: totalAbastecimentosFormatado, styles: summaryStyles }],
+        [{ content: "TOTAL DE SERVIÇOS", styles: summaryStyles }, { content: totalServicosFormatado, styles: summaryStyles }],
+        [{ content: "TOTAL GERAL", styles: summaryStyles }, { content: totalGeralFormatado, styles: summaryStyles }]
+      ];
+
+      autoTable(doc, {
+        startY: doc.lastAutoTable.finalY, body: summaryBody, theme: 'grid', tableWidth: doc.lastAutoTable.width, showHead: "never",
+        columnStyles: { 0: { cellWidth: 'auto' }, 1: { cellWidth: 50 }, 2: { cellWidth: 30 } },
+        styles: { lineWidth: 0.1, lineColor: PDF_STYLES.borderColor }
+      });
+
+      const dataFormatada = formatarDataPDF(new Date());
+      const assinaturaBody = [
+          [{ content: `Quartel em ${formatarMunicipioPDF(municipio)}, ${dataFormatada}.` }],
+          [{ content: `nº ${convenioInfo.preposto_n} - ${convenioInfo.preposto_pg} PM ${convenioInfo.preposto}` }],
+          [{ content: `PREPOSTO DO CONVÊNIO` }]
+      ];
+      
+      autoTable(doc, {
+          startY: doc.lastAutoTable.finalY, body: assinaturaBody, theme: 'plain', tableWidth: doc.lastAutoTable.width, showHead: 'never',
+          styles: { halign: 'center', fontSize: 10, textColor: PDF_STYLES.textColor },
+          didParseCell: (data) => {
+              if(data.row.index === 0) { data.cell.styles.halign = 'right'; data.cell.styles.cellPadding = { top: 5, right: 0, bottom: 10, left: 0 }; } 
+              else { data.cell.styles.fontStyle = 'bold'; data.cell.styles.cellPadding = 0; }
+          }
+      });
+
+      const pageCount = doc.internal.getNumberOfPages();
+      await adicionarRodapePDF(doc, pageCount, dadosAnexo.obsgeral);
+      doc.save(`ANEXO_D_${ano}-${mNumerico(mes, "texto")}_${municipio}.pdf`);
+      mostrarDialogo("Sucesso", "Anexo D gerado!");
+    } catch (error) {
+      manipularErro(error, "gerarAnexoDAdmin");
+    }
+  }
+
+  // ======================== GERADOR ANEXO ÚNICO ========================
+  async function gerarAnexoUnicoAdmin(municipio, convenio, ano, mes, convenioInfo, dadosAnexo) {
+    try {
+      const { jsPDF } = window.jspdf;
+      const margemPadrao = 15;
+      const doc = new jsPDF({ orientation: "l", unit: "mm", format: "a4", compress: true });
+      const tableConfig = { 
+          ...PDF_STYLES.baseTableConfig,
+          margin: { left: margemPadrao, right: margemPadrao } 
+      };
+
+      const pageWidth = doc.internal.pageSize.width, pageCenter = pageWidth / 2;
+      doc.setFontSize(12);
+      doc.text("ANEXO ÚNICO à Nota de Auditoria nº 998380 – Plano de Trabalho E-AUD nº 998368", pageCenter, 20, { align: "center" });
+      doc.setFont(PDF_STYLES.font, "bold");
+      doc.text("POLÍCIA MILITAR DO ESTADO DE MINAS GERAIS", pageCenter, 30, { align: "center" });
+      doc.text(`${convenioInfo.unidade}`, pageCenter, 35, { align: "center" });
+      doc.setFont(PDF_STYLES.font, "normal");
+      doc.text(`Demonstrativo do material recebido da Prefeitura Municipal de ${formatarMunicipioPDF(municipio)}`, pageCenter, 45, { align: "center" });
+      doc.text(`no mês ${mes} de ${ano}, conforme convênio nº ${convenio}`, pageCenter, 50, { align: "center" });
+      let yPos = 60;
+      let algumaTabelaRenderizada = false;
+
+      if (dadosAnexo.abastecimento.length > 0) {
+        const abastecimentoData = dadosAnexo.abastecimento.map(item => [item.data, item.placa, item.prefixo, item.odometro, item.motorista, item.tipo, item.quantidade, item.valorUnitario, item.subtotal, item.notaFiscal]).sort((a, b) => new Date(a[0]) - new Date(b[0]));
+        const totalAbastecimento = abastecimentoData.reduce((sum, row) => sum + formatarNumero(row[8], "numero"), 0);
+        const totalAbastecimentoFormatado = formatarNumero(totalAbastecimento,"moeda");
+        
+        autoTable(doc, { 
+            ...tableConfig, 
+            startY: yPos, 
+            head: [[{ content: "PLANILHA DEMONSTRATIVA DE COMBUSTÍVEIS E LUBRIFICANTES", colSpan: 10, styles: { halign: "center" } }], ["DATA", "PLACA", "PRE-\nFIXO", "ODÔ-\nMETRO", "MOTO-\nRISTA", "DESCRIÇÃO", "QTD\n(LTS)", "VALOR\n(LT)", "VALOR\nTOTAL", "Nº DA\nNOTA"]], 
+            body: abastecimentoData,
+            foot: [[{ content: "TOTAL", colSpan: 5, styles: { halign: 'center' } }, { content: totalAbastecimentoFormatado, colSpan: 5, styles: { halign: 'center' } }]],
+            showFoot: 'lastPage',
+            columnStyles: { 0:{cellWidth:17},1:{cellWidth:17},2:{cellWidth:12},3:{cellWidth:14,halign:"right"},4:{cellWidth:15},5:{cellWidth:"auto",halign:"left"},6:{minCellWidth:12,halign:"right"},7:{minCellWidth:18,halign:"right"},8:{minCellWidth:18,halign:"right"},9:{minCellWidth:18,halign:"right"} } 
+        });
+        yPos = doc.lastAutoTable.finalY + 10;
+        algumaTabelaRenderizada = true;
+      }
+      
+      if (dadosAnexo.manutencao.length > 0) {
+        const manutencaoData = dadosAnexo.manutencao.map(item=>[item.data,item.placa,item.prefixo,item.odometro,item.responsavel,item.tipo+" - "+item.descricao,item.quantidade,item.valorUnitario,item.subtotal,item.notaFiscal]).sort((a,b)=>new Date(a[0])-new Date(b[0]));
+        const totalManutencao = manutencaoData.reduce((sum, row) => sum + formatarNumero(row[8], "numero"), 0);
+        const totalManutencaoFormatado = formatarNumero(totalManutencao,"moeda");
+        
+        autoTable(doc, {
+            ...tableConfig,
+            startY:yPos,
+            head:[[{content:"PLANILHA DEMONSTRATIVA DE MANUTENÇÃO DE VIATURA",colSpan:10,styles:{halign:"center"}}],["DATA","PLACA","PRE-\nFIXO","ODÔ-\nMETRO","Nº PM\nRESP.","DESCRIÇÃO","QTD\n(SVÇ)","VALOR\nUNIT.","VALOR\nTOTAL","Nº DA\nNOTA"]],
+            body:manutencaoData,
+            foot: [[{ content: "TOTAL", colSpan: 5, styles: { halign: 'center' } }, { content: totalManutencaoFormatado, colSpan: 5, styles: { halign: 'center' } }]],
+            showFoot: 'lastPage',
+            columnStyles:{0:{cellWidth:17},1:{cellWidth:17},2:{cellWidth:12},3:{cellWidth:14,halign:"right"},4:{cellWidth:15},5:{cellWidth:"auto",halign:"left"},6:{minCellWidth:12},7:{minCellWidth:18,halign:"right"},8:{minCellWidth:18,halign:"right"},9:{minCellWidth:18,halign:"right"}}
+        });
+        algumaTabelaRenderizada = true;
+      }
+
+      if (algumaTabelaRenderizada) {
+          const df=formatarDataPDF(new Date());
+          const assinaturaBody = [
+              [{content:`Quartel em ${formatarMunicipioPDF(municipio)}, ${df}.`}],
+              [{content:`nº ${convenioInfo.preposto_n} - ${convenioInfo.preposto_pg} PM ${convenioInfo.preposto}`}],
+              [{content:`PREPOSTO DO CONVÊNIO`}]
+          ];
+          autoTable(doc, { 
+              startY: doc.lastAutoTable.finalY + 5, 
+              body: assinaturaBody, 
+              theme: 'plain', 
+              tableWidth: doc.lastAutoTable.width,
+              showHead: "never",
+              styles: { halign: 'center', fontSize: 10, textColor: PDF_STYLES.textColor },
+              didParseCell: (data) => {
+                  if(data.row.index === 0) { data.cell.styles.halign = 'right'; data.cell.styles.cellPadding = { top: 5, right: 0, bottom: 10, left: 0 }; } 
+                  else { data.cell.styles.fontStyle = 'bold'; data.cell.styles.cellPadding = 0; }
+              }
+          });
+      }
+
+      const grupos = agruparDadosPorElementoAdmin(dadosAnexo.principal);
+      if (Object.keys(grupos).length > 0) {
+        doc.addPage("a4", "p");
+        const gruposArray = Object.values(grupos).sort((a,b)=>a.elementoCodigo.localeCompare(b.elementoCodigo));
+        await renderizarTabelasResumidasAdmin(doc, gruposArray, margemPadrao, convenioInfo, municipio);
+      }
+      
+      const pageCount = doc.internal.getNumberOfPages();
+      await adicionarRodapePDF(doc, pageCount, dadosAnexo.obsgeral);
+      doc.save(`ANEXO_UNICO_${ano}-${mNumerico(mes,"texto")}_${municipio}.pdf`);
+      mostrarDialogo("Sucesso", "Anexo Único gerado!");
+    } catch (error) {
+      manipularErro(error, "gerarAnexoUnicoAdmin");
+    }
+  }
+
+  async function adicionarRodapePDF(doc, pageCount, obsgeralObj) {
+    try {
+      const timestamp = obsgeralObj.timestamp;
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i); 
+        doc.setFontSize(PDF_STYLES.baseFontSize - 2);
+        doc.setTextColor(0, 0, 0); 
+        const ps = doc.internal.pageSize, ph = ps.height ? ps.height : ps.getHeight(), pw = ps.width ? ps.width : ps.getWidth();
+        doc.text(`Página ${i} de ${pageCount}`, pw - 20, ph - 10, { align: "right" });
+        doc.text("Gerado por SIC3-15RPM v2.0", pw / 2, ph - 10, { align: "center" });
+        if (timestamp) {
+            doc.text("Última alteração: " + timestamp, 20, ph - 10);
+        }
+      }
+    } catch (error) { 
+      manipularErro(error, "adicionarRodapePDF", true); 
+    }
+  }
+
+  function agruparDadosPorElementoAdmin(itens) {
+    const grupos = {}; 
+    const despesasExcluidas = ["3023", "3026", "3918"];
+    
+    itens.forEach(item => {
+      const codigo = item.codigo.trim();
+      const despesa = item.despesa.trim();
+      const descricao = item.descricao.trim();
+      let elementoCodigo = "", elementoNome = "";
+      if (despesa.includes(" - ")) { 
+        const partes = despesa.split(" - "); 
+        elementoCodigo = partes[0].trim(); 
+        elementoNome = partes.slice(1).join(" - ").trim(); 
+      } else { 
+        elementoCodigo = despesa; 
+      }
+      if (despesasExcluidas.includes(elementoCodigo)) return;
+      
+      // Se for 4004, não aglutinar
+      if (elementoCodigo === "4004") {
+        const chaveUnica = `${elementoCodigo}|${Math.random()}`; 
+        grupos[chaveUnica] = { elementoCodigo, elementoNome, endereco: "", tipo: "servico", items: [item] };
+        return; 
+      }
+      
+      let endereco = ""; 
+      if (codigo.startsWith("O")) { 
+        const linhas = descricao.split("\n"); 
+        for (const linha of linhas) { 
+          if (linha.startsWith("End.:")) { 
+            endereco = linha.replace("End.:", "").trim(); 
+            break; 
+          } 
+        } 
+      }
+      
+      const chave = endereco ? `${elementoCodigo}|${endereco}` : `${elementoCodigo}`;
+      
+      // Ajuste de tipo para Óleo Lubrificante
+      const isOleo = descricao.toUpperCase().includes("OLEO LUBRIFICANTE") || descricao.toUpperCase().includes("ÓLEO LUBRIFICANTE");
+      const tipo = (codigo.startsWith("O") && !isOleo) ? "servico" : "material";
+      
+      if (!grupos[chave]) {
+        grupos[chave] = { elementoCodigo, elementoNome, endereco, tipo, items: [] };
+      }
+      grupos[chave].items.push({...item});
+    });
+    return grupos;
+  }
+
+  async function renderizarTabelasResumidasAdmin(doc, grupos, margin, convenioInfo, municipio) {
+    const pageWidth = doc.internal.pageSize.width, maxWidth = pageWidth - (2 * margin), colSpacing = 8, tableWidth = (maxWidth - colSpacing) / 2;
+    let currentY = margin + 15; const rowSpacing = 8;
+    for (let i = 0; i < grupos.length; i += 2) {
+      const grupo1 = grupos[i], grupo2 = i + 1 < grupos.length ? grupos[i + 1] : null;
+      const altura1 = estimarAlturaTabelaResumida(grupo1), altura2 = grupo2 ? estimarAlturaTabelaResumida(grupo2) : 0, alturaMax = Math.max(altura1, altura2);
+      if (currentY + alturaMax > doc.internal.pageSize.height - margin - 40) { doc.addPage(); currentY = margin + 15; }
+      renderizarTabelaResumidaAdmin(doc, grupo1, margin, tableWidth, currentY);
+      if (grupo2) renderizarTabelaResumidaAdmin(doc, grupo2, margin + tableWidth + colSpacing, tableWidth, currentY);
+      currentY += alturaMax + rowSpacing;
+    }
+    currentY += 10;
+    const assinaturaHeight = 30; if (currentY + assinaturaHeight > doc.internal.pageSize.height - margin) { doc.addPage(); currentY = margin + 15; }
+    const dataFormatada = formatarDataPDF(new Date());
+    autoTable(doc, { startY: currentY, body: [[{ content: `Quartel em ${formatarMunicipioPDF(municipio)}, ${dataFormatada}.`, colSpan: 2, styles: { halign: "right", fontSize: 10, cellPadding: { top: 5, right: 0, bottom: 10, left: 0 }, lineWidth: 0, fillColor: false, textColor: PDF_STYLES.textColor } }], [{ content: `nº ${convenioInfo.preposto_n} - ${convenioInfo.preposto_pg} PM ${convenioInfo.preposto}`, colSpan: 2, styles: { halign: "center", fontStyle: "bold", fontSize: 10, cellPadding: 0, lineWidth: 0, fillColor: false, textColor: PDF_STYLES.textColor } }], [{ content: `PREPOSTO DO CONVÊNIO`, colSpan: 2, styles: { halign: "center", fontStyle: "bold", fontSize: 10, cellPadding: 0, lineWidth: 0, fillColor: false, textColor: PDF_STYLES.textColor } }]], margin: { left: margin, right: margin }, styles: { cellPadding: 1, lineWidth: 0 }, theme: 'plain', pageBreak: 'avoid' });
+    return doc;
+  }
+
+  function renderizarTabelaResumidaAdmin(doc, grupo, x, width, y) {
+    if (!grupo?.items?.length) return;
+    const observacao = grupo.items[0].observacao || "", obs = {};
+    observacao.split("\n").forEach(l => { if (l.includes(":")) { const [k, v] = l.split(":"); if (k&&v) obs[k.trim()] = v.trim(); }});
+    const isEnergia = grupo.elementoCodigo === "3912", isAgua = grupo.elementoCodigo === "3913", isInternet = grupo.elementoCodigo === "4004";
+    const dados = [[{ content: `${grupo.elementoCodigo} - ${grupo.elementoNome}`, colSpan: 2, styles: { halign: "center", fillColor: PDF_STYLES.headerFillColor, fontSize: PDF_STYLES.baseFontSize, fontStyle: 'bold', textColor: PDF_STYLES.headerTextColor } }]];
+    const valorTotalFormatado = (grupo.items.reduce((sum, item) => sum + (parseFloat(String(item.subtotal).replace(/[^\d,-]/g, "").replace(",", ".")) || 0), 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    const quantidadeTotalFormatado = (grupo.items.reduce((sum, item) => sum + (parseFloat(String(item.quantidade).replace(/[^\d,-]/g, "").replace(",", ".")) || 0), 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+
+    if (grupo.tipo === "servico") {
+        if (isEnergia) { dados.push([{ content: "Consumo:", styles:{fontStyle:'bold'}},{content:grupo.items[0].quantidade}],[{content:"Unidade de medida:",styles:{fontStyle:'bold'}},{content:"QUILOWATT-HORA"}]); }
+        else if (isAgua) { dados.push([{content:"Consumo:",styles:{fontStyle:'bold'}},{content:grupo.items[0].quantidade}],[{content:"Unidade de medida:",styles:{fontStyle:'bold'}},{content:"METRO CÚBICO"}]); }
+        else if (grupo.elementoCodigo === "4004") {
+            const isInet = grupo.items[0].descricao.toUpperCase().includes("INTERNET");
+            dados.push([{ content: "Quantidade:", styles: { fontStyle: 'bold' } }, { content: grupo.items[0].quantidade }]);
+            dados.push([{ content: "Unidade de medida:", styles: { fontStyle: 'bold' } }, { content: isInet ? "MEGABITS" : "1,00 SERVICO" }]);
+        }
+        else { let u="1,00 UNIDADE"; const pI=grupo.items[0]; if(pI&&pI.unidade){const uT=pI.unidade.split('-')[1]; if(uT)u=uT.trim();} dados.push([{content:"Quantidade:",styles:{fontStyle:'bold'}},{content:grupo.items[0].quantidade}],[{content:"Unidade de medida:",styles:{fontStyle:'bold'}},{content:u}]); }
+      dados.push([{content:"Valor da conta:",styles:{fontStyle:'bold'}},{content:valorTotalFormatado}]);
+      const dI=grupo.items[0]?.data||""; let mR=""; if(dI){const[anoItem,mesItem]=dI.split("-");mR=`${mesItem}/${anoItem}`;} dados.push([{content:"Mês de referência:",styles:{fontStyle:'bold'}},{content:mR}]);
+      dados.push([{content:"Resp. conferência:",styles:{fontStyle:'bold'}},{content:obs["Resp."]}]);
+      if(grupo.endereco)dados.push([{content:"Endereço da instalação:",styles:{fontStyle:'bold'}},{content:grupo.endereco}]);
+      if(obs["Forn."])dados.push([{content:"Fornecedor:",styles:{fontStyle:'bold'}},{content:obs["Forn."]}]);
+      if(obs["Tel."]) dados.push([{content:"Nº do Telefone:",styles:{fontStyle:'bold'}},{content:obs["Tel."]}]);
+      if((isEnergia||isAgua)&&obs["Med."])dados.push([{content:"Nº do Medidor:",styles:{fontStyle:'bold'}},{content:obs["Med."]}]);
+    } else if (grupo.tipo === "material") {
+      dados.push([{content:"Quantidade:",styles:{fontStyle:'bold'}},{content:quantidadeTotalFormatado}]);
+      let uM="1,00 UNIDADE"; const pI=grupo.items[0]; if(pI&&pI.unidade){const uT=pI.unidade.split('-')[1];if(uT)uM=uT.trim();} dados.push([{content:"Unidade de medida:",styles:{fontStyle:'bold'}},{content:uM}]);
+      dados.push([{content:"Valor total:",styles:{fontStyle:'bold'}},{content:valorTotalFormatado}]);
+      const dI=grupo.items[0]?.data||"";let mR="";if(dI){const[anoItem,mesItem]=dI.split("-");mR=`${mesItem}/${anoItem}`;} dados.push([{content:"Mês de referência:",styles:{fontStyle:'bold'}},{content:mR}]);
+      const rI=grupo.items[0]?.observacao?.match(/Resp\.: (\d+)/);const r=rI?rI[1]:""; dados.push([{content:"Resp. conferência:",styles:{fontStyle:'bold'}},{content:r}]);
+    }
+    autoTable(doc, {startY:y,margin:{left:x},tableWidth:width,body:dados,theme:'grid',styles:{fontSize:PDF_STYLES.baseFontSize,cellPadding:1,lineWidth:0.1,lineColor:PDF_STYLES.borderColor,minCellHeight:2, textColor: PDF_STYLES.textColor},columnStyles:{0:{cellWidth:width*0.45},1:{cellWidth:width*0.55}}});
+  }
+
+  function estimarAlturaTabelaResumida(grupo) {
+    if (!grupo?.items?.length) return 0;
+    const baseHeight = 20, lineHeight = 3; let rowCount = 2;
+    const isEnergia = grupo.elementoCodigo === "3912", isAgua = grupo.elementoCodigo === "3913";
+    if (grupo.tipo === "servico") { 
+        rowCount += 6;
+        if (grupo.endereco) rowCount++; 
+        if ((isEnergia || isAgua) && grupo.items[0]?.observacao?.includes("Med.:")) rowCount++;
+        if (grupo.items[0]?.observacao?.includes("Tel.:")) rowCount++;
+    }
+    else if (grupo.tipo === "material") { 
+        rowCount += 5;
+    }
+    return baseHeight + rowCount * lineHeight;
+  }
+
+</script>

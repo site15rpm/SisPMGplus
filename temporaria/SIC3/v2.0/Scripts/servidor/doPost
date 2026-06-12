@@ -1,0 +1,114 @@
+/**
+ * Trata as requisições OPTIONS (Preflight de CORS do Navegador)
+ */
+function doOptions(e) {
+  return ContentService.createTextOutput("OK").setMimeType(ContentService.MimeType.TEXT);
+}
+
+/**
+ * Trata as requisições POST recebidas, como as enviadas pela extensão SisPMG+
+ */
+function doPost(e) {
+  try {
+    if (!e || !e.postData || !e.postData.contents) {
+      throw new Error("Nenhum dado recebido no corpo da requisição.");
+    }
+
+    const body = JSON.parse(e.postData.contents);
+    const sheetName = body.sheetName; 
+    const item = body.data && body.data[0]; 
+
+    if (!sheetName || !item) {
+      throw new Error("Payload inválido. Esperado 'sheetName' e 'data'.");
+    }
+
+    // Aproveita a função já existente no seu código para pegar o ID da planilha
+    const ids = getProjectIds();
+    const sheet = SpreadsheetApp.openById(ids.spreadsheetId).getSheetByName(sheetName);
+    
+    if (!sheet) {
+      throw new Error("Aba '" + sheetName + "' não encontrada.");
+    }
+
+    const values = sheet.getDataRange().getValues();
+    const headers = values[0];
+    
+    // Mapeamento dinâmico das colunas
+    const iConv = headers.indexOf("convenio");
+    const iAno = headers.indexOf("ano");
+    const iMes = headers.indexOf("mes");
+
+    if (iConv === -1 || iAno === -1 || iMes === -1) {
+      throw new Error("Colunas de busca (convenio, ano, mes) não encontradas no cabeçalho.");
+    }
+    
+    let rowIndexToUpdate = -1;
+    
+    // Varre as linhas buscando a correspondência exata do item processado
+    for (let i = 1; i < values.length; i++) {
+      if (String(values[i][iConv]) === String(item.convenio) && 
+          String(values[i][iAno]) === String(item.ano) && 
+          String(values[i][iMes]) === String(item.mes)) {
+        
+        rowIndexToUpdate = i + 1; // +1 porque arrays começam em 0 e planilhas em 1
+        break;
+      }
+    }
+    
+    if (rowIndexToUpdate !== -1) {
+      // Gera o Timestamp atual no fuso de Brasília
+      const timestamp = Utilities.formatDate(new Date(), "America/Sao_Paulo", "dd/MM/yyyy HH:mm:ss");
+      
+      // Coluna K (Índice 11) recebe o texto do status caso seja enviado (Ex: 'OK')
+      if (item.statusK) {
+        sheet.getRange(rowIndexToUpdate, 11).setValue(item.statusK);
+        sheet.getRange(rowIndexToUpdate, 12).setValue(timestamp); // Col L (12): Timestamp Entrada
+        sheet.getRange(rowIndexToUpdate, 13).setValue('OK'); // Col M (13): Documento Entrada
+        sheet.getRange(rowIndexToUpdate, 14).setValue(timestamp); // Col N (14): Timestamp Requisição
+        sheet.getRange(rowIndexToUpdate, 15).setValue('OK'); // Col O (15): Documento Requisição
+        sheet.getRange(rowIndexToUpdate, 16).setValue(timestamp); // Col P (16): Timestamp Análise
+        sheet.getRange(rowIndexToUpdate, 17).setValue('OK'); // Col Q (17): Documento Análise
+        sheet.getRange(rowIndexToUpdate, 18).setValue(timestamp); // Col R (18): Timestamp Saída
+        sheet.getRange(rowIndexToUpdate, 19).setValue('OK'); // Col S (19): Documento Saída
+      }
+      
+      // --- LÓGICA CONDICIONAL DE PREENCHIMENTO PROGRESSIVO ---
+      
+      // Se for a rotina SIAD_AnexoD_Entrada (Envia chave "documentoEntrada")
+      if (item.documentoEntrada !== undefined) {
+        sheet.getRange(rowIndexToUpdate, 12).setValue(timestamp); // Col L (12): Timestamp Entrada
+        sheet.getRange(rowIndexToUpdate, 13).setValue(item.documentoEntrada); // Col M (13): Documento Entrada
+      }
+      
+      // Se for a rotina SIAD_AnexoD_Requisicao (Envia chave "documentoRequisicao")
+      if (item.documentoRequisicao !== undefined) {
+        sheet.getRange(rowIndexToUpdate, 14).setValue(timestamp); // Col N (14): Timestamp Requisição
+        sheet.getRange(rowIndexToUpdate, 15).setValue(item.documentoRequisicao); // Col O (15): Documento Requisição
+      }
+      
+      // Se for a rotina SIAD_AnexoD_Analise (Envia chave "documentoAnalise")
+      if (item.documentoAnalise !== undefined) {
+        sheet.getRange(rowIndexToUpdate, 16).setValue(timestamp); // Col P (16): Timestamp Análise
+        sheet.getRange(rowIndexToUpdate, 17).setValue(item.documentoAnalise); // Col Q (17): Documento Análise
+      }
+      
+      // Se for a rotina SIAD_AnexoD_Saida (Envia chave "documentoSaida")
+      if (item.documentoSaida !== undefined) {
+        sheet.getRange(rowIndexToUpdate, 11).setValue("OK"); // Finaliza a linha fechando a pendência
+        sheet.getRange(rowIndexToUpdate, 18).setValue(timestamp); // Col R (18): Timestamp Saída
+        sheet.getRange(rowIndexToUpdate, 19).setValue(item.documentoSaida); // Col S (19): Documento Saída
+      }
+      
+      // Retorna TEXT em vez de JSON para evitar o bloqueio de CORS no redirecionamento 302 do Google
+      return ContentService.createTextOutput(JSON.stringify({success: true, status: "success"}))
+        .setMimeType(ContentService.MimeType.TEXT);
+    } else {
+      return ContentService.createTextOutput(JSON.stringify({success: false, error: "Linha correspondente ao Convênio/Ano/Mês não encontrada."}))
+        .setMimeType(ContentService.MimeType.TEXT);
+    }
+    
+  } catch(err) {
+    return ContentService.createTextOutput(JSON.stringify({success: false, error: err.toString()}))
+      .setMimeType(ContentService.MimeType.TEXT);
+  }
+}

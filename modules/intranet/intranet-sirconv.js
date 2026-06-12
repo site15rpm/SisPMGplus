@@ -627,7 +627,7 @@ export class SirconvModule {
 
             <div style="background: #fff; border: 1px solid var(--theme-border); border-radius: 6px; padding: 12px; text-align: left;">
                 <h4 style="margin: 0 0 8px 0; color: var(--theme-dark-gold); border: none; padding: 0; display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: bold;">
-                    📊 Planejado no SIC3
+                    📊 Lançamentos no SIC3
                 </h4>
                 <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
                     <span>Total de itens no SIC3:</span>
@@ -716,7 +716,7 @@ export class SirconvModule {
 
             <div style="background: #fff; border: 1px solid var(--theme-border); border-radius: 6px; padding: 12px; text-align: left;">
                 <h4 style="margin: 0 0 8px 0; color: var(--theme-dark-gold); border: none; padding: 0; display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: bold;">
-                    📊 Planejado no SIC3
+                    📊 Lançamentos no SIC3
                 </h4>
                 <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
                     <span>Total de itens no SIC3:</span>
