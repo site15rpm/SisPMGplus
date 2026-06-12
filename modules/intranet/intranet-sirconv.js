@@ -611,8 +611,18 @@ export class SirconvModule {
     }
 
     createComparisonReportMessage(validItems, invalidItems, sirconvItems, comparisonResult) {
-        let message = '';
         const parseValue = (item) => parseFloat((item.valorTotal || String(item.valor || '0').replace('R$', '').trim().replace(/\./g, '').replace(',', '.')) || '0');
+
+        if (comparisonResult.areIdentical && invalidItems.length === 0) {
+            const totalValue = validItems.reduce((sum, item) => sum + parseValue(item), 0);
+            const formattedTotal = totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            return `<div style="color: green; font-weight: bold; text-align: center; margin: 10px 0; font-size: 1.1em; line-height: 1.5;">
+                ✔️ As informações do SIRCONV são idênticas às do SIC3.<br><br>
+                Todos os <strong>${validItems.length} itens</strong> estão em conformidade total, totalizando <strong>${formattedTotal}</strong>. Nenhuma ação é necessária.
+            </div>`;
+        }
+
+        let message = '';
 
         // Seção para dados do SIRCONV
         if (sirconvItems.length > 0) {
