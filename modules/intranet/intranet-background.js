@@ -2,6 +2,7 @@
 // Lógica de background específica para o módulo IntranetPMG+
 import { fetchWithKeepAlive } from '../../common/keep-alive.js';
 import { parseGoogleSheetResponse } from '../../common/google-sheets.js';
+import { sendMessageToOffscreen, closeOffscreenDocument } from './intranet-agenda-offscreen.js';
 
 async function fetchApiData(url, token, options = {}) {
     const defaultOptions = {
@@ -180,6 +181,95 @@ export async function handleIntranetMessages(request, sender) {
                  headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', 'Authorization': token, 'X-Requested-With': 'XMLHttpRequest' },
                  body: new URLSearchParams(restOfPayload.payload).toString()
              });
+        }
+        case 'sic3-v3-identify-user': {
+            const { u, c } = restOfPayload;
+            console.log(`[SIC3 v3.0 Log] Iniciando identificação no background para u: ${u}, c: ${c}`);
+            try {
+                const url = "https://intranet.policiamilitar.mg.gov.br/legado/operacoes/unidades/default.asp";
+                const bodyParams = new URLSearchParams({
+                    acao: 'Consulta',
+                    cUEOp: u,
+                    ExibeCodigo: '1'
+                });
+                
+                console.log(`[SIC3 v3.0 Log] Fazendo requisição para: ${url}`);
+                const response = await fetchWithKeepAlive(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+                    },
+                    body: bodyParams.toString(),
+                    credentials: 'include'
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Erro na requisição de unidades: ${response.status} ${response.statusText}`);
+                }
+                
+                const buffer = await response.arrayBuffer();
+                const decoder = new TextDecoder("iso-8859-1");
+                const htmlText = decoder.decode(buffer);
+                
+                console.log(`[SIC3 v3.0 Log] Resposta HTML recebida (tamanho: ${htmlText.length}). Enviando para offscreen parser...`);
+                
+                const result = await sendMessageToOffscreen('parse-unidades-html', { html: htmlText });
+                
+                if (result.error) {
+                    throw new Error(result.error);
+                }
+                
+                const parsedData = result.data || [];
+                console.log(`[SIC3 v3.0 Log] Offscreen retornou ${parsedData.length} unidades.`);
+                
+                // Procurar a unidade correspondente à seção 'c' do usuário
+                const targetUnit = parsedData.find(unit => String(unit.code) === String(c));
+                
+                if (!targetUnit) {
+                    console.warn(`[SIC3 v3.0 Log] Unidade do usuário com código c: ${c} não encontrada nas subunidades da região u: ${u}.`);
+                    return { success: false, error: `Unidade/seção do usuário (${c}) não encontrada na árvore da região/unidade (${u}).` };
+                }
+                
+                console.log(`[SIC3 v3.0 Log] Unidade do usuário correspondente encontrada:`, targetUnit);
+                
+                let nomenclatura = targetUnit.unitName;
+                let municipio = "";
+                let codigoMunicipio = "";
+                
+                if (targetUnit.unitName.includes(' - ')) {
+                    const partes = targetUnit.unitName.split(' - ');
+                    nomenclatura = partes[0].trim();
+                    const muniPart = partes[1].trim();
+                    
+                    // Regex para pegar código do município se houver, ex: "BONFIM (3003)" ou "3003 - BONFIM"
+                    const codMatch = muniPart.match(/\((\d+)\)/) || muniPart.match(/^(\d+)\s*-\s*/) || muniPart.match(/\s+(\d+)$/);
+                    if (codMatch) {
+                        codigoMunicipio = codMatch[1];
+                        municipio = muniPart.replace(codMatch[0], '').trim();
+                    } else {
+                        municipio = muniPart;
+                    }
+                }
+                
+                const resData = {
+                    success: true,
+                    codigoUnidade: targetUnit.code,
+                    nomenclatura: nomenclatura,
+                    municipio: municipio || nomenclatura,
+                    codigoMunicipio: codigoMunicipio || targetUnit.code,
+                    hierarchyPath: targetUnit.hierarchyPath
+                };
+                
+                console.log(`[SIC3 v3.0 Log] Identificação concluída. Resultado:`, resData);
+                return resData;
+                
+            } catch (error) {
+                console.error(`[SIC3 v3.0 Log] Erro ao identificar unidade e município do usuário:`, error);
+                return { success: false, error: error.message };
+            } finally {
+                await closeOffscreenDocument();
+            }
         }
     }
 }
