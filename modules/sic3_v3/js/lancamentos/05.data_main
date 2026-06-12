@@ -1,0 +1,574 @@
+<!-- js/lancamentos/05.data_main.html -->
+<script>
+var itensParaSalvarNaPrimaria = [];
+var valoresOriginais = {
+  principal: [],
+  abastecimento: [],
+  manutencao: [],
+  obsgeral: { texto: "" }
+};
+
+function agregarDadosGrupo(rows) {
+    const totalQuantidade = rows.reduce((sum, row) => sum + formatarNumero($(row).find(".quantidade-item").text(), "numero"), 0);
+    const totalSubtotal = rows.reduce((sum, row) => sum + formatarNumero($(row).find(".subtotal-item").text(), "numero"), 0);
+    const dataMaisRecente = obterDataMaisRecente(rows.map(row => $(row).find(".data-item").text()));
+    
+    const notasFiscais = rows.map(row => {
+        return $(row).find('.notaFiscal-item').text().trim();
+    }).filter(nf => nf);
+
+    const notasUnicas = [...new Set(notasFiscais)];
+
+    const observacoes = notasUnicas.length > 0 
+        ? `NFnº.: ${notasUnicas.join('; ')}` 
+        : "";
+
+    return { totalQuantidade, totalSubtotal, dataMaisRecente, observacoes };
+}
+
+async function criarOuAtualizarLinhaPrincipal(chave, dados) {
+    let linhaExistente = $(`.principal-table tbody tr`).filter(function() {
+        return $(this).find(".descricao-item").text().trim() === chave;
+    });
+
+    if (linhaExistente.length > 0) {
+        linhaExistente.find(".data-item").text(dados.data);
+        linhaExistente.find(".quantidade-item").text(formatarNumero(dados.quantidade, 'decimal'));
+        linhaExistente.find(".valorUnitario-item").text(formatarNumero(dados.valorUnitario, 'moeda'));
+        linhaExistente.find(".subtotal-item").text(formatarNumero(dados.subtotal, 'moeda'));
+        linhaExistente.find(".observacao-item").text(dados.observacao);
+    } else {
+        await inserirLinhaTabela(dados);
+    }
+}
+
+function encontrarDadosPrincipaisPorDescricao(descricao, returnJqueryObject) {
+    const returnAsJquery = returnJqueryObject === true;
+
+    let dados = null;
+    let $linhaEncontrada = $();
+    $('.principal-table tbody tr').each(function() {
+        const $row = $(this);
+        if ($row.find('.descricao-item').text().trim() === descricao) {
+            $linhaEncontrada = $row;
+            dados = {
+                linhaId: this.id,
+                codigoItem: $row.find('.codigo-item').text(),
+                descricao: $row.find('.descricao-item').text(),
+                despesa: $row.find('.despesa-item').text(),
+                unidade: $row.find('.unidade-item').text(),
+                data: $row.find('.data-item').text(),
+                quantidade: $row.find('.quantidade-item').text(),
+                valorUnitario: $row.find('.valorUnitario-item').text(),
+                observacao: $row.find('.observacao-item').text()
+            };
+            return false;
+        }
+    });
+    return returnAsJquery ? $linhaEncontrada : dados;
+}
+
+async function buscarDadosRelatorio() {
+  try {
+    const resultado = {
+      principal: [],
+      abastecimento: [],
+      manutencao: [],
+      obsgeral: { texto: "" }
+    };
+    const sheetId = idbase;
+
+    const principalData = await carregarDadosPlanilha({
+      sheetId: sheetId,
+      sheet: "principal",
+      query: `SELECT G,H,I,J,K,L,M,N,O WHERE B='${municipio}' AND C='${convenio}' AND D='${ano}' AND E='${mes}'`
+    });
+    
+    resultado.principal = principalData.map((row) => ({
+        codigo: row[0] || "",
+        descricao: row[1] || "",
+        despesa: row[2] || "",
+        unidade: row[3] || "",
+        data: row[4] || "",
+        quantidade: row[5] || "",
+        valorUnitario: row[6] || "",
+        subtotal: row[7] || 0,
+        observacao: row[8] || ""
+    }));
+
+    const abastecimentoData = await carregarDadosPlanilha({
+      sheetId: sheetId,
+      sheet: "abastecimento",
+      query: `SELECT G,H,I,J,K,L,M,N,O,P WHERE B='${municipio}' AND C='${convenio}' AND D='${ano}' AND E='${mes}'`
+    });
+    resultado.abastecimento = abastecimentoData.map((row) => ({
+      data: row[0] || "", placa: row[1] || "", prefixo: row[2] || "",
+      odometro: row[3] || "", motorista: row[4] || "", tipo: row[5] || "",
+      quantidade: row[6] || "", valorUnitario: row[7] || "", subtotal: row[8] || "",
+      notaFiscal: row[9] || ""
+    }));
+
+    const manutencaoData = await carregarDadosPlanilha({
+      sheetId: sheetId,
+      sheet: "manutencao",
+      query: `SELECT G,H,I,J,K,L,M,N,O,P WHERE B='${municipio}' AND C='${convenio}' AND D='${ano}' AND E='${mes}'`
+    });
+
+    resultado.manutencao = manutencaoData.map((row) => ({
+      tipo: "",
+      data: row[0] || "",
+      placa: row[1] || "",
+      prefixo: row[2] || "",
+      odometro: row[3] || "",
+      responsavel: row[4] || "",
+      descricao: row[5] || "",
+      quantidade: row[6] || "",
+      valorUnitario: row[7] || "",
+      subtotal: row[8] || "",
+      notaFiscal: row[9] || ""
+    }));
+
+    const obsgeralData = await carregarDadosPlanilha({
+      sheetId: sheetId,
+      sheet: "obsgeral",
+      query: `SELECT G WHERE B='${municipio}' AND C='${convenio}' AND D='${ano}' AND E='${mes}'`
+    });
+    resultado.obsgeral = { texto: (obsgeralData[0] && obsgeralData[0][0]) || "" };
+
+    return resultado;
+  } catch (error) {
+    console.error("Erro ao buscar dados:", error);
+    manipularErro(error, "buscarDadosRelatorio");
+    throw error;
+  }
+}
+
+function preencherTabelaPrincipal(dados) {
+  if (!Array.isArray(dados)) return;
+  $(".principal-table tbody").empty();
+  dados.forEach((linha) => { inserirLinhaTabela(linha); });
+  ocultarCarregamento();
+}
+
+function atualizarNumeracaoLinhas() {
+  $(".principal-table tbody tr.linha-principal").each(function(index) {
+    $(this).find(".numero-item").text(index + 1);
+  });
+}
+
+function ordenarLinhas() {
+  const $tbody = $(".principal-table tbody");
+  
+  const getSortKey = (code, despesa) => {
+    if (code.startsWith("O")) return 1;
+    if (despesa.includes("3026")) return 4;
+    if (despesa.includes("3023") || despesa.includes("3918")) return 3;
+    return 2;
+  };
+
+  const rowsToSort = $tbody.find("tr.linha-principal").map(function() {
+    const $row = $(this);
+    const code = $row.find(".codigo-item").text();
+    const despesa = $row.find(".despesa-item").text();
+    const descricao = $row.find(".descricao-item").text();
+    
+    return {
+      row: this,
+      sortKey: getSortKey(code, despesa),
+      despesa: despesa,
+      descricao: descricao
+    };
+  }).get();
+
+  rowsToSort.sort((a, b) => {
+    if (a.sortKey !== b.sortKey) {
+      return a.sortKey - b.sortKey;
+    }
+    if (a.despesa !== b.despesa) {
+      return a.despesa.localeCompare(b.despesa, undefined, { numeric: true });
+    }
+    return a.descricao.localeCompare(b.descricao, undefined, { numeric: true });
+  });
+
+  const sortedRows = rowsToSort.map(item => item.row);
+  $tbody.append(sortedRows);
+}
+
+
+function calcularTotalTabela() {
+  const total = $(".principal-table tbody tr.linha-principal .subtotal-item")
+    .toArray()
+    .reduce((acc, el) => acc + formatarNumero($(el).text(), "numero"), 0);
+  $(".principal-table tfoot .total-valor").text(formatarNumero(total, "moeda"));
+}
+
+function inserirLinhaTabela(linha) {
+  if (!linha || typeof linha.codigo === 'undefined') {
+      console.error("Tentativa de inserir linha inválida na tabela principal:", linha);
+      return;
+  }
+  
+  const despesa = linha.despesa || "";
+  const isSummary = despesa.includes("3023") || despesa.includes("3026") || despesa.includes("3918");
+  const newRowId = "linha-principal-" + Math.random().toString(36).substr(2, 9); 
+
+  const novaLinhaHtml = `
+    <tr class="linha-principal" id="${newRowId}">
+      <td class="numero-item"></td>
+      <td class="codigo-item">${linha.codigo || ""}</td>
+      <td class="descricao-item">${linha.descricao || ""}</td>
+      <td class="despesa-item">${linha.despesa || ""}</td>
+      <td class="unidade-item">${linha.unidade || ""}</td>
+      <td class="data-item">${linha.data || ""}</td>
+      <td class="quantidade-item">${formatarNumero(linha.quantidade, "decimal")}</td>
+      <td class="valorUnitario-item">${formatarNumero(linha.valorUnitario, "moeda")}</td>
+      <td class="subtotal-item">${formatarNumero(linha.subtotal, "moeda")}</td>
+      <td class="observacao-item">${linha.observacao || ""}</td>
+      <td class="acao-item" style="display: ${!isSummary ? 'table-cell' : 'none'};">
+        ${!isSummary ? `
+          <button type="button" class="btn-editar btn-warning" title="Editar"><i class="fas fa-edit"></i></button>
+          <button type="button" class="btn-excluir btn-danger" title="Excluir"><i class="fas fa-trash"></i></button>
+        ` : ""}
+      </td>
+    </tr>`;
+  $(".principal-table tbody").append(novaLinhaHtml);
+  
+  if (linha.fileData) {
+      $("#" + newRowId).attr('data-file-info', JSON.stringify(linha.fileData));
+  }
+  
+  if (linha.item99Info) {
+      $("#" + newRowId).attr('data-item99-info', JSON.stringify(linha.item99Info));
+  }
+
+
+  ordenarLinhas();
+  atualizarNumeracaoLinhas();
+  calcularTotalTabela();
+  atualizarVisibilidadeContainers();
+  
+  return newRowId; 
+}
+
+
+async function editarRelatorio() {
+  if (!window.formularioMaterial) {
+    window.formularioMaterial = { tipo: "material" };
+    await carregarPesquisaMaterial();
+  }
+
+  const showSelectors = [".principal-table th.acao-item, .btn-inserirAbastecimento", ".btn-inserirManutencao", ".btn-salvarDados", ".btn-cancelarEdicao", ".outrosDropdown-toggle", ".pesquisa-container"];
+  const hideSelectors = [".btn-infoConvenio", ".btn-editarDados", ".btn-gerarAnexoD", ".btn-gerarAnexoUnico"];
+
+  showSelectors.forEach(selector => $(selector).show());
+  hideSelectors.forEach(selector => $(selector).hide());
+
+  $(".principal-table tbody tr.linha-principal").each(function() {
+    const $row = $(this);
+    const codigo = $row.find(".codigo-item").text();
+    const despesa = $row.find(".despesa-item").text();
+    const isSummary = codigo.includes("000025593") || despesa.includes("3023") || despesa.includes("3026");
+    if (!isSummary) {
+      $row.find(".acao-item").css("display", "table-cell");
+    }
+  });
+  
+  $(".abastecimento-table .acao-item, .manutencao-table .acao-item").css("display", "table-cell");
+
+  document.querySelector(".obsgeral")?.classList.add("editavel");
+}
+
+
+async function cancelarEdicao() {
+  const confirmResult = await confirmarAcao("Confirmar Cancelamento", "Todos os dados editados e não salvos serão perdidos. Deseja continuar?");
+  if (!confirmResult) return;
+
+  try {
+    const isInitialLaunchMode = (!valoresOriginais.principal || valoresOriginais.principal.length === 0) &&
+                                (!valoresOriginais.abastecimento || valoresOriginais.abastecimento.length === 0) &&
+                                (!valoresOriginais.manutencao || valoresOriginais.manutencao.length === 0);
+
+    if (isInitialLaunchMode) {
+      $(".principal-table tbody, .abastecimento-table tbody, .manutencao-table tbody").empty();
+      $(".obsgeral").text("SEM OBSERVACOES").addClass("editavel");
+
+      await atualizarTotaisInfoAbastecimento();
+      await atualizarTotaisInfoManutencao();
+      calcularTotalTabela();
+      atualizarNumeracaoLinhas();
+      $(".acao-item, .btn-inserirAbastecimento, .btn-inserirManutencao, .btn-salvarDados, .btn-cancelarEdicao, .outrosDropdown-toggle, .pesquisa-container").css("display", function() { return this.tagName === "TD" ? "table-cell" : "block"; });
+      $(".btn-infoConvenio, .btn-editarDados, .btn-gerarAnexoD, .btn-gerarAnexoUnico").hide();
+      if (window.formularioMaterial?.table) {
+        window.formularioMaterial.table.destroy();
+        delete window.formularioMaterial.table;
+      }
+      if ($.fn.DataTable.isDataTable('#dataTable')) {
+          $('#dataTable').DataTable().search('').columns().search('').draw();
+      }
+      window.formularioOutrosItens = {};
+
+    } else {
+      $(".btn-gerarAnexoD, .btn-gerarAnexoUnico").show();
+      await preencherTabelaPrincipal(valoresOriginais.principal);
+      await preencherTabelaAbastecimento(valoresOriginais.abastecimento);
+      await preencherTabelaManutencao(valoresOriginais.manutencao);
+      $(".obsgeral").text(valoresOriginais.obsgeral.texto || "SEM OBSERVACOES").removeClass("editavel");
+
+      await atualizarTotaisInfoAbastecimento();
+      await atualizarTotaisInfoManutencao();
+
+      const hideSelectors = [".acao-item", ".btn-inserirAbastecimento", ".btn-inserirManutencao", ".btn-salvarDados", ".btn-cancelarEdicao", ".outrosDropdown-toggle", ".pesquisa-container"];
+      const showSelectors = [".btn-infoConvenio", ".btn-editarDados"];
+
+      showSelectors.forEach(selector => $(selector).show());
+      hideSelectors.forEach(selector => $(selector).hide());
+      
+      if (window.formularioMaterial?.table) {
+        window.formularioMaterial.table.destroy();
+        delete window.formularioMaterial.table;
+      }
+       if ($.fn.DataTable.isDataTable('#dataTable')) {
+          $('#dataTable').DataTable().search('').columns().search('').draw();
+      }
+      window.formularioOutrosItens = {};
+    }
+    atualizarVisibilidadeContainers();
+  } catch (error) {
+    manipularErro(error, "cancelarEdicao");
+  }
+}
+
+async function salvarDados() {
+  const confirmResult = await confirmarAcao("Confirmar Salvamento", "Deseja salvar os dados?");
+  if (!confirmResult) return;
+
+  mostrarCarregamento("Aguarde, salvando relatório...");
+
+  try {
+    const authToken = sessionStorage.getItem('authToken') || '';
+
+    const dadosCompletos = {
+      principal: formatarDadosPrincipais(),
+      abastecimento: formatarDadosAbastecimento(),
+      manutencao: formatarDadosManutencao(),
+      obsgeral: formatarObservacoes(),
+      valorTotal: $(".principal-table tfoot .total-valor").text()
+    };
+
+    // Dispara o salvamento dos itens primários em segundo plano (fire-and-forget)
+    if (itensParaSalvarNaPrimaria.length > 0) {
+        google.script.run.salvarItensPrimariosEmLote(itensParaSalvarNaPrimaria);
+    }
+
+    // Aguarda apenas o salvamento do relatório principal
+    const resultFinal = await new Promise((resolve, reject) => {
+      google.script.run
+        .withSuccessHandler(resolve)
+        .withFailureHandler(reject)
+        .salvarDadosNaPlanilha(authToken, municipio, convenio, ano, mes, dadosCompletos);
+    });
+
+    if (resultFinal && resultFinal.success) {
+      // Limpa a fila local após o sucesso do salvamento principal
+      itensParaSalvarNaPrimaria = [];
+
+      const mapeamento = resultFinal.mapeamento;
+      if (mapeamento && Object.keys(mapeamento).length > 0) {
+        Object.keys(mapeamento).forEach(placeholderId => {
+          const rowToUpdate = document.getElementById(placeholderId);
+          if (rowToUpdate) {
+            $(rowToUpdate).find('.codigo-item').text(mapeamento[placeholderId]);
+            const itemInfoAttr = $(rowToUpdate).attr('data-item99-info');
+            if (itemInfoAttr) {
+              const itemInfo = JSON.parse(itemInfoAttr);
+              itemInfo.isNew = false;
+              $(rowToUpdate).attr('data-item99-info', JSON.stringify(itemInfo));
+            }
+            $(rowToUpdate).removeAttr('data-item99-placeholder-id');
+          } else {
+            console.warn(`[LOG-CLIENTE] AVISO: Linha com placeholderId ${placeholderId} não encontrada no DOM para atualização.`);
+          }
+        });
+      }
+
+      const isReportEmpty = (!dadosCompletos.principal || dadosCompletos.principal.length === 0) &&
+                           (!dadosCompletos.abastecimento || dadosCompletos.abastecimento.length === 0) &&
+                           (!dadosCompletos.manutencao || dadosCompletos.manutencao.length === 0);
+      
+      const dadosDaTabelaParaCache = formatarDadosPrincipais(true).map(rowWrapper => {
+          const rowArray = rowWrapper[0];
+          return {
+              codigo: rowArray[1] || "",
+              descricao: rowArray[2] || "",
+              despesa: rowArray[3] || "",
+              unidade: rowArray[4] || "",
+              data: rowArray[5] || "",
+              quantidade: rowArray[6] || "",
+              valorUnitario: rowArray[7] || "",
+              subtotal: rowArray[8] || "",
+              observacao: rowArray[9] || ""
+          };
+      });
+
+      valoresOriginais = {
+          principal: copiarDados(dadosDaTabelaParaCache),
+          abastecimento: copiarDados(dadosCompletos.abastecimento.map(d => ({...d}))),
+          manutencao: copiarDados(dadosCompletos.manutencao.map(d => ({...d}))),
+          obsgeral: copiarDados(dadosCompletos.obsgeral)
+      };
+      
+      if (acao == "lancar") acao = "editar";
+
+      if (isReportEmpty) {
+        $(".principal-table tbody, .abastecimento-table tbody, .manutencao-table tbody").empty();
+        $(".obsgeral").text("SEM OBSERVACOES").addClass("editavel");
+        await atualizarTotaisInfoAbastecimento();
+        await atualizarTotaisInfoManutencao();
+        calcularTotalTabela();
+        atualizarNumeracaoLinhas();
+        atualizarVisibilidadeContainers();
+        mostrarDialogo("Sucesso", "Dados salvos com sucesso! O relatório está vazio.");
+      } else {
+        const hideSelectors = [".acao-item", ".btn-inserirAbastecimento", ".btn-inserirManutencao", ".btn-salvarDados", ".btn-cancelarEdicao", ".outrosDropdown-toggle", ".pesquisa-container"];
+        const showSelectors = [".btn-infoConvenio", ".btn-editarDados", ".btn-gerarAnexoD", ".btn-gerarAnexoUnico"];
+        showSelectors.forEach(selector => $(selector).show());
+        hideSelectors.forEach(selector => $(selector).hide());
+        $(".editavel").removeClass("editavel");
+        mostrarDialogo("Sucesso", "Dados salvos com sucesso!");
+      }
+      return true;
+    } else {
+      throw new Error(resultFinal.message || "Falha ao salvar o relatório completo.");
+    }
+  } catch (error) {
+    manipularErro(error, "salvarDados");
+    await cancelarEdicao(); 
+    return false;
+  } finally {
+    ocultarCarregamento();
+  }
+}
+
+
+function copiarDados(dados) {
+  return JSON.parse(JSON.stringify(dados));
+}
+
+function formatarDadosPrincipais(getFromDOM = false) {
+  return $(".principal-table tbody tr.linha-principal").map(function() {
+    const $row = $(this);
+    const rowDataArray = formatarLinhaPrincipalParaArray($row);
+
+    if (getFromDOM) {
+        return [rowDataArray.slice(0, 10)];
+    }
+
+    const item99InfoAttr = $row.attr('data-item99-info');
+    const item99Info = item99InfoAttr ? JSON.parse(item99InfoAttr) : null;
+    
+    console.log('[formatarDadosPrincipais] Processando linha:', $row.attr('id'), 'item99Info:', item99Info);
+    
+    const item99PlaceholderId = $row.attr('data-item99-placeholder-id') || this.id;
+    
+    const fileInfoAttr = $row.attr('data-file-info');
+    const fileInfo = fileInfoAttr ? JSON.parse(fileInfoAttr) : null;
+    
+    rowDataArray[10] = item99Info ? JSON.stringify(item99Info) : null;
+    rowDataArray[11] = item99PlaceholderId || null;
+    if (fileInfo) {
+        rowDataArray[12] = fileInfo.base64Data;
+        rowDataArray[13] = fileInfo.mimeType;
+    } else {
+        rowDataArray[12] = null;
+        rowDataArray[13] = null;
+    }
+    
+    return [rowDataArray];
+  }).get();
+}
+
+function formatarLinhaPrincipalParaArray($row) {
+    return [
+      $row.find(".numero-item").text(), 
+      $row.find(".codigo-item").text(),
+      $row.find(".descricao-item").text(), 
+      $row.find(".despesa-item").text(),
+      $row.find(".unidade-item").text(), 
+      $row.find(".data-item").text(),
+      $row.find(".quantidade-item").text(), 
+      $row.find(".valorUnitario-item").text(),
+      $row.find(".subtotal-item").text(), 
+      $row.find(".observacao-item").text(),
+      null,
+      null,
+      null,
+      null
+    ];
+}
+
+
+function formatarDadosAbastecimento() {
+  return $(".abastecimento-table tbody tr").map(function() {
+    const $row = $(this);
+    return [[
+      $row.find(".numero-item").text(), $row.find(".data-item").text(),
+      $row.find(".placa-item").text(), $row.find(".prefixo-item").text(),
+      $row.find(".odometro-item").text(), $row.find(".motorista-item").text(),
+      $row.find(".tipo-item").text(), $row.find(".quantidade-item").text(),
+      $row.find(".valorUnitario-item").text(), $row.find(".subtotal-item").text(),
+      $row.find(".notaFiscal-item").text()
+    ]];
+  }).get();
+}
+
+function formatarDadosManutencao() {
+  return $(".manutencao-table tbody tr").map(function() {
+    const $row = $(this);
+    return [[
+      $row.find(".numero-item").text(), $row.find(".data-item").text(),
+      $row.find(".placa-item").text(), $row.find(".prefixo-item").text(),
+      $row.find(".odometro-item").text(), $row.find(".responsavel-item").text(),
+      $row.find(".descricao-item").text(), $row.find(".quantidade-item").text(),
+      $row.find(".valorUnitario-item").text(), $row.find(".subtotal-item").text(),
+      $row.find(".notaFiscal-item").text()
+    ]];
+  }).get();
+}
+
+function formatarObservacoes() {
+  return { dados: [$(".obsgeral").text()] };
+}
+
+async function configurarEventosDados() {
+  $(document).on("click", ".obsgeral.editavel", function() {
+    const currentText = $(this).text().trim() == "SEM OBSERVACOES" ? "" : $(this).text().trim();
+    const dialogHtml = `<div class="dialog-form"><textarea id="dialog-observacao">${currentText}</textarea></div>`;
+    $("#dialog-message").empty().html(dialogHtml).dialog({
+      title: "Editar Observação Geral", modal: true, width: "auto",
+      buttons: {
+        SALVAR: function() {
+          $(".obsgeral").text($("#dialog-observacao").val().trim() || "SEM OBSERVACOES");
+          $(this).dialog("close");
+        },
+        CANCELAR: function() { $(this).dialog("close"); }
+      },
+      close: function() { $(this).dialog('destroy'); $(this).empty();}
+    }).dialog("open");
+  });
+  
+  $(document).on("click", ".observacao-item, .descricao-item, .despesa-item, .unidade-item", function() {
+    mostrarDialogo("Visualização completa", $(this).text());
+  });
+
+  $(document).on("click", ".obsgeral:not(.editavel)", function() {
+    mostrarDialogo("Observação Geral", $(this).text());
+  });
+}
+
+function atualizarVisibilidadeContainers() {
+  $(".principal-container").toggle($(".principal-table tbody tr").length > 0);
+  $(".abastecimento-container").toggle($(".abastecimento-table tbody tr").length > 0);
+  $(".manutencao-container").toggle($(".manutencao-table tbody tr").length > 0);
+}
+
+</script>

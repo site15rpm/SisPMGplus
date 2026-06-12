@@ -1,60 +1,425 @@
-// Arquivo: modules/sic3_v3/sic3-app.js
-// Controlador SPA do SIC3 v3.0 com Interface Premium e Logs integrados
+// Arquivo: modules/sic3/sic3-app.js
+// Roteador e Controlador Principal do SPA do SIC3 na extensão SisPMGplus.
 
 import { executarApi, getGasApiUrl, saveGasApiUrl } from './api.js';
 
-// --- logs de depuração ---
-function logDebug(message, data = null) {
-    const timestamp = new Date().toLocaleTimeString('pt-BR');
-    console.log(`%c[SIC3 v3.0 Log ${timestamp}] ${message}`, 'color: #a08f63; font-weight: bold;', data || '');
+// Funções de decodificação de credenciais do tokiuz (Intranet PM)
+function decodeJwt(token) {
+    if (!token || typeof token !== 'string') return null;
+    try { 
+        const parts = token.split('.');
+        if (parts.length !== 3) return null;
+        let payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+        const pad = payload.length % 4;
+        if (pad) payload += '='.repeat(4 - pad);
+        return JSON.parse(atob(payload)); 
+    } catch (e) { 
+        console.error("Erro ao decodificar JWT:", e); 
+        return null; 
+    } 
 }
 
-function logError(message, error = null) {
-    const timestamp = new Date().toLocaleTimeString('pt-BR');
-    console.error(`%c[SIC3 v3.0 Erro ${timestamp}] ${message}`, 'color: #AB2328; font-weight: bold;', error || '');
+function getCookie(name) { 
+    const v = `; ${document.cookie}`; 
+    const p = v.split(`; ${name}=`); 
+    if (p.length === 2) return p.pop().split(';').shift(); 
+    return undefined; 
 }
 
-// --- Inicialização de variáveis de contexto ---
-window.municipio = "";
-window.rpm = "15";
-window.secao = "";
-window.ano = new Date().getFullYear().toString();
+function extrairRpmDoToken() {
+    try {
+        const token = getCookie('tokiuz');
+        if (!token) return null;
+        const tokenData = decodeJwt(token);
+        if (!tokenData) return null;
+        
+        // e = codigoRegiao (geralmente número puro da RPM, ex: "15" ou 15)
+        if (tokenData.e) {
+            const match = String(tokenData.e).match(/\d+/);
+            if (match) return match[0];
+        }
+        
+        // r = regiao (ex: "15ª RPM" ou "15 RPM")
+        if (tokenData.r) {
+            const match = String(tokenData.r).match(/\d+/);
+            if (match) return match[0];
+        }
+        
+        // u = codigoUnidadeContabil
+        if (tokenData.u) {
+            const match = String(tokenData.u).match(/\d+/);
+            if (match) return match[0];
+        }
+    } catch (e) {
+        console.error("Erro ao extrair RPM do token:", e);
+    }
+    return null;
+}
 
-// Variáveis de perfil de usuário do tokiuz
-window.userPM = "";
-window.userNome = "";
-window.userSecao = "";
-window.userRegiao = "";
-window.isAdmin = false;
+// Elementos do DOM
+const appContainer = document.getElementById('sic3-views-container') || document.getElementById('sic3-app-container');
+const globalOverlay = document.getElementById('loading-overlay-global');
+const globalOverlayMessage = document.getElementById('loading-message-global');
+const apiUrlInput = document.getElementById('api-gas-url-input');
+const apiUrlSaveBtn = document.getElementById('api-gas-url-save-btn');
 
 // Utilitários de Carregamento Global
 window.mostrarCarregamentoGlobal = function(mensagem = "Aguarde...") {
-    const overlay = document.getElementById('loading-overlay-global');
-    const msgEl = document.getElementById('loading-message-global');
-    if (overlay && msgEl) {
-        msgEl.textContent = mensagem;
-        overlay.style.opacity = '1';
-        overlay.style.display = "flex";
-    }
+    globalOverlayMessage.textContent = mensagem;
+    globalOverlay.style.display = "flex";
 };
 
 window.ocultarCarregamentoGlobal = function() {
-    const overlay = document.getElementById('loading-overlay-global');
-    if (overlay) {
-        overlay.style.opacity = '0';
-        setTimeout(() => {
-            overlay.style.display = "none";
-        }, 300);
+    globalOverlay.style.display = "none";
+};
+
+// Histórico de Scripts e CSS injetados dinamicamente para evitar duplicação ou lixo
+let activeStylesheets = [];
+let activeScripts = [];
+
+/**
+ * Limpa recursos (CSS e JS) injetados dinamicamente na navegação anterior.
+ */
+function limparRecursosInjetados() {
+    activeStylesheets.forEach(el => el.remove());
+    activeStylesheets = [];
+    
+    activeScripts.forEach(el => el.remove());
+    activeScripts = [];
+}
+
+/**
+ * Injeta uma folha de estilo CSS dinamicamente.
+ */
+function carregarCSS(url) {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = url;
+    document.head.appendChild(link);
+    activeStylesheets.push(link);
+}
+
+/**
+ * Injeta um arquivo JavaScript de forma clássica no escopo global.
+ */
+function carregarJS(url) {
+    return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = url;
+        script.onload = () => resolve(script);
+        script.onerror = () => reject(new Error(`Falha ao carregar o script: ${url}`));
+        document.body.appendChild(script);
+        activeScripts.push(script);
+    });
+}
+
+/**
+ * Carrega o fragmento de HTML local.
+ */
+async function obterHtmlLocal(url) {
+    const response = await fetch(url);
+    if (!response.ok) {
+        throw new Error(`Erro ao carregar fragmento HTML local: ${url}`);
+    }
+    return await response.text();
+}
+
+// ============================================================================
+// SHIM DE COMPATIBILIDADE PARA google.script.run (RETROFIT PARA EXTENSÃO)
+// ============================================================================
+const scriptRunShim = {
+    _successHandler: null,
+    _failureHandler: null,
+    
+    withSuccessHandler(handler) {
+        this._successHandler = handler;
+        return this;
+    },
+    
+    withFailureHandler(handler) {
+        this._failureHandler = handler;
+        return this;
     }
 };
 
-/**
- * Inicialização principal do SPA
- */
-document.addEventListener("DOMContentLoaded", async () => {
-    logDebug("Inicializando o SIC3 v3.0 DOM...");
-    window.mostrarCarregamentoGlobal("Carregando contexto de usuário...");
+const runProxy = new Proxy(scriptRunShim, {
+    get(target, propKey) {
+        if (propKey === 'withSuccessHandler' || propKey === 'withFailureHandler') {
+            return target[propKey].bind(target);
+        }
+        
+        // Retorna uma função dinâmica correspondente a rota do GAS
+        return function(...args) {
+            const successHandler = target._successHandler;
+            const failureHandler = target._failureHandler;
+            
+            target._successHandler = null;
+            target._failureHandler = null;
+            
+            // Exibe feedback visual de carregamento para operações de gravação pesadas
+            if (['salvarDadosNaPlanilha', 'incluirConvenio', 'alterarConvenio', 'excluirConvenio'].includes(propKey)) {
+                if (typeof window.mostrarCarregamento === 'function') {
+                    window.mostrarCarregamento("Salvando dados no servidor...");
+                }
+            }
+            
+            // Dispara chamada de API assíncrona
+            executarApi(propKey, args)
+                .then(result => {
+                    if (typeof window.ocultarCarregamento === 'function') {
+                        window.ocultarCarregamento();
+                    }
+                    if (successHandler) {
+                        // O front-end do GAS espera receber a string de conteúdo HTML para renderização em algumas rotas
+                        // Se o retorno contiver HTML gerado de rotas como 'voltarParaPainelAdmin' ou 'logoutUser',
+                        // nós interceptamos e fazemos a navegação local na extensão em vez de injetar HTML bruto!
+                        if (result && result.success && typeof result.content === 'string') {
+                            const matchPage = result.content.match(/var pUser = "([^"]*)"/);
+                            if (matchPage && matchPage[1]) {
+                                const pageTarget = matchPage[1].split('/').pop(); // 'admin' ou 'login'
+                                const tokenMatch = result.content.match(/var authToken = "([^"]*)"/);
+                                const mLogMatch = result.content.match(/var mLog = "([^"]*)"/);
+                                const nUserMatch = response.content?.match(/var nUser = "([^"]*)"/) || [];
+                                
+                                navegarPara(pageTarget, {
+                                    authToken: tokenMatch ? tokenMatch[1] : '',
+                                    mLog: mLogMatch ? mLogMatch[1] : '',
+                                    nUser: nUserMatch ? nUserMatch[1] : '',
+                                    convenios: result.convenios || []
+                                });
+                                return;
+                            }
+                        }
+                        successHandler(result);
+                    }
+                })
+                .catch(err => {
+                    if (typeof window.ocultarCarregamento === 'function') {
+                        window.ocultarCarregamento();
+                    }
+                    if (failureHandler) {
+                        failureHandler(err);
+                    } else {
+                        console.error(`Erro ao executar chamada API [${propKey}]:`, err);
+                        alert(`Erro de conexão com o servidor GAS: ${err.message}`);
+                    }
+                });
+        };
+    }
+});
+
+// Inicialização Global
+window.google = {
+    script: {
+        run: runProxy
+    }
+};
+
+// Atacha manipulador para injeções legadas (includeHtmlBody)
+window.includeHtmlBody = function(contentHtml) {
+    if (!contentHtml || typeof contentHtml !== 'string') return;
     
+    // Tenta identificar qual tela renderizar a partir da variável pUser do HTML recebido
+    const matchPage = contentHtml.match(/var pUser = "([^"]*)"/);
+    if (matchPage && matchPage[1]) {
+        const pageTarget = matchPage[1].split('/').pop(); // 'admin', 'login', 'lancamentos'
+        
+        const tokenMatch = contentHtml.match(/var authToken = "([^"]*)"/);
+        const mLogMatch = contentHtml.match(/var mLog = "([^"]*)"/);
+        const nUserMatch = contentHtml.match(/var nUser = "([^"]*)"/);
+        const idbaseMatch = contentHtml.match(/var idbase = "([^"]*)"/);
+        
+        // Parâmetros para Lançamentos se houver
+        const municipioMatch = contentHtml.match(/var municipio = "([^"]*)"/);
+        const convenioMatch = contentHtml.match(/var convenio = "([^"]*)"/);
+        const anoMatch = contentHtml.match(/var ano = "([^"]*)"/);
+        const mesMatch = contentHtml.match(/var mes = "([^"]*)"/);
+        const acaoMatch = contentHtml.match(/var acao = "([^"]*)"/);
+
+        navegarPara(pageTarget, {
+            authToken: tokenMatch ? tokenMatch[1] : '',
+            mLog: mLogMatch ? mLogMatch[1] : '',
+            nUser: nUserMatch ? nUserMatch[1] : '',
+            idbase: idbaseMatch ? idbaseMatch[1] : '',
+            municipio: municipioMatch ? municipioMatch[1] : '',
+            convenio: convenioMatch ? convenioMatch[1] : '',
+            ano: anoMatch ? anoMatch[1] : '',
+            mes: mesMatch ? mesMatch[1] : '',
+            acao: acaoMatch ? acaoMatch[1] : ''
+        });
+    }
+};
+
+// ============================================================================
+// NAVEGAÇÃO SPA
+// ============================================================================
+
+/**
+ * Roteia a aplicação para a página especificada.
+ * @param {string} pagina - 'login', 'admin' ou 'lancamentos'
+ * @param {object} [contexto={}] - Variáveis de contexto para passar à página
+ */
+export async function navegarPara(pagina, contexto = {}) {
+    window.mostrarCarregamentoGlobal(`Carregando painel ${pagina}...`);
+    limparRecursosInjetados();
+
+    try {
+        // Propaga o RPM e Ano vindos do contexto para o escopo global
+        if (contexto.rpm) window.rpm = contexto.rpm;
+        if (contexto.ano) window.ano = contexto.ano;
+        if (contexto.mLog) window.mLog = contexto.mLog;
+
+        // Resolve dinamicamente os IDs específicos das planilhas compartilhadas
+        const rpmAtiva = window.rpm || "15";
+        const anoAtivo = window.ano || new Date().getFullYear().toString();
+
+        if (!window.idBDConvenios || !window.idBDEnderecos || !window.idTBPrimaria || !window.idTBSecundaria || contexto.idbase) {
+            try {
+                const resId = await executarApi("obterIdPlanilha", [rpmAtiva, anoAtivo]);
+                if (resId && resId.success) {
+                    window.idbase = contexto.idbase || resId.spreadsheetId || window.idbase;
+                    if (resId.arquivosCompartilhados) {
+                        window.idBDConvenios = resId.arquivosCompartilhados.BDConvenios;
+                        window.idBDEnderecos = resId.arquivosCompartilhados.BDEnderecos;
+                        window.idTBPrimaria = resId.arquivosCompartilhados.TBPrimaria;
+                        window.idTBSecundaria = resId.arquivosCompartilhados.TBSecundaria;
+
+                        sessionStorage.setItem("sic3_idBDConvenios", resId.arquivosCompartilhados.BDConvenios);
+                        sessionStorage.setItem("sic3_idBDEnderecos", resId.arquivosCompartilhados.BDEnderecos);
+                        sessionStorage.setItem("sic3_idTBPrimaria", resId.arquivosCompartilhados.TBPrimaria);
+                        sessionStorage.setItem("sic3_idTBSecundaria", resId.arquivosCompartilhados.TBSecundaria);
+                    }
+                }
+            } catch (apiErr) {
+                console.error("Erro ao obter IDs das planilhas compartilhadas no roteador:", apiErr);
+            }
+        }
+
+        if (pagina === 'login') {
+            const html = await obterHtmlLocal('sic3_v3/html/login.html');
+            appContainer.innerHTML = html;
+            
+            carregarCSS('sic3_v3/css/login.css');
+            
+            window.pUser = contexto.pUser || "html/login";
+            window.mLog = contexto.mLog || "";
+            window.nUser = contexto.nUser || "";
+            window.authToken = contexto.authToken || "";
+            window.idbase = contexto.idbase || "";
+
+            await carregarJS('sic3_v3/js/utils_global.js');
+            await carregarJS('sic3_v3/js/form_validation.js');
+            await carregarJS('sic3_v3/js/login-controller.js');
+            
+        } else if (pagina === 'admin') {
+            const html = await obterHtmlLocal('sic3_v3/html/admin.html');
+            appContainer.innerHTML = html;
+            
+            carregarCSS('sic3_v3/css/admin.css');
+            
+            window.pUser = contexto.pUser || "html/admin";
+            window.mLog = contexto.mLog || window.mLog || "";
+            window.nUser = contexto.nUser || "";
+            window.authToken = contexto.authToken || "";
+            window.idbase = contexto.idbase || "";
+            window.dadosConveniosPrepostos = [];
+            
+            if (contexto.convenios) {
+                window.convenios = typeof contexto.convenios === 'string' ? contexto.convenios : JSON.stringify(contexto.convenios);
+            }
+
+            window.ADMIN_CONFIG = window.ADMIN_CONFIG || {
+                adminInicializado: false,
+                lancamentosCarregados: false,
+                dados: {
+                    convenios: [],
+                    lancamentos: [],
+                    anos: [],
+                },
+                estados: {
+                    carregando: 0,
+                    telaAtual: "lancamentos",
+                },
+            };
+
+            await carregarJS('sic3_v3/js/utils_global.js');
+            await carregarJS('sic3_v3/js/form_validation.js');
+            await carregarJS('sic3_v3/js/admin/interface_ui.js');
+            await carregarJS('sic3_v3/js/admin/carreg_manip_dados.js');
+            await carregarJS('sic3_v3/js/admin/utilitarios.js');
+            await carregarJS('sic3_v3/js/admin/crud_convenios.js');
+            await carregarJS('sic3_v3/js/admin/datatables.js');
+            await carregarJS('sic3_v3/js/admin/gerarpdf.js');
+            await carregarJS('sic3_v3/js/admin/init_config_geral.js');
+            
+        } else if (pagina === 'lancamentos') {
+            const html = await obterHtmlLocal('sic3_v3/html/lancamentos.html');
+            appContainer.innerHTML = html;
+            
+            carregarCSS('sic3_v3/css/lancamentos.css');
+            
+            window.pUser = contexto.pUser || "html/lancamentos";
+            window.mLog = contexto.mLog || window.mLog || "";
+            window.nUser = contexto.nUser || "";
+            window.municipio = contexto.municipio || "";
+            window.convenio = contexto.convenio || "";
+            window.ano = contexto.ano || "";
+            window.mes = contexto.mes || "";
+            window.acao = contexto.acao || "";
+            window.authToken = contexto.authToken || "";
+            window.idbase = contexto.idbase || "";
+            window.preposto_n = "";
+            window.preposto_pg = "";
+            window.preposto = "";
+
+            await carregarJS('sic3_v3/js/utils_global.js');
+            await carregarJS('sic3_v3/js/form_validation.js');
+            await carregarJS('sic3_v3/js/lancamentos/global_vars_and_init.js');
+            await carregarJS('sic3_v3/js/lancamentos/address_manager.js');
+            await carregarJS('sic3_v3/js/lancamentos/data_main.js');
+            await carregarJS('sic3_v3/js/lancamentos/form_generic.js');
+            await carregarJS('sic3_v3/js/lancamentos/datatable_material_init.js');
+            await carregarJS('sic3_v3/js/lancamentos/form_abastecimento.js');
+            await carregarJS('sic3_v3/js/lancamentos/form_manutencao.js');
+            await carregarJS('sic3_v3/js/lancamentos/form_outros_itens.js');
+            await carregarJS('sic3_v3/js/lancamentos/form_material.js');
+            await carregarJS('sic3_v3/js/lancamentos/autocompletar.js');
+            await carregarJS('sic3_v3/js/lancamentos/system_init.js');
+        }
+        
+    } catch (error) {
+        console.error("Erro na navegação do SIC3:", error);
+        alert(`Ocorreu um erro ao carregar a página: ${error.message}`);
+    } finally {
+        window.ocultarCarregamentoGlobal();
+    }
+}
+
+// Ouvinte para rebaixar sessões inválidas (redireciona para o admin em caso de falha de autenticação na extensão)
+document.addEventListener('sic3:unauthorized', () => {
+    navegarPara('admin');
+});
+
+// Inicialização da barra de configuração de API
+async function initConfigBar() {
+    const currentUrl = await getGasApiUrl();
+    apiUrlInput.value = currentUrl;
+
+    apiUrlSaveBtn.addEventListener('click', async () => {
+        const url = apiUrlInput.value.trim();
+        await saveGasApiUrl(url);
+        alert("URL do Web App do GAS configurada com sucesso!");
+        navegarPara('admin', { nUser: window.userNome || "Operador Extensão", mLog: window.mLog, authToken: "bypass", idbase: window.idbase });
+    });
+}
+
+// Inicializa a aplicação
+window.addEventListener('DOMContentLoaded', async () => {
+    await initConfigBar();
+
+    window.executarApiGas = executarApi;
+    window.navegarParaSic3 = navegarPara;
+
     // 1. Extrair os parâmetros da Query String ou do Storage
     try {
         const urlParams = new URLSearchParams(window.location.search);
@@ -76,26 +441,19 @@ document.addEventListener("DOMContentLoaded", async () => {
             window.municipio = municipioParam ? decodeURIComponent(municipioParam).toUpperCase() : info.municipio.toUpperCase();
             window.rpm = rpmParam ? rpmParam : (info.codigoRPM || "15");
             window.secao = secaoParam ? decodeURIComponent(secaoParam) : (info.nomenclatura || "");
-            
-            logDebug("Dados de identificação carregados do storage local:", info);
         } else {
             // Fallback de teste
             window.municipio = municipioParam ? decodeURIComponent(municipioParam).toUpperCase() : "PARÁ DE MINAS";
             window.rpm = rpmParam || "19";
             window.secao = secaoParam ? decodeURIComponent(secaoParam) : "19º BPM";
-            logDebug("Sem informações pré-carregadas no storage. Usando query string ou fallbacks.", {
-                municipio: window.municipio, rpm: window.rpm, secao: window.secao
-            });
         }
         
-        // Formatar o nome da RPM
-        if (/^\d+$/.test(window.rpm)) {
-            window.rpm = window.rpm + "ª RPM";
-        }
+        // Define o filtro de município com base no privilégio de administrador
+        window.mLog = window.isAdmin ? "admin" : window.municipio;
         
-        // Atualiza a exibição no cabeçalho
+        // Atualiza a exibição no cabeçalho superior
         document.getElementById('user-municipio-display').textContent = window.municipio;
-        document.getElementById('user-rpm-display').textContent = window.rpm;
+        document.getElementById('user-rpm-display').textContent = /^\d+$/.test(window.rpm) ? window.rpm + "ª RPM" : window.rpm;
         document.getElementById('user-secao-display').textContent = window.secao || "Geral";
         
         // Preenche e exibe o Painel de Perfil de Usuário Premium
@@ -122,176 +480,43 @@ document.addEventListener("DOMContentLoaded", async () => {
                 }
                 
                 panel.style.display = 'flex';
-                logDebug("Painel de perfil do usuário exibido com sucesso.");
             }
         }
         
     } catch (e) {
-        logError("Falha ao configurar contexto do usuário:", e);
+        console.error("[SIC3 v3.0 Log] Falha ao configurar contexto do usuário:", e);
     }
-    
-    // 2. Configurar o Rodapé da API
-    try {
-        const currentUrl = await getGasApiUrl();
-        const apiInput = document.getElementById('api-gas-url-input');
-        if (apiInput) {
-            apiInput.value = currentUrl;
-        }
-        
-        const saveBtn = document.getElementById('api-gas-url-save-btn');
-        if (saveBtn) {
-            saveBtn.addEventListener('click', async () => {
-                const newUrl = apiInput.value.trim();
-                if (newUrl) {
-                    window.mostrarCarregamentoGlobal("Salvando API e recarregando...");
-                    await saveGasApiUrl(newUrl);
-                    logDebug("Nova URL do GAS salva:", newUrl);
-                    window.location.reload();
-                } else {
-                    alert("A URL da API do GAS não pode ser vazia.");
-                }
-            });
-        }
-    } catch (e) {
-        logError("Falha ao configurar os campos de API do GAS no rodapé:", e);
-    }
-    
-    // 3. Carregar dados de Convênios
-    await carregarDashboardConvenios();
-});
 
-/**
- * Carrega a lista de convênios do município e monta o dashboard
- */
-async function carregarDashboardConvenios() {
-    logDebug(`Carregando convênios para o município: ${window.municipio}. Modo Admin: ${window.isAdmin}`);
-    window.mostrarCarregamentoGlobal("Carregando convênios da planilha...");
-    
-    const container = document.getElementById('sic3-views-container') || document.getElementById('sic3-app-container');
-    if (!container) {
-        logError("Container #sic3-views-container não encontrado.");
-        window.ocultarCarregamentoGlobal();
-        return;
-    }
-    
+    // Resolve dinamicamente o ID do banco de dados (Spreadsheet) correspondente à RPM e ao Ano ativos
+    window.mostrarCarregamentoGlobal("Inicializando banco de dados do SIC3...");
     try {
-        const userInfo = {
-            username: window.userNome || "intranet_user",
-            municipio: window.municipio,
-            isAdmin: window.isAdmin === true
-        };
-        
-        const convenios = await executarApi("carregarConveniosMunicipio", [window.municipio, userInfo]);
-        
-        if (!convenios || !Array.isArray(convenios) || convenios.length === 0) {
-            logDebug("Nenhum convênio retornado para o município:", window.municipio);
-            container.innerHTML = `
-                <div class="card-premium" style="text-align: center; padding: 48px; border-style: dashed;">
-                    <i class="fas fa-folder-open" style="font-size: 48px; color: var(--cor-caqui); margin-bottom: 16px;"></i>
-                    <h2 class="card-title">Nenhum convênio cadastrado</h2>
-                    <p style="color: var(--cor-fonte-fraca); margin-bottom: 24px;">Não foram encontrados convênios ativos vinculados ao município de ${window.municipio} para o ano de ${window.ano}.</p>
-                    <button class="btn-premium btn-premium-primary" style="margin: 0 auto;" id="btn-recarregar">
-                        <i class="fas fa-sync-alt"></i> Tentar Novamente
-                    </button>
-                </div>
-            `;
-            
-            document.getElementById('btn-recarregar')?.addEventListener('click', () => {
-                carregarDashboardConvenios();
-            });
-            window.ocultarCarregamentoGlobal();
-            return;
+        const rpmAtiva = window.rpm || "15";
+        const anoAtivo = window.ano || new Date().getFullYear().toString();
+        const resId = await executarApi("obterIdPlanilha", [rpmAtiva, anoAtivo]);
+        if (resId && resId.success && resId.spreadsheetId) {
+            window.idbase = resId.spreadsheetId;
+            if (resId.arquivosCompartilhados) {
+                window.idBDConvenios = resId.arquivosCompartilhados.BDConvenios;
+                window.idBDEnderecos = resId.arquivosCompartilhados.BDEnderecos;
+                window.idTBPrimaria = resId.arquivosCompartilhados.TBPrimaria;
+                window.idTBSecundaria = resId.arquivosCompartilhados.TBSecundaria;
+
+                sessionStorage.setItem("sic3_idBDConvenios", resId.arquivosCompartilhados.BDConvenios);
+                sessionStorage.setItem("sic3_idBDEnderecos", resId.arquivosCompartilhados.BDEnderecos);
+                sessionStorage.setItem("sic3_idTBPrimaria", resId.arquivosCompartilhados.TBPrimaria);
+                sessionStorage.setItem("sic3_idTBSecundaria", resId.arquivosCompartilhados.TBSecundaria);
+            }
+        } else {
+            console.warn("Não foi possível obter o ID da planilha do GAS. Usando fallback vazio.");
+            window.idbase = "";
         }
-        
-        logDebug(`${convenios.length} convênios carregados com sucesso!`);
-        
-        // Monta o grid do dashboard
-        let gridHtml = `
-            <div style="margin-top: 8px; margin-bottom: 24px;">
-                <h2 style="font-family: var(--font-family-title); font-size: 24px; font-weight: 700; color: var(--cor-fonte-forte); margin-bottom: 6px;">
-                    ${window.isAdmin ? "Visualização Regional de Convênios" : "Convênios Ativos do Município"}
-                </h2>
-                <p style="color: var(--cor-fonte-fraca); font-size: 14px;">
-                    ${window.isAdmin 
-                        ? `Acesso Administrativo (Locais 29/126) - Visualizando todos os municípios pertencentes à região ${window.userRegiao}.` 
-                        : `Exibindo os convênios cadastrados para o município de ${window.municipio}.`}
-                </p>
-            </div>
-            <div class="dashboard-grid">
-        `;
-        
-        convenios.forEach(conv => {
-            const numConvenio = conv.convenio || "N/A";
-            const prepostoStr = conv.preposto ? `${conv.preposto_pg || ''} ${conv.preposto}`.trim() : "Não especificado";
-            const dataFimStr = conv.dataFim || "Permanente";
-            const localidadeInfo = conv.unidade || window.secao || "PMMG";
-            
-            gridHtml += `
-                <div class="card-premium">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
-                        <span class="status-pill success">Ativo</span>
-                        <span style="font-size: 11px; color: var(--cor-fonte-fraca); font-weight: 600;">#${numConvenio}</span>
-                    </div>
-                    <h3 class="card-title">${conv.municipio}</h3>
-                    <div class="card-meta">
-                        <span><i class="fas fa-file-signature"></i> <strong>Convênio:</strong> ${numConvenio}</span>
-                        <span><i class="fas fa-user-tie"></i> <strong>Gestor:</strong> ${prepostoStr}</span>
-                        <span><i class="fas fa-sitemap"></i> <strong>Unidade:</strong> ${localidadeInfo}</span>
-                        <span><i class="fas fa-calendar-alt"></i> <strong>Validade:</strong> ${conv.dataInicio || 'N/A'} a ${dataFimStr}</span>
-                    </div>
-                    <div class="card-actions">
-                        <button class="btn-premium btn-edit-conv" data-convenio="${numConvenio}" data-muni="${conv.municipio}">
-                            <i class="fas fa-edit"></i> Lançamentos
-                        </button>
-                        <button class="btn-premium btn-premium-primary btn-audit-conv" data-convenio="${numConvenio}" data-muni="${conv.municipio}">
-                            <i class="fas fa-clipboard-check"></i> Auditar
-                        </button>
-                    </div>
-                </div>
-            `;
-        });
-        
-        gridHtml += `</div>`;
-        container.innerHTML = gridHtml;
-        
-        // Registra listeners de cliques
-        container.querySelectorAll('.btn-edit-conv').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const convId = e.currentTarget.getAttribute('data-convenio');
-                const muni = e.currentTarget.getAttribute('data-muni');
-                logDebug(`Ação: Editar Lançamentos para convênio ${convId} (${muni})`);
-                alert(`Lançamentos do Convênio ${convId} (${muni}) - Funcionalidade em construção no SIC3 v3.0.`);
-            });
-        });
-        
-        container.querySelectorAll('.btn-audit-conv').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const convId = e.currentTarget.getAttribute('data-convenio');
-                const muni = e.currentTarget.getAttribute('data-muni');
-                logDebug(`Ação: Auditar Convênio ${convId} (${muni})`);
-                alert(`Auditoria do Convênio ${convId} (${muni}) - Funcionalidade em construção no SIC3 v3.0.`);
-            });
-        });
-        
     } catch (e) {
-        logError("Erro ao carregar os dados de convênios do GAS:", e);
-        container.innerHTML = `
-            <div class="card-premium" style="text-align: center; padding: 48px; border-color: var(--cor-vermelho);">
-                <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: var(--cor-vermelho); margin-bottom: 16px;"></i>
-                <h2 class="card-title" style="color: var(--cor-vermelho);">Falha na comunicação com o GAS</h2>
-                <p style="color: var(--cor-fonte-fraca); margin-bottom: 24px;">Não foi possível recuperar os convênios. Verifique se a URL da API do GAS no rodapé está correta e se o script correspondente está publicado.</p>
-                <div style="display: flex; gap: 12px; justify-content: center;">
-                    <button class="btn-premium" id="btn-recarregar-erro">
-                        <i class="fas fa-sync-alt"></i> Tentar Novamente
-                    </button>
-                </div>
-            </div>
-        `;
-        
-        document.getElementById('btn-recarregar-erro')?.addEventListener('click', () => {
-            carregarDashboardConvenios();
-        });
+        console.error("Erro ao resolver ID do banco de dados:", e);
+        window.idbase = "";
     } finally {
         window.ocultarCarregamentoGlobal();
     }
-}
+
+    // Navega diretamente para a tela do Painel Geral de administração original do v2 (formato de tabela)
+    navegarPara('admin', { nUser: window.userNome || "Operador Extensão", mLog: window.mLog, authToken: "bypass", idbase: window.idbase });
+});

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "SisPMG+",
-  "version": "4.2",
+  "version": "4.3",
   "description": "Adiciona funcionalidades e automações a sistemas utilizados pela PMMG.",
   "icons": {
     "16": "icons/icon16.png",
@@ -21,7 +21,7 @@
     "*://*.policiamilitar.mg.gov.br/*",
     "https://script.google.com/*",
     "https://script.googleusercontent.com/*",
-    "https://docs.google.com/",
+    "https://docs.google.com/*",
     "https://primebeneficios.com.br/*",
     "https://sistema-customizado.primebeneficios.com.br/*",
     "http://sgta.netfrota.com.br/*"
