@@ -245,40 +245,40 @@ button:disabled {
 
 /* Variantes de Botões */
 .btn-primary { background-color: var(--primary-color); color: var(--text-light); border-color: var(--border-color); }
+.btn-primary:hover { background-color: #433c23; border-color: #433c23; }
 .btn-secondary { background-color: #6c757d; color: #fff; }
+.btn-secondary:hover { background-color: #5a6268; }
 .btn-success { background-color: var(--accent-color); color: #fff; }
+.btn-success:hover { background-color: #215c24; }
 .btn-warning { background-color: #ffc107 !important; color: black !important; border-color: #ffc107 !important; }
+.btn-warning:hover { background-color: #e0a800 !important; border-color: #d39e00 !important; color: black !important; }
 .btn-danger { background-color: #c0392b; color: #fff; }
+.btn-danger:hover { background-color: #a93226; }
 .btn-dark { background-color: #2c3e50; color: #fff; }
+.btn-dark:hover { background-color: #1a252f; }
 .btn-info { background-color: #2980b9; color: #fff; }
+.btn-info:hover { background-color: #216a9c; }
 
 /* Cores de Botões Específicos do Painel de Lançamentos */
 .btn-voltar,
 .btn-infoConvenio,
+.btn-inserirAbastecimento,
+.btn-inserirManutencao,
+.btn-adicionar,
 .outrosDropdown-toggle {
   background-color: #0d6efd !important;
   color: white !important;
   border-color: #0d6efd !important;
 }
+
 .btn-voltar:hover,
 .btn-infoConvenio:hover,
+.btn-inserirAbastecimento:hover,
+.btn-inserirManutencao:hover,
+.btn-adicionar:hover,
 .outrosDropdown-toggle:hover {
   background-color: #0b5ed7 !important;
   border-color: #0a58ca !important;
-}
-
-.btn-inserirAbastecimento,
-.btn-inserirManutencao,
-.btn-adicionar {
-  background-color: #198754 !important;
-  color: white !important;
-  border-color: #198754 !important;
-}
-.btn-inserirAbastecimento:hover,
-.btn-inserirManutencao:hover,
-.btn-adicionar:hover {
-  background-color: #157347 !important;
-  border-color: #146c43 !important;
 }
 
 .btn-editarDados {
