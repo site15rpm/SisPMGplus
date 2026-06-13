@@ -63,6 +63,40 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
                         logParser("Iniciando análise do HTML de unidades...");
 
+                        // Tenta extrair as informações de município e código padrão do título H2
+                        let defaultMunicipio = "";
+                        let defaultCodigoMunicipio = "";
+                        const h2Element = container.querySelector('h2');
+                        if (h2Element) {
+                            const h2Text = h2Element.textContent;
+                            logParser(`Título H2 da árvore identificado: "${h2Text}"`);
+                            
+                            // Extrai município do H2, ex: "(Teófilo Otoni)"
+                            const matchMuni = h2Text.match(/\(([^)]+)\)/);
+                            if (matchMuni) {
+                                defaultMunicipio = matchMuni[1].trim();
+                            }
+                            
+                            // Extrai o código numérico do H2 (ex: dentro de <i> ou no final)
+                            const iElement = h2Element.querySelector('i');
+                            if (iElement) {
+                                defaultCodigoMunicipio = iElement.textContent.trim();
+                            } else {
+                                const matchCod = h2Text.match(/-\s*(\d+)\s*$/) || h2Text.match(/\s+(\d+)$/);
+                                if (matchCod) {
+                                    defaultCodigoMunicipio = matchCod[1];
+                                }
+                            }
+                            logParser(`Configurações base extraídas do H2: defaultMunicipio="${defaultMunicipio}", defaultCodigoMunicipio="${defaultCodigoMunicipio}"`);
+                        }
+
+                        // Inicializa a pilha de nível raiz (índice 0) com os valores obtidos do H2
+                        if (defaultMunicipio) {
+                            municipioStack[0] = defaultMunicipio;
+                            codigoMunicipioStack[0] = defaultCodigoMunicipio;
+                            logParser(`Pilha inicializada no índice 0 com dados do H2 -> "${defaultMunicipio}" (${defaultCodigoMunicipio})`);
+                        }
+
                         // Função auxiliar interna para extrair o município e seu código com base nos parênteses
                         const extrairMunicipioUnidade = (unitName) => {
                             let municipio = "";
@@ -140,7 +174,7 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
                             
                             logParser(`Processando Linha #${idx} (código ${code}): Nome="${name}", Level=${level}, stackIndex=${stackIndex}`);
 
-                            // Ajusta o tamanho dos stacks de controle
+                            // Ajusta o tamanho dos stacks de controle, preservando os níveis anteriores
                             hierarchyStack.length = stackIndex;
                             municipioStack.length = stackIndex;
                             codigoMunicipioStack.length = stackIndex;
@@ -149,6 +183,12 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
                             // Extrai município declarado nesta linha
                             const extraido = extrairMunicipioUnidade(name);
+                            
+                            // Correção: Se o município foi extraído textualmente (ex: (Itambacuri)), mas o código numérico do município
+                            // está vazio, usamos o próprio código da unidade como fallback para evitar código=""
+                            if (extraido.municipio && !extraido.codigoMunicipio) {
+                                extraido.codigoMunicipio = code;
+                            }
                             logParser(`  > Extração direta de município: municipio="${extraido.municipio}", codigo="${extraido.codigoMunicipio}"`);
 
                             // Regra de Herança Hierárquica:
@@ -157,15 +197,20 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
                             if (extraido.municipio) {
                                 municipioStack[stackIndex] = extraido.municipio;
                                 codigoMunicipioStack[stackIndex] = extraido.codigoMunicipio;
-                                logParser(`  > Decisão: Utilizou município direto da linha: "${extraido.municipio}"`);
+                                logParser(`  > Decisão: Utilizou município direto da linha: "${extraido.municipio}" (${extraido.codigoMunicipio})`);
                             } else if (stackIndex > 0 && municipioStack[stackIndex - 1]) {
                                 municipioStack[stackIndex] = municipioStack[stackIndex - 1];
                                 codigoMunicipioStack[stackIndex] = codigoMunicipioStack[stackIndex - 1];
-                                logParser(`  > Decisão: HERDOU município do nível superior (índice ${stackIndex - 1}): "${municipioStack[stackIndex - 1]}"`);
+                                logParser(`  > Decisão: HERDOU município do nível superior (índice ${stackIndex - 1}): "${municipioStack[stackIndex - 1]}" (${codigoMunicipioStack[stackIndex - 1]})`);
                             } else {
-                                municipioStack[stackIndex] = "";
-                                codigoMunicipioStack[stackIndex] = "";
-                                logParser(`  > Decisão: Sem município definido nem disponível para herdar no índice ${stackIndex}.`);
+                                // Mantém os dados padrões da raiz (H2) se for o nível 0 (stackIndex === 0)
+                                if (stackIndex === 0 && municipioStack[0]) {
+                                    logParser(`  > Decisão: Manteve município padrão obtido do H2 na raiz: "${municipioStack[0]}" (${codigoMunicipioStack[0]})`);
+                                } else {
+                                    municipioStack[stackIndex] = "";
+                                    codigoMunicipioStack[stackIndex] = "";
+                                    logParser(`  > Decisão: Sem município definido nem disponível para herdar no índice ${stackIndex}.`);
+                                }
                             }
 
                             const hierarchyPath = hierarchyStack.join(' / ');
