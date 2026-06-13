@@ -371,6 +371,7 @@ button:disabled {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: 1.3rem;
 }
 
 .principal-table th,
