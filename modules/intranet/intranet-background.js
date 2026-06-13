@@ -256,8 +256,8 @@ export async function handleIntranetMessages(request, sender) {
                     if (partes.length > 1) {
                         // Remove o primeiro elemento (RPM)
                         const semRPM = partes.slice(1);
-                        // Inverte a ordem e junta com " / "
-                        nomeSecao = semRPM.reverse().join(' / ');
+                        // Inverte a ordem e junta com "/"
+                        nomeSecao = semRPM.reverse().join('/');
                         logBg(`[BG-Tratamento] Hierarquia inversa sem RPM construída para nomeSecao: "${nomeSecao}"`);
                     } else if (partes.length === 1) {
                         // Caso especial onde há apenas 1 nível (a própria RPM)
