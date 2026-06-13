@@ -416,6 +416,17 @@ export async function navegarPara(pagina, contexto = {}) {
     window.mostrarCarregamentoGlobal(`Carregando painel ${pagina}...`);
     limparRecursosInjetados();
 
+    // Exibe ou oculta o botão de logout conforme a tela
+    const btnLogout = document.getElementById('btn-logout-global');
+    if (btnLogout) {
+        btnLogout.style.display = (pagina === 'login') ? 'none' : 'flex';
+    }
+    // Oculta o painel de perfil por padrão se for login
+    if (pagina === 'login') {
+        const profilePanel = document.getElementById('user-profile-panel');
+        if (profilePanel) profilePanel.style.display = 'none';
+    }
+
     try {
         // Propaga e persiste o contexto na sessão
         if (contexto.authToken) {
