@@ -298,10 +298,9 @@ input[disabled] {
 }
 
 /* Novos Botões de Ação na Tabela */
-#dataTable td.dt-col-acoes,
-#dataTable td.acao-item,
-#dataTable td.cell-actions,
-.principal-table td.acao-item {
+td.cell-actions,
+td.dt-col-acoes,
+td.acao-item {
   position: relative !important;
   overflow: visible !important;
 }
