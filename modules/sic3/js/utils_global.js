@@ -1,9 +1,9 @@
 // Arquivo: modules/sic3/js/utils_global.js
 // Utilitários globais migrados para a extensão.
 
-window.contadorCarregamento = 0;
-window.timerCarregamento = null;
-window.tempoMinimoCarregamento = 500;
+window.contadorCarregamento = window.contadorCarregamento || 0;
+window.timerCarregamento = window.timerCarregamento || null;
+window.tempoMinimoCarregamento = window.tempoMinimoCarregamento || 500;
 
 window.mostrarCarregamento = function(message = null, color = null) {
   if (window.timerCarregamento) {
@@ -448,14 +448,19 @@ window.navegarParaLancamentos = async function(municipio, convenio, ano, mes, ac
 }
 
 window.navegarPara = async function(action) {
-  window.mostrarCarregamento();
+  if (action !== "voltar") {
+    window.mostrarCarregamento();
+  }
   try {
     if (action === "voltar" && typeof window.salvarSelecaoUsuario === 'function') {
         window.salvarSelecaoUsuario();
     }
     
     if (action === "voltar") {
-      window.ocultarCarregamento();
+      if (window.timerCarregamento) {
+        clearTimeout(window.timerCarregamento);
+        window.timerCarregamento = null;
+      }
       if (typeof window.navegarParaSic3 === 'function') {
           // Recupera os convênios da memória se disponíveis, senão passa vazio para que sejam recarregados
           window.navegarParaSic3('admin', { convenios: window.dadosConveniosPrepostos || [] });

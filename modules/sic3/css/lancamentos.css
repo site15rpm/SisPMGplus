@@ -615,14 +615,14 @@ td.observacao-item:hover {
 
 #dataTable,
 .dataTable {
-  font-size: 1.3rem !important;
+  font-size: 1rem !important;
 }
 
 #dataTable th,
 #dataTable td,
 .dataTable th,
 .dataTable td {
-  font-size: 1.3rem !important;
+  font-size: 1rem !important;
 }
 
 #dataTable input {

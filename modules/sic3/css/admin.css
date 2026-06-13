@@ -438,14 +438,14 @@ td.acao-item {
 
 #dataTable,
 .dataTable {
-  font-size: 1.3rem !important;
+  font-size: 1rem !important;
 }
 
 #dataTable th,
 #dataTable td,
 .dataTable th,
 .dataTable td {
-  font-size: 1.3rem !important;
+  font-size: 1rem !important;
 }
 .dt-container { background-color: #f5f0eb; border-radius: 8px; overflow: hidden; }
 .dt-col-unidade select, #dataTable input { width: 100%; }
