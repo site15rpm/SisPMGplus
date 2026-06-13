@@ -52,6 +52,38 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
                         const parsedData = [];
                         const hierarchyStack = []; 
+                        const municipioStack = [];
+                        const codigoMunicipioStack = [];
+
+                        // Função auxiliar interna para extrair o município e seu código com base nos parênteses
+                        const extrairMunicipioUnidade = (unitName) => {
+                            let municipio = "";
+                            let codigoMunicipio = "";
+                            
+                            // Tenta encontrar conteúdo entre parênteses, ex: "(TEÓFILO OTONI)" ou "(3003)"
+                            const matchParenteses = unitName.match(/\(([^)]+)\)/);
+                            if (matchParenteses) {
+                                const conteudo = matchParenteses[1].trim();
+                                
+                                // Se for puramente numérico, é o código do município (ex: (3003))
+                                if (/^\d+$/.test(conteudo)) {
+                                    codigoMunicipio = conteudo;
+                                    // O nome do município geralmente está antes do parênteses
+                                    let antes = unitName.split(matchParenteses[0])[0].trim();
+                                    // Se possuir " - ", o município costuma estar após o hífen
+                                    if (antes.includes(' - ')) {
+                                        municipio = antes.split(' - ').slice(-1)[0].trim();
+                                    } else {
+                                        municipio = antes;
+                                    }
+                                } else {
+                                    // Se for textual, o próprio conteúdo entre parênteses é o nome do município (ex: (BONFIM))
+                                    municipio = conteudo;
+                                    codigoMunicipio = "";
+                                }
+                            }
+                            return { municipio, codigoMunicipio };
+                        };
 
                         let htmlContent = container.innerHTML;
                         
@@ -84,8 +116,30 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
                             if (!name) return;
 
                             const stackIndex = level - 1;
+                            
+                            // Ajusta o tamanho dos stacks de controle
                             hierarchyStack.length = stackIndex;
+                            municipioStack.length = stackIndex;
+                            codigoMunicipioStack.length = stackIndex;
+
                             hierarchyStack[stackIndex] = name;
+
+                            // Extrai município declarado nesta linha
+                            const extraido = extrairMunicipioUnidade(name);
+
+                            // Regra de Herança Hierárquica:
+                            // Se esta unidade declarar município entre parênteses, utiliza-o.
+                            // Caso contrário, herda o município do nível superior da hierarquia (se stackIndex > 0)
+                            if (extraido.municipio) {
+                                municipioStack[stackIndex] = extraido.municipio;
+                                codigoMunicipioStack[stackIndex] = extraido.codigoMunicipio;
+                            } else if (stackIndex > 0 && municipioStack[stackIndex - 1]) {
+                                municipioStack[stackIndex] = municipioStack[stackIndex - 1];
+                                codigoMunicipioStack[stackIndex] = codigoMunicipioStack[stackIndex - 1];
+                            } else {
+                                municipioStack[stackIndex] = "";
+                                codigoMunicipioStack[stackIndex] = "";
+                            }
 
                             const hierarchyPath = hierarchyStack.join(' / ');
                             
@@ -93,6 +147,8 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
                                 hierarchyPath,
                                 unitName: name,
                                 code,
+                                municipio: municipioStack[stackIndex] || "",
+                                codigoMunicipio: codigoMunicipioStack[stackIndex] || "",
                                 location: '', 
                                 address: '',
                                 cep: ''
