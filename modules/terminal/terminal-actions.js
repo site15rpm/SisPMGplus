@@ -854,9 +854,9 @@ export function initActions(prototype) {
             nomeCompleto: tokenData.n,
             codigoRegiao: tokenData.e,
             nomeUnidade: tokenData.p,
-            regiao: tokenData.r,
-            codigoUnidadeContabil: tokenData.u,
-            codigoUnidade: tokenData.c,
+            nomeRegiao: tokenData.r,
+            codigoUnidade: tokenData.u,
+            codigoSecao: tokenData.c,
             funcoes: tokenData.f,
             idSessao: tokenData.i
         };

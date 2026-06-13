@@ -247,12 +247,12 @@ export async function handleIntranetMessages(request, sender) {
                 
                 logBg(`[BG-Identificação] Unidade correspondente encontrada na árvore: ${JSON.stringify(targetUnit)}`);
                 
-                // Limpeza do nome da unidade (remove a parte do município se vier anexada, ex: "EM15RPM - TEÓFILO OTONI (3003)" -> "EM15RPM")
-                let nomeUnidade = targetUnit.unitName;
+                // Limpeza do nome da seção (remove a parte do município se vier anexada, ex: "EM15RPM - TEÓFILO OTONI (3003)" -> "EM15RPM")
+                let nomeSecao = targetUnit.unitName;
                 if (targetUnit.unitName.includes(' - ')) {
                     const partes = targetUnit.unitName.split(' - ');
-                    nomeUnidade = partes[0].trim();
-                    logBg(`[BG-Tratamento] Separador " - " identificado em "${targetUnit.unitName}". Nome da unidade limpo: "${nomeUnidade}"`);
+                    nomeSecao = partes[0].trim();
+                    logBg(`[BG-Tratamento] Separador " - " identificado em "${targetUnit.unitName}". Nome da seção limpo: "${nomeSecao}"`);
                 }
                 
                 const normalizarMunicipio = (str) => {
@@ -266,7 +266,7 @@ export async function handleIntranetMessages(request, sender) {
                 };
 
                 // O município e o código do município já vêm processados e herdados do offscreen parser
-                let municipio = normalizarMunicipio(targetUnit.municipio || nomeUnidade);
+                let municipio = normalizarMunicipio(targetUnit.municipio || nomeSecao);
                 let codigoMunicipio = targetUnit.codigoMunicipio || targetUnit.code;
                 
                 logBg(`[BG-Tratamento] Município e código resolvidos diretamente do parser offscreen (com suporte a herança hierárquica): ${JSON.stringify({
@@ -278,8 +278,8 @@ export async function handleIntranetMessages(request, sender) {
                 
                 const resData = {
                     success: true,
-                    codigoUnidade: targetUnit.code,
-                    nomeUnidade: nomeUnidade,
+                    codigoSecao: targetUnit.code,
+                    nomeSecao: nomeSecao,
                     municipio: municipio,
                     codigoMunicipio: codigoMunicipio,
                     hierarchyPath: targetUnit.hierarchyPath,
@@ -287,8 +287,8 @@ export async function handleIntranetMessages(request, sender) {
                 };
                 
                 logBg(`[BG-Identificação] Processo finalizado com sucesso no background. Detalhe das chaves obtidas:
-                - codigoUnidade: "${resData.codigoUnidade}" (Chave 'c' do Tokiuz do usuário, correspondente ao ID na árvore)
-                - nomeUnidade: "${resData.nomeUnidade}" (Nome limpo da seção funcional extraído da árvore)
+                - codigoSecao: "${resData.codigoSecao}" (Chave 'c' do Tokiuz do usuário, correspondente ao ID na árvore)
+                - nomeSecao: "${resData.nomeSecao}" (Nome limpo da seção funcional extraído da árvore)
                 - municipio: "${resData.municipio}" (Nome do município extraído entre parênteses ou herdado do nível superior se ausente)
                 - codigoMunicipio: "${resData.codigoMunicipio}" (Código numérico associado ao município ou herdado do nível superior se ausente)
                 - hierarchyPath: "${resData.hierarchyPath}" (Caminho completo da estrutura de divisões até o nó atual)`);

@@ -704,9 +704,10 @@ export class UIModule {
                 n_nome: decoded.n,                 // Obtido da chave 'n' do JWT (Nome completo do militar)
                 t_postoGraduacao: decoded.t,       // Obtido da chave 't' do JWT (Posto ou Graduação)
                 e_codigoRegiao: decoded.e,         // Obtido da chave 'e' do JWT (Código numérico da regional/RPM no portal)
-                c_codigoUnidade: decoded.c,        // Obtido da chave 'c' do JWT (Código numérico da seção/unidade atual)
-                u_unidadeOrcamentaria: decoded.u,  // Obtido da chave 'u' do JWT (Código da unidade orçamentária para controle financeiro)
-                r_nomeRegiao: decoded.r,           // Obtido da chave 'r' do JWT (Nome textual da regional/RPM)
+                p_unidade: decoded.p,              // Obtido da chave 'p' do JWT (Unidade/Seção funcional raiz)
+                r_regiaoPM: decoded.r,             // Obtido da chave 'r' do JWT (Nome textual da regional/RPM)
+                u_codigoUnidade: decoded.u,        // Obtido da chave 'u' do JWT (Código da unidade)
+                c_codigoSecao: decoded.c,          // Obtido da chave 'c' do JWT (Código da seção)
                 f_funcoes: decoded.f               // Obtido da chave 'f' do JWT (Array de funções/perfis atribuídos ao usuário)
             });
 
@@ -745,12 +746,12 @@ export class UIModule {
             
             if (cachedInfo && 
                 String(cachedInfo.numeroPM) === String(decoded.g) && 
-                String(cachedInfo.codigoUnidade) === String(decoded.c)) {
+                String(cachedInfo.codigoSecao) === String(decoded.c)) {
                 
                 console.log("[SIC3 v3.0 Log] [UI-Extração] Cadastro em cache compatível encontrado no Storage Local. Pulando consulta na rede.", cachedInfo);
                 userInfoFinal = cachedInfo;
                 // Recalcula isAdmin para refletir qualquer mudança de unidade ou nas regras ('ALMOXARIFADO' ou 'SOFI')
-                const secaoUpper = String(userInfoFinal.nomeUnidade || '').toUpperCase();
+                const secaoUpper = String(userInfoFinal.nomeSecao || '').toUpperCase();
                 userInfoFinal.isAdmin = secaoUpper.includes('ALMOXARIFADO') || secaoUpper.includes('SOFI');
             } else {
                 if (cachedInfo) {
@@ -769,12 +770,12 @@ export class UIModule {
                 
                 console.log("[SIC3 v3.0 Log] [UI-Extração] Identificação de unidade realizada com sucesso pelo background:", response);
                 
-                const secaoUpper = String(response.nomeUnidade || '').toUpperCase();
+                const secaoUpper = String(response.nomeSecao || '').toUpperCase();
                 const usuarioEhAdmin = secaoUpper.includes('ALMOXARIFADO') || secaoUpper.includes('SOFI');
                 
                 userInfoFinal = {
-                    codigoUnidade: String(response.codigoUnidade),
-                    nomeUnidade: response.nomeUnidade,
+                    codigoSecao: String(response.codigoSecao),
+                    nomeSecao: response.nomeSecao,
                     municipio: response.municipio,
                     codigoMunicipio: String(response.codigoMunicipio),
                     hierarchyPath: response.hierarchyPath,
@@ -782,8 +783,10 @@ export class UIModule {
                     numeroPM: String(decoded.g || ''),
                     postoGraduacao: decoded.t || '',
                     nome: decoded.n || '',
-                    codigoRPM: rpmNome,
-                    nomeRPM: decoded.r || '',
+                    codigoRegiao: String(decoded.e || ''),
+                    nomeRegiao: decoded.r || '',
+                    nomeUnidade: decoded.p || '',
+                    codigoUnidade: String(decoded.u || ''),
                     isAdmin: usuarioEhAdmin,
                     timestamp: Date.now()
                 };
@@ -802,14 +805,14 @@ export class UIModule {
             await sendMessageToBackground('setStorage', {
                 sic3_url_params: {
                     municipio: userInfoFinal.municipio,
-                    rpm: userInfoFinal.codigoRPM,
-                    secao: userInfoFinal.nomeUnidade
+                    rpm: rpmNome,
+                    secao: userInfoFinal.nomeSecao
                 }
             });
             console.log("[SIC3 v3.0 Log] [UI-Gravação] Parâmetros de inicialização salvos no storage:", {
                 municipio: userInfoFinal.municipio,
-                rpm: userInfoFinal.codigoRPM,
-                secao: userInfoFinal.nomeUnidade
+                rpm: rpmNome,
+                secao: userInfoFinal.nomeSecao
             });
             
             await sendMessageToBackground('openSettingsPage', {
