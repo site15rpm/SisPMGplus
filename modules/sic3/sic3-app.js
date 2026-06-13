@@ -321,6 +321,88 @@ window.includeHtmlBody = function(contentHtml) {
 };
 
 // ============================================================================
+// RESOLUÇÃO DE IDS E CACHE PERMANENTE
+// ============================================================================
+
+/**
+ * Resolve os IDs das planilhas ativas em cache permanente ou consulta o servidor caso falhe.
+ * @param {boolean} [forcarRecarregamento=false] - Se true, ignora o cache e atualiza do servidor.
+ * @returns {Promise<object>} Objeto contendo os IDs das planilhas resolvidas.
+ */
+window.resolverIdsPlanilhas = async function(forcarRecarregamento = false) {
+    const rpmAtiva = sessionStorage.getItem("sic3_rpm") || (window.rpm && typeof window.rpm === 'string' ? window.rpm : "15 RPM");
+    const anoAtivo = sessionStorage.getItem("sic3_ano") || (window.ano && typeof window.ano === 'string' ? window.ano : new Date().getFullYear().toString());
+    const cacheKey = `sic3_ids_cache_${rpmAtiva.replace(/\s+/g, '_')}_${anoAtivo}`;
+    
+    let storage = null;
+    if (typeof browser !== 'undefined' && browser.storage && browser.storage.local) {
+        storage = browser.storage.local;
+    } else if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        storage = chrome.storage.local;
+    }
+
+    if (!forcarRecarregamento && storage) {
+        try {
+            const cachedData = await new Promise((resolve) => {
+                storage.get(cacheKey, (res) => {
+                    resolve(res ? res[cacheKey] : null);
+                });
+            });
+
+            if (cachedData && cachedData.spreadsheetId && cachedData.arquivosCompartilhados) {
+                console.log(`[SIC3 v3.0 Log] IDs das planilhas recuperados do cache permanente (${cacheKey})`);
+                window.idbase = cachedData.spreadsheetId;
+                window.idBDConvenios = cachedData.arquivosCompartilhados.BDConvenios;
+                window.idBDEnderecos = cachedData.arquivosCompartilhados.BDEnderecos;
+                window.idTBPrimaria = cachedData.arquivosCompartilhados.TBPrimaria;
+                window.idTBSecundaria = cachedData.arquivosCompartilhados.TBSecundaria;
+
+                sessionStorage.setItem("sic3_idBDConvenios", window.idBDConvenios);
+                sessionStorage.setItem("sic3_idBDEnderecos", window.idBDEnderecos);
+                sessionStorage.setItem("sic3_idTBPrimaria", window.idTBPrimaria);
+                sessionStorage.setItem("sic3_idTBSecundaria", window.idTBSecundaria);
+                return cachedData;
+            }
+        } catch (err) {
+            console.error("[SIC3 v3.0 Log] Erro ao carregar IDs do cache permanente:", err);
+        }
+    }
+
+    // Caso não tenha cache ou precise forçar, busca do servidor GAS
+    console.log(`[SIC3 v3.0 Log] Requisitando obterIdPlanilha do servidor para RPM: ${rpmAtiva}, Ano: ${anoAtivo}`);
+    const resId = await executarApi("obterIdPlanilha", [rpmAtiva, anoAtivo]);
+    console.log("[SIC3 v3.0 Log] Resultado obterIdPlanilha do servidor:", resId);
+
+    if (resId && resId.success && resId.spreadsheetId) {
+        window.idbase = resId.spreadsheetId;
+        if (resId.arquivosCompartilhados) {
+            window.idBDConvenios = resId.arquivosCompartilhados.BDConvenios;
+            window.idBDEnderecos = resId.arquivosCompartilhados.BDEnderecos;
+            window.idTBPrimaria = resId.arquivosCompartilhados.TBPrimaria;
+            window.idTBSecundaria = resId.arquivosCompartilhados.TBSecundaria;
+
+            sessionStorage.setItem("sic3_idBDConvenios", window.idBDConvenios);
+            sessionStorage.setItem("sic3_idBDEnderecos", window.idBDEnderecos);
+            sessionStorage.setItem("sic3_idTBPrimaria", window.idTBPrimaria);
+            sessionStorage.setItem("sic3_idTBSecundaria", window.idTBSecundaria);
+
+            if (storage) {
+                const dataToCache = {
+                    spreadsheetId: resId.spreadsheetId,
+                    arquivosCompartilhados: resId.arquivosCompartilhados
+                };
+                storage.set({ [cacheKey]: dataToCache }, () => {
+                    console.log(`[SIC3 v3.0 Log] Cache permanente salvo para ${cacheKey}`);
+                });
+            }
+        }
+        return resId;
+    } else {
+        throw new Error("Não foi possível obter os IDs da planilha do servidor.");
+    }
+};
+
+// ============================================================================
 // NAVEGAÇÃO SPA
 // ============================================================================
 
@@ -362,30 +444,7 @@ export async function navegarPara(pagina, contexto = {}) {
 
         if (!window.idBDConvenios || !window.idBDEnderecos || !window.idTBPrimaria || !window.idTBSecundaria || contexto.idbase) {
             try {
-                console.log(`[SIC3 v3.0 Log] Requisitando obterIdPlanilha para RPM: ${rpmAtiva}, Ano: ${anoAtivo}`);
-                const resId = await executarApi("obterIdPlanilha", [rpmAtiva, anoAtivo]);
-                console.log("[SIC3 v3.0 Log] Resultado obterIdPlanilha:", resId);
-                if (resId && resId.success) {
-                    window.idbase = contexto.idbase || resId.spreadsheetId || window.idbase;
-                    console.log(`[SIC3 v3.0 Log] ID da planilha anual (idbase) definido: ${window.idbase}`);
-                    if (resId.arquivosCompartilhados) {
-                        window.idBDConvenios = resId.arquivosCompartilhados.BDConvenios;
-                        window.idBDEnderecos = resId.arquivosCompartilhados.BDEnderecos;
-                        window.idTBPrimaria = resId.arquivosCompartilhados.TBPrimaria;
-                        window.idTBSecundaria = resId.arquivosCompartilhados.TBSecundaria;
-
-                        sessionStorage.setItem("sic3_idBDConvenios", resId.arquivosCompartilhados.BDConvenios);
-                        sessionStorage.setItem("sic3_idBDEnderecos", resId.arquivosCompartilhados.BDEnderecos);
-                        sessionStorage.setItem("sic3_idTBPrimaria", resId.arquivosCompartilhados.TBPrimaria);
-                        sessionStorage.setItem("sic3_idTBSecundaria", resId.arquivosCompartilhados.TBSecundaria);
-                        
-                        console.log(`[SIC3 v3.0 Log] Planilhas Compartilhadas resolvidas:
-                          - BDConvenios: ${window.idBDConvenios}
-                          - BDEnderecos: ${window.idBDEnderecos}
-                          - TBPrimaria: ${window.idTBPrimaria}
-                          - TBSecundaria: ${window.idTBSecundaria}`);
-                    }
-                }
+                await window.resolverIdsPlanilhas(!!contexto.idbase);
             } catch (apiErr) {
                 console.error("[SIC3 v3.0 Log] Erro ao obter IDs das planilhas compartilhadas no roteador:", apiErr);
             }
@@ -621,35 +680,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     // Resolve dinamicamente o ID do banco de dados (Spreadsheet) correspondente à RPM e ao Ano ativos
     window.mostrarCarregamentoGlobal("Inicializando banco de dados do SIC3...");
     try {
-        const rpmAtiva = sessionStorage.getItem("sic3_rpm") || (window.rpm && typeof window.rpm === 'string' ? window.rpm : "15 RPM");
-        const anoAtivo = sessionStorage.getItem("sic3_ano") || (window.ano && typeof window.ano === 'string' ? window.ano : new Date().getFullYear().toString());
-        console.log(`[SIC3 v3.0 Log] Inicialização: requisitando obterIdPlanilha para RPM: ${rpmAtiva}, Ano: ${anoAtivo}`);
-        const resId = await executarApi("obterIdPlanilha", [rpmAtiva, anoAtivo]);
-        console.log("[SIC3 v3.0 Log] Inicialização obterIdPlanilha result:", resId);
-        if (resId && resId.success && resId.spreadsheetId) {
-            window.idbase = resId.spreadsheetId;
-            console.log(`[SIC3 v3.0 Log] Inicialização idbase definida: ${window.idbase}`);
-            if (resId.arquivosCompartilhados) {
-                window.idBDConvenios = resId.arquivosCompartilhados.BDConvenios;
-                window.idBDEnderecos = resId.arquivosCompartilhados.BDEnderecos;
-                window.idTBPrimaria = resId.arquivosCompartilhados.TBPrimaria;
-                window.idTBSecundaria = resId.arquivosCompartilhados.TBSecundaria;
-
-                sessionStorage.setItem("sic3_idBDConvenios", resId.arquivosCompartilhados.BDConvenios);
-                sessionStorage.setItem("sic3_idBDEnderecos", resId.arquivosCompartilhados.BDEnderecos);
-                sessionStorage.setItem("sic3_idTBPrimaria", resId.arquivosCompartilhados.TBPrimaria);
-                sessionStorage.setItem("sic3_idTBSecundaria", resId.arquivosCompartilhados.TBSecundaria);
-                
-                console.log(`[SIC3 v3.0 Log] Inicialização planilhas compartilhadas armazenadas no sessionStorage:
-                  - BDConvenios: ${window.idBDConvenios}
-                  - BDEnderecos: ${window.idBDEnderecos}
-                  - TBPrimaria: ${window.idTBPrimaria}
-                  - TBSecundaria: ${window.idTBSecundaria}`);
-            }
-        } else {
-            console.warn("[SIC3 v3.0 Log] Não foi possível obter o ID da planilha do GAS. Usando fallback vazio.");
-            window.idbase = "";
-        }
+        await window.resolverIdsPlanilhas(false);
     } catch (e) {
         console.error("[SIC3 v3.0 Log] Erro ao resolver ID do banco de dados na inicialização:", e);
         window.idbase = "";

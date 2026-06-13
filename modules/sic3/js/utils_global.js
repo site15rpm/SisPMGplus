@@ -353,9 +353,24 @@ window.carregarDadosPlanilha = function(config) {
           console.log(`[SIC3 v3.0 Log] [Planilha Processed] Sucesso para a aba "${config.sheet || 'idbase'}". Linhas processadas: ${processedData.length}`);
           resolve(processedData);
         })
-        .catch(error => {
+        .catch(async error => {
           clearTimeout(timeoutId);
           console.error(`[SIC3 v3.0 Log] [Planilha Error] Erro ao carregar gviz para a aba "${config.sheet || 'idbase'}":`, error);
+          
+          // Se falhar o acesso ao banco de dados (Gviz), invalida o cache permanente e consulta novamente o servidor
+          if (typeof window.resolverIdsPlanilhas === 'function' && !config._isRetry) {
+            console.warn("[SIC3 v3.0 Log] Tentativa de acesso falhou. Invalidando cache de IDs e consultando servidor...");
+            try {
+              await window.resolverIdsPlanilhas(true); // Força renovação bypassando o cache
+              const retryConfig = { ...config, _isRetry: true };
+              const retryData = await window.carregarDadosPlanilha(retryConfig);
+              resolve(retryData);
+              return;
+            } catch (retryErr) {
+              console.error("[SIC3 v3.0 Log] Falha na segunda tentativa de carregar planilha após renovar IDs:", retryErr);
+            }
+          }
+
           if (error.name === 'AbortError') {
             reject(new Error('Tempo limite excedido ao carregar dados da planilha: ' + (config.sheet || config.sheetId)));
           } else {
