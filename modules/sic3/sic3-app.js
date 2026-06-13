@@ -410,6 +410,9 @@ window.resolverIdsPlanilhas = async function(forcarRecarregamento = false) {
  */
 export async function navegarPara(pagina, contexto = {}) {
     console.log(`[SIC3 v3.0 Log] navegarPara iniciado. Destino: "${pagina}". Contexto:`, contexto);
+    if (typeof window.resetarCarregamento === 'function') {
+        window.resetarCarregamento();
+    }
     window.mostrarCarregamentoGlobal(`Carregando painel ${pagina}...`);
     limparRecursosInjetados();
 
