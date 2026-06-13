@@ -675,81 +675,127 @@ export class UIModule {
     }
 
     async iniciarSic3V3() {
-        console.log("[SIC3 v3.0 Log] Iniciando fluxo de ativação do SIC3 v3.0...");
+        console.log("[SIC3 v3.0 Log] [UI-Extração] Iniciando fluxo de ativação do SIC3 v3.0...");
         this.showLoader("Identificando sua unidade e município...");
         
         try {
             const token = getCookie('tokiuz');
             if (!token) {
-                console.error("[SIC3 v3.0 Log] Cookie tokiuz não encontrado.");
+                console.error("[SIC3 v3.0 Log] [UI-Extração] Cookie 'tokiuz' não encontrado.");
                 alert("Token de autenticação 'tokiuz' não encontrado. Faça login no portal da Intranet novamente.");
                 this.hideLoader();
                 return;
             }
             
+            // Log do token bruto (apenas indicativo para não poluir demais)
+            console.log("[SIC3 v3.0 Log] [UI-Extração] Cookie 'tokiuz' obtido com sucesso.");
+            
             const decoded = decodeJwt(token);
-            if (!decoded || !decoded.e || !decoded.c) {
-                console.error("[SIC3 v3.0 Log] Token tokiuz inválido ou sem chaves e/c:", decoded);
+            if (!decoded) {
+                console.error("[SIC3 v3.0 Log] [UI-Extração] Falha ao decodificar JWT do token 'tokiuz'.");
                 alert("Não foi possível extrair os dados do usuário a partir do token. Tente recarregar a página.");
                 this.hideLoader();
                 return;
             }
             
-            console.log(`[SIC3 v3.0 Log] Token decodificado com sucesso. e: ${decoded.e}, c: ${decoded.c}. Solicitando busca de unidades ao background...`);
-            
-            const response = await sendMessageToBackground('sic3-v3-identify-user', { e: decoded.e, c: decoded.c });
-            
-            if (!response || !response.success) {
-                throw new Error(response?.error || "Falha na resposta do background ao identificar unidade.");
-            }
-            
-            console.log("[SIC3 v3.0 Log] Identificação realizada com sucesso pelo background:", response);
-            
-            // Identifica se possui local 29 ou 126 no array de funções f ou se o código do local c é 29 ou 126
+            console.log("[SIC3 v3.0 Log] [UI-Extração] Credenciais decodificadas do Tokiuz:", {
+                g_numeroPM: decoded.g,
+                n_nome: decoded.n,
+                t_postoGraduacao: decoded.t,
+                e_codigoRegiao: decoded.e,
+                c_codigoSecao: decoded.c,
+                u_unidadeOrcamentaria: decoded.u,
+                r_nomeRPM: decoded.r,
+                f_funcoes: decoded.f
+            });
+
+            // Tratamento das funções do Tokiuz para verificar se é Admin
             const funcoes = Array.isArray(decoded.f) ? decoded.f.map(String) : [];
             const isAdmin = String(decoded.c) === '29' || String(decoded.c) === '126' || funcoes.some(func => {
                 const local = func.split('.')[0];
                 return local === '29' || local === '126';
             });
+            console.log(`[SIC3 v3.0 Log] [UI-Tratamento] Verificação de Administrador (código '29' ou '126' nas funções f ou código da seção c):`, {
+                codigoSecao: decoded.c,
+                listaFuncoes: funcoes,
+                resultadoIsAdmin: isAdmin
+            });
             
-            // Extrai a RPM amigável a partir da string em decoded.r (ex: "15ª RPM" ou "15 RPM" -> "15 RPM")
+            // Tratamento da RPM amigável a partir do Tokiuz
             let rpmNome = "15 RPM";
             if (decoded.r) {
                 rpmNome = String(decoded.r).replace('ª', '').trim();
             } else if (decoded.e) {
                 rpmNome = String(decoded.e).trim() + " RPM";
             }
-            console.log(`[SIC3 v3.0 Log] RPM extraída para a planilha: "${rpmNome}" (obtida a partir de r: "${decoded.r}", e: "${decoded.e}")`);
+            console.log(`[SIC3 v3.0 Log] [UI-Tratamento] RPM amigável tratada para planilhas: "${rpmNome}" (com base em r: "${decoded.r}", e: "${decoded.e}")`);
 
-            // Salvar informações no storage para uso posterior do SIC3 v3.0
-            await sendMessageToBackground('setStorage', {
-                sic3_v3_user_info: {
-                    codigoUnidade: response.codigoUnidade,
+            // 1. Verificar se já existem informações completas do usuário no storage local e se coincidem com o token ativo
+            const storageResult = await sendMessageToBackground('getSettings', { keys: ['sic3_v3_user_info'] });
+            const cachedInfo = (storageResult?.success && storageResult.value?.sic3_v3_user_info) ? storageResult.value.sic3_v3_user_info : null;
+            
+            let userInfoFinal = null;
+            
+            if (cachedInfo && 
+                String(cachedInfo.numeroPM) === String(decoded.g) && 
+                String(cachedInfo.codigoUnidade) === String(decoded.c)) {
+                
+                console.log("[SIC3 v3.0 Log] [UI-Extração] Cadastro em cache compatível encontrado no Storage Local. Pulando consulta na rede.", cachedInfo);
+                userInfoFinal = cachedInfo;
+            } else {
+                if (cachedInfo) {
+                    console.log("[SIC3 v3.0 Log] [UI-Extração] Cache do usuário obsoleto ou de outro PM. Iniciando consulta de unidades...");
+                } else {
+                    console.log("[SIC3 v3.0 Log] [UI-Extração] Nenhum dado de usuário em cache. Solicitando busca de unidades ao background...");
+                }
+                
+                // Solicitar busca ao background se não tiver cache válido
+                const response = await sendMessageToBackground('sic3-v3-identify-user', { e: decoded.e, c: decoded.c });
+                
+                if (!response || !response.success) {
+                    throw new Error(response?.error || "Falha na resposta do background ao identificar unidade.");
+                }
+                
+                console.log("[SIC3 v3.0 Log] [UI-Extração] Identificação de unidade realizada com sucesso pelo background:", response);
+                
+                userInfoFinal = {
+                    codigoUnidade: String(response.codigoUnidade),
                     nomenclatura: response.nomenclatura,
                     municipio: response.municipio,
-                    codigoMunicipio: response.codigoMunicipio,
+                    codigoMunicipio: String(response.codigoMunicipio),
                     hierarchyPath: response.hierarchyPath,
                     // Informações do tokiuz do usuário para o painel
-                    numeroPM: decoded.g || '',
+                    numeroPM: String(decoded.g || ''),
                     postoGraduacao: decoded.t || '',
                     nome: decoded.n || '',
                     codigoRPM: rpmNome,
                     nomeRPM: decoded.r || '',
                     isAdmin: isAdmin,
                     timestamp: Date.now()
-                }
-            });
+                };
+                
+                // Salvar informações no storage local para uso posterior do SIC3 v3.0 e evitar nova busca durante a sessão
+                await sendMessageToBackground('setStorage', {
+                    sic3_v3_user_info: userInfoFinal
+                });
+                console.log("[SIC3 v3.0 Log] [UI-Gravação] Novas credenciais e dados da unidade gravados no storage local.");
+            }
             
             this.updateLoaderMessage("Carregando o SIC3 v3.0...");
-            console.log(`[SIC3 v3.0 Log] Abrindo SIC3 v3.0 para o município: ${response.municipio}. Admin: ${isAdmin}`);
+            console.log(`[SIC3 v3.0 Log] [UI-Redirecionamento] Abrindo SIC3 v3.0 para o município: ${userInfoFinal.municipio}. Admin: ${userInfoFinal.isAdmin}`);
             
             // Salvar parâmetros de inicialização no storage para o SIC3 v3.0 ler e consumir de forma limpa (sem parâmetros na URL)
             await sendMessageToBackground('setStorage', {
                 sic3_v3_url_params: {
-                    municipio: response.municipio,
-                    rpm: rpmNome,
-                    secao: response.nomenclatura
+                    municipio: userInfoFinal.municipio,
+                    rpm: userInfoFinal.codigoRPM,
+                    secao: userInfoFinal.nomenclatura
                 }
+            });
+            console.log("[SIC3 v3.0 Log] [UI-Gravação] Parâmetros de inicialização salvos no storage:", {
+                municipio: userInfoFinal.municipio,
+                rpm: userInfoFinal.codigoRPM,
+                secao: userInfoFinal.nomenclatura
             });
             
             await sendMessageToBackground('openSettingsPage', {
@@ -757,7 +803,7 @@ export class UIModule {
             });
             
         } catch (error) {
-            console.error("[SIC3 v3.0 Log] Erro no fluxo iniciarSic3V3:", error);
+            console.error("[SIC3 v3.0 Log] [UI-Erro] Erro no fluxo iniciarSic3V3:", error);
             alert("Erro ao iniciar o SIC3 v3.0: " + error.message);
         } finally {
             this.hideLoader();
