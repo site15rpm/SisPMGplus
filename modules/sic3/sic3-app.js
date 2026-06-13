@@ -413,6 +413,12 @@ export async function navegarPara(pagina, contexto = {}) {
     window.mostrarCarregamentoGlobal(`Carregando painel ${pagina}...`);
     limparRecursosInjetados();
 
+    // Limpa o menu de navegação dinâmico no cabeçalho
+    const dynamicMenu = document.getElementById('header-dynamic-menu');
+    if (dynamicMenu) {
+        dynamicMenu.innerHTML = '';
+    }
+
     // Exibe ou oculta o botão de logout conforme a tela
     const btnLogout = document.getElementById('btn-logout-global');
     if (btnLogout) {
@@ -466,6 +472,20 @@ export async function navegarPara(pagina, contexto = {}) {
             return;
         } else if (pagina === 'admin') {
             console.log("[SIC3 v3.0 Log] Carregando fragmento HTML local de admin...");
+            const dynamicMenu = document.getElementById('header-dynamic-menu');
+            if (dynamicMenu) {
+                dynamicMenu.innerHTML = `
+                    <button id="btnGerenciarItem99" class="btn-info" style="margin-right: 10px;">
+                        <i class="fas fa-tasks"></i> GERENCIAR ITENS 99
+                    </button>
+                    <button id="btnIrParaPesquisa" class="btn-info" style="margin-right: 10px;">
+                        <i class="fas fa-search"></i> MATERIAIS DE CONSUMO
+                    </button>
+                    <button id="btnVoltarLancamentos" class="btn-info" style="display: none; margin-right: 10px;">
+                        <i class="fas fa-arrow-left"></i> VOLTAR
+                    </button>
+                `;
+            }
             const html = await obterHtmlLocal('html/admin.html');
             appContainer.innerHTML = html;
             
@@ -509,6 +529,12 @@ export async function navegarPara(pagina, contexto = {}) {
             
         } else if (pagina === 'lancamentos') {
             console.log("[SIC3 v3.0 Log] Carregando fragmento HTML local de lancamentos...");
+            const dynamicMenu = document.getElementById('header-dynamic-menu');
+            if (dynamicMenu) {
+                dynamicMenu.innerHTML = `
+                    <button class="btn-voltar btn-info" type="button"><i class="fas fa-arrow-left"></i> VOLTAR</button>
+                `;
+            }
             const html = await obterHtmlLocal('html/lancamentos.html');
             appContainer.innerHTML = html;
             
@@ -544,6 +570,12 @@ export async function navegarPara(pagina, contexto = {}) {
             console.log("[SIC3 v3.0 Log] Scripts do Lançamento injetados com sucesso.");
         } else if (pagina === 'item99') {
             console.log("[SIC3 v3.0 Log] Carregando fragmento HTML local de item99...");
+            const dynamicMenu = document.getElementById('header-dynamic-menu');
+            if (dynamicMenu) {
+                dynamicMenu.innerHTML = `
+                    <button id="btn-voltar" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Voltar ao Painel</button>
+                `;
+            }
             const html = await obterHtmlLocal('html/item99.html');
             appContainer.innerHTML = html;
             

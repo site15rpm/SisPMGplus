@@ -38,33 +38,18 @@
 
     <!-- Barra de Navegação/Header Principal -->
     <header class="main-header">
-      <div class="header-brand">
-        <div class="brand-logo">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5zm0 2.18l8 3.6v8.55c0 4.45-3.08 8.64-7.5 9.65v-9.98H10v9.98C5.58 24.97 2.5 20.78 2.5 16.33V7.78l8-3.6z" fill="currentColor"/>
-          </svg>
+      <!-- Lado Esquerdo: Marca + Painel de Perfil do Usuário colado logo após -->
+      <div class="header-left-side" style="display: flex; align-items: center; gap: 24px;">
+        <div class="header-brand">
+          <div class="brand-text">
+            <h1>SIC3 <span class="version-badge">v3.0</span></h1>
+            <p>Controle de Contas de Convênio</p>
+          </div>
         </div>
-        <div class="brand-text">
-          <h1>SIC3 <span class="version-badge">v3.0</span></h1>
-          <p>Controle de Contas de Convênio</p>
-        </div>
-      </div>
 
-      <!-- Mantemos os ids de contexto legados para evitar erros no JS, mas ocultos por padrão -->
-      <div class="user-context-display" style="display: none !important;">
-        <span id="user-municipio-display">Buscando município...</span>
-        <span id="user-rpm-display">Buscando RPM...</span>
-        <span id="user-secao-display">Buscando seção...</span>
-      </div>
-
-      <!-- Seção Direita: Widget de Perfil + Botão de Logout Global -->
-      <div class="header-right-side">
-        <!-- Painel de Perfil de Usuário Premium Integrado -->
+        <!-- Painel de Perfil de Usuário Premium Integrado (reformulado para ficar à direita logo após header-brand) -->
         <div class="header-user-widget" id="user-profile-panel" style="display: none;">
           <div class="widget-profile-main">
-            <div class="widget-profile-avatar">
-              <i class="fas fa-user-shield"></i>
-            </div>
             <div class="widget-profile-info">
               <div class="widget-name-row">
                 <span class="widget-profile-name" id="user-profile-name">Carregando...</span>
@@ -80,7 +65,19 @@
             </div>
           </div>
         </div>
+      </div>
 
+      <!-- Mantemos os ids de contexto legados para evitar erros no JS, mas ocultos por padrão -->
+      <div class="user-context-display" style="display: none !important;">
+        <span id="user-municipio-display">Buscando município...</span>
+        <span id="user-rpm-display">Buscando RPM...</span>
+        <span id="user-secao-display">Buscando seção...</span>
+      </div>
+
+      <!-- Seção Direita: Botões de Navegação + Botão Sair -->
+      <div class="header-right-side">
+        <div id="header-dynamic-menu" class="header-dynamic-menu"></div>
+        
         <!-- Botão Sair Global -->
         <button id="btn-logout-global" class="btn-logout-global" title="Sair da Conta">
           <i class="fas fa-sign-out-alt"></i>
