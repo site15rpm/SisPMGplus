@@ -224,7 +224,7 @@ export async function handleIntranetMessages(request, sender) {
                 const parsedData = result.data || [];
                 console.log(`[SIC3 v3.0 Log] [BG-Identificação] Offscreen retornou ${parsedData.length} unidades listadas na árvore.`);
                 
-                // Procurar a unidade correspondente à seção 'c' do usuário
+                // Procurar a unidade correspondente ao código 'c' do usuário
                 console.log(`[SIC3 v3.0 Log] [BG-Identificação] Buscando unidade alvo pelo código c: "${c}"...`);
                 const targetUnit = parsedData.find(unit => String(unit.code) === String(c));
                 
@@ -235,47 +235,41 @@ export async function handleIntranetMessages(request, sender) {
                 
                 console.log(`[SIC3 v3.0 Log] [BG-Identificação] Unidade correspondente encontrada na árvore:`, targetUnit);
                 
-                let nomenclatura = targetUnit.unitName;
-                let municipio = "";
-                let codigoMunicipio = "";
-                
-                console.log(`[SIC3 v3.0 Log] [BG-Tratamento] Iniciando extração de município a partir de unitName: "${targetUnit.unitName}"`);
-                
+                // Limpeza do nome da unidade (remove a parte do município se vier anexada, ex: "EM15RPM - TEÓFILO OTONI (3003)" -> "EM15RPM")
+                let nomeUnidade = targetUnit.unitName;
                 if (targetUnit.unitName.includes(' - ')) {
                     const partes = targetUnit.unitName.split(' - ');
-                    nomenclatura = partes[0].trim();
-                    const muniPart = partes[1].trim();
-                    console.log(`[SIC3 v3.0 Log] [BG-Tratamento] Separador " - " encontrado. Parte 1 (Nomenclatura): "${nomenclatura}", Parte 2 (Município/Info): "${muniPart}"`);
-                    
-                    // Regex para pegar código do município se houver, ex: "BONFIM (3003)" ou "3003 - BONFIM" ou "BONFIM 3003"
-                    const rParenteses = muniPart.match(/\((\d+)\)/);
-                    const rPrefixo = muniPart.match(/^(\d+)\s*-\s*/);
-                    const rSufixo = muniPart.match(/\s+(\d+)$/);
-                    
-                    const codMatch = rParenteses || rPrefixo || rSufixo;
-                    
-                    if (codMatch) {
-                        codigoMunicipio = codMatch[1];
-                        municipio = muniPart.replace(codMatch[0], '').trim();
-                        console.log(`[SIC3 v3.0 Log] [BG-Tratamento] Código do município identificado usando Regex: "${codigoMunicipio}". Município extraído: "${municipio}" (Match Regex: "${codMatch[0]}")`);
-                    } else {
-                        municipio = muniPart;
-                        console.log(`[SIC3 v3.0 Log] [BG-Tratamento] Nenhum código de município numérico encontrado via Regex. Utilizando toda a Parte 2 como município: "${municipio}"`);
-                    }
-                } else {
-                    console.log(`[SIC3 v3.0 Log] [BG-Tratamento] Separador " - " não encontrado no nome da unidade. Nomenclatura e município herdam o nome completo.`);
+                    nomeUnidade = partes[0].trim();
+                    console.log(`[SIC3 v3.0 Log] [BG-Tratamento] Separador " - " identificado em "${targetUnit.unitName}". Nome da unidade limpo: "${nomeUnidade}"`);
                 }
+                
+                // O município e o código do município já vêm processados e herdados do offscreen parser
+                let municipio = targetUnit.municipio || nomeUnidade;
+                let codigoMunicipio = targetUnit.codigoMunicipio || targetUnit.code;
+                
+                console.log(`[SIC3 v3.0 Log] [BG-Tratamento] Município e código resolvidos diretamente do parser offscreen (com suporte a herança hierárquica):`, {
+                    municipioOriginalNoNode: targetUnit.municipio,
+                    codigoMunicipioOriginalNoNode: targetUnit.codigoMunicipio,
+                    municipioFinalResolvido: municipio,
+                    codigoMunicipioFinalResolvido: codigoMunicipio
+                });
                 
                 const resData = {
                     success: true,
                     codigoUnidade: targetUnit.code,
-                    nomenclatura: nomenclatura,
-                    municipio: municipio || nomenclatura,
-                    codigoMunicipio: codigoMunicipio || targetUnit.code,
+                    nomeUnidade: nomeUnidade,
+                    municipio: municipio,
+                    codigoMunicipio: codigoMunicipio,
                     hierarchyPath: targetUnit.hierarchyPath
                 };
                 
-                console.log(`[SIC3 v3.0 Log] [BG-Identificação] Identificação de credenciais e unidades concluída no background. Resultado final:`, resData);
+                console.log(`[SIC3 v3.0 Log] [BG-Identificação] Processo finalizado com sucesso no background. Detalhe das chaves obtidas:
+                - codigoUnidade: "${resData.codigoUnidade}" (Chave 'c' do Tokiuz do usuário, correspondente ao ID na árvore)
+                - nomeUnidade: "${resData.nomeUnidade}" (Nome limpo da seção funcional extraído da árvore)
+                - municipio: "${resData.municipio}" (Nome do município extraído entre parênteses ou herdado do nível superior se ausente)
+                - codigoMunicipio: "${resData.codigoMunicipio}" (Código numérico associado ao município ou herdado do nível superior se ausente)
+                - hierarchyPath: "${resData.hierarchyPath}" (Caminho completo da estrutura de divisões até o nó atual)`);
+                
                 return resData;
                 
             } catch (error) {
