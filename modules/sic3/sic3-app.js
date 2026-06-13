@@ -699,11 +699,11 @@ window.addEventListener('DOMContentLoaded', async () => {
             }
         }
 
-        console.log("[SIC3 v3.0 Log] Extraindo dados do browser.storage.local para 'sic3_v3_user_info'...");
+        console.log("[SIC3 v3.0 Log] [SIC3-Extração] Lendo credenciais e dados da unidade ('sic3_v3_user_info') do browser.storage.local...");
         // Sempre tenta ler do storage local para obter as informações completas do usuário
         const storageResult = await browser.storage.local.get('sic3_v3_user_info');
         const info = (storageResult && storageResult.sic3_v3_user_info) ? storageResult.sic3_v3_user_info : null;
-        console.log("[SIC3 v3.0 Log] Dados recuperados do storage local:", info);
+        console.log("[SIC3 v3.0 Log] [SIC3-Extração] Informações recuperadas do storage local:", info);
         
         if (info) {
             window.userPM = info.numeroPM || "";
@@ -712,21 +712,38 @@ window.addEventListener('DOMContentLoaded', async () => {
             window.userRegiao = info.nomeRPM || "";
             window.isAdmin = info.isAdmin === true;
             
-            window.municipio = municipioParam ? decodeURIComponent(municipioParam).toUpperCase() : info.municipio.toUpperCase();
+            window.municipio = municipioParam ? decodeURIComponent(municipioParam).toUpperCase() : (info.municipio ? info.municipio.toUpperCase() : "");
             window.rpm = rpmParam ? rpmParam : (info.codigoRPM || "15");
             window.secao = secaoParam ? decodeURIComponent(secaoParam) : (info.nomenclatura || "");
+            
+            console.log("[SIC3 v3.0 Log] [SIC3-Mapeamento] Dados mapeados com sucesso:", {
+                userPM: window.userPM,
+                userNome: window.userNome,
+                userSecao: window.userSecao,
+                userRegiao: window.userRegiao,
+                isAdmin: window.isAdmin,
+                municipio: window.municipio,
+                rpm: window.rpm,
+                secao: window.secao
+            });
         } else {
-            console.warn("[SIC3 v3.0 Log] Nenhuma credencial 'sic3_v3_user_info' no storage local. Aplicando fallback de teste.");
+            console.warn("[SIC3 v3.0 Log] [SIC3-Extração] Nenhuma credencial 'sic3_v3_user_info' encontrada no storage local. Aplicando fallback de teste.");
             // Fallback de teste
             window.municipio = municipioParam ? decodeURIComponent(municipioParam).toUpperCase() : "PARÁ DE MINAS";
             window.rpm = rpmParam || "19";
             window.secao = secaoParam ? decodeURIComponent(secaoParam) : "19º BPM";
             window.isAdmin = false;
+            console.log("[SIC3 v3.0 Log] [SIC3-Mapeamento] Fallback aplicado:", {
+                municipio: window.municipio,
+                rpm: window.rpm,
+                secao: window.secao,
+                isAdmin: window.isAdmin
+            });
         }
         
         // Define o filtro de município com base no privilégio de administrador
         window.mLog = window.isAdmin ? "admin" : window.municipio;
-        console.log(`[SIC3 v3.0 Log] Definidos globais: window.municipio=${window.municipio}, window.rpm=${window.rpm}, window.isAdmin=${window.isAdmin}, window.mLog=${window.mLog}`);
+        console.log(`[SIC3 v3.0 Log] [SIC3-Mapeamento] Globais definidos: window.municipio="${window.municipio}", window.rpm="${window.rpm}", window.isAdmin=${window.isAdmin}, window.mLog="${window.mLog}"`);
         
         // Grava no sessionStorage para inicialização segura do contexto
         sessionStorage.setItem("sic3_rpm", window.rpm);
@@ -762,7 +779,7 @@ window.addEventListener('DOMContentLoaded', async () => {
                 }
                 
                 panel.style.display = 'flex';
-                console.log("[SIC3 v3.0 Log] Painel de Perfil do usuário renderizado com sucesso.");
+                console.log("[SIC3 v3.0 Log] [SIC3-Interface] Painel de Perfil do usuário renderizado com sucesso na barra lateral.");
             }
         }
         
