@@ -247,12 +247,23 @@ export async function handleIntranetMessages(request, sender) {
                 
                 logBg(`[BG-Identificação] Unidade correspondente encontrada na árvore: ${JSON.stringify(targetUnit)}`);
                 
-                // Limpeza do nome da seção (remove a parte do município se vier anexada, ex: "EM15RPM - TEÓFILO OTONI (3003)" -> "EM15RPM")
+                // O nome da seção do usuário deve ser a hierarquia inversa sem a RPM.
+                // Exemplo: se hierarchyPath for "15 RPM / 19 BPM / 232 CIA PM / 1 PEL / 2 GP / SGPM PM",
+                // a seção será "SGPM PM / 2 GP / 1 PEL / 232 CIA PM / 19 BPM"
                 let nomeSecao = targetUnit.unitName;
-                if (targetUnit.unitName.includes(' - ')) {
-                    const partes = targetUnit.unitName.split(' - ');
-                    nomeSecao = partes[0].trim();
-                    logBg(`[BG-Tratamento] Separador " - " identificado em "${targetUnit.unitName}". Nome da seção limpo: "${nomeSecao}"`);
+                if (targetUnit.hierarchyPath) {
+                    const partes = targetUnit.hierarchyPath.split(/\s*\/\s*/).map(p => p.trim()).filter(Boolean);
+                    if (partes.length > 1) {
+                        // Remove o primeiro elemento (RPM)
+                        const semRPM = partes.slice(1);
+                        // Inverte a ordem e junta com " / "
+                        nomeSecao = semRPM.reverse().join(' / ');
+                        logBg(`[BG-Tratamento] Hierarquia inversa sem RPM construída para nomeSecao: "${nomeSecao}"`);
+                    } else if (partes.length === 1) {
+                        // Caso especial onde há apenas 1 nível (a própria RPM)
+                        nomeSecao = partes[0];
+                        logBg(`[BG-Tratamento] Apenas RPM identificada na hierarquia. nomeSecao: "${nomeSecao}"`);
+                    }
                 }
                 
                 const normalizarMunicipio = (str) => {
@@ -262,8 +273,9 @@ export async function handleIntranetMessages(request, sender) {
                         .trim();
                 };
 
-                // O município e o código do município já vêm processados e herdados do offscreen parser
-                let municipio = normalizarMunicipio(targetUnit.municipio || nomeSecao);
+                // O município e o código do município já vêm processados e herdados do offscreen parser.
+                // Fallback para município utiliza a folha limpa da seção (unitName) para evitar usar a hierarquia inversa longa.
+                let municipio = normalizarMunicipio(targetUnit.municipio || targetUnit.unitName);
                 let codigoMunicipio = targetUnit.codigoMunicipio || targetUnit.code;
                 
                 logBg(`[BG-Tratamento] Município e código resolvidos diretamente do parser offscreen (com suporte a herança hierárquica): ${JSON.stringify({

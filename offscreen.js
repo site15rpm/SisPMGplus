@@ -171,8 +171,15 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
                             let name = tempDiv.textContent.replace(/-\s*\d+\s*$/, '').trim();
                             name = name.replace(/\s\s+/g, ' ');
 
+                            // Extrai município declarado nesta linha antes de remover os parênteses
+                            const extraido = extrairMunicipioUnidade(name);
+
+                            // Remove o nome do município ou código entre parênteses da seção/unidade (remove todos os parênteses)
+                            name = name.replace(/\s*\([^)]+\)/g, '').trim();
+                            name = name.replace(/\s\s+/g, ' ');
+
                             if (!name) {
-                                logParser(`Linha #${idx} (código ${code}): Ignorada pois o nome textual está vazio.`);
+                                logParser(`Linha #${idx} (código ${code}): Ignorada pois o nome textual está vazio após limpeza.`);
                                 return;
                             }
 
@@ -186,9 +193,6 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
                             codigoMunicipioStack.length = stackIndex;
 
                             hierarchyStack[stackIndex] = name;
-
-                            // Extrai município declarado nesta linha
-                            const extraido = extrairMunicipioUnidade(name);
                             
                             if (extraido.municipio) {
                                 extraido.municipio = normalizarMunicipio(extraido.municipio);
