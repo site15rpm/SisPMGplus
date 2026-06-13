@@ -298,6 +298,13 @@ input[disabled] {
 }
 
 /* Novos Botões de Ação na Tabela */
+#dataTable td.dt-col-acoes,
+#dataTable td.acao-item,
+.principal-table td.acao-item {
+  position: relative !important;
+  overflow: visible !important;
+}
+
 .action-buttons-container {
   display: flex;
   justify-content: center;
@@ -385,11 +392,11 @@ input[disabled] {
 .btn-lancar { background-color: #0d6efd !important; color: white !important; border-color: #0d6efd !important; }
 .btn-lancar:hover { background-color: #0b5ed7 !important; border-color: #0a58ca !important; }
 
-.btn-editar { background-color: var(--secondary-color); color: white; border-color: var(--border-color); }
-.btn-editar:hover { background-color: var(--primary-color); }
+.btn-editar { background-color: #ffc107 !important; color: black !important; border-color: #ffc107 !important; }
+.btn-editar:hover { background-color: #e0a800 !important; color: black !important; border-color: #d39e00 !important; }
 
-.btn-visualizar { background-color: var(--accent-color); color: white; border-color: var(--border-color); }
-.btn-visualizar:hover { opacity: 0.9; }
+.btn-visualizar { background-color: #28a745 !important; color: white !important; border-color: #28a745 !important; }
+.btn-visualizar:hover { background-color: #218838 !important; color: white !important; border-color: #1e7e34 !important; }
 
 .btn-anexo-d, .btn-anexo-u { background-color: #7f8c8d; color: white; border-color: #95a5a6; }
 

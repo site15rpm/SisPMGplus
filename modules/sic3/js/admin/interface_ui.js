@@ -509,8 +509,9 @@
     );
 
     tabelaBody
-      .on("mouseenter", ".action-buttons-container", function () {
-        const $container = $(this);
+      .on("mouseenter", "td.dt-col-acoes", function () {
+        const $td = $(this);
+        const $container = $td.find(".action-buttons-container");
         $container.addClass("container-hover");
         
         const $buttons = $container.find(".btn-acao-icon");
@@ -522,8 +523,9 @@
           $btn.find(".full-text-anexo").show();
         });
       })
-      .on("mouseleave", ".action-buttons-container", function () {
-        const $container = $(this);
+      .on("mouseleave", "td.dt-col-acoes", function () {
+        const $td = $(this);
+        const $container = $td.find(".action-buttons-container");
         $container.removeClass("container-hover");
         
         const $buttons = $container.find(".btn-acao-icon");
