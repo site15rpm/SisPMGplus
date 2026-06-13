@@ -32,7 +32,7 @@
       }
 
       selecionarMesAutomatico();
-      restaurarSelecaoUsuario();
+      await restaurarSelecaoUsuario();
 
       alternarVisualizacaoTela("lancamentos");
 
@@ -217,7 +217,7 @@
 
   // Grupo 1.1: Gestão de Estado da Sessão
 
-  function restaurarSelecaoUsuario() {
+  async function restaurarSelecaoUsuario() {
     try {
       const savedSelections = sessionStorage.getItem("userSelections");
       const mesSelect = $("#mes");
@@ -240,57 +240,52 @@
             .val(selecoes.municipio)
             .data("previous-value-static", selecoes.municipio);
 
-          atualizarSelectConvenios(selecoes.municipio).then(() => {
-            if (selecoes.convenio) {
-              const selectConvenio = $("#convenio");
-              setTimeout(() => {
-                if (
-                  selectConvenio.find(`option[value="${selecoes.convenio}"]`)
-                    .length
-                ) {
-                  selectConvenio.val(selecoes.convenio);
-                } else {
-                  const primeiroValido = selectConvenio.find(
-                    'option[value="TODOS"]'
-                  ).length
-                    ? "TODOS"
-                    : selectConvenio.find("option").first().val() || "-";
-                  selectConvenio.val(primeiroValido);
-                }
-                atualizarInfoConvenioPreposto();
-                if (ADMIN_CONFIG.estados.telaAtual === "lancamentos")
-                  carregarLancamentos();
-              }, 100);
+          await atualizarSelectConvenios(selecoes.municipio);
+          if (selecoes.convenio) {
+            const selectConvenio = $("#convenio");
+            await new Promise(resolve => setTimeout(resolve, 100));
+            if (
+              selectConvenio.find(`option[value="${selecoes.convenio}"]`)
+                .length
+            ) {
+              selectConvenio.val(selecoes.convenio);
             } else {
-              atualizarInfoConvenioPreposto();
-              if (ADMIN_CONFIG.estados.telaAtual === "lancamentos")
-                carregarLancamentos();
+              const primeiroValido = selectConvenio.find(
+                'option[value="TODOS"]'
+              ).length
+                ? "TODOS"
+                : selectConvenio.find("option").first().val() || "-";
+              selectConvenio.val(primeiroValido);
             }
-          });
+          }
+          atualizarInfoConvenioPreposto();
+          if (ADMIN_CONFIG.estados.telaAtual === "lancamentos") {
+            await carregarLancamentos();
+          }
         } else {
           municipioSelect.data("previous-value-static", municipioSelect.val());
-          atualizarSelectConvenios(municipioSelect.val()).then(() => {
-            atualizarInfoConvenioPreposto();
-            if (ADMIN_CONFIG.estados.telaAtual === "lancamentos")
-              carregarLancamentos();
-          });
+          await atualizarSelectConvenios(municipioSelect.val());
+          atualizarInfoConvenioPreposto();
+          if (ADMIN_CONFIG.estados.telaAtual === "lancamentos") {
+            await carregarLancamentos();
+          }
         }
       } else {
         mesSelect.data("previous-value-static", mesSelect.val());
         municipioSelect.data("previous-value-static", municipioSelect.val());
-        atualizarSelectConvenios(municipioSelect.val()).then(() => {
-          atualizarInfoConvenioPreposto();
-          if (ADMIN_CONFIG.estados.telaAtual === "lancamentos")
-            carregarLancamentos();
-        });
+        await atualizarSelectConvenios(municipioSelect.val());
+        atualizarInfoConvenioPreposto();
+        if (ADMIN_CONFIG.estados.telaAtual === "lancamentos") {
+          await carregarLancamentos();
+        }
       }
     } catch (error) {
       manipularErro(error, "restaurarSelecaoUsuario");
-      atualizarSelectConvenios($("#municipio").val()).then(() => {
-        atualizarInfoConvenioPreposto();
-        if (ADMIN_CONFIG.estados.telaAtual === "lancamentos")
-          carregarLancamentos();
-      });
+      await atualizarSelectConvenios($("#municipio").val());
+      atualizarInfoConvenioPreposto();
+      if (ADMIN_CONFIG.estados.telaAtual === "lancamentos") {
+        await carregarLancamentos();
+      }
     }
   }
 
