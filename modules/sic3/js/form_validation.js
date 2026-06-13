@@ -440,3 +440,13 @@ function validarDuplicidadeEndereco(dadosItem, linhaEditadaId = null, isOutroIte
   }
   return true;
 }
+
+// Exportações explícitas para o escopo global (evita erros de carregamento assíncrono em manifest v3)
+window.mostrarErroValidacao = mostrarErroValidacao;
+window.limparValidacoes = limparValidacoes;
+window.obterRegrasValidacao = obterRegrasValidacao;
+window.validarCampo = validarCampo;
+window.configurarValidacoesFormulario = configurarValidacoesFormulario;
+window.configurarValidacaoTiposCampo = configurarValidacaoTiposCampo;
+window.validarFormulario = validarFormulario;
+window.validarDuplicidadeEndereco = validarDuplicidadeEndereco;
