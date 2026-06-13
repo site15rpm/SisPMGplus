@@ -371,7 +371,7 @@ button:disabled {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 1.3rem;
+  font-size: 1rem;
 }
 
 .principal-table th,
@@ -611,6 +611,18 @@ td.observacao-item:hover {
   background-color: #f5f0eb;
   border-radius: 8px;
   overflow: hidden;
+}
+
+#dataTable,
+.dataTable {
+  font-size: 1.3rem !important;
+}
+
+#dataTable th,
+#dataTable td,
+.dataTable th,
+.dataTable td {
+  font-size: 1.3rem !important;
 }
 
 #dataTable input {
