@@ -698,25 +698,26 @@ export class UIModule {
                 return;
             }
             
-            console.log("[SIC3 v3.0 Log] [UI-Extração] Credenciais decodificadas do Tokiuz:", {
-                g_numeroPM: decoded.g,
-                n_nome: decoded.n,
-                t_postoGraduacao: decoded.t,
-                e_codigoRegiao: decoded.e,
-                c_codigoSecao: decoded.c,
-                u_unidadeOrcamentaria: decoded.u,
-                r_nomeRPM: decoded.r,
-                f_funcoes: decoded.f
+            // Detalhando o processo de extração e a definição de cada chave
+            console.log("[SIC3 v3.0 Log] [UI-Extração] Credenciais decodificadas do Tokiuz (obtidas do cookie de autenticação JWT):", {
+                g_numeroPM: decoded.g,             // Obtido da chave 'g' do JWT (Número da matrícula/PM do militar)
+                n_nome: decoded.n,                 // Obtido da chave 'n' do JWT (Nome completo do militar)
+                t_postoGraduacao: decoded.t,       // Obtido da chave 't' do JWT (Posto ou Graduação)
+                e_codigoRegiao: decoded.e,         // Obtido da chave 'e' do JWT (Código numérico da regional/RPM no portal)
+                c_codigoUnidade: decoded.c,        // Obtido da chave 'c' do JWT (Código numérico da seção/unidade atual)
+                u_unidadeOrcamentaria: decoded.u,  // Obtido da chave 'u' do JWT (Código da unidade orçamentária para controle financeiro)
+                r_nomeRegiao: decoded.r,           // Obtido da chave 'r' do JWT (Nome textual da regional/RPM)
+                f_funcoes: decoded.f               // Obtido da chave 'f' do JWT (Array de funções/perfis atribuídos ao usuário)
             });
 
             // Tratamento das funções do Tokiuz para verificar se é Admin
+            // Conforme nova regra: o código da seção 'c' NÃO é mais utilizado, apenas as funções em 'f'
             const funcoes = Array.isArray(decoded.f) ? decoded.f.map(String) : [];
-            const isAdmin = String(decoded.c) === '29' || String(decoded.c) === '126' || funcoes.some(func => {
+            const isAdmin = funcoes.some(func => {
                 const local = func.split('.')[0];
                 return local === '29' || local === '126';
             });
-            console.log(`[SIC3 v3.0 Log] [UI-Tratamento] Verificação de Administrador (código '29' ou '126' nas funções f ou código da seção c):`, {
-                codigoSecao: decoded.c,
+            console.log(`[SIC3 v3.0 Log] [UI-Tratamento] Verificação de Administrador (código '29' ou '126' nas funções f):`, {
                 listaFuncoes: funcoes,
                 resultadoIsAdmin: isAdmin
             });
@@ -760,7 +761,7 @@ export class UIModule {
                 
                 userInfoFinal = {
                     codigoUnidade: String(response.codigoUnidade),
-                    nomenclatura: response.nomenclatura,
+                    nomeUnidade: response.nomeUnidade,
                     municipio: response.municipio,
                     codigoMunicipio: String(response.codigoMunicipio),
                     hierarchyPath: response.hierarchyPath,
@@ -789,13 +790,13 @@ export class UIModule {
                 sic3_v3_url_params: {
                     municipio: userInfoFinal.municipio,
                     rpm: userInfoFinal.codigoRPM,
-                    secao: userInfoFinal.nomenclatura
+                    secao: userInfoFinal.nomeUnidade
                 }
             });
             console.log("[SIC3 v3.0 Log] [UI-Gravação] Parâmetros de inicialização salvos no storage:", {
                 municipio: userInfoFinal.municipio,
                 rpm: userInfoFinal.codigoRPM,
-                secao: userInfoFinal.nomenclatura
+                secao: userInfoFinal.nomeUnidade
             });
             
             await sendMessageToBackground('openSettingsPage', {
