@@ -599,13 +599,73 @@ window.addEventListener('DOMContentLoaded', async () => {
     window.executarApiGas = executarApi;
     window.navegarParaSic3 = navegarPara;
 
-    // 1. Extrair os parâmetros da Query String ou do Storage
+    // 1. Extrair os parâmetros do Storage Local (método prioritário sem parâmetros na URL) ou da Query String (fallback legado)
     try {
-        const urlParams = new URLSearchParams(window.location.search);
-        let municipioParam = urlParams.get('municipio');
-        let rpmParam = urlParams.get('rpm');
-        let secaoParam = urlParams.get('secao');
+        let municipioParam = null;
+        let rpmParam = null;
+        let secaoParam = null;
         
+        let storage = null;
+        if (typeof browser !== 'undefined' && browser.storage && browser.storage.local) {
+            storage = browser.storage.local;
+        } else if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+            storage = chrome.storage.local;
+        }
+        
+        if (storage) {
+            try {
+                const resParams = await new Promise(resolve => {
+                    storage.get('sic3_v3_url_params', res => resolve(res ? res.sic3_v3_url_params : null));
+                });
+                
+                if (resParams) {
+                    console.log("[SIC3 v3.0 Log] Parâmetros de inicialização recuperados com sucesso do storage local:", resParams);
+                    municipioParam = resParams.municipio || null;
+                    rpmParam = resParams.rpm || null;
+                    secaoParam = resParams.secao || null;
+                    
+                    if (resParams.convenioId) {
+                        window.convenioId = resParams.convenioId;
+                        sessionStorage.setItem("sic3_convenioId", resParams.convenioId);
+                    }
+                    if (resParams.ano) {
+                        sessionStorage.setItem("sic3_ano", resParams.ano);
+                        window.ano = resParams.ano;
+                    }
+                    
+                    // Limpa do storage para evitar reutilizações obsoletas em aberturas subsequentes
+                    storage.remove('sic3_v3_url_params', () => {
+                        console.log("[SIC3 v3.0 Log] Parâmetros consumidos e limpos do storage local.");
+                    });
+                }
+            } catch (errStorage) {
+                console.warn("[SIC3 v3.0 Log] Falha ao recuperar sic3_v3_url_params do storage:", errStorage);
+            }
+        }
+        
+        // Fallback: se não encontrou no storage, tenta ler da URL (retrocompatibilidade)
+        if (!municipioParam && !rpmParam && !secaoParam) {
+            const urlParams = new URLSearchParams(window.location.search);
+            municipioParam = urlParams.get('municipio');
+            rpmParam = urlParams.get('rpm');
+            secaoParam = urlParams.get('secao');
+            
+            const convenioIdParam = urlParams.get('convenioId');
+            const anoParam = urlParams.get('ano');
+            if (convenioIdParam) {
+                window.convenioId = convenioIdParam;
+                sessionStorage.setItem("sic3_convenioId", convenioIdParam);
+            }
+            if (anoParam) {
+                sessionStorage.setItem("sic3_ano", anoParam);
+                window.ano = anoParam;
+            }
+            
+            if (municipioParam || rpmParam || secaoParam) {
+                console.log("[SIC3 v3.0 Log] Parâmetros de inicialização lidos da Query String da URL.");
+            }
+        }
+
         console.log("[SIC3 v3.0 Log] Extraindo dados do browser.storage.local para 'sic3_v3_user_info'...");
         // Sempre tenta ler do storage local para obter as informações completas do usuário
         const storageResult = await browser.storage.local.get('sic3_v3_user_info');

@@ -743,15 +743,17 @@ export class UIModule {
             this.updateLoaderMessage("Carregando o SIC3 v3.0...");
             console.log(`[SIC3 v3.0 Log] Abrindo SIC3 v3.0 para o município: ${response.municipio}. Admin: ${isAdmin}`);
             
-            // Abre a página de configurações em uma nova aba passando o município como query param
-            const queryParams = new URLSearchParams({
-                municipio: response.municipio,
-                rpm: rpmNome,
-                secao: response.nomenclatura
+            // Salvar parâmetros de inicialização no storage para o SIC3 v3.0 ler e consumir de forma limpa (sem parâmetros na URL)
+            await sendMessageToBackground('setStorage', {
+                sic3_v3_url_params: {
+                    municipio: response.municipio,
+                    rpm: rpmNome,
+                    secao: response.nomenclatura
+                }
             });
             
             await sendMessageToBackground('openSettingsPage', {
-                page: `modules/sic3/sic3.html?${queryParams.toString()}`
+                page: 'modules/sic3/sic3.html'
             });
             
         } catch (error) {

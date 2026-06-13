@@ -58,7 +58,7 @@ export class SirconvModule {
                             sic3Btn.title = 'Editar convênio no SIC3 v3.0';
                             sic3Btn.innerHTML = this.iconSVG;
                             
-                            sic3Btn.addEventListener('click', (e) => {
+                            sic3Btn.addEventListener('click', async (e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
                                 // Extração dinâmica de RPM e Ano da página do convênio
@@ -73,7 +73,15 @@ export class SirconvModule {
                                 if (anoMatch) {
                                     ano = anoMatch[1];
                                 }
-                                sendMessageToBackground('openSettingsPage', { page: `modules/sic3/sic3.html?convenioId=${convenioId}&rpm=${rpm}&ano=${ano}` });
+                                // Salva os parâmetros no storage de forma limpa (sem passar parâmetros na URL)
+                                await sendMessageToBackground('setStorage', {
+                                    sic3_v3_url_params: {
+                                        convenioId: convenioId,
+                                        rpm: rpm,
+                                        ano: ano
+                                    }
+                                });
+                                sendMessageToBackground('openSettingsPage', { page: 'modules/sic3/sic3.html' });
                             });
                             
                             parentSpan.insertBefore(sic3Btn, parentSpan.firstChild);
