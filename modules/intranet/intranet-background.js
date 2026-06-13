@@ -256,8 +256,18 @@ export async function handleIntranetMessages(request, sender) {
                     logBg(`[BG-Tratamento] Separador " - " identificado em "${targetUnit.unitName}". Nome da unidade limpo: "${nomeUnidade}"`);
                 }
                 
+                const normalizarMunicipio = (str) => {
+                    if (!str) return "";
+                    return str
+                        .normalize("NFD")
+                        .replace(/[\u0300-\u036f]/g, "")
+                        .replace(/ç/gi, 'c')
+                        .toUpperCase()
+                        .trim();
+                };
+
                 // O município e o código do município já vêm processados e herdados do offscreen parser
-                let municipio = targetUnit.municipio || nomeUnidade;
+                let municipio = normalizarMunicipio(targetUnit.municipio || nomeUnidade);
                 let codigoMunicipio = targetUnit.codigoMunicipio || targetUnit.code;
                 
                 logBg(`[BG-Tratamento] Município e código resolvidos diretamente do parser offscreen (com suporte a herança hierárquica): ${JSON.stringify({

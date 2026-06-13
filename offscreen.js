@@ -61,6 +61,16 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
                             console.log(`[Offscreen Parser] ${msg}`);
                         };
 
+                        const normalizarMunicipio = (str) => {
+                            if (!str) return "";
+                            return str
+                                .normalize("NFD")
+                                .replace(/[\u0300-\u036f]/g, "")
+                                .replace(/ç/gi, 'c')
+                                .toUpperCase()
+                                .trim();
+                        };
+
                         logParser("Iniciando análise do HTML de unidades...");
 
                         // Tenta extrair as informações de município e código padrão do título H2
@@ -74,7 +84,7 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
                             // Extrai município do H2, ex: "(Teófilo Otoni)"
                             const matchMuni = h2Text.match(/\(([^)]+)\)/);
                             if (matchMuni) {
-                                defaultMunicipio = matchMuni[1].trim();
+                                defaultMunicipio = normalizarMunicipio(matchMuni[1]);
                             }
                             
                             // Extrai o código numérico do H2 (ex: dentro de <i> ou no final)
@@ -184,6 +194,10 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
                             // Extrai município declarado nesta linha
                             const extraido = extrairMunicipioUnidade(name);
                             
+                            if (extraido.municipio) {
+                                extraido.municipio = normalizarMunicipio(extraido.municipio);
+                            }
+                            
                             // Correção: Se o município foi extraído textualmente (ex: (Itambacuri)), mas o código numérico do município
                             // está vazio, usamos o próprio código da unidade como fallback para evitar código=""
                             if (extraido.municipio && !extraido.codigoMunicipio) {
@@ -223,10 +237,7 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
                                 unitName: name,
                                 code,
                                 municipio: municipioStack[stackIndex] || "",
-                                codigoMunicipio: codigoMunicipioStack[stackIndex] || "",
-                                location: '', 
-                                address: '',
-                                cep: ''
+                                codigoMunicipio: codigoMunicipioStack[stackIndex] || ""
                             });
                         });
 
