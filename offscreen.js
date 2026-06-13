@@ -54,6 +54,14 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
                         const hierarchyStack = []; 
                         const municipioStack = [];
                         const codigoMunicipioStack = [];
+                        const parserLogs = [];
+
+                        const logParser = (msg) => {
+                            parserLogs.push(msg);
+                            console.log(`[Offscreen Parser] ${msg}`);
+                        };
+
+                        logParser("Iniciando análise do HTML de unidades...");
 
                         // Função auxiliar interna para extrair o município e seu código com base nos parênteses
                         const extrairMunicipioUnidade = (unitName) => {
@@ -93,18 +101,28 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
                         }
 
                         const lines = htmlContent.split(/<br\s*\/?>/i);
+                        logParser(`Quantidade de linhas brutas no HTML: ${lines.length}`);
 
-                        lines.forEach(lineHtml => {
+                        lines.forEach((lineHtml, idx) => {
                             lineHtml = lineHtml.trim();
                             if (!lineHtml || !lineHtml.includes('<i>')) return;
 
                             // Nível 1 = 1 span, Nível 2 = 2 spans, etc.
-                            const level = (lineHtml.match(/<span class=['"]ic rel join-(middle|bottom)['"]/g) || []).length;
-                            if(level === 0) return;
-
+                            let level = (lineHtml.match(/<span class=['"]ic rel join-(middle|bottom)['"]/g) || []).length;
+                            
                             const codeMatch = lineHtml.match(/<i>(\d+)<\/i>/);
                             const code = codeMatch ? codeMatch[1] : null;
-                            if (!code) return;
+                            if (!code) {
+                                logParser(`Linha #${idx}: Ignorada pois não possui código identificador <i>.`);
+                                return;
+                            }
+
+                            // Correção de herança raiz: Se o nível deu 0 (sem spans de recuo), mas possui código,
+                            // tratamos como nível 1 (raiz) para preencher a base da árvore.
+                            if (level === 0) {
+                                logParser(`Linha #${idx} (código ${code}): Level 0 detectado na raiz. Promovido para Level 1.`);
+                                level = 1;
+                            }
 
                             const tempDiv = doc.createElement('div');
                             // Remove imagens (ícone de telefone) para não interferir na extração de texto
@@ -113,10 +131,15 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
                             let name = tempDiv.textContent.replace(/-\s*\d+\s*$/, '').trim();
                             name = name.replace(/\s\s+/g, ' ');
 
-                            if (!name) return;
+                            if (!name) {
+                                logParser(`Linha #${idx} (código ${code}): Ignorada pois o nome textual está vazio.`);
+                                return;
+                            }
 
                             const stackIndex = level - 1;
                             
+                            logParser(`Processando Linha #${idx} (código ${code}): Nome="${name}", Level=${level}, stackIndex=${stackIndex}`);
+
                             // Ajusta o tamanho dos stacks de controle
                             hierarchyStack.length = stackIndex;
                             municipioStack.length = stackIndex;
@@ -126,6 +149,7 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
                             // Extrai município declarado nesta linha
                             const extraido = extrairMunicipioUnidade(name);
+                            logParser(`  > Extração direta de município: municipio="${extraido.municipio}", codigo="${extraido.codigoMunicipio}"`);
 
                             // Regra de Herança Hierárquica:
                             // Se esta unidade declarar município entre parênteses, utiliza-o.
@@ -133,15 +157,19 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
                             if (extraido.municipio) {
                                 municipioStack[stackIndex] = extraido.municipio;
                                 codigoMunicipioStack[stackIndex] = extraido.codigoMunicipio;
+                                logParser(`  > Decisão: Utilizou município direto da linha: "${extraido.municipio}"`);
                             } else if (stackIndex > 0 && municipioStack[stackIndex - 1]) {
                                 municipioStack[stackIndex] = municipioStack[stackIndex - 1];
                                 codigoMunicipioStack[stackIndex] = codigoMunicipioStack[stackIndex - 1];
+                                logParser(`  > Decisão: HERDOU município do nível superior (índice ${stackIndex - 1}): "${municipioStack[stackIndex - 1]}"`);
                             } else {
                                 municipioStack[stackIndex] = "";
                                 codigoMunicipioStack[stackIndex] = "";
+                                logParser(`  > Decisão: Sem município definido nem disponível para herdar no índice ${stackIndex}.`);
                             }
 
                             const hierarchyPath = hierarchyStack.join(' / ');
+                            logParser(`  > hierarchyPath resultante: "${hierarchyPath}"`);
                             
                             parsedData.push({
                                 hierarchyPath,
@@ -155,14 +183,24 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
                             });
                         });
 
+                        logParser(`Processamento concluído. Unidades válidas parseadas: ${parsedData.length}`);
+
                         if (parsedData.length === 0) {
                             sendResponse({ 
                                 error: 'Nenhuma unidade encontrada na análise do HTML.',
-                                html: request.html
+                                html: request.html,
+                                parserLogs: parserLogs
                             });
                         } else {
-                            sendResponse({ data: parsedData });
+                            sendResponse({ data: parsedData, parserLogs: parserLogs });
                         }
+
+                    } catch (error) {
+                        console.error('[Offscreen] Erro ao parsear HTML de unidades:', error);
+                        sendResponse({ error: `Erro ao parsear HTML: ${error.message}` });
+                    }
+                    break;
+                }
 
                     } catch (error) {
                         console.error('[Offscreen] Erro ao parsear HTML de unidades:', error);
