@@ -435,6 +435,18 @@ td.acao-item {
   border-radius: 8px;
   box-shadow: var(--shadow-soft);
 }
+
+#dataTable,
+.dataTable {
+  font-size: 1.3rem !important;
+}
+
+#dataTable th,
+#dataTable td,
+.dataTable th,
+.dataTable td {
+  font-size: 1.3rem !important;
+}
 .dt-container { background-color: #f5f0eb; border-radius: 8px; overflow: hidden; }
 .dt-col-unidade select, #dataTable input { width: 100%; }
 div.dt-container div.top, div.dt-container div.bottom {
