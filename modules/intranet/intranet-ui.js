@@ -753,8 +753,20 @@ export class UIModule {
                 // Solicitar busca ao background se não tiver cache válido
                 const response = await sendMessageToBackground('sic3-v3-identify-user', { e: decoded.e, c: decoded.c });
                 
+                // Exibe os logs acumulados do background e do parser offscreen diretamente no console da página (UI)
+                if (response && response.bgLogs && Array.isArray(response.bgLogs)) {
+                    console.log("[SIC3 v3.0 Log] [UI-Extração] === LOGS DE PROCESSAMENTO DO BACKGROUND E PARSER OFFSCREEN ===");
+                    response.bgLogs.forEach(logLine => {
+                        console.log(`  > ${logLine}`);
+                    });
+                    console.log("[SIC3 v3.0 Log] [UI-Extração] ===========================================================");
+                }
+                
                 if (!response || !response.success) {
-                    throw new Error(response?.error || "Falha na resposta do background ao identificar unidade.");
+                    const errMsg = response?.error || "Falha na resposta do background ao identificar unidade.";
+                    const err = new Error(errMsg);
+                    err.bgLogs = response?.bgLogs;
+                    throw err;
                 }
                 
                 console.log("[SIC3 v3.0 Log] [UI-Extração] Identificação de unidade realizada com sucesso pelo background:", response);
@@ -805,6 +817,13 @@ export class UIModule {
             
         } catch (error) {
             console.error("[SIC3 v3.0 Log] [UI-Erro] Erro no fluxo iniciarSic3V3:", error);
+            if (error.bgLogs && Array.isArray(error.bgLogs)) {
+                console.log("[SIC3 v3.0 Log] [UI-Erro] === LOGS DE PROCESSAMENTO DO BACKGROUND (COM FALHA) ===");
+                error.bgLogs.forEach(logLine => {
+                    console.log(`  > ${logLine}`);
+                });
+                console.log("[SIC3 v3.0 Log] [UI-Erro] ========================================================");
+            }
             alert("Erro ao iniciar o SIC3 v3.0: " + error.message);
         } finally {
             this.hideLoader();
