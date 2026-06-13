@@ -648,7 +648,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         if (storage) {
             try {
                 const resParams = await new Promise(resolve => {
-                    storage.get('sic3_v3_url_params', res => resolve(res ? res.sic3_v3_url_params : null));
+                    storage.get('sic3_url_params', res => resolve(res ? res.sic3_url_params : null));
                 });
                 
                 if (resParams) {
@@ -667,12 +667,12 @@ window.addEventListener('DOMContentLoaded', async () => {
                     }
                     
                     // Limpa do storage para evitar reutilizações obsoletas em aberturas subsequentes
-                    storage.remove('sic3_v3_url_params', () => {
+                    storage.remove('sic3_url_params', () => {
                         console.log("[SIC3 v3.0 Log] Parâmetros consumidos e limpos do storage local.");
                     });
                 }
             } catch (errStorage) {
-                console.warn("[SIC3 v3.0 Log] Falha ao recuperar sic3_v3_url_params do storage:", errStorage);
+                console.warn("[SIC3 v3.0 Log] Falha ao recuperar sic3_url_params do storage:", errStorage);
             }
         }
         
@@ -699,10 +699,10 @@ window.addEventListener('DOMContentLoaded', async () => {
             }
         }
 
-        console.log("[SIC3 v3.0 Log] [SIC3-Extração] Lendo credenciais e dados da unidade ('sic3_v3_user_info') do browser.storage.local...");
+        console.log("[SIC3 v3.0 Log] [SIC3-Extração] Lendo credenciais e dados da unidade ('sic3_user_info') do browser.storage.local...");
         // Sempre tenta ler do storage local para obter as informações completas do usuário
-        const storageResult = await browser.storage.local.get('sic3_v3_user_info');
-        const info = (storageResult && storageResult.sic3_v3_user_info) ? storageResult.sic3_v3_user_info : null;
+        const storageResult = await browser.storage.local.get('sic3_user_info');
+        const info = (storageResult && storageResult.sic3_user_info) ? storageResult.sic3_user_info : null;
         console.log("[SIC3 v3.0 Log] [SIC3-Extração] Informações recuperadas do storage local:", info);
         
         if (info) {
@@ -727,7 +727,7 @@ window.addEventListener('DOMContentLoaded', async () => {
                 secao: window.secao
             });
         } else {
-            console.warn("[SIC3 v3.0 Log] [SIC3-Extração] Nenhuma credencial 'sic3_v3_user_info' encontrada no storage local. Aplicando fallback de teste.");
+            console.warn("[SIC3 v3.0 Log] [SIC3-Extração] Nenhuma credencial 'sic3_user_info' encontrada no storage local. Aplicando fallback de teste.");
             // Fallback de teste
             window.municipio = municipioParam ? decodeURIComponent(municipioParam).toUpperCase() : "PARÁ DE MINAS";
             window.rpm = rpmParam || "19";

@@ -428,8 +428,8 @@ window.addEventListener('DOMContentLoaded', async () => {
         let secaoParam = urlParams.get('secao');
         
         // Sempre tenta ler do storage local para obter as informações completas do usuário
-        const storageResult = await browser.storage.local.get('sic3_v3_user_info');
-        const info = (storageResult && storageResult.sic3_v3_user_info) ? storageResult.sic3_v3_user_info : null;
+        const storageResult = await browser.storage.local.get('sic3_user_info');
+        const info = (storageResult && storageResult.sic3_user_info) ? storageResult.sic3_user_info : null;
         
         if (info) {
             window.userPM = info.numeroPM || "";

@@ -187,7 +187,6 @@ export async function handleIntranetMessages(request, sender) {
             const bgLogs = [];
             const logBg = (msg) => {
                 bgLogs.push(msg);
-                console.log(`[SIC3 v3.0 Log] ${msg}`);
             };
 
             logBg(`[BG-Identificação] Iniciando identificação no background. Parâmetros recebidos -> e (Região): ${e}, c (Seção alvo): ${c}`);

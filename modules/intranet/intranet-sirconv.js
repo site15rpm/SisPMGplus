@@ -75,7 +75,7 @@ export class SirconvModule {
                                 }
                                 // Salva os parâmetros no storage de forma limpa (sem passar parâmetros na URL)
                                 await sendMessageToBackground('setStorage', {
-                                    sic3_v3_url_params: {
+                                    sic3_url_params: {
                                         convenioId: convenioId,
                                         rpm: rpm,
                                         ano: ano

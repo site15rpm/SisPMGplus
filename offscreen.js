@@ -58,7 +58,6 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
                         const logParser = (msg) => {
                             parserLogs.push(msg);
-                            console.log(`[Offscreen Parser] ${msg}`);
                         };
 
                         const normalizarMunicipio = (str) => {

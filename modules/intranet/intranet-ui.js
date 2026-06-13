@@ -710,17 +710,7 @@ export class UIModule {
                 f_funcoes: decoded.f               // Obtido da chave 'f' do JWT (Array de funções/perfis atribuídos ao usuário)
             });
 
-            // Tratamento das funções do Tokiuz para verificar se é Admin
-            // Conforme nova regra: o código da seção 'c' NÃO é mais utilizado, apenas as funções em 'f'
-            const funcoes = Array.isArray(decoded.f) ? decoded.f.map(String) : [];
-            const isAdmin = funcoes.some(func => {
-                const local = func.split('.')[0];
-                return local === '29' || local === '126';
-            });
-            console.log(`[SIC3 v3.0 Log] [UI-Tratamento] Verificação de Administrador (código '29' ou '126' nas funções f):`, {
-                listaFuncoes: funcoes,
-                resultadoIsAdmin: isAdmin
-            });
+            // A lógica de verificação de administrador (isAdmin) agora é determinada após a resolução do nome da seção do usuário (se contém ALMOXARIFADO ou SOFI).
             
             // Tratamento da RPM amigável a partir do Tokiuz
             let rpmNome = "15 RPM";
@@ -732,8 +722,8 @@ export class UIModule {
             console.log(`[SIC3 v3.0 Log] [UI-Tratamento] RPM amigável tratada para planilhas: "${rpmNome}" (com base em r: "${decoded.r}", e: "${decoded.e}")`);
 
             // 1. Verificar se já existem informações completas do usuário no storage local e se coincidem com o token ativo
-            const storageResult = await sendMessageToBackground('getSettings', { keys: ['sic3_v3_user_info'] });
-            const cachedInfo = (storageResult?.success && storageResult.value?.sic3_v3_user_info) ? storageResult.value.sic3_v3_user_info : null;
+            const storageResult = await sendMessageToBackground('getSettings', { keys: ['sic3_user_info'] });
+            const cachedInfo = (storageResult?.success && storageResult.value?.sic3_user_info) ? storageResult.value.sic3_user_info : null;
             
             let userInfoFinal = null;
             
@@ -743,6 +733,9 @@ export class UIModule {
                 
                 console.log("[SIC3 v3.0 Log] [UI-Extração] Cadastro em cache compatível encontrado no Storage Local. Pulando consulta na rede.", cachedInfo);
                 userInfoFinal = cachedInfo;
+                // Recalcula isAdmin para refletir qualquer mudança de unidade ou nas regras ('ALMOXARIFADO' ou 'SOFI')
+                const secaoUpper = String(userInfoFinal.nomeUnidade || '').toUpperCase();
+                userInfoFinal.isAdmin = secaoUpper.includes('ALMOXARIFADO') || secaoUpper.includes('SOFI');
             } else {
                 if (cachedInfo) {
                     console.log("[SIC3 v3.0 Log] [UI-Extração] Cache do usuário obsoleto ou de outro PM. Iniciando consulta de unidades...");
@@ -753,23 +746,15 @@ export class UIModule {
                 // Solicitar busca ao background se não tiver cache válido
                 const response = await sendMessageToBackground('sic3-v3-identify-user', { e: decoded.e, c: decoded.c });
                 
-                // Exibe os logs acumulados do background e do parser offscreen diretamente no console da página (UI)
-                if (response && response.bgLogs && Array.isArray(response.bgLogs)) {
-                    console.log("[SIC3 v3.0 Log] [UI-Extração] === LOGS DE PROCESSAMENTO DO BACKGROUND E PARSER OFFSCREEN ===");
-                    response.bgLogs.forEach(logLine => {
-                        console.log(`  > ${logLine}`);
-                    });
-                    console.log("[SIC3 v3.0 Log] [UI-Extração] ===========================================================");
-                }
-                
                 if (!response || !response.success) {
                     const errMsg = response?.error || "Falha na resposta do background ao identificar unidade.";
-                    const err = new Error(errMsg);
-                    err.bgLogs = response?.bgLogs;
-                    throw err;
+                    throw new Error(errMsg);
                 }
                 
                 console.log("[SIC3 v3.0 Log] [UI-Extração] Identificação de unidade realizada com sucesso pelo background:", response);
+                
+                const secaoUpper = String(response.nomeUnidade || '').toUpperCase();
+                const usuarioEhAdmin = secaoUpper.includes('ALMOXARIFADO') || secaoUpper.includes('SOFI');
                 
                 userInfoFinal = {
                     codigoUnidade: String(response.codigoUnidade),
@@ -783,13 +768,13 @@ export class UIModule {
                     nome: decoded.n || '',
                     codigoRPM: rpmNome,
                     nomeRPM: decoded.r || '',
-                    isAdmin: isAdmin,
+                    isAdmin: usuarioEhAdmin,
                     timestamp: Date.now()
                 };
                 
                 // Salvar informações no storage local para uso posterior do SIC3 v3.0 e evitar nova busca durante a sessão
                 await sendMessageToBackground('setStorage', {
-                    sic3_v3_user_info: userInfoFinal
+                    sic3_user_info: userInfoFinal
                 });
                 console.log("[SIC3 v3.0 Log] [UI-Gravação] Novas credenciais e dados da unidade gravados no storage local.");
             }
@@ -799,7 +784,7 @@ export class UIModule {
             
             // Salvar parâmetros de inicialização no storage para o SIC3 v3.0 ler e consumir de forma limpa (sem parâmetros na URL)
             await sendMessageToBackground('setStorage', {
-                sic3_v3_url_params: {
+                sic3_url_params: {
                     municipio: userInfoFinal.municipio,
                     rpm: userInfoFinal.codigoRPM,
                     secao: userInfoFinal.nomeUnidade
@@ -817,13 +802,6 @@ export class UIModule {
             
         } catch (error) {
             console.error("[SIC3 v3.0 Log] [UI-Erro] Erro no fluxo iniciarSic3V3:", error);
-            if (error.bgLogs && Array.isArray(error.bgLogs)) {
-                console.log("[SIC3 v3.0 Log] [UI-Erro] === LOGS DE PROCESSAMENTO DO BACKGROUND (COM FALHA) ===");
-                error.bgLogs.forEach(logLine => {
-                    console.log(`  > ${logLine}`);
-                });
-                console.log("[SIC3 v3.0 Log] [UI-Erro] ========================================================");
-            }
             alert("Erro ao iniciar o SIC3 v3.0: " + error.message);
         } finally {
             this.hideLoader();
