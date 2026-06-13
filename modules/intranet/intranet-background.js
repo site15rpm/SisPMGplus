@@ -216,6 +216,15 @@ export async function handleIntranetMessages(request, sender) {
                 console.log(`[SIC3 v3.0 Log] [BG-Identificação] HTML decodificado com sucesso. Tamanho do HTML: ${htmlText.length} caracteres. Enviando para offscreen parser...`);
                 
                 const result = await sendMessageToOffscreen('parse-unidades-html', { html: htmlText });
+
+                // Exibe os logs internos de depuração do parser offscreen no console do background
+                if (result.parserLogs && Array.isArray(result.parserLogs)) {
+                    console.log("[SIC3 v3.0 Log] [BG-Parser-Debug] === LOGS DETALHADOS DO PARSER OFFSCREEN ===");
+                    result.parserLogs.forEach(logLine => {
+                        console.log(`  > ${logLine}`);
+                    });
+                    console.log("[SIC3 v3.0 Log] [BG-Parser-Debug] ========================================");
+                }
                 
                 if (result.error) {
                     throw new Error(result.error);
