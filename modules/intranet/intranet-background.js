@@ -258,9 +258,6 @@ export async function handleIntranetMessages(request, sender) {
                 const normalizarMunicipio = (str) => {
                     if (!str) return "";
                     return str
-                        .normalize("NFD")
-                        .replace(/[\u0300-\u036f]/g, "")
-                        .replace(/ç/gi, 'c')
                         .toUpperCase()
                         .trim();
                 };

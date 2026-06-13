@@ -63,9 +63,6 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
                         const normalizarMunicipio = (str) => {
                             if (!str) return "";
                             return str
-                                .normalize("NFD")
-                                .replace(/[\u0300-\u036f]/g, "")
-                                .replace(/ç/gi, 'c')
                                 .toUpperCase()
                                 .trim();
                         };
