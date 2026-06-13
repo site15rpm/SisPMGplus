@@ -708,7 +708,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         if (info) {
             window.userPM = info.numeroPM || "";
             window.userNome = info.nome || "";
-            window.userSecao = info.secaoUsuario || info.nomeUnidade || "";
+            window.userSecao = info.nomeUnidade || "";
             window.userRegiao = info.nomeRPM || "";
             window.isAdmin = info.isAdmin === true;
             
@@ -767,7 +767,7 @@ window.addEventListener('DOMContentLoaded', async () => {
             if (panel) {
                 if (nameEl) nameEl.textContent = `${info.postoGraduacao || ''} ${info.nome || 'Usuário'}`.trim();
                 if (pmEl) pmEl.textContent = `PM nº ${info.numeroPM || '-'}`;
-                if (secaoMuniEl) secaoMuniEl.textContent = `${info.secaoUsuario || info.nomeUnidade || '-'} / ${info.municipio}`;
+                if (secaoMuniEl) secaoMuniEl.textContent = `${info.nomeUnidade || '-'} / ${info.municipio}`;
                 if (regiaoEl) regiaoEl.textContent = info.nomeRPM || `${info.codigoRPM || '-'}ª RPM`;
                 
                 if (statusEl) {

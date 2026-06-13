@@ -135,7 +135,7 @@ export function parseTokiuzPayload(decoded) {
         nomeRPM: String(decoded.r || ''),
         nomeUnidade: String(decoded.p || ''),
         codigoUnidadeContabil: String(decoded.u || ''),
-        codigoSecao: String(decoded.c || ''),
+        codigoUnidade: String(decoded.c || ''),
         funcoesCompleto: funcoes,
         locais: locais,
         funcoesLista: funcoesLista

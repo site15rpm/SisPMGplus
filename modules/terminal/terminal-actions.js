@@ -853,10 +853,10 @@ export function initActions(prototype) {
             postoGraduacao: tokenData.t,
             nomeCompleto: tokenData.n,
             codigoRegiao: tokenData.e,
-            fracaoSecao: tokenData.p,
+            nomeUnidade: tokenData.p,
             regiao: tokenData.r,
             codigoUnidadeContabil: tokenData.u,
-            codigoFracaoSecao: tokenData.c,
+            codigoUnidade: tokenData.c,
             funcoes: tokenData.f,
             idSessao: tokenData.i
         };
