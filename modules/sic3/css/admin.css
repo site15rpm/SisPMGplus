@@ -303,6 +303,7 @@ td.dt-col-acoes,
 td.acao-item {
   position: relative !important;
   overflow: visible !important;
+  min-width: 140px;
 }
 
 .action-buttons-container {
@@ -310,24 +311,29 @@ td.acao-item {
   justify-content: center;
   align-items: center;
   gap: 3px;
-  position: relative;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  height: 30px;
-}
-
-.action-buttons-container.container-hover {
   position: absolute;
   top: 50%;
   left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+  width: max-content;
+  height: 38px;
+  padding: 4px;
+  background-color: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: none;
+}
+
+.action-buttons-container.container-hover {
   transform: translate(-50%, -50%) scale(1.02);
   z-index: 1000 !important;
   background-color: var(--card-bg);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border-color: var(--border-color);
   box-shadow: 0 8px 24px rgba(87, 78, 45, 0.25);
   padding: 6px 12px;
   gap: 8px;
-  width: max-content;
   height: 44px;
 }
 
