@@ -509,7 +509,7 @@
     );
 
     tabelaBody
-      .on("mouseenter", "td.dt-col-acoes", function () {
+      .on("mouseenter", "td.cell-actions", function () {
         const $td = $(this);
         const $container = $td.find(".action-buttons-container");
         $container.addClass("container-hover");
@@ -523,7 +523,7 @@
           $btn.find(".full-text-anexo").show();
         });
       })
-      .on("mouseleave", "td.dt-col-acoes", function () {
+      .on("mouseleave", "td.cell-actions", function () {
         const $td = $(this);
         const $container = $td.find(".action-buttons-container");
         $container.removeClass("container-hover");

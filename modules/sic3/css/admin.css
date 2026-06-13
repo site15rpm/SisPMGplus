@@ -300,6 +300,7 @@ input[disabled] {
 /* Novos Botões de Ação na Tabela */
 #dataTable td.dt-col-acoes,
 #dataTable td.acao-item,
+#dataTable td.cell-actions,
 .principal-table td.acao-item {
   position: relative !important;
   overflow: visible !important;
@@ -342,8 +343,6 @@ input[disabled] {
   border: 1px solid var(--border-color);
   cursor: pointer;
   margin: 0 1px;
-  width: 32px;
-  height: 32px;
   font-family: var(--font-main);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -363,7 +362,7 @@ input[disabled] {
 /* Quando o container está em hover, expande os botões de ação */
 .action-buttons-container.container-hover .btn-acao-icon {
   width: auto;
-  padding: 0 12px !important;
+  padding: 4px 12px !important;
   gap: 6px;
 }
 
@@ -377,7 +376,7 @@ input[disabled] {
 .btn-acao-icon.expanded {
   width: auto;
   min-width: 120px;
-  padding: 0 12px !important;
+  padding: 4px 12px !important;
   gap: 6px;
 }
 
