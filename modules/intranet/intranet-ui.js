@@ -378,7 +378,7 @@ export class UIModule {
         
         // SIC3 v3.0 Botão
         moduleItems += `
-            <div id="sic3-v3-btn" class="sispmg-menu-item">
+            <div id="sic3-btn" class="sispmg-menu-item">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
                     <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
                 </svg>
@@ -485,7 +485,7 @@ export class UIModule {
 
 
     attachMenuEventListeners(menu) {
-        const sic3V3Button = menu.querySelector('#sic3-v3-btn');
+        const sic3V3Button = menu.querySelector('#sic3-btn');
         if (sic3V3Button) {
             sic3V3Button.addEventListener('click', async () => {
                 this.closeHeaderMenu();
@@ -761,7 +761,7 @@ export class UIModule {
                 }
                 
                 // Solicitar busca ao background se não tiver cache válido
-                const response = await sendMessageToBackground('sic3-v3-identify-user', { e: decoded.e, c: decoded.c });
+                const response = await sendMessageToBackground('sic3-identify-user', { e: decoded.e, c: decoded.c });
                 
                 if (!response || !response.success) {
                     const errMsg = response?.error || "Falha na resposta do background ao identificar unidade.";

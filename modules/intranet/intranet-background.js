@@ -182,7 +182,7 @@ export async function handleIntranetMessages(request, sender) {
                  body: new URLSearchParams(restOfPayload.payload).toString()
              });
         }
-        case 'sic3-v3-identify-user': {
+        case 'sic3-identify-user': {
             const { e, c } = restOfPayload;
             const bgLogs = [];
             const logBg = (msg) => {

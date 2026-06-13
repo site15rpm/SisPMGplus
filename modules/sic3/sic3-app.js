@@ -198,15 +198,12 @@ const runProxy = new Proxy(scriptRunShim, {
             }
 
             if (propKey === 'logoutUser') {
-                console.log("[SIC3 v3.0 Log] Interceptando logout local do usuário.");
+                console.log("[SIC3 v3.0 Log] Interceptando logout local do usuário. Fechando aba...");
                 sessionStorage.clear();
-                navegarPara('login').then(() => {
-                    if (successHandler) {
-                        successHandler("");
-                    }
-                }).catch(err => {
-                    if (failureHandler) failureHandler(err);
-                });
+                window.close();
+                if (successHandler) {
+                    successHandler("");
+                }
                 return;
             }
             
@@ -463,23 +460,10 @@ export async function navegarPara(pagina, contexto = {}) {
         }
 
         if (pagina === 'login') {
-            console.log("[SIC3 v3.0 Log] Carregando fragmento HTML local de login...");
-            const html = await obterHtmlLocal('html/login.html');
-            appContainer.innerHTML = html;
-            
-            carregarCSS('css/login.css');
-            
-            window.pUser = contexto.pUser || "html/login";
-            window.mLog = contexto.mLog || "";
-            window.nUser = contexto.nUser || "";
-            window.authToken = contexto.authToken || "";
-            window.idbase = contexto.idbase || "";
-
-            await carregarJS('js/utils_global.js');
-            await carregarJS('js/form_validation.js');
-            await carregarJS('js/login-controller.js');
-            console.log("[SIC3 v3.0 Log] Scripts do Login injetados com sucesso.");
-            
+            console.log("[SIC3 v3.0 Log] Redirecionamento de login interceptado. Fechando aba...");
+            alert("Sua sessão expirou ou você saiu do sistema. Faça login novamente através do portal da Intranet PM.");
+            window.close();
+            return;
         } else if (pagina === 'admin') {
             console.log("[SIC3 v3.0 Log] Carregando fragmento HTML local de admin...");
             const html = await obterHtmlLocal('html/admin.html');
@@ -593,14 +577,18 @@ document.addEventListener('sic3:unauthorized', () => {
 // Inicialização da barra de configuração de API
 async function initConfigBar() {
     const currentUrl = await getGasApiUrl();
-    apiUrlInput.value = currentUrl;
+    if (apiUrlInput) {
+        apiUrlInput.value = currentUrl;
+    }
 
-    apiUrlSaveBtn.addEventListener('click', async () => {
-        const url = apiUrlInput.value.trim();
-        await saveGasApiUrl(url);
-        alert("URL do Web App do GAS configurada com sucesso!");
-        navegarPara('admin', { nUser: window.userNome || "Operador Extensão", mLog: window.mLog, authToken: "bypass", idbase: window.idbase });
-    });
+    if (apiUrlSaveBtn) {
+        apiUrlSaveBtn.addEventListener('click', async () => {
+            const url = apiUrlInput ? apiUrlInput.value.trim() : "";
+            await saveGasApiUrl(url);
+            alert("URL do Web App do GAS configurada com sucesso!");
+            navegarPara('admin', { nUser: window.userNome || "Operador Extensão", mLog: window.mLog, authToken: "bypass", idbase: window.idbase });
+        });
+    }
 }
 
 // Inicializa a aplicação
@@ -614,20 +602,11 @@ window.addEventListener('DOMContentLoaded', async () => {
     // Registra o ouvinte para o botão de logout global no cabeçalho
     const btnLogoutGlobal = document.getElementById('btn-logout-global');
     if (btnLogoutGlobal) {
-        btnLogoutGlobal.addEventListener('click', async () => {
+        btnLogoutGlobal.addEventListener('click', () => {
             if (confirm("Deseja realmente sair do SIC3?")) {
-                console.log("[SIC3 v3.0 Log] Efetuando logout global a partir do cabeçalho...");
+                console.log("[SIC3 v3.0 Log] Efetuando logout global. Fechando aba...");
                 sessionStorage.clear();
-                window.mostrarCarregamentoGlobal("Efetuando logout...");
-                try {
-                    await executarApi("logoutUser");
-                } catch (e) {
-                    console.error("[SIC3 v3.0 Log] Erro ao notificar logout no servidor:", e);
-                }
-                navegarPara('login').catch(err => {
-                    console.error("[SIC3 v3.0 Log] Erro ao redirecionar após logout:", err);
-                    window.location.reload();
-                });
+                window.close();
             }
         });
     }
