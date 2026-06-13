@@ -36,7 +36,7 @@
       </div>
     </div>
 
-    <!-- Barra de Navegação/Header -->
+    <!-- Barra de Navegação/Header Principal -->
     <header class="main-header">
       <div class="header-brand">
         <div class="brand-logo">
@@ -50,45 +50,47 @@
         </div>
       </div>
 
-      <div class="user-context-display">
-        <div class="context-pill">
-          <i class="fas fa-map-marker-alt"></i>
-          <span id="user-municipio-display">Buscando município...</span>
+      <!-- Mantemos os ids de contexto legados para evitar erros no JS, mas ocultos por padrão -->
+      <div class="user-context-display" style="display: none !important;">
+        <span id="user-municipio-display">Buscando município...</span>
+        <span id="user-rpm-display">Buscando RPM...</span>
+        <span id="user-secao-display">Buscando seção...</span>
+      </div>
+
+      <!-- Seção Direita: Widget de Perfil + Botão de Logout Global -->
+      <div class="header-right-side">
+        <!-- Painel de Perfil de Usuário Premium Integrado -->
+        <div class="header-user-widget" id="user-profile-panel" style="display: none;">
+          <div class="widget-profile-main">
+            <div class="widget-profile-avatar">
+              <i class="fas fa-user-shield"></i>
+            </div>
+            <div class="widget-profile-info">
+              <div class="widget-name-row">
+                <span class="widget-profile-name" id="user-profile-name">Carregando...</span>
+                <span id="user-profile-admin-status"></span>
+              </div>
+              <div class="widget-profile-meta">
+                <span><i class="fas fa-id-badge"></i> <strong id="user-profile-pm">PM nº -</strong></span>
+                <span class="widget-meta-separator">&bull;</span>
+                <span><i class="fas fa-map-marker-alt"></i> <span id="user-profile-secao-municipio">Seção/Município: -</span></span>
+                <span class="widget-meta-separator">&bull;</span>
+                <span><i class="fas fa-shield-alt"></i> <strong id="user-profile-regiao">Região: -</strong></span>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="context-pill">
-          <i class="fas fa-shield-alt"></i>
-          <span id="user-rpm-display">Buscando RPM...</span>
-        </div>
-        <div class="context-pill">
-          <i class="fas fa-sitemap"></i>
-          <span id="user-secao-display">Buscando seção...</span>
-        </div>
+
+        <!-- Botão Sair Global -->
+        <button id="btn-logout-global" class="btn-logout-global" title="Sair da Conta">
+          <i class="fas fa-sign-out-alt"></i>
+          <span>SAIR</span>
+        </button>
       </div>
     </header>
 
     <!-- Container da Aplicação -->
     <main id="sic3-app-container" class="app-main-content">
-      <!-- Painel de Perfil de Usuário Premium -->
-      <div class="user-profile-bar" id="user-profile-panel" style="display: none;">
-        <div class="profile-main">
-          <div class="profile-avatar">
-            <i class="fas fa-user-shield"></i>
-          </div>
-          <div class="profile-info">
-            <span class="profile-name" id="user-profile-name">Carregando...</span>
-            <div class="profile-meta">
-              <span><i class="fas fa-id-badge"></i> <strong id="user-profile-pm">PM nº -</strong></span>
-              <span class="profile-meta-separator">&bull;</span>
-              <span><i class="fas fa-map-marker-alt"></i> <span id="user-profile-secao-municipio">Seção/Município: -</span></span>
-              <span class="profile-meta-separator">&bull;</span>
-              <span><i class="fas fa-shield-alt"></i> <strong id="user-profile-regiao">Região: -</strong></span>
-            </div>
-          </div>
-        </div>
-        <div class="profile-status" id="user-profile-admin-status">
-          <!-- Badge de Administrador -->
-        </div>
-      </div>
 
       <!-- Área de injeção dinâmica de convênios -->
       <div id="sic3-views-container"></div>

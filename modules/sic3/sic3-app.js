@@ -599,6 +599,27 @@ window.addEventListener('DOMContentLoaded', async () => {
     window.executarApiGas = executarApi;
     window.navegarParaSic3 = navegarPara;
 
+    // Registra o ouvinte para o botão de logout global no cabeçalho
+    const btnLogoutGlobal = document.getElementById('btn-logout-global');
+    if (btnLogoutGlobal) {
+        btnLogoutGlobal.addEventListener('click', async () => {
+            if (confirm("Deseja realmente sair do SIC3?")) {
+                console.log("[SIC3 v3.0 Log] Efetuando logout global a partir do cabeçalho...");
+                sessionStorage.clear();
+                window.mostrarCarregamentoGlobal("Efetuando logout...");
+                try {
+                    await executarApi("logoutUser");
+                } catch (e) {
+                    console.error("[SIC3 v3.0 Log] Erro ao notificar logout no servidor:", e);
+                }
+                navegarPara('login').catch(err => {
+                    console.error("[SIC3 v3.0 Log] Erro ao redirecionar após logout:", err);
+                    window.location.reload();
+                });
+            }
+        });
+    }
+
     // 1. Extrair os parâmetros do Storage Local (método prioritário sem parâmetros na URL) ou da Query String (fallback legado)
     try {
         let municipioParam = null;
