@@ -184,7 +184,13 @@ export async function handleIntranetMessages(request, sender) {
         }
         case 'sic3-v3-identify-user': {
             const { e, c } = restOfPayload;
-            console.log(`[SIC3 v3.0 Log] [BG-Identificação] Iniciando identificação no background. Parâmetros recebidos -> e (Região): ${e}, c (Seção alvo): ${c}`);
+            const bgLogs = [];
+            const logBg = (msg) => {
+                bgLogs.push(msg);
+                console.log(`[SIC3 v3.0 Log] ${msg}`);
+            };
+
+            logBg(`[BG-Identificação] Iniciando identificação no background. Parâmetros recebidos -> e (Região): ${e}, c (Seção alvo): ${c}`);
             try {
                 const url = "https://intranet.policiamilitar.mg.gov.br/legado/operacoes/unidades/default.asp";
                 const bodyParams = new URLSearchParams({
@@ -193,7 +199,7 @@ export async function handleIntranetMessages(request, sender) {
                     ExibeCodigo: '1'
                 });
                 
-                console.log(`[SIC3 v3.0 Log] [BG-Identificação] Efetuando requisição POST para consulta de árvore de unidades: ${url} com parâmetros: cUEOp=${e}`);
+                logBg(`[BG-Identificação] Efetuando requisição POST para consulta de árvore de unidades: ${url} com parâmetros: cUEOp=${e}`);
                 const response = await fetchWithKeepAlive(url, {
                     method: 'POST',
                     headers: {
@@ -208,22 +214,20 @@ export async function handleIntranetMessages(request, sender) {
                     throw new Error(`Erro na requisição de unidades: ${response.status} ${response.statusText}`);
                 }
                 
-                console.log("[SIC3 v3.0 Log] [BG-Identificação] Resposta HTTP recebida com sucesso. Decodificando corpo em ISO-8859-1...");
+                logBg("[BG-Identificação] Resposta HTTP recebida com sucesso. Decodificando corpo em ISO-8859-1...");
                 const buffer = await response.arrayBuffer();
                 const decoder = new TextDecoder("iso-8859-1");
                 const htmlText = decoder.decode(buffer);
                 
-                console.log(`[SIC3 v3.0 Log] [BG-Identificação] HTML decodificado com sucesso. Tamanho do HTML: ${htmlText.length} caracteres. Enviando para offscreen parser...`);
+                logBg(`[BG-Identificação] HTML decodificado com sucesso. Tamanho do HTML: ${htmlText.length} caracteres. Enviando para offscreen parser...`);
                 
                 const result = await sendMessageToOffscreen('parse-unidades-html', { html: htmlText });
 
-                // Exibe os logs internos de depuração do parser offscreen no console do background
+                // Acumula os logs de depuração do parser offscreen no bgLogs
                 if (result.parserLogs && Array.isArray(result.parserLogs)) {
-                    console.log("[SIC3 v3.0 Log] [BG-Parser-Debug] === LOGS DETALHADOS DO PARSER OFFSCREEN ===");
                     result.parserLogs.forEach(logLine => {
-                        console.log(`  > ${logLine}`);
+                        logBg(`[Offscreen Parser] ${logLine}`);
                     });
-                    console.log("[SIC3 v3.0 Log] [BG-Parser-Debug] ========================================");
                 }
                 
                 if (result.error) {
@@ -231,37 +235,37 @@ export async function handleIntranetMessages(request, sender) {
                 }
                 
                 const parsedData = result.data || [];
-                console.log(`[SIC3 v3.0 Log] [BG-Identificação] Offscreen retornou ${parsedData.length} unidades listadas na árvore.`);
+                logBg(`[BG-Identificação] Offscreen retornou ${parsedData.length} unidades listadas na árvore.`);
                 
                 // Procurar a unidade correspondente ao código 'c' do usuário
-                console.log(`[SIC3 v3.0 Log] [BG-Identificação] Buscando unidade alvo pelo código c: "${c}"...`);
+                logBg(`[BG-Identificação] Buscando unidade alvo pelo código c: "${c}"...`);
                 const targetUnit = parsedData.find(unit => String(unit.code) === String(c));
                 
                 if (!targetUnit) {
-                    console.warn(`[SIC3 v3.0 Log] [BG-Identificação] Unidade/seção do usuário (${c}) não encontrada na árvore de subunidades da região/unidade (${e}).`);
-                    return { success: false, error: `Unidade/seção do usuário (${c}) não encontrada na árvore da região/unidade (${e}).` };
+                    logBg(`[BG-Identificação] Unidade/seção do usuário (${c}) não encontrada na árvore de subunidades da região/unidade (${e}).`);
+                    return { success: false, error: `Unidade/seção do usuário (${c}) não encontrada na árvore da região/unidade (${e}).`, bgLogs };
                 }
                 
-                console.log(`[SIC3 v3.0 Log] [BG-Identificação] Unidade correspondente encontrada na árvore:`, targetUnit);
+                logBg(`[BG-Identificação] Unidade correspondente encontrada na árvore: ${JSON.stringify(targetUnit)}`);
                 
                 // Limpeza do nome da unidade (remove a parte do município se vier anexada, ex: "EM15RPM - TEÓFILO OTONI (3003)" -> "EM15RPM")
                 let nomeUnidade = targetUnit.unitName;
                 if (targetUnit.unitName.includes(' - ')) {
                     const partes = targetUnit.unitName.split(' - ');
                     nomeUnidade = partes[0].trim();
-                    console.log(`[SIC3 v3.0 Log] [BG-Tratamento] Separador " - " identificado em "${targetUnit.unitName}". Nome da unidade limpo: "${nomeUnidade}"`);
+                    logBg(`[BG-Tratamento] Separador " - " identificado em "${targetUnit.unitName}". Nome da unidade limpo: "${nomeUnidade}"`);
                 }
                 
                 // O município e o código do município já vêm processados e herdados do offscreen parser
                 let municipio = targetUnit.municipio || nomeUnidade;
                 let codigoMunicipio = targetUnit.codigoMunicipio || targetUnit.code;
                 
-                console.log(`[SIC3 v3.0 Log] [BG-Tratamento] Município e código resolvidos diretamente do parser offscreen (com suporte a herança hierárquica):`, {
+                logBg(`[BG-Tratamento] Município e código resolvidos diretamente do parser offscreen (com suporte a herança hierárquica): ${JSON.stringify({
                     municipioOriginalNoNode: targetUnit.municipio,
                     codigoMunicipioOriginalNoNode: targetUnit.codigoMunicipio,
                     municipioFinalResolvido: municipio,
                     codigoMunicipioFinalResolvido: codigoMunicipio
-                });
+                })}`);
                 
                 const resData = {
                     success: true,
@@ -269,10 +273,11 @@ export async function handleIntranetMessages(request, sender) {
                     nomeUnidade: nomeUnidade,
                     municipio: municipio,
                     codigoMunicipio: codigoMunicipio,
-                    hierarchyPath: targetUnit.hierarchyPath
+                    hierarchyPath: targetUnit.hierarchyPath,
+                    bgLogs: bgLogs
                 };
                 
-                console.log(`[SIC3 v3.0 Log] [BG-Identificação] Processo finalizado com sucesso no background. Detalhe das chaves obtidas:
+                logBg(`[BG-Identificação] Processo finalizado com sucesso no background. Detalhe das chaves obtidas:
                 - codigoUnidade: "${resData.codigoUnidade}" (Chave 'c' do Tokiuz do usuário, correspondente ao ID na árvore)
                 - nomeUnidade: "${resData.nomeUnidade}" (Nome limpo da seção funcional extraído da árvore)
                 - municipio: "${resData.municipio}" (Nome do município extraído entre parênteses ou herdado do nível superior se ausente)
@@ -282,8 +287,8 @@ export async function handleIntranetMessages(request, sender) {
                 return resData;
                 
             } catch (error) {
-                console.error(`[SIC3 v3.0 Log] [BG-Erro] Falha ao identificar unidade e município do usuário no background:`, error);
-                return { success: false, error: error.message };
+                logBg(`[BG-Erro] Falha ao identificar unidade e município do usuário no background: ${error.message}`);
+                return { success: false, error: error.message, bgLogs };
             } finally {
                 await closeOffscreenDocument();
             }
