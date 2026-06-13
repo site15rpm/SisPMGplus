@@ -721,9 +721,25 @@ export class UIModule {
             }
             console.log(`[SIC3 v3.0 Log] [UI-Tratamento] RPM amigável tratada para planilhas: "${rpmNome}" (com base em r: "${decoded.r}", e: "${decoded.e}")`);
 
-            // 1. Verificar se já existem informações completas do usuário no storage local e se coincidem com o token ativo
-            const storageResult = await sendMessageToBackground('getSettings', { keys: ['sic3_user_info'] });
+            // 1. Verificar se já existem informações completas do usuário no storage local, se coincidem com o token ativo ou se há overrides
+            const storageResult = await sendMessageToBackground('getSettings', { keys: ['sic3_user_info', 'sic3_tokiuz_override'] });
             const cachedInfo = (storageResult?.success && storageResult.value?.sic3_user_info) ? storageResult.value.sic3_user_info : null;
+            const tokiuzOverride = (storageResult?.success && storageResult.value?.sic3_tokiuz_override) ? storageResult.value.sic3_tokiuz_override : null;
+            
+            if (tokiuzOverride) {
+                console.log("[SIC3 v3.0 Log] [UI-Extração] Aplicando OVERRIDES de simulação no Tokiuz:", tokiuzOverride);
+                Object.assign(decoded, tokiuzOverride);
+                
+                // Recalcula a RPM amigável com base nos dados simulados
+                if (tokiuzOverride.r || tokiuzOverride.e) {
+                    if (decoded.r) {
+                        rpmNome = String(decoded.r).replace('ª', '').trim();
+                    } else if (decoded.e) {
+                        rpmNome = String(decoded.e).trim() + " RPM";
+                    }
+                    console.log(`[SIC3 v3.0 Log] [UI-Tratamento] RPM amigável recalculada para os Overrides: "${rpmNome}"`);
+                }
+            }
             
             let userInfoFinal = null;
             
