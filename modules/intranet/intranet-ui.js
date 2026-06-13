@@ -682,8 +682,9 @@ export class UIModule {
             const token = getCookie('tokiuz');
             if (!token) {
                 console.error("[SIC3 v3.0 Log] [UI-Extração] Cookie 'tokiuz' não encontrado.");
-                alert("Token de autenticação 'tokiuz' não encontrado. Faça login no portal da Intranet novamente.");
+                alert("Token de autenticação 'tokiuz' não encontrado. Redirecionando para a página de login da Intranet...");
                 this.hideLoader();
+                window.location.href = "https://intranet.policiamilitar.mg.gov.br/autenticacaosso/login.jsf";
                 return;
             }
             
