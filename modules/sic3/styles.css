@@ -215,9 +215,9 @@ body {
 
 /* Botão Logout Global no Header */
 .btn-logout-global {
-  background: transparent;
-  border: 1px solid var(--cor-separador);
-  color: var(--cor-fonte-fraca);
+  background: var(--cor-vermelho) !important;
+  border: 1px solid var(--cor-vermelho) !important;
+  color: white !important;
   padding: 8px 16px;
   border-radius: 10px;
   font-family: var(--font-family-title);
@@ -232,13 +232,14 @@ body {
 
 .btn-logout-global i {
   font-size: 13px;
+  color: white !important;
 }
 
 .btn-logout-global:hover {
-  background: rgba(171, 35, 40, 0.08);
-  border-color: rgba(171, 35, 40, 0.3);
-  color: var(--cor-vermelho);
-  box-shadow: 0 2px 8px rgba(171, 35, 40, 0.1);
+  background: hsl(358, 66%, 35%) !important;
+  border-color: hsl(358, 66%, 35%) !important;
+  color: white !important;
+  box-shadow: 0 4px 12px rgba(171, 35, 40, 0.2) !important;
 }
 
 .profile-info {

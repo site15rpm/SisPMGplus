@@ -509,54 +509,39 @@
     );
 
     tabelaBody
-      .on("mouseenter", ".action-button-group .btn-acao-icon", function () {
-        const $button = $(this);
-        const $allButtonsInRow = $button
-          .closest("tr")
-          .find(".action-button-group .btn-acao-icon");
-
-        if (
-          $button.hasClass("expanded") &&
-          $button.text().includes("LANÇAR") &&
-          $button.closest(".action-buttons-container").find(".btn-anexo-d")
-            .length === 0
-        ) {
-        } else {
-          $allButtonsInRow.not($button).addClass("btn-hidden-sibling");
-          $button.addClass("expanded").css("justify-content", "center");
-
-          if (
-            $button.hasClass("btn-anexo-d") ||
-            $button.hasClass("btn-anexo-u")
-          ) {
-            $button.find(".letter-only").hide();
-            $button.find(".full-text-anexo").show();
-          }
-        }
+      .on("mouseenter", ".action-buttons-container", function () {
+        const $container = $(this);
+        $container.addClass("container-hover");
+        
+        const $buttons = $container.find(".btn-acao-icon");
+        $buttons.addClass("expanded").css("justify-content", "center");
+        
+        $container.find(".btn-anexo-d, .btn-anexo-u").each(function() {
+          const $btn = $(this);
+          $btn.find(".letter-only").hide();
+          $btn.find(".full-text-anexo").show();
+        });
       })
-      .on("mouseleave", ".action-button-group .btn-acao-icon", function () {
-        const $button = $(this);
-        if (
-          $button.hasClass("expanded") &&
-          $button.text().includes("LANÇAR") &&
-          $button.closest(".action-buttons-container").find(".btn-anexo-d")
-            .length === 0
-        ) {
-        } else {
-          const $allButtonsInRow = $button
-            .closest("tr")
-            .find(".action-button-group .btn-acao-icon");
-          $button.removeClass("expanded").css("justify-content", "");
-          $allButtonsInRow.removeClass("btn-hidden-sibling");
-
-          if (
-            $button.hasClass("btn-anexo-d") ||
-            $button.hasClass("btn-anexo-u")
-          ) {
-            $button.find(".letter-only").show();
-            $button.find(".full-text-anexo").hide();
+      .on("mouseleave", ".action-buttons-container", function () {
+        const $container = $(this);
+        $container.removeClass("container-hover");
+        
+        const $buttons = $container.find(".btn-acao-icon");
+        $buttons.each(function() {
+          const $btn = $(this);
+          const hasAnexos = $container.find(".btn-anexo-d").length > 0;
+          if ($btn.hasClass("btn-lancar") && !hasAnexos) {
+            $btn.addClass("expanded");
+          } else {
+            $btn.removeClass("expanded").css("justify-content", "");
           }
-        }
+        });
+
+        $container.find(".btn-anexo-d, .btn-anexo-u").each(function() {
+          const $btn = $(this);
+          $btn.find(".letter-only").show();
+          $btn.find(".full-text-anexo").hide();
+        });
       });
   }
 

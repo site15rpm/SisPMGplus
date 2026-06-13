@@ -304,7 +304,26 @@ input[disabled] {
   align-items: center;
   gap: 3px;
   position: relative;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  height: 30px;
 }
+
+.action-buttons-container.container-hover {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(1.02);
+  z-index: 1000 !important;
+  background-color: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(87, 78, 45, 0.25);
+  padding: 6px 12px;
+  gap: 8px;
+  width: max-content;
+  height: 44px;
+}
+
 .action-button-group { display: flex; align-items: center; }
 .btn-acao-icon {
   overflow: hidden;
@@ -313,28 +332,69 @@ input[disabled] {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border-color);
   cursor: pointer;
   margin: 0 1px;
+  width: 32px;
+  height: 32px;
+  font-family: var(--font-main);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
-.btn-acao-icon.btn-hidden-sibling { display: none; }
-.btn-acao-icon .btn-text { display: none; }
-.btn-acao-icon.expanded { width: auto; min-width: 120px; z-index: 10; }
-.btn-acao-icon.expanded .btn-text { display: inline; }
+
+.btn-acao-icon .btn-text {
+  display: inline-block;
+  max-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  transition: max-width 0.3s ease, opacity 0.3s ease, margin 0.3s ease;
+  margin-left: 0;
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+/* Quando o container está em hover, expande os botões de ação */
+.action-buttons-container.container-hover .btn-acao-icon {
+  width: auto;
+  padding: 0 12px !important;
+  gap: 6px;
+}
+
+.action-buttons-container.container-hover .btn-acao-icon .btn-text {
+  max-width: 100px;
+  opacity: 1;
+  margin-left: 4px;
+}
+
+/* Botão Lançar expandido por padrão na linha sem outros convênios/anexos */
+.btn-acao-icon.expanded {
+  width: auto;
+  min-width: 120px;
+  padding: 0 12px !important;
+  gap: 6px;
+}
+
+.btn-acao-icon.expanded .btn-text {
+  max-width: 100px;
+  opacity: 1;
+  margin-left: 4px;
+}
 
 .btn-sem-convenio { width: auto; min-width: 120px; z-index: 10; }
 
-.btn-lancar { background-color: var(--primary-color); color: white; border-color: var(--border-color); }
-.btn-lancar:hover { background-color: var(--secondary-color); }
+.btn-lancar { background-color: #0d6efd !important; color: white !important; border-color: #0d6efd !important; }
+.btn-lancar:hover { background-color: #0b5ed7 !important; border-color: #0a58ca !important; }
+
 .btn-editar { background-color: var(--secondary-color); color: white; border-color: var(--border-color); }
 .btn-editar:hover { background-color: var(--primary-color); }
+
 .btn-visualizar { background-color: var(--accent-color); color: white; border-color: var(--border-color); }
 .btn-visualizar:hover { opacity: 0.9; }
 
 .btn-anexo-d, .btn-anexo-u { background-color: #7f8c8d; color: white; border-color: #95a5a6; }
 
-.btn-bloqueada, .btn-bloquear, .btn-desbloqueada:hover { background-color: #c0392b; color: white; }
-.btn-desbloqueada, .btn-bloqueada:hover { background-color: var(--accent-color); color: white; }
+.btn-bloqueada, .btn-bloquear, .btn-desbloqueada:hover { background-color: #dc3545 !important; color: white !important; border-color: #dc3545 !important; }
+.btn-desbloqueada, .btn-bloqueada:hover { background-color: #198754 !important; color: white !important; border-color: #198754 !important; }
 
 .btn-desfazer { background-color: var(--accent-color); color: white; }
 

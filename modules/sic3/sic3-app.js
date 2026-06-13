@@ -596,7 +596,6 @@ export async function navegarPara(pagina, contexto = {}) {
     } catch (error) {
         console.error("[SIC3 v3.0 Log] Erro na navegação do SIC3:", error);
         alert(`Ocorreu um erro ao carregar a página: ${error.message}`);
-    } finally {
         window.ocultarCarregamentoGlobal();
     }
 }
