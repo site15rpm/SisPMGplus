@@ -453,9 +453,10 @@ export async function navegarPara(pagina, contexto = {}) {
         const rpmAtiva = sessionStorage.getItem("sic3_rpm") || (window.rpm && typeof window.rpm === 'string' ? window.rpm : "15 RPM");
         const anoAtivo = sessionStorage.getItem("sic3_ano") || (window.ano && typeof window.ano === 'string' ? window.ano : new Date().getFullYear().toString());
 
-        if (!window.idBDConvenios || !window.idBDEnderecos || !window.idTBPrimaria || !window.idTBSecundaria || contexto.idbase) {
+        if (!window.idBDConvenios || !window.idBDEnderecos || !window.idTBPrimaria || !window.idTBSecundaria || contexto.idbase || contexto.rpm || contexto.ano) {
             try {
-                await window.resolverIdsPlanilhas(!!contexto.idbase);
+                // Passa false para usar prioritariamente o cache permanente do storage local em vez de forçar rede no GAS
+                await window.resolverIdsPlanilhas(false);
             } catch (apiErr) {
                 console.error("[SIC3 v3.0 Log] Erro ao obter IDs das planilhas compartilhadas no roteador:", apiErr);
             }
