@@ -203,9 +203,11 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
                                 codigoMunicipioStack[stackIndex] = codigoMunicipioStack[stackIndex - 1];
                                 logParser(`  > Decisão: HERDOU município do nível superior (índice ${stackIndex - 1}): "${municipioStack[stackIndex - 1]}" (${codigoMunicipioStack[stackIndex - 1]})`);
                             } else {
-                                // Mantém os dados padrões da raiz (H2) se for o nível 0 (stackIndex === 0)
-                                if (stackIndex === 0 && municipioStack[0]) {
-                                    logParser(`  > Decisão: Manteve município padrão obtido do H2 na raiz: "${municipioStack[0]}" (${codigoMunicipioStack[0]})`);
+                                // Mantém os dados padrões da raiz (H2) obtidos das variáveis locais se for o nível 0 (stackIndex === 0)
+                                if (stackIndex === 0 && defaultMunicipio) {
+                                    municipioStack[0] = defaultMunicipio;
+                                    codigoMunicipioStack[0] = defaultCodigoMunicipio;
+                                    logParser(`  > Decisão: Aplicou município padrão obtido do H2 na raiz: "${defaultMunicipio}" (${defaultCodigoMunicipio})`);
                                 } else {
                                     municipioStack[stackIndex] = "";
                                     codigoMunicipioStack[stackIndex] = "";
