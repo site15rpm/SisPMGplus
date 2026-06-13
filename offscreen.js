@@ -202,13 +202,6 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
                     break;
                 }
 
-                    } catch (error) {
-                        console.error('[Offscreen] Erro ao parsear HTML de unidades:', error);
-                        sendResponse({ error: `Erro ao parsear HTML: ${error.message}` });
-                    }
-                    break;
-                }
-
                 default:
                     sendResponse({ error: `Ação desconhecida: ${request.action}` });
             }
