@@ -85,12 +85,19 @@ button:disabled {
 
 /* Variantes de Botões */
 .btn-primary { background-color: var(--primary-color); color: var(--text-light); border-color: var(--border-color); }
+.btn-primary:hover { background-color: #433c23; border-color: #433c23; }
 .btn-secondary { background-color: #6c757d; color: #fff; }
+.btn-secondary:hover { background-color: #5a6268; }
 .btn-success { background-color: var(--accent-color); color: #fff; }
-.btn-warning { background-color: #f39c12; color: #fff; }
+.btn-success:hover { background-color: #215c24; }
+.btn-warning { background-color: #ffc107 !important; color: black !important; border-color: #ffc107 !important; }
+.btn-warning:hover { background-color: #e0a800 !important; border-color: #d39e00 !important; color: black !important; }
 .btn-danger { background-color: #c0392b; color: #fff; }
+.btn-danger:hover { background-color: #a93226; }
 .btn-dark { background-color: #2c3e50; color: #fff; }
+.btn-dark:hover { background-color: #1a252f; }
 .btn-info { background-color: #2980b9; color: #fff; }
+.btn-info:hover { background-color: #216a9c; }
 
 i {
   font-size: 1.5rem;
@@ -329,15 +336,12 @@ td.acao-item {
 .action-buttons-container.container-hover {
   transform: translate(-50%, -50%) scale(1.02);
   z-index: 1000 !important;
-  background-color: var(--card-bg);
-  border-color: var(--border-color);
-  box-shadow: 0 8px 24px rgba(87, 78, 45, 0.25);
   padding: 6px 12px;
   gap: 8px;
   height: 44px;
 }
 
-.action-button-group { display: flex; align-items: center; }
+.action-button-group { display: flex; align-items: center; gap: 3px;}
 .btn-acao-icon {
   overflow: hidden;
   white-space: nowrap;
