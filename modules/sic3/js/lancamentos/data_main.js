@@ -259,13 +259,17 @@ function inserirLinhaTabela(linha) {
 
 
 async function editarRelatorio() {
+  console.log("[SIC3 Backup] editarRelatorio acionado.");
   if (!window.formularioMaterial || !$.fn.DataTable.isDataTable('#dataTable')) {
     window.formularioMaterial = { tipo: "material" };
     await carregarPesquisaMaterial();
   }
 
   const chave = obterChaveBackup();
+  console.log(`[SIC3 Backup] Verificando backup local sob a chave: ${chave}`);
   const backupRaw = await storageGet(chave);
+  console.log(`[SIC3 Backup] Conteúdo bruto retornado do storage para a chave ${chave}:`, backupRaw);
+  
   let temBackup = false;
   if (backupRaw) {
     try {
@@ -275,10 +279,15 @@ async function editarRelatorio() {
         (backupObj.abastecimento && backupObj.abastecimento.length > 0) ||
         (backupObj.manutencao && backupObj.manutencao.length > 0)
       );
+      console.log(`[SIC3 Backup] Análise do objeto de backup concluída. Possui dados principais: ${backupObj.principal?.length || 0}, abastecimento: ${backupObj.abastecimento?.length || 0}, manutenção: ${backupObj.manutencao?.length || 0}. Resultado temBackup: ${temBackup}`);
     } catch (e) {
+      console.error("[SIC3 Backup] Falha ao analisar o JSON do backup:", e);
       temBackup = false;
     }
+  } else {
+    console.log("[SIC3 Backup] Nenhum backup prévio foi encontrado para este relatório.");
   }
+  
   let backupRecuperado = false;
   let desejaRecuperar = false;
 
@@ -286,6 +295,7 @@ async function editarRelatorio() {
     desejaRecuperar = await confirmarAcao("Recuperar Dados", "Foi detectada uma edição anterior que não foi salva. Deseja recuperar os dados não salvos da última edição?");
     if (desejaRecuperar) {
       backupRecuperado = await recuperarBackupLocal();
+      console.log(`[SIC3 Backup] Recuperação de backup executada. Status: ${backupRecuperado}`);
     }
   }
 
@@ -310,8 +320,7 @@ async function editarRelatorio() {
   document.querySelector(".obsgeral")?.classList.add("editavel");
 
   window.backupAtivo = true;
-
-  // Não salvamos o backup inicial de forma redundante se o usuário não efetuou nenhuma edição local
+  console.log("[SIC3 Backup] window.backupAtivo ativado (definido como true). Gravações locais serão acionadas.");
 }
 
 
@@ -643,54 +652,136 @@ function atualizarVisibilidadeContainers() {
 // ==========================================
 
 // ==========================================
-// AUXILIARES DE ARMAZENAMENTO ASSÍNCRONO
+// AUXILIARES DE ARMAZENAMENTO ASSÍNCRONO RESILIENTES
 // ==========================================
 
+function obterStorageLocal() {
+  try {
+    if (typeof browser !== 'undefined' && browser.storage && browser.storage.local) {
+      return browser.storage.local;
+    } else if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      return chrome.storage.local;
+    }
+  } catch (e) {
+    console.warn("[SIC3 Storage] Erro ao obter API de storage do browser:", e);
+  }
+  return null;
+}
+
 function storageGet(chave) {
+  console.log(`[SIC3 Storage] Solicitando leitura para chave: ${chave}`);
   return new Promise((resolve) => {
-    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-      chrome.storage.local.get([chave], (result) => {
-        resolve(result[chave] || null);
-      });
-    } else {
-      const val = localStorage.getItem(chave);
-      if (val) {
-        try {
-          resolve(JSON.parse(val));
-        } catch (e) {
-          resolve(val);
-        }
+    try {
+      const storage = obterStorageLocal();
+      if (storage) {
+        storage.get([chave], (result) => {
+          if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.lastError) {
+            console.error("[SIC3 Storage] Erro no storageGet (chrome.runtime.lastError):", chrome.runtime.lastError);
+            fallbackGet(chave, resolve);
+          } else {
+            const data = result && result[chave] ? result[chave] : null;
+            console.log(`[SIC3 Storage] Leitura bem-sucedida do chrome.storage.local. Registro encontrado:`, data !== null);
+            resolve(data);
+          }
+        });
       } else {
-        resolve(null);
+        fallbackGet(chave, resolve);
       }
+    } catch (err) {
+      console.warn("[SIC3 Storage] Falha ao usar chrome.storage para leitura, caindo para localStorage:", err);
+      fallbackGet(chave, resolve);
     }
   });
+}
+
+function fallbackGet(chave, resolve) {
+  try {
+    const val = localStorage.getItem(chave);
+    if (val) {
+      console.log(`[SIC3 Storage] Leitura do localStorage encontrou registro.`);
+      try {
+        resolve(JSON.parse(val));
+      } catch (e) {
+        resolve(val);
+      }
+    } else {
+      console.log(`[SIC3 Storage] Leitura do localStorage: Nenhuma chave encontrada.`);
+      resolve(null);
+    }
+  } catch (e) {
+    console.error("[SIC3 Storage] Erro no fallbackGet:", e);
+    resolve(null);
+  }
 }
 
 function storageSet(chave, valor) {
+  console.log(`[SIC3 Storage] Solicitando gravação para chave: ${chave}`, valor);
   return new Promise((resolve) => {
-    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-      chrome.storage.local.set({ [chave]: valor }, () => {
-        resolve();
-      });
-    } else {
-      localStorage.setItem(chave, JSON.stringify(valor));
-      resolve();
+    try {
+      const storage = obterStorageLocal();
+      if (storage) {
+        storage.set({ [chave]: valor }, () => {
+          if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.lastError) {
+            console.error("[SIC3 Storage] Erro no storageSet (chrome.runtime.lastError):", chrome.runtime.lastError);
+            fallbackSet(chave, valor, resolve);
+          } else {
+            console.log(`[SIC3 Storage] Gravação bem-sucedida no chrome.storage.local.`);
+            resolve();
+          }
+        });
+      } else {
+        fallbackSet(chave, valor, resolve);
+      }
+    } catch (err) {
+      console.warn("[SIC3 Storage] Falha ao usar chrome.storage para gravação, caindo para localStorage:", err);
+      fallbackSet(chave, valor, resolve);
     }
   });
 }
 
+function fallbackSet(chave, valor, resolve) {
+  try {
+    localStorage.setItem(chave, JSON.stringify(valor));
+    console.log(`[SIC3 Storage] Gravação bem-sucedida no localStorage.`);
+  } catch (e) {
+    console.error("[SIC3 Storage] Erro no fallbackSet de localStorage:", e);
+  }
+  resolve();
+}
+
 function storageRemove(chave) {
+  console.log(`[SIC3 Storage] Solicitando remoção para chave: ${chave}`);
   return new Promise((resolve) => {
-    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-      chrome.storage.local.remove([chave], () => {
-        resolve();
-      });
-    } else {
-      localStorage.removeItem(chave);
-      resolve();
+    try {
+      const storage = obterStorageLocal();
+      if (storage) {
+        storage.remove([chave], () => {
+          if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.lastError) {
+            console.error("[SIC3 Storage] Erro no storageRemove (chrome.runtime.lastError):", chrome.runtime.lastError);
+            fallbackRemove(chave, resolve);
+          } else {
+            console.log(`[SIC3 Storage] Remoção bem-sucedida no chrome.storage.local.`);
+            resolve();
+          }
+        });
+      } else {
+        fallbackRemove(chave, resolve);
+      }
+    } catch (err) {
+      console.warn("[SIC3 Storage] Falha ao usar chrome.storage para remoção, caindo para localStorage:", err);
+      fallbackRemove(chave, resolve);
     }
   });
+}
+
+function fallbackRemove(chave, resolve) {
+  try {
+    localStorage.removeItem(chave);
+    console.log(`[SIC3 Storage] Remoção bem-sucedida no localStorage.`);
+  } catch (e) {
+    console.error("[SIC3 Storage] Erro no fallbackRemove de localStorage:", e);
+  }
+  resolve();
 }
 
 function obterChaveBackup() {
@@ -698,10 +789,13 @@ function obterChaveBackup() {
   const convStr = typeof window.convenio !== 'undefined' ? window.convenio : (typeof convenio !== 'undefined' ? convenio : '');
   const anoStr = typeof window.ano !== 'undefined' ? window.ano : (typeof ano !== 'undefined' ? ano : '');
   const mesStr = typeof window.mes !== 'undefined' ? window.mes : (typeof mes !== 'undefined' ? mes : '');
-  return `sic3_backup_${muniStr}_${convStr}_${anoStr}_${mesStr}`;
+  const chave = `sic3_backup_${muniStr}_${convStr}_${anoStr}_${mesStr}`;
+  console.log(`[SIC3 Backup] obterChaveBackup gerou a chave: ${chave}`);
+  return chave;
 }
 
 async function salvarBackupLocal() {
+  console.log(`[SIC3 Backup] salvarBackupLocal acionado. backupAtivo: ${window.backupAtivo}`);
   if (!window.backupAtivo) return;
   try {
     const chave = obterChaveBackup();
@@ -710,6 +804,25 @@ async function salvarBackupLocal() {
       const $row = $(tr);
       const item99InfoAttr = $row.attr('data-item99-info');
       const fileInfoAttr = $row.attr('data-file-info');
+      
+      let item99Info = null;
+      if (item99InfoAttr) {
+        try {
+          item99Info = JSON.parse(item99InfoAttr);
+        } catch (err) {
+          console.warn("[SIC3 Backup] Falha ao analisar JSON de data-item99-info:", err, item99InfoAttr);
+        }
+      }
+      
+      let fileData = null;
+      if (fileInfoAttr) {
+        try {
+          fileData = JSON.parse(fileInfoAttr);
+        } catch (err) {
+          console.warn("[SIC3 Backup] Falha ao analisar JSON de data-file-info:", err, fileInfoAttr);
+        }
+      }
+
       return {
         codigo: $row.find(".codigo-item").text(),
         descricao: $row.find(".descricao-item").text(),
@@ -720,8 +833,8 @@ async function salvarBackupLocal() {
         valorUnitario: $row.find(".valorUnitario-item").text(),
         subtotal: $row.find(".subtotal-item").text(),
         observacao: $row.find(".observacao-item").text(),
-        item99Info: item99InfoAttr ? JSON.parse(item99InfoAttr) : null,
-        fileData: fileInfoAttr ? JSON.parse(fileInfoAttr) : null
+        item99Info: item99Info,
+        fileData: fileData
       };
     });
 
@@ -767,10 +880,11 @@ async function salvarBackupLocal() {
       obsgeral: { texto: obsgeralText }
     };
 
+    console.log(`[SIC3 Backup] Dados preparados para salvar no backup:`, dadosBackup);
     await storageSet(chave, dadosBackup);
-    console.log("[SIC3 Backup] Backup salvo localmente.");
+    console.log("[SIC3 Backup] Backup salvo localmente com sucesso.");
   } catch (e) {
-    console.error("[SIC3 Backup] Erro ao salvar backup local:", e);
+    console.error("[SIC3 Backup] Erro grave ao salvar backup local:", e);
   }
 }
 
