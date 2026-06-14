@@ -349,7 +349,7 @@ td.acao-item {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: inherit;
+  gap: 0px;
   border: 1px solid var(--border-color);
   cursor: pointer;
   margin: 0 1px;
@@ -387,7 +387,7 @@ td.acao-item {
   width: auto;
   min-width: 120px;
   padding: 4px 12px !important;
-  gap: 6px;
+  gap: 0px;
 }
 
 .btn-acao-icon.expanded .btn-text {

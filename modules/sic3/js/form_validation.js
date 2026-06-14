@@ -143,6 +143,7 @@ function validarCampo(campo, contexto = {}) {
       if (value.trim()) {
         const numValor = parseFloat(String(value).replace(/[^\d,.-]/g, "").replace(",", "."));
         if (isNaN(numValor)) return { valid: false, message: "Valor deve ser numérico" };
+        if (numValor <= 0) return { valid: false, message: "Valor deve ser maior que zero" };
       }
       break;
     case "quantidade":
@@ -154,7 +155,7 @@ function validarCampo(campo, contexto = {}) {
         const formTipoQtde = campo.closest('form')?.getAttribute('data-tipo-form');
         const tipoItemEndereco = campo.closest('form')?.getAttribute('data-tipo-item-endereco');
 
-        if (id === "quantidade" && formTipoQtde === "abastecimento" && numQtde <= 0) return { valid: false, message: "Qtd. abastecimento > 0" };
+        if (id === "quantidade" && numQtde <= 0) return { valid: false, message: "Quantidade deve ser maior que zero" };
         if (id === "consumo" && numQtde <= 0) return { valid: false, message: "Consumo deve ser maior que zero" };
 
         if (id === "consumo") {
