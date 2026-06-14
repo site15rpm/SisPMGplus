@@ -72,7 +72,7 @@ export async function executarApi(action, params = {}) {
         } else if (window.rpm && typeof window.rpm === 'object' && window.rpm.value) {
             rpm = window.rpm.value;
         } else {
-            rpm = "15 RPM";
+            rpm = "";
         }
     }
     
