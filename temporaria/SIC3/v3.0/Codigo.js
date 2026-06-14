@@ -336,7 +336,7 @@ function obterIdArquivoCompartilhado(nomeBase, rpm) {
  */
 function obterIdLogAcesso(rpm, ano) {
   const folderRPM = obterOuCriarPastaRPM(rpm);
-  const nomeLog = "LOG_" + String(ano).trim();
+  const nomeLog = "SIC3_LOG" + String(ano).trim();
   const files = folderRPM.getFilesByName(nomeLog);
   
   if (files.hasNext()) {
