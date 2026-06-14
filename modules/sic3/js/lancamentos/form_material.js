@@ -687,6 +687,8 @@ async function processarSubmissaoMaterial(dadosForm, linhaEditadaId) {
 
     fecharModal();
 
+    if (typeof window.salvarBackupLocal === 'function') window.salvarBackupLocal();
+
     if (typeof termosDeBuscaGlobal !== 'undefined') {
       termosDeBuscaGlobal.clear();
     }
