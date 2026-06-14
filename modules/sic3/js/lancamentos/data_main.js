@@ -266,9 +266,10 @@ async function editarRelatorio() {
   const chave = obterChaveBackup();
   const temBackup = localStorage.getItem(chave) !== null;
   let backupRecuperado = false;
+  let desejaRecuperar = false;
 
   if (temBackup) {
-    const desejaRecuperar = await confirmarAcao("Recuperar Dados", "Foi detectada uma edição anterior que não foi salva. Deseja recuperar os dados não salvos da última edição?");
+    desejaRecuperar = await confirmarAcao("Recuperar Dados", "Foi detectada uma edição anterior que não foi salva. Deseja recuperar os dados não salvos da última edição?");
     if (desejaRecuperar) {
       backupRecuperado = await recuperarBackupLocal();
     }
@@ -296,7 +297,7 @@ async function editarRelatorio() {
 
   window.backupAtivo = true;
 
-  if (!backupRecuperado) {
+  if (!backupRecuperado && !desejaRecuperar) {
     salvarBackupLocal();
   }
 }
@@ -331,6 +332,8 @@ async function cancelarEdicao() {
           $('#dataTable').DataTable().search('').columns().search('').draw();
       }
       window.formularioOutrosItens = {};
+      window.backupAtivo = true;
+      salvarBackupLocal();
 
     } else {
       $(".btn-gerarAnexoD, .btn-gerarAnexoUnico").show();
@@ -728,6 +731,7 @@ async function recuperarBackupLocal() {
     if (!backupRaw) return false;
 
     const backup = JSON.parse(backupRaw);
+    console.log("[SIC3 Backup] Iniciando recuperação do backup:", backup);
     
     mostrarCarregamento("Recuperando dados da última edição...");
 

@@ -216,7 +216,15 @@ function extrairDadosLinhaOutrosItens(row) {
     else if (linha.startsWith("Obs.:")) dados.observacao = linha.replace("Obs.: ", "").trim();
   });
 
-  const configItem = obterConfigOutrosItens(dados.codigo);
+  let codigoParaConfig = dados.codigo;
+  if (codigoParaConfig === "O33904004") {
+    if (descricaoCompleta.toUpperCase().includes("INTERNET")) {
+      codigoParaConfig = "O33904004b";
+    } else {
+      codigoParaConfig = "O33904004a";
+    }
+  }
+  const configItem = obterConfigOutrosItens(codigoParaConfig);
   if (configItem) {
       const hasMesRef = configItem.camposEspecificos.some(c => c.id === 'mesRef');
       if (hasMesRef) {
