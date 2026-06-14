@@ -262,6 +262,17 @@ async function editarRelatorio() {
     await carregarPesquisaMaterial();
   }
 
+  const chave = obterChaveBackup();
+  const temBackup = localStorage.getItem(chave) !== null;
+  let backupRecuperado = false;
+
+  if (temBackup) {
+    const desejaRecuperar = await confirmarAcao("Recuperar Dados", "Foi detectada uma edição anterior que não foi salva. Deseja recuperar os dados não salvos da última edição?");
+    if (desejaRecuperar) {
+      backupRecuperado = await recuperarBackupLocal();
+    }
+  }
+
   const showSelectors = [".principal-table th.acao-item, .btn-inserirAbastecimento", ".btn-inserirManutencao", ".btn-salvarDados", ".btn-cancelarEdicao", ".outrosDropdown-toggle", ".pesquisa-container"];
   const hideSelectors = [".btn-infoConvenio", ".btn-editarDados", ".btn-gerarAnexoD", ".btn-gerarAnexoUnico"];
 
@@ -281,12 +292,20 @@ async function editarRelatorio() {
   $(".abastecimento-table .acao-item, .manutencao-table .acao-item").css("display", "table-cell");
 
   document.querySelector(".obsgeral")?.classList.add("editavel");
+
+  iniciarBackupObserver();
+
+  if (!backupRecuperado) {
+    salvarBackupLocal();
+  }
 }
 
 
 async function cancelarEdicao() {
   const confirmResult = await confirmarAcao("Confirmar Cancelamento", "Todos os dados editados e não salvos serão perdidos. Deseja continuar?");
   if (!confirmResult) return;
+
+  pararBackupObserver();
 
   try {
     const isInitialLaunchMode = (!valoresOriginais.principal || valoresOriginais.principal.length === 0) &&
@@ -376,6 +395,8 @@ async function salvarDados() {
     if (resultFinal && resultFinal.success) {
       // Limpa a fila local após o sucesso do salvamento principal
       itensParaSalvarNaPrimaria = [];
+      pararBackupObserver();
+      apagarBackupLocal();
 
       const mapeamento = resultFinal.mapeamento;
       if (mapeamento && Object.keys(mapeamento).length > 0) {
@@ -576,3 +597,201 @@ function atualizarVisibilidadeContainers() {
   $(".abastecimento-container").toggle($(".abastecimento-table tbody tr").length > 0);
   $(".manutencao-container").toggle($(".manutencao-table tbody tr").length > 0);
 }
+
+// ==========================================
+// SISTEMA DE BACKUP LOCAL (Lançamento/Edição)
+// ==========================================
+
+function obterChaveBackup() {
+  const muniStr = typeof window.municipio !== 'undefined' ? window.municipio : (typeof municipio !== 'undefined' ? municipio : '');
+  const convStr = typeof window.convenio !== 'undefined' ? window.convenio : (typeof convenio !== 'undefined' ? convenio : '');
+  const anoStr = typeof window.ano !== 'undefined' ? window.ano : (typeof ano !== 'undefined' ? ano : '');
+  const mesStr = typeof window.mes !== 'undefined' ? window.mes : (typeof mes !== 'undefined' ? mes : '');
+  return `sic3_backup_${muniStr}_${convStr}_${anoStr}_${mesStr}`;
+}
+
+function salvarBackupLocal() {
+  if (!window.backupObserverAtivo) return;
+  try {
+    const chave = obterChaveBackup();
+    
+    const principal = $(".principal-table tbody tr.linha-principal").toArray().map(tr => {
+      const $row = $(tr);
+      const item99InfoAttr = $row.attr('data-item99-info');
+      const fileInfoAttr = $row.attr('data-file-info');
+      return {
+        codigo: $row.find(".codigo-item").text(),
+        descricao: $row.find(".descricao-item").text(),
+        despesa: $row.find(".despesa-item").text(),
+        unidade: $row.find(".unidade-item").text(),
+        data: $row.find(".data-item").text(),
+        quantidade: $row.find(".quantidade-item").text(),
+        valorUnitario: $row.find(".valorUnitario-item").text(),
+        subtotal: $row.find(".subtotal-item").text(),
+        observacao: $row.find(".observacao-item").text(),
+        item99Info: item99InfoAttr ? JSON.parse(item99InfoAttr) : null,
+        fileData: fileInfoAttr ? JSON.parse(fileInfoAttr) : null
+      };
+    });
+
+    const abastecimento = $(".abastecimento-table tbody tr").toArray().map(tr => {
+      const $row = $(tr);
+      return {
+        data: $row.find(".data-item").text(),
+        hora: $row.find(".hora-item").text(),
+        placa: $row.find(".placa-item").text(),
+        prefixo: $row.find(".prefixo-item").text(),
+        odometro: $row.find(".odometro-item").text(),
+        motorista: $row.find(".motorista-item").text(),
+        tipo: $row.find(".tipo-item").text(),
+        quantidade: $row.find(".quantidade-item").text(),
+        valorUnitario: $row.find(".valorUnitario-item").text(),
+        subtotal: $row.find(".subtotal-item").text(),
+        notaFiscal: $row.find(".notaFiscal-item").text()
+      };
+    });
+
+    const manutencao = $(".manutencao-table tbody tr").toArray().map(tr => {
+      const $row = $(tr);
+      return {
+        data: $row.find(".data-item").text(),
+        placa: $row.find(".placa-item").text(),
+        prefixo: $row.find(".prefixo-item").text(),
+        odometro: $row.find(".odometro-item").text(),
+        responsavel: $row.find(".responsavel-item").text(),
+        descricao: $row.find(".descricao-item").text(),
+        quantidade: $row.find(".quantidade-item").text(),
+        valorUnitario: $row.find(".valorUnitario-item").text(),
+        subtotal: $row.find(".subtotal-item").text(),
+        notaFiscal: $row.find(".notaFiscal-item").text()
+      };
+    });
+
+    const obsgeralText = $(".obsgeral").text().trim();
+
+    const dadosBackup = {
+      principal,
+      abastecimento,
+      manutencao,
+      obsgeral: { texto: obsgeralText }
+    };
+
+    localStorage.setItem(chave, JSON.stringify(dadosBackup));
+    console.log("[SIC3 Backup] Backup salvo localmente.");
+  } catch (e) {
+    console.error("[SIC3 Backup] Erro ao salvar backup local:", e);
+  }
+}
+
+let backupTimeout = null;
+window.backupObserverAtivo = false;
+window.backupObserver = null;
+
+function iniciarBackupObserver() {
+  if (window.backupObserver) {
+    window.backupObserver.disconnect();
+  }
+  
+  window.backupObserverAtivo = true;
+
+  const observerCallback = () => {
+    if (!window.backupObserverAtivo) return;
+    clearTimeout(backupTimeout);
+    backupTimeout = setTimeout(() => {
+      salvarBackupLocal();
+    }, 500);
+  };
+
+  window.backupObserver = new MutationObserver(observerCallback);
+  const config = { childList: true, subtree: true, characterData: true };
+
+  const targets = [
+    document.querySelector(".principal-table tbody"),
+    document.querySelector(".abastecimento-table tbody"),
+    document.querySelector(".manutencao-table tbody"),
+    document.querySelector(".obsgeral")
+  ].filter(el => el);
+
+  targets.forEach(target => {
+    window.backupObserver.observe(target, config);
+  });
+
+  console.log("[SIC3 Backup] MutationObserver de backup ativo.");
+}
+
+function pararBackupObserver() {
+  window.backupObserverAtivo = false;
+  if (window.backupObserver) {
+    window.backupObserver.disconnect();
+    window.backupObserver = null;
+  }
+  console.log("[SIC3 Backup] MutationObserver de backup desativado.");
+}
+
+function apagarBackupLocal() {
+  try {
+    const chave = obterChaveBackup();
+    localStorage.removeItem(chave);
+    console.log("[SIC3 Backup] Backup local removido.");
+  } catch (e) {
+    console.error("[SIC3 Backup] Erro ao remover backup local:", e);
+  }
+}
+
+async function recuperarBackupLocal() {
+  try {
+    const chave = obterChaveBackup();
+    const backupRaw = localStorage.getItem(chave);
+    if (!backupRaw) return false;
+
+    const backup = JSON.parse(backupRaw);
+    
+    mostrarCarregamento("Recuperando dados da última edição...");
+
+    // Limpar tabelas
+    $(".principal-table tbody, .abastecimento-table tbody, .manutencao-table tbody").empty();
+
+    // Preencher principal
+    if (backup.principal && backup.principal.length) {
+      backup.principal.forEach(linha => {
+        inserirLinhaTabela(linha);
+      });
+    }
+
+    // Preencher abastecimento
+    if (backup.abastecimento && backup.abastecimento.length && typeof preencherTabelaAbastecimento === 'function') {
+      await preencherTabelaAbastecimento(backup.abastecimento);
+    }
+
+    // Preencher manutenção
+    if (backup.manutencao && backup.manutencao.length && typeof preencherTabelaManutencao === 'function') {
+      await preencherTabelaManutencao(backup.manutencao);
+    }
+
+    // Preencher observações
+    if (backup.obsgeral) {
+      $(".obsgeral").text(backup.obsgeral.texto || "SEM OBSERVACOES");
+    }
+
+    await atualizarTotaisInfoAbastecimento();
+    await atualizarTotaisInfoManutencao();
+    calcularTotalTabela();
+    atualizarNumeracaoLinhas();
+    atualizarVisibilidadeContainers();
+
+    ocultarCarregamento();
+    return true;
+  } catch (e) {
+    console.error("[SIC3 Backup] Erro ao recuperar backup local:", e);
+    ocultarCarregamento();
+    return false;
+  }
+}
+
+// Exportações explícitas
+window.obterChaveBackup = obterChaveBackup;
+window.salvarBackupLocal = salvarBackupLocal;
+window.iniciarBackupObserver = iniciarBackupObserver;
+window.pararBackupObserver = pararBackupObserver;
+window.apagarBackupLocal = apagarBackupLocal;
+window.recuperarBackupLocal = recuperarBackupLocal;
