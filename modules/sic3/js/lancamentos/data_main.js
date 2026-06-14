@@ -1,3 +1,4 @@
+window.formularioMaterial = null;
 var itensParaSalvarNaPrimaria = [];
 var valoresOriginais = {
   principal: [],
@@ -258,17 +259,17 @@ function inserirLinhaTabela(linha) {
 
 
 async function editarRelatorio() {
-  if (!window.formularioMaterial) {
+  if (!window.formularioMaterial || !$.fn.DataTable.isDataTable('#dataTable')) {
     window.formularioMaterial = { tipo: "material" };
     await carregarPesquisaMaterial();
   }
 
   const chave = obterChaveBackup();
-  const backupRaw = localStorage.getItem(chave);
+  const backupRaw = await storageGet(chave);
   let temBackup = false;
   if (backupRaw) {
     try {
-      const backupObj = JSON.parse(backupRaw);
+      const backupObj = typeof backupRaw === 'string' ? JSON.parse(backupRaw) : backupRaw;
       temBackup = backupObj && (
         (backupObj.principal && backupObj.principal.length > 0) ||
         (backupObj.abastecimento && backupObj.abastecimento.length > 0) ||
@@ -410,7 +411,7 @@ async function salvarDados() {
       // Limpa a fila local após o sucesso do salvamento principal
       itensParaSalvarNaPrimaria = [];
       window.backupAtivo = false;
-      apagarBackupLocal();
+      await apagarBackupLocal();
 
       const mapeamento = resultFinal.mapeamento;
       if (mapeamento && Object.keys(mapeamento).length > 0) {
@@ -641,6 +642,57 @@ function atualizarVisibilidadeContainers() {
 // SISTEMA DE BACKUP LOCAL (Lançamento/Edição)
 // ==========================================
 
+// ==========================================
+// AUXILIARES DE ARMAZENAMENTO ASSÍNCRONO
+// ==========================================
+
+function storageGet(chave) {
+  return new Promise((resolve) => {
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      chrome.storage.local.get([chave], (result) => {
+        resolve(result[chave] || null);
+      });
+    } else {
+      const val = localStorage.getItem(chave);
+      if (val) {
+        try {
+          resolve(JSON.parse(val));
+        } catch (e) {
+          resolve(val);
+        }
+      } else {
+        resolve(null);
+      }
+    }
+  });
+}
+
+function storageSet(chave, valor) {
+  return new Promise((resolve) => {
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      chrome.storage.local.set({ [chave]: valor }, () => {
+        resolve();
+      });
+    } else {
+      localStorage.setItem(chave, JSON.stringify(valor));
+      resolve();
+    }
+  });
+}
+
+function storageRemove(chave) {
+  return new Promise((resolve) => {
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      chrome.storage.local.remove([chave], () => {
+        resolve();
+      });
+    } else {
+      localStorage.removeItem(chave);
+      resolve();
+    }
+  });
+}
+
 function obterChaveBackup() {
   const muniStr = typeof window.municipio !== 'undefined' ? window.municipio : (typeof municipio !== 'undefined' ? municipio : '');
   const convStr = typeof window.convenio !== 'undefined' ? window.convenio : (typeof convenio !== 'undefined' ? convenio : '');
@@ -649,7 +701,7 @@ function obterChaveBackup() {
   return `sic3_backup_${muniStr}_${convStr}_${anoStr}_${mesStr}`;
 }
 
-function salvarBackupLocal() {
+async function salvarBackupLocal() {
   if (!window.backupAtivo) return;
   try {
     const chave = obterChaveBackup();
@@ -715,7 +767,7 @@ function salvarBackupLocal() {
       obsgeral: { texto: obsgeralText }
     };
 
-    localStorage.setItem(chave, JSON.stringify(dadosBackup));
+    await storageSet(chave, dadosBackup);
     console.log("[SIC3 Backup] Backup salvo localmente.");
   } catch (e) {
     console.error("[SIC3 Backup] Erro ao salvar backup local:", e);
@@ -724,10 +776,10 @@ function salvarBackupLocal() {
 
 window.backupAtivo = false;
 
-function apagarBackupLocal() {
+async function apagarBackupLocal() {
   try {
     const chave = obterChaveBackup();
-    localStorage.removeItem(chave);
+    await storageRemove(chave);
     console.log("[SIC3 Backup] Backup local removido.");
   } catch (e) {
     console.error("[SIC3 Backup] Erro ao remover backup local:", e);
@@ -737,10 +789,10 @@ function apagarBackupLocal() {
 async function recuperarBackupLocal() {
   try {
     const chave = obterChaveBackup();
-    const backupRaw = localStorage.getItem(chave);
+    const backupRaw = await storageGet(chave);
     if (!backupRaw) return false;
 
-    const backup = JSON.parse(backupRaw);
+    const backup = typeof backupRaw === 'string' ? JSON.parse(backupRaw) : backupRaw;
     console.log("[SIC3 Backup] Iniciando recuperação do backup:", backup);
     
     mostrarCarregamento("Recuperando dados da última edição...");
