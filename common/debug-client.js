@@ -8,6 +8,7 @@
     let isPolling = false;
     let serverOnline = false; // Começa como false para evitar spam no boot
     let isCheckingConnection = false;
+    let heartbeatInterval = null;
 
     async function sendToDebug(data) {
         if (!serverOnline) return;
@@ -67,12 +68,14 @@
             console.info(`[Debug] Conexão estabelecida com o servidor [${DEBUG_SERVER}].`);
             startPolling();
             
-            // Inicia o heartbeat periódico a cada 15s
-            setInterval(() => {
-                if (serverOnline) {
-                    sendToDebug({ type: 'heartbeat' });
-                }
-            }, 15000);
+            // Inicia o heartbeat periódico a cada 15s se ainda não tiver sido iniciado
+            if (!heartbeatInterval) {
+                heartbeatInterval = setInterval(() => {
+                    if (serverOnline) {
+                        sendToDebug({ type: 'heartbeat' });
+                    }
+                }, 15000);
+            }
         } catch (e) {
             // Falha silenciosa de conexão inicial.
             serverOnline = false;
@@ -132,14 +135,22 @@
     }
 
     async function takeSnapshot(label = 'manual') {
-        const snapshot = {
-            type: 'snapshot',
-            label: label,
-            html: document.documentElement.outerHTML,
-            storage: await getStorage()
-        };
-        await sendToDebug(snapshot);
-        return true;
+        if (!serverOnline) {
+            // Se a conexão não estiver ativa, tenta conectar agora
+            await checkInitialConnection();
+        }
+
+        if (serverOnline) {
+            const snapshot = {
+                type: 'snapshot',
+                label: label,
+                html: document.documentElement.outerHTML,
+                storage: await getStorage()
+            };
+            await sendToDebug(snapshot);
+            return true;
+        }
+        return false;
     }
 
     async function getStorage() {
