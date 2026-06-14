@@ -108,6 +108,11 @@ function processIncomingData(data) {
         const snapshotFile = path.join(snapshotDir, `snapshot_${clientId}.json`);
         fs.writeFileSync(snapshotFile, JSON.stringify(data, null, 2));
         
+        // Salva o arquivo HTML correspondente na pasta específica deste snapshot
+        if (data.html) {
+            fs.writeFileSync(path.join(snapshotDir, 'view.html'), data.html);
+        }
+        
         // Mantém arquivos de fácil acesso na raiz do debug para visualização rápida (legado/atalho)
         fs.writeFileSync(path.join(DEBUG_DIR, 'current_state.json'), JSON.stringify(data, null, 2));
         if (data.html) fs.writeFileSync(path.join(DEBUG_DIR, 'view.html'), data.html);
