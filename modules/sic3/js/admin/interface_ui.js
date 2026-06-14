@@ -301,10 +301,7 @@
         sirconvHtml = "-";
         siadHtml = "-";
       } else if (linha.edicaoBloqueada) {
-        statusHtml =
-          linha.sirconvStatus === "OK"
-            ? `<span class="status-bloqueada" title="Edição Bloqueada. Verificado no SIRCONV."><i class="fas fa-lock"></i></span>`
-            : `<button class="action-icon btn-bloqueada" title="Edição Bloqueada. Clique para desbloquear."><i class="fas fa-lock"></i></button>`;
+        statusHtml = `<button class="action-icon btn-bloqueada" title="Edição Bloqueada. Clique para desbloquear."><i class="fas fa-lock"></i></button>`;
         acaoHtml = `<div class="action-buttons-container">
                         <div class="action-button-group main-actions">${btnVisualizar}</div>
                         <div class="action-button-group anexo-actions">${btnAnexoD}${btnAnexoU}</div>
@@ -317,8 +314,8 @@
           if (linha.sirconvStatus === "OK") {
             siadHtml =
               linha.siadStatus === "OK"
-                ? `<span class="status-icon status-registrado" title="Registrado no SIAD" data-municipio="${linha.municipio}" data-convenio="${linha.convenio}" data-ano="${linha.ano}" data-mes="${linha.mes}"><i class="fas fa-check-circle"></i></span>`
-                : `<button class="action-icon btn-registrar" title="Marcar como Registrado no SIAD" data-municipio="${linha.municipio}" data-convenio="${linha.convenio}" data-ano="${linha.ano}" data-mes="${linha.mes}"><i class="fas fa-clipboard-check"></i></button>`;
+                ? `<span class="status-icon status-registrado clicks-siad" title="Ver Detalhes do SIAD" style="cursor: pointer; display: block; text-align: center;" data-municipio="${linha.municipio}" data-convenio="${linha.convenio}" data-ano="${linha.ano}" data-mes="${linha.mes}" data-siad-l="${linha.siadInfo?.colL || ''}" data-siad-m="${linha.siadInfo?.colM || ''}" data-siad-n="${linha.siadInfo?.colN || ''}" data-siad-o="${linha.siadInfo?.colO || ''}" data-siad-p="${linha.siadInfo?.colP || ''}" data-siad-q="${linha.siadInfo?.colQ || ''}" data-siad-r="${linha.siadInfo?.colR || ''}" data-siad-s="${linha.siadInfo?.colS || ''}"><i class="fas fa-check-circle"></i></span>`
+                : `<span class="status-icon status-pendente" title="Pendente no SIAD (Rotina Automática)"><i class="fas fa-clock" style="color: #95a5a6;"></i></span>`;
           } else {
             siadHtml =
               '<span class="status-icon aguardando" title="Aguardando verificação no SIRCONV"><i class="fas fa-hourglass-half"></i></span>';
@@ -413,16 +410,9 @@
 
     tabelaBody
       .on("mouseenter", ".btn-bloqueada", function () {
-        const tr = $(this).closest("tr");
-        const sirconvCell = isAdmin ? tr.find("td.admin-only:eq(0)") : $();
-        if (
-          sirconvCell.find(".btn-verificar").length ||
-          sirconvCell.find(".aguardando").length
-        ) {
-          $(this)
-            .html('<i class="fas fa-unlock"></i>')
-            .attr("title", "Desbloquear Edição");
-        }
+        $(this)
+          .html('<i class="fas fa-unlock"></i>')
+          .attr("title", "Desbloquear Edição");
       })
       .on("mouseleave", ".btn-bloqueada", function () {
         $(this)
@@ -431,20 +421,14 @@
       })
       .on("click", ".btn-bloqueada", async function () {
         const tr = $(this).closest("tr");
-        const sirconvCell = isAdmin ? tr.find("td.admin-only:eq(0)") : $();
-        if (
-          sirconvCell.find(".btn-verificar").length ||
-          sirconvCell.find(".aguardando").length
-        ) {
-          await alterarStatusEdicao(
-            authToken,
-            tr.find("td:nth(0)").text(),
-            tr.find("td:nth(1)").text(),
-            tr.find("td:nth(2)").text(),
-            tr.find("td:nth(3)").text(),
-            "desbloquear"
-          );
-        }
+        await alterarStatusEdicao(
+          authToken,
+          tr.find("td:nth(0)").text(),
+          tr.find("td:nth(1)").text(),
+          tr.find("td:nth(2)").text(),
+          tr.find("td:nth(3)").text(),
+          "desbloquear"
+        );
       });
 
     tabelaBody.on(
@@ -492,21 +476,66 @@
       );
     });
 
-    configurarEventosBotaoRegistrar(
-      tabelaBody.find(".btn-registrar"),
-      authToken,
-      isAdmin
-    );
     configurarEventosStatusVerificado(
       tabelaBody.find(".status-verificado"),
       authToken,
       isAdmin
     );
-    configurarEventosStatusRegistrado(
-      tabelaBody.find(".status-registrado"),
-      authToken,
-      isAdmin
-    );
+
+    // Evento de clique para exibir detalhes do SIAD no modal
+    tabelaBody.off("click", ".clicks-siad").on("click", ".clicks-siad", function (e) {
+      e.stopPropagation();
+      e.preventDefault();
+      const $el = $(this);
+      const l = $el.data("siad-l") || "-";
+      const m = $el.data("siad-m") || "-";
+      const n = $el.data("siad-n") || "-";
+      const o = $el.data("siad-o") || "-";
+      const p = $el.data("siad-p") || "-";
+      const q = $el.data("siad-q") || "-";
+      const r = $el.data("siad-r") || "-";
+      const s = $el.data("siad-s") || "-";
+
+      const content = `
+        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 13.5px; color: #2c3e50; padding: 5px;">
+          <h3 style="margin-top: 0; margin-bottom: 15px; border-bottom: 2px solid #34495e; padding-bottom: 8px; color: #2c3e50; font-size: 15px; font-weight: 600;">
+            <i class="fas fa-info-circle" style="margin-right: 6px; color: #3498db;"></i>
+            Detalhes do Lançamento no SIAD
+          </h3>
+          <table style="width: 100%; border-collapse: collapse;">
+            <tbody>
+              <tr style="border-bottom: 1px solid #f1f2f6;"><td style="padding: 7px 0; font-weight: 600; width: 45%; color: #7f8c8d;">Envio Inicial:</td><td style="padding: 7px 0; color: #2c3e50;">${l}</td></tr>
+              <tr style="border-bottom: 1px solid #f1f2f6;"><td style="padding: 7px 0; font-weight: 600; color: #7f8c8d;">Documento/Requisição:</td><td style="padding: 7px 0; color: #2c3e50; font-family: monospace; font-weight: bold;">${m}</td></tr>
+              <tr style="border-bottom: 1px solid #f1f2f6;"><td style="padding: 7px 0; font-weight: 600; color: #7f8c8d;">Fase de Validação:</td><td style="padding: 7px 0; color: #2c3e50;">${n}</td></tr>
+              <tr style="border-bottom: 1px solid #f1f2f6;"><td style="padding: 7px 0; font-weight: 600; color: #7f8c8d;">Número de Controle:</td><td style="padding: 7px 0; color: #2c3e50; font-family: monospace; font-weight: bold;">${o}</td></tr>
+              <tr style="border-bottom: 1px solid #f1f2f6;"><td style="padding: 7px 0; font-weight: 600; color: #7f8c8d;">Data de Registro:</td><td style="padding: 7px 0; color: #2c3e50;">${p}</td></tr>
+              <tr style="border-bottom: 1px solid #f1f2f6;"><td style="padding: 7px 0; font-weight: 600; color: #7f8c8d;">Status do Registro:</td><td style="padding: 7px 0;"><span style="color: ${q === 'OK' ? '#27ae60' : '#e74c3c'}; font-weight: bold;">${q}</span></td></tr>
+              <tr style="border-bottom: 1px solid #f1f2f6;"><td style="padding: 7px 0; font-weight: 600; color: #7f8c8d;">Data de Homologação:</td><td style="padding: 7px 0; color: #2c3e50;">${r}</td></tr>
+              <tr style="border-bottom: 1px solid #f1f2f6;"><td style="padding: 7px 0; font-weight: 600; color: #7f8c8d;">Status da Homologação:</td><td style="padding: 7px 0;"><span style="color: ${s === 'OK' ? '#27ae60' : '#e74c3c'}; font-weight: bold;">${s}</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      `;
+
+      $("#dialog-message")
+        .empty()
+        .html(content)
+        .dialog({
+          modal: true,
+          width: 400,
+          title: "Informações SIAD",
+          buttons: {
+            Fechar: function() {
+              $(this).dialog("close");
+            }
+          },
+          close: function() {
+            $(this).dialog('destroy');
+            $(this).empty();
+          }
+        })
+        .dialog("open");
+    });
 
     tabelaBody
       .on("mouseenter", "td.cell-actions", function () {
