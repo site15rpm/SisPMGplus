@@ -327,7 +327,7 @@ window.includeHtmlBody = function(contentHtml) {
  * @returns {Promise<object>} Objeto contendo os IDs das planilhas resolvidas.
  */
 window.resolverIdsPlanilhas = async function(forcarRecarregamento = false) {
-    const rpmAtiva = sessionStorage.getItem("sic3_rpm") || (window.rpm && typeof window.rpm === 'string' ? window.rpm : "15 RPM");
+    const rpmAtiva = sessionStorage.getItem("sic3_rpm") || (window.rpm && typeof window.rpm === 'string' ? window.rpm : "");
     const anoAtivo = sessionStorage.getItem("sic3_ano") || (window.ano && typeof window.ano === 'string' ? window.ano : new Date().getFullYear().toString());
     const cacheKey = `sic3_ids_cache_${rpmAtiva.replace(/\s+/g, '_')}_${anoAtivo}`;
     
@@ -456,7 +456,7 @@ export async function navegarPara(pagina, contexto = {}) {
         }
 
         // Resolve dinamicamente de forma segura os valores de RPM e Ano ativos (evitando colisões com DOM)
-        const rpmAtiva = sessionStorage.getItem("sic3_rpm") || (window.rpm && typeof window.rpm === 'string' ? window.rpm : "15 RPM");
+        const rpmAtiva = sessionStorage.getItem("sic3_rpm") || (window.rpm && typeof window.rpm === 'string' ? window.rpm : "");
         const anoAtivo = sessionStorage.getItem("sic3_ano") || (window.ano && typeof window.ano === 'string' ? window.ano : new Date().getFullYear().toString());
 
         if (!window.idBDConvenios || !window.idBDEnderecos || !window.idTBPrimaria || !window.idTBSecundaria || contexto.idbase || contexto.rpm || contexto.ano) {
@@ -835,7 +835,7 @@ window.addEventListener('DOMContentLoaded', async () => {
             window.isAdmin = info.isAdmin === true;
             
             window.municipio = municipioParam ? decodeURIComponent(municipioParam).toUpperCase() : (info.municipio ? info.municipio.toUpperCase() : "");
-            window.rpm = rpmParam ? rpmParam : (info.nomeRegiao || "15 RPM");
+            window.rpm = rpmParam ? rpmParam : (info.nomeRegiao || "");
             window.secao = secaoParam ? decodeURIComponent(secaoParam) : (info.nomeSecao || "");
             
             console.log("[SIC3 v3.0 Log] [SIC3-Mapeamento] Dados mapeados com sucesso:", {
