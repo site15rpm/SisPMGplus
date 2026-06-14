@@ -832,6 +832,7 @@ window.addEventListener('DOMContentLoaded', async () => {
             window.userNome = info.nome || "";
             window.userSecao = info.nomeSecao || "";
             window.userRegiao = info.nomeRegiao || "";
+            window.userPostoGraduacao = info.postoGraduacao || "";
             window.isAdmin = info.isAdmin === true;
             
             window.municipio = municipioParam ? decodeURIComponent(municipioParam).toUpperCase() : (info.municipio ? info.municipio.toUpperCase() : "");
@@ -843,6 +844,7 @@ window.addEventListener('DOMContentLoaded', async () => {
                 userNome: window.userNome,
                 userSecao: window.userSecao,
                 userRegiao: window.userRegiao,
+                userPostoGraduacao: window.userPostoGraduacao,
                 isAdmin: window.isAdmin,
                 municipio: window.municipio,
                 rpm: window.rpm,
@@ -855,6 +857,10 @@ window.addEventListener('DOMContentLoaded', async () => {
             window.rpm = rpmParam || "19";
             window.secao = secaoParam ? decodeURIComponent(secaoParam) : "19º BPM";
             window.isAdmin = false;
+            window.userPM = "";
+            window.userNome = "Usuário Teste";
+            window.userSecao = window.secao;
+            window.userPostoGraduacao = "";
             console.log("[SIC3 v3.0 Log] [SIC3-Mapeamento] Fallback aplicado:", {
                 municipio: window.municipio,
                 rpm: window.rpm,
