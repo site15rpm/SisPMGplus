@@ -169,7 +169,10 @@ function handleApiAction(action, body) {
  * Formata e normaliza o nome da RPM para o padrão "XXRPM"
  */
 function formatarNomeRPM(rpm) {
-  let r = String(rpm || "15").trim().toUpperCase();
+  if (!rpm) {
+    throw new Error("A identificação da RPM (Região) é obrigatória e não foi fornecida.");
+  }
+  let r = String(rpm).trim().toUpperCase();
   if (/^\d+$/.test(r)) {
     return r + "RPM";
   }
@@ -209,7 +212,9 @@ function obterSpreadsheetIdDoContexto(body) {
   }
 
   // Fallbacks padrão
-  if (!rpm) rpm = "15";
+  if (!rpm) {
+    throw new Error("A identificação da RPM (Região) é obrigatória e não foi fornecida.");
+  }
   if (!ano) {
     if (body.convenioUrl) {
       const match = body.convenioUrl.match(/\b(202\d|203\d)\b/);
@@ -277,7 +282,10 @@ function obterIdArquivoCompartilhado(nomeBase, rpm) {
     return ss.getId();
   } else {
     // Local: BDConvenios ou BDEnderecos. Fica dentro da pasta da RPM.
-    const rpmResolvida = rpm || CURRENT_RPM || "15";
+    const rpmResolvida = rpm || CURRENT_RPM;
+    if (!rpmResolvida) {
+      throw new Error("A identificação da RPM (Região) é obrigatória e não foi fornecida.");
+    }
     const folderRPM = obterOuCriarPastaRPM(rpmResolvida);
     const files = folderRPM.getFilesByName(nomeBase);
     if (files.hasNext()) {
@@ -366,7 +374,7 @@ function obterIdLogAcesso(rpm, ano) {
  */
 function obterOuCriarPlanilhaAnual(rpm, ano) {
   const folderRPM = obterOuCriarPastaRPM(rpm);
-  const nomePlanilha = String(ano).trim();
+  const nomePlanilha = "SIC3_BD" + String(ano).trim();
   const files = folderRPM.getFilesByName(nomePlanilha);
 
   if (files.hasNext()) {
@@ -414,12 +422,7 @@ function obterOuCriarPlanilhaAnual(rpm, ano) {
   return ss.getId();
 }
 
-/**
- * Função de compatibilidade mantida para chamadas legadas
- */
-function obterOuCriarPlanilha(rpm, ano) {
-  return obterOuCriarPlanilhaAnual(rpm, ano);
-}
+
 
 /**
  * Função da API para obter o ID da planilha atual e seus arquivos compartilhados associados
@@ -454,7 +457,10 @@ function obterAnosDisponiveis(rpm) {
     while (files.hasNext()) {
       const file = files.next();
       const name = file.getName();
-      if (/^\d{4}$/.test(name)) {
+      const match = name.match(/^SIC3_BD(\d{4})$/);
+      if (match) {
+        anosMap[match[1]] = true;
+      } else if (/^\d{4}$/.test(name)) {
         anosMap[name] = true;
       }
     }
@@ -1760,7 +1766,8 @@ function buscarNoPortalCompras(termoBusca) {
 
 function registrarOperacao(local, username, municipio, operacao, resultado) {
   try {
-    const rpm = CURRENT_RPM || "15";
+    const rpm = CURRENT_RPM;
+    if (!rpm) return;
     const ano = CURRENT_ANO || new Date().getFullYear().toString();
     const logId = obterIdLogAcesso(rpm, ano);
     const ss = SpreadsheetApp.openById(logId);
