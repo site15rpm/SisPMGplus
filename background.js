@@ -98,6 +98,15 @@ browser.runtime.onMessage.addListener((request, sender) => {
                     return { success: true };
                 }
                 case 'openSettingsPage': {
+                    if (payload.page && payload.page.includes('sic3.html')) {
+                        // Grava autorização de acesso temporária para o SIC3
+                        await browser.storage.local.set({
+                            sic3_access_authorized: {
+                                timestamp: Date.now(),
+                                authorized: true
+                            }
+                        });
+                    }
                     const url = browser.runtime.getURL(payload.page);
                     await browser.tabs.create({ url });
                     return { success: true };

@@ -627,6 +627,115 @@ async function initConfigBar() {
 
 // Inicializa a aplicação
 window.addEventListener('DOMContentLoaded', async () => {
+    // 0. Validação de Segurança contra Acesso Direto por URL/Favorito
+    const isSessionActive = sessionStorage.getItem('sic3_active_session') === 'true';
+    let authorized = false;
+
+    if (isSessionActive) {
+        authorized = true;
+    } else {
+        try {
+            let storage = null;
+            if (typeof browser !== 'undefined' && browser.storage && browser.storage.local) {
+                storage = browser.storage.local;
+            } else if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+                storage = chrome.storage.local;
+            }
+            
+            if (storage) {
+                const res = await new Promise(resolve => {
+                    storage.get('sic3_access_authorized', r => resolve(r ? r.sic3_access_authorized : null));
+                });
+                
+                if (res && res.authorized === true) {
+                    const now = Date.now();
+                    // O token gerado pelo background é válido por 15 segundos
+                    if (now - res.timestamp < 15000) {
+                        authorized = true;
+                        sessionStorage.setItem('sic3_active_session', 'true');
+                    }
+                }
+                
+                // Consome o token de acesso único
+                if (res) {
+                    await new Promise(resolve => {
+                        storage.remove('sic3_access_authorized', resolve);
+                    });
+                }
+            }
+        } catch (errAuth) {
+            console.error("[SIC3 v3.0 Log] Erro ao validar token de acesso:", errAuth);
+        }
+    }
+
+    if (!authorized) {
+        console.warn("[SIC3 v3.0 Log] [Acesso Negado] Tentativa de acesso direto à página do SIC3 detectada.");
+        
+        // Renderiza tela de acesso negado de alta qualidade estética
+        document.body.innerHTML = `
+            <div style="
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                height: 100vh;
+                background: radial-gradient(circle, #1a252f 0%, #0f171e 100%);
+                color: #ffffff;
+                font-family: 'Outfit', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                text-align: center;
+                padding: 20px;
+                box-sizing: border-box;
+            ">
+                <div style="
+                    background: rgba(255, 255, 255, 0.03);
+                    border: 1px solid rgba(255, 255, 255, 0.08);
+                    border-radius: 16px;
+                    padding: 40px 30px;
+                    max-width: 500px;
+                    width: 100%;
+                    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+                    backdrop-filter: blur(10px);
+                ">
+                    <div style="font-size: 64px; margin-bottom: 20px; color: #e74c3c;">🚫</div>
+                    <h2 style="font-size: 24px; font-weight: 600; margin-bottom: 15px; letter-spacing: 0.5px; color: #f5f6fa;">Acesso Restrito</h2>
+                    <p style="font-size: 15px; line-height: 1.6; color: #bdc3c7; margin-bottom: 25px;">
+                        Por razões de segurança, o módulo <strong>SIC3 v3.0</strong> não pode ser acessado diretamente por URL ou favoritos.
+                    </p>
+                    <div style="
+                        background: rgba(231, 76, 60, 0.1);
+                        border-left: 4px solid #e74c3c;
+                        padding: 12px 15px;
+                        border-radius: 4px;
+                        font-size: 13.5px;
+                        color: #ff7675;
+                        text-align: left;
+                        margin-bottom: 25px;
+                        line-height: 1.5;
+                    ">
+                        <strong>Como acessar:</strong> Faça login na Intranet da PM e clique no botão de acesso do SIC3 através do painel do SisPMG+.
+                    </div>
+                    <button onclick="window.close()" style="
+                        background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
+                        color: white;
+                        border: none;
+                        padding: 12px 25px;
+                        font-size: 14px;
+                        font-weight: 500;
+                        border-radius: 8px;
+                        cursor: pointer;
+                        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+                        transition: all 0.3s ease;
+                        font-family: inherit;
+                        width: 100%;
+                    " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(0,0,0,0.3)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(0,0,0,0.2)'">
+                        Fechar Aba
+                    </button>
+                </div>
+            </div>
+        `;
+        return;
+    }
+
     console.log("[SIC3 v3.0 Log] DOMContentLoaded disparado no sic3.html. Inicializando barra de configurações de API.");
     await initConfigBar();
 
