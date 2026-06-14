@@ -131,6 +131,10 @@ function handleApiAction(action, body) {
       result = atualizarStatusEdicao(params[0], params[1], params[2], params[3], params[4], params[5]);
       break;
       
+    case "atualizarStatusSirconvSiad":
+      result = atualizarStatusSirconvSiad(params[0], params[1], params[2], params[3], params[4], params[5], params[6]);
+      break;
+      
     case "agendarRebloqueio24h":
       result = agendarRebloqueio24h(params[0], params[1], params[2], params[3], params[4]);
       break;
@@ -1900,4 +1904,45 @@ function converterMes(valor, formato = 'texto') {
   const mesFormatado = String(valor).toUpperCase().trim();
   if (!meses[mesFormatado]) return formato === 'numero' ? 0 : (formato === 'texto' ? '00' : '');
   return meses[mesFormatado][formato];
+}
+
+function atualizarStatusSirconvSiad(authToken, municipio, convenio, ano, mes, tipo, status) {
+  const local = "atualizarStatusSirconvSiad";
+  const usuario = validateAuthToken(authToken);
+
+  if (!usuario || !usuario.isAdmin) {
+    registrarOperacao(local, usuario?.username || 'unknown', municipio, `update_status_${tipo}_denied`, "permissao_admin_necessaria");
+    return { success: false, message: "Acesso negado. Apenas administradores.", errorCode: "ADMIN_REQUIRED" };
+  }
+  
+  registrarOperacao(local, usuario.username, municipio, `update_status_${tipo}`, `status: ${status}`);
+
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(30000);
+    const ss = SpreadsheetApp.openById(getProjectIds().spreadsheetId);
+    const sheet = ss.getSheetByName("obsgeral");
+    const data = sheet.getDataRange().getValues();
+
+    for (let i = 0; i < data.length; i++) {
+      if (String(data[i][1]) == municipio && 
+          String(data[i][2]) == String(convenio) &&
+          String(data[i][3]) == String(ano) && 
+          String(data[i][4]) == String(mes)) {
+        const col = tipo == "SIRCONV" ? 10 : 11; 
+        sheet.getRange(i + 1, col).setNumberFormat("@STRING@").setValue(String(status));
+        
+        registrarOperacao(local, usuario.username, municipio, `atualizar_status_${tipo.toLowerCase()}`, "success");
+        return { success: true };
+      }
+    }
+    registrarOperacao(local, usuario.username, municipio, `update_status_${tipo}`, "not_found");
+    return { success: false, message: "Registro não encontrado para atualizar status." };
+  } catch (error) {
+    registrarOperacao(local, usuario.username, municipio, `update_status_${tipo}`, `error: ${error.message}`);
+    console.error(`Erro ao atualizar status ${tipo}:`, error);
+    return { success: false, message: `Erro ao processar atualização de ${tipo}. Detalhes: ${error.message}` };
+  } finally {
+    lock.releaseLock();
+  }
 }

@@ -565,3 +565,89 @@ body {
   align-items: center;
   gap: 12px;
 }
+
+/* Custom Modais de Pendencias e Escolha do SIRCONV */
+#modal-escolha-sirconv,
+#modal-registro-pendencia-sirconv,
+#modal-view-pendencia-sirconv,
+#modal-pendencias-geral-user {
+  display: block !important;
+  font-family: var(--font-family-body) !important;
+  color: var(--cor-fonte) !important;
+  font-size: 13px !important;
+  line-height: 1.6 !important;
+}
+
+#modal-escolha-sirconv p,
+#modal-registro-pendencia-sirconv p,
+#modal-view-pendencia-sirconv p,
+#modal-pendencias-geral-user p {
+  font-size: 13.5px !important;
+  color: var(--cor-fonte-forte) !important;
+}
+
+/* Customização dos botões do jQuery UI Dialog para Diálogos de Pendências */
+.ui-dialog .ui-dialog-buttonpane .btn-sirconv-sem-pendencias {
+  background: var(--cor-quaternaria) !important;
+  color: white !important;
+  border: none !important;
+  font-weight: 600 !important;
+  transition: all 0.2s ease !important;
+}
+.ui-dialog .ui-dialog-buttonpane .btn-sirconv-sem-pendencias:hover {
+  background: #157347 !important;
+  box-shadow: 0 4px 8px rgba(22, 132, 54, 0.2) !important;
+}
+
+.ui-dialog .ui-dialog-buttonpane .btn-sirconv-com-pendencias {
+  background: var(--cor-laranja) !important;
+  color: white !important;
+  border: none !important;
+  font-weight: 600 !important;
+  transition: all 0.2s ease !important;
+}
+.ui-dialog .ui-dialog-buttonpane .btn-sirconv-com-pendencias:hover {
+  background: #e04c1b !important;
+  box-shadow: 0 4px 8px rgba(255, 87, 34, 0.2) !important;
+}
+
+.ui-dialog .ui-dialog-buttonpane .btn-sirconv-salvar {
+  background: var(--cor-caqui) !important;
+  color: white !important;
+  border: none !important;
+  font-weight: 600 !important;
+  transition: all 0.2s ease !important;
+}
+.ui-dialog .ui-dialog-buttonpane .btn-sirconv-salvar:hover {
+  background: var(--cor-primaria) !important;
+  box-shadow: 0 4px 8px rgba(160, 143, 99, 0.2) !important;
+}
+
+.ui-dialog .ui-dialog-buttonpane .btn-sirconv-cancelar {
+  background: #e2e8f0 !important;
+  color: #475569 !important;
+  border: 1px solid #cbd5e1 !important;
+  font-weight: 500 !important;
+}
+.ui-dialog .ui-dialog-buttonpane .btn-sirconv-cancelar:hover {
+  background: #cbd5e1 !important;
+}
+
+/* Textarea de pendências */
+#sirconv-desc-pendencia {
+  width: 100% !important;
+  border: 1px solid var(--cor-separador) !important;
+  border-radius: 6px !important;
+  padding: 10px !important;
+  font-family: var(--font-family-body) !important;
+  font-size: 13px !important;
+  color: var(--cor-fonte-forte) !important;
+  background-color: white !important;
+  outline: none !important;
+  transition: border-color 0.2s ease !important;
+  resize: vertical;
+}
+#sirconv-desc-pendencia:focus {
+  border-color: var(--cor-caqui) !important;
+  box-shadow: 0 0 0 3px rgba(160, 143, 99, 0.15) !important;
+}
