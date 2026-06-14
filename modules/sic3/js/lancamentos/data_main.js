@@ -264,7 +264,20 @@ async function editarRelatorio() {
   }
 
   const chave = obterChaveBackup();
-  const temBackup = localStorage.getItem(chave) !== null;
+  const backupRaw = localStorage.getItem(chave);
+  let temBackup = false;
+  if (backupRaw) {
+    try {
+      const backupObj = JSON.parse(backupRaw);
+      temBackup = backupObj && (
+        (backupObj.principal && backupObj.principal.length > 0) ||
+        (backupObj.abastecimento && backupObj.abastecimento.length > 0) ||
+        (backupObj.manutencao && backupObj.manutencao.length > 0)
+      );
+    } catch (e) {
+      temBackup = false;
+    }
+  }
   let backupRecuperado = false;
   let desejaRecuperar = false;
 
@@ -297,9 +310,7 @@ async function editarRelatorio() {
 
   window.backupAtivo = true;
 
-  if (!backupRecuperado && !desejaRecuperar) {
-    salvarBackupLocal();
-  }
+  // Não salvamos o backup inicial de forma redundante se o usuário não efetuou nenhuma edição local
 }
 
 
@@ -333,7 +344,6 @@ async function cancelarEdicao() {
       }
       window.formularioOutrosItens = {};
       window.backupAtivo = true;
-      salvarBackupLocal();
 
     } else {
       $(".btn-gerarAnexoD, .btn-gerarAnexoUnico").show();
