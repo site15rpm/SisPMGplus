@@ -494,12 +494,12 @@ export async function navegarPara(pagina, contexto = {}) {
             
             carregarCSS('css/admin.css');
             
-            window.pUser = contexto.pUser || "html/admin";
+            window.pUser = contexto.pUser || window.pUser || "html/admin";
             window.mLog = contexto.mLog || window.mLog || "";
-            window.nUser = contexto.nUser || "";
-            window.authToken = contexto.authToken || "";
-            window.idbase = contexto.idbase || "";
-            window.dadosConveniosPrepostos = [];
+            window.nUser = contexto.nUser || window.nUser || "";
+            window.authToken = contexto.authToken || window.authToken || "";
+            window.idbase = contexto.idbase || window.idbase || "";
+            window.dadosConveniosPrepostos = window.dadosConveniosPrepostos || [];
             
             if (contexto.convenios) {
                 window.convenios = typeof contexto.convenios === 'string' ? contexto.convenios : JSON.stringify(contexto.convenios);
@@ -543,16 +543,16 @@ export async function navegarPara(pagina, contexto = {}) {
             
             carregarCSS('css/lancamentos.css');
             
-            window.pUser = contexto.pUser || "html/lancamentos";
+            window.pUser = contexto.pUser || window.pUser || "html/lancamentos";
             window.mLog = contexto.mLog || window.mLog || "";
-            window.nUser = contexto.nUser || "";
-            window.municipio = contexto.municipio || "";
-            window.convenio = contexto.convenio || "";
-            window.ano = contexto.ano || "";
-            window.mes = contexto.mes || "";
-            window.acao = contexto.acao || "";
-            window.authToken = contexto.authToken || "";
-            window.idbase = contexto.idbase || "";
+            window.nUser = contexto.nUser || window.nUser || "";
+            window.municipio = contexto.municipio || window.municipio || "";
+            window.convenio = contexto.convenio || window.convenio || "";
+            window.ano = contexto.ano || window.ano || "";
+            window.mes = contexto.mes || window.mes || "";
+            window.acao = contexto.acao || window.acao || "";
+            window.authToken = contexto.authToken || window.authToken || "";
+            window.idbase = contexto.idbase || window.idbase || "";
             window.preposto_n = "";
             window.preposto_pg = "";
             window.preposto = "";
