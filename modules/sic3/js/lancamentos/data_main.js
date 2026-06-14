@@ -97,13 +97,20 @@ async function buscarDadosRelatorio() {
     const abastecimentoData = await carregarDadosPlanilha({
       sheetId: sheetId,
       sheet: "abastecimento",
-      query: `SELECT G,H,I,J,K,L,M,N,O,P WHERE B='${municipio}' AND C='${convenio}' AND D='${ano}' AND E='${mes}'`
+      query: `SELECT G,H,I,J,K,L,M,N,O,P,Q WHERE B='${municipio}' AND C='${convenio}' AND D='${ano}' AND E='${mes}'`
     });
     resultado.abastecimento = abastecimentoData.map((row) => ({
-      data: row[0] || "", placa: row[1] || "", prefixo: row[2] || "",
-      odometro: row[3] || "", motorista: row[4] || "", tipo: row[5] || "",
-      quantidade: row[6] || "", valorUnitario: row[7] || "", subtotal: row[8] || "",
-      notaFiscal: row[9] || ""
+      data: row[0] || "",
+      hora: row[1] || "",
+      placa: row[2] || "",
+      prefixo: row[3] || "",
+      odometro: row[4] || "",
+      motorista: row[5] || "",
+      tipo: row[6] || "",
+      quantidade: row[7] || "",
+      valorUnitario: row[8] || "",
+      subtotal: row[9] || "",
+      notaFiscal: row[10] || ""
     }));
 
     const manutencaoData = await carregarDadosPlanilha({
@@ -510,6 +517,7 @@ function formatarDadosAbastecimento() {
     const $row = $(this);
     return [[
       $row.find(".numero-item").text(), $row.find(".data-item").text(),
+      $row.find(".hora-item").text(),
       $row.find(".placa-item").text(), $row.find(".prefixo-item").text(),
       $row.find(".odometro-item").text(), $row.find(".motorista-item").text(),
       $row.find(".tipo-item").text(), $row.find(".quantidade-item").text(),

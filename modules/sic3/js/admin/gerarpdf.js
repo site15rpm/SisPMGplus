@@ -123,12 +123,12 @@
     try {
       const [principalData, abastecimentoData, manutencaoData, obsgeralRaw] = await Promise.all([
         carregarDadosPlanilha({ sheetId: idbase, sheet: 'principal', query: `SELECT G,H,I,J,K,L,M,N,O WHERE B='${municipio}' AND C='${convenio}' AND D='${ano}' AND E='${mes}'` }),
-        carregarDadosPlanilha({ sheetId: idbase, sheet: 'abastecimento', query: `SELECT G,H,I,J,K,L,M,N,O,P WHERE B='${municipio}' AND C='${convenio}' AND D='${ano}' AND E='${mes}'` }),
+        carregarDadosPlanilha({ sheetId: idbase, sheet: 'abastecimento', query: `SELECT G,H,I,J,K,L,M,N,O,P,Q WHERE B='${municipio}' AND C='${convenio}' AND D='${ano}' AND E='${mes}'` }),
         carregarDadosPlanilha({ sheetId: idbase, sheet: 'manutencao', query: `SELECT G,H,I,J,K,L,M,N,O,P WHERE B='${municipio}' AND C='${convenio}' AND D='${ano}' AND E='${mes}'` }),
         carregarDadosPlanilha({ sheetId: idbase, sheet: 'obsgeral', query: `SELECT A,G WHERE B='${municipio}' AND C='${convenio}' AND D='${ano}' AND E='${mes}'` })
       ]);
       const principal = principalData.map(row => ({ codigo: row[0] || "", descricao: row[1] || "", despesa: row[2] || "", unidade: row[3] || "", data: row[4] || "", quantidade: row[5] || "", valorUnitario: row[6] || "", subtotal: row[7] || 0, observacao: row[8] || "" }));
-      const abastecimento = abastecimentoData.map(row => ({ data: row[0] || "", placa: row[1] || "", prefixo: row[2] || "", odometro: row[3] || "", motorista: row[4] || "", tipo: row[5] || "", quantidade: row[6] || "", valorUnitario: row[7] || "", subtotal: row[8] || "", notaFiscal: row[9] || "" }));
+      const abastecimento = abastecimentoData.map(row => ({ data: row[0] || "", hora: row[1] || "", placa: row[2] || "", prefixo: row[3] || "", odometro: row[4] || "", motorista: row[5] || "", tipo: row[6] || "", quantidade: row[7] || "", valorUnitario: row[8] || "", subtotal: row[9] || "", notaFiscal: row[10] || "" }));
       const manutencao = manutencaoData.map(row => {
         const descricaoCompleta = row[5] || ""; let tipo = "", descricao = "";
         if (descricaoCompleta.includes(" - ")) { const parts = descricaoCompleta.split(" - "); tipo = parts[0].trim(); descricao = parts.slice(1).join(" - ").trim(); }
@@ -287,18 +287,18 @@
       let algumaTabelaRenderizada = false;
 
       if (dadosAnexo.abastecimento.length > 0) {
-        const abastecimentoData = dadosAnexo.abastecimento.map(item => [item.data, item.placa, item.prefixo, item.odometro, item.motorista, item.tipo, item.quantidade, item.valorUnitario, item.subtotal, item.notaFiscal]).sort((a, b) => new Date(a[0]) - new Date(b[0]));
-        const totalAbastecimento = abastecimentoData.reduce((sum, row) => sum + formatarNumero(row[8], "numero"), 0);
+        const abastecimentoData = dadosAnexo.abastecimento.map(item => [item.data, item.hora, item.placa, item.prefixo, item.odometro, item.motorista, item.tipo, item.quantidade, item.valorUnitario, item.subtotal, item.notaFiscal]).sort((a, b) => new Date(a[0]) - new Date(b[0]));
+        const totalAbastecimento = abastecimentoData.reduce((sum, row) => sum + formatarNumero(row[9], "numero"), 0);
         const totalAbastecimentoFormatado = formatarNumero(totalAbastecimento,"moeda");
         
         autoTable(doc, { 
             ...tableConfig, 
             startY: yPos, 
-            head: [[{ content: "PLANILHA DEMONSTRATIVA DE COMBUSTÍVEIS E LUBRIFICANTES", colSpan: 10, styles: { halign: "center" } }], ["DATA", "PLACA", "PRE-\nFIXO", "ODÔ-\nMETRO", "MOTO-\nRISTA", "DESCRIÇÃO", "QTD\n(LTS)", "VALOR\n(LT)", "VALOR\nTOTAL", "Nº DA\nNOTA"]], 
+            head: [[{ content: "PLANILHA DEMONSTRATIVA DE COMBUSTÍVEIS E LUBRIFICANTES", colSpan: 11, styles: { halign: "center" } }], ["DATA", "HORA", "PLACA", "PRE-\nFIXO", "ODÔ-\nMETRO", "MOTO-\nRISTA", "DESCRIÇÃO", "QTD\n(LTS)", "VALOR\n(LT)", "VALOR\nTOTAL", "Nº DA\nNOTA"]], 
             body: abastecimentoData,
-            foot: [[{ content: "TOTAL", colSpan: 5, styles: { halign: 'center' } }, { content: totalAbastecimentoFormatado, colSpan: 5, styles: { halign: 'center' } }]],
+            foot: [[{ content: "TOTAL", colSpan: 6, styles: { halign: 'center' } }, { content: totalAbastecimentoFormatado, colSpan: 5, styles: { halign: 'center' } }]],
             showFoot: 'lastPage',
-            columnStyles: { 0:{cellWidth:17},1:{cellWidth:17},2:{cellWidth:12},3:{cellWidth:14,halign:"right"},4:{cellWidth:15},5:{cellWidth:"auto",halign:"left"},6:{minCellWidth:12,halign:"right"},7:{minCellWidth:18,halign:"right"},8:{minCellWidth:18,halign:"right"},9:{minCellWidth:18,halign:"right"} } 
+            columnStyles: { 0:{cellWidth:17},1:{cellWidth:12},2:{cellWidth:17},3:{cellWidth:12},4:{cellWidth:14,halign:"right"},5:{cellWidth:15},6:{cellWidth:"auto",halign:"left"},7:{minCellWidth:12,halign:"right"},8:{minCellWidth:18,halign:"right"},9:{minCellWidth:18,halign:"right"},10:{minCellWidth:18,halign:"right"} } 
         });
         yPos = doc.lastAutoTable.finalY + 10;
         algumaTabelaRenderizada = true;

@@ -4,6 +4,7 @@ function obterConfigFormularioAbastecimento() {
     campos: [
       { id: "tipo", label: "Tipo de Combustível", tipo: "select", opcoes: [ { value: "ABASTECIMENTO - TIPO: GASOLINA", label: "ABASTECIMENTO - TIPO: GASOLINA" }, { value: "ABASTECIMENTO - TIPO: OLEO DIESEL", label: "ABASTECIMENTO - TIPO: OLEO DIESEL" }, { value: "ABASTECIMENTO - TIPO: ALCOOL", label: "ABASTECIMENTO - TIPO: ALCOOL" } ], fullWidth: true },
       { id: "data", label: "Data do Abastecimento", tipo: "date" },
+      { id: "hora", label: "Hora do Abastecimento", tipo: "time" },
       { id: "notaFiscal", label: "Nº Nota Fiscal", tipo: "text" },
       { id: "placa", label: "Placa", tipo: "text" },
       { id: "prefixo", label: "Prefixo VTR", tipo: "text" },
@@ -56,6 +57,7 @@ async function processarSubmissaoAbastecimento(dadosForm, linhaEditadaId) {
       const linhaEditada = document.getElementById(linhaEditadaId);
       if (linhaEditada) {
         $(linhaEditada).find(".data-item").text(dadosRegistro.data);
+        $(linhaEditada).find(".hora-item").text(dadosRegistro.hora || "-");
         $(linhaEditada).find(".placa-item").text(dadosRegistro.placa);
         $(linhaEditada).find(".prefixo-item").text(dadosRegistro.prefixo);
         $(linhaEditada).find(".odometro-item").text(dadosRegistro.odometro);
@@ -94,6 +96,7 @@ async function editarRegistroAbastecimento(row) {
     if (isCombustivelPrincipal) {
         await abrirFormularioAbastecimento({
             data: $row.find(".data-item").text(),
+            hora: $row.find(".hora-item").text(),
             placa: $row.find(".placa-item").text(),
             prefixo: $row.find(".prefixo-item").text(),
             odometro: $row.find(".odometro-item").text(),
@@ -144,6 +147,7 @@ function criarLinhaRegistroAbastecimento(dados) {
   const colunas = [
     { classe: "numero-item", valor: sequencial },
     { classe: "data-item", valor: dados.data },
+    { classe: "hora-item", valor: dados.hora || "-" },
     { classe: "placa-item", valor: dados.placa },
     { classe: "prefixo-item", valor: dados.prefixo },
     { classe: "odometro-item", valor: dados.odometro },

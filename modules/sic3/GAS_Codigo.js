@@ -402,7 +402,7 @@ function obterOuCriarPlanilhaAnual(rpm, ano) {
   // Inicializa APENAS as abas transacionais anuais
   const abas = {
     "principal": ["timestamp", "municipio", "convenio", "ano", "mes", "item_id", "codigo", "descricao", "unidade", "quantidade", "valor_unitario", "subtotal", "observacao", "responsavel", "despesa"],
-    "abastecimento": ["timestamp", "municipio", "convenio", "ano", "mes", "data", "placa", "prefixo", "odometro", "responsavel", "tipo", "quantidade", "valor_unitario", "subtotal", "nota_fiscal", "observacao"],
+    "abastecimento": ["timestamp", "municipio", "convenio", "ano", "mes", "data", "hora", "placa", "prefixo", "odometro", "responsavel", "tipo", "quantidade", "valor_unitario", "subtotal", "nota_fiscal", "observacao"],
     "manutencao": ["timestamp", "municipio", "convenio", "ano", "mes", "data", "placa", "prefixo", "odometro", "responsavel", "tipo", "quantidade", "valor_unitario", "subtotal", "nota_fiscal", "observacao"],
     "obsgeral": ["timestamp", "municipio", "convenio", "ano", "mes", "valor_total", "obs_geral", "bloqueado", "has_item99"],
     "item99": ["timestamp", "municipio", "convenio", "ano", "mes", "item99_code", "descricao", "unidade_distribuicao", "elemento_despesa", "termos_busca", "status", "link_nota_fiscal"]
@@ -827,7 +827,7 @@ function salvarDadosNaPlanilha(authToken, municipio, convenio, ano, mes, dados) 
         timestamp, municipio, convenio, String(ano), mes, 
         String(row[0]), String(row[1]), String(row[2]), String(row[3]), String(row[4]), 
         String(row[5]), String(row[6]), String(row[7]), String(row[8]), String(row[9]), 
-        String(row[10])
+        String(row[10]), String(row[11])
       ]);
       inserirDados(sheets.abastecimento, dadosFormatadosAbastecimento);
     }
