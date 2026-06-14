@@ -888,14 +888,14 @@ window.addEventListener('DOMContentLoaded', async () => {
             const panel = document.getElementById('user-profile-panel');
             const nameEl = document.getElementById('user-profile-name');
             const pmEl = document.getElementById('user-profile-pm');
-            const secaoMuniEl = document.getElementById('user-profile-secao-municipio');
+            const secaoEl = document.getElementById('user-profile-secao');
             const regiaoEl = document.getElementById('user-profile-regiao');
             const statusEl = document.getElementById('user-profile-admin-status');
             
             if (panel) {
                 if (nameEl) nameEl.textContent = `${info.postoGraduacao || ''} ${info.nome || 'Usuário'}`.trim();
                 if (pmEl) pmEl.textContent = `PM nº ${info.numeroPM || '-'}`;
-                if (secaoMuniEl) secaoMuniEl.textContent = `${info.nomeSecao || '-'} / ${info.municipio}`;
+                if (secaoEl) secaoEl.textContent = info.nomeSecao || '-';
                 if (regiaoEl) regiaoEl.textContent = info.nomeRegiao || `${info.codigoRegiao || '-'}ª RPM`;
                 
                 if (statusEl) {
