@@ -1920,7 +1920,7 @@ function atualizarStatusSirconvSiad(authToken, municipio, convenio, ano, mes, ti
   const lock = LockService.getScriptLock();
   try {
     lock.waitLock(30000);
-    const ss = SpreadsheetApp.openById(getProjectIds().spreadsheetId);
+    const ss = SpreadsheetApp.openById(CURRENT_SPREADSHEET_ID);
     const sheet = ss.getSheetByName("obsgeral");
     const data = sheet.getDataRange().getValues();
 
