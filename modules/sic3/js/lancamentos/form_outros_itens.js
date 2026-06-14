@@ -130,8 +130,17 @@ function obterConfigOutrosItens(tipo) {
 async function configurarEventosFormularioOutros() {
   $(document).on("click", ".principal-table .btn-editar", async (e) => {
     const row = $(e.currentTarget).closest("tr");
-    const codigo = row.find(".codigo-item").text().trim();
+    let codigo = row.find(".codigo-item").text().trim();
     if (!codigo.startsWith("O")) return;
+
+    if (codigo === "O33904004") {
+      const descricao = row.find(".descricao-item").text().trim().toUpperCase();
+      if (descricao.includes("INTERNET")) {
+        codigo = "O33904004b";
+      } else {
+        codigo = "O33904004a";
+      }
+    }
 
     try {
       const dados = extrairDadosLinhaOutrosItens(row[0]);
