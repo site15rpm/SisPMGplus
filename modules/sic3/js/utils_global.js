@@ -462,8 +462,17 @@ window.navegarPara = async function(action) {
         window.timerCarregamento = null;
       }
       if (typeof window.navegarParaSic3 === 'function') {
-          // Recupera os convênios da memória se disponíveis, senão passa vazio para que sejam recarregados
-          window.navegarParaSic3('admin', { convenios: window.dadosConveniosPrepostos || [] });
+          // Recupera os convênios da memória se disponíveis, senão passa vazio para que sejam recarregados.
+          // Passa também o contexto completo para evitar a limpeza das variáveis essenciais.
+          window.navegarParaSic3('admin', {
+              convenios: window.dadosConveniosPrepostos || [],
+              idbase: window.idbase || "",
+              rpm: window.rpm || "",
+              ano: window.ano || "",
+              authToken: window.authToken || "",
+              mLog: window.mLog || "",
+              nUser: window.nUser || ""
+          });
           return true;
       }
     } else if (action === "sair") {
