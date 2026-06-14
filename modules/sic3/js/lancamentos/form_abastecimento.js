@@ -1,3 +1,5 @@
+let memoriaAbastecimentoRecente = null;
+
 function obterConfigFormularioAbastecimento() {
   return {
     descricaoModal: "ABASTECIMENTO DE VIATURA",
@@ -47,6 +49,10 @@ async function inserirRegistroAbastecimento(dados) {
 }
 
 async function processarSubmissaoAbastecimento(dadosForm, linhaEditadaId) {
+  if (!validarInconsistenciaOdometro(dadosForm, linhaEditadaId)) {
+    return;
+  }
+
   try {
     const dadosRegistro = {
       ...dadosForm,
@@ -73,6 +79,13 @@ async function processarSubmissaoAbastecimento(dadosForm, linhaEditadaId) {
     } else {
       await inserirRegistroAbastecimento(dadosRegistro);
     }
+
+    memoriaAbastecimentoRecente = {
+      tipo: dadosRegistro.tipo,
+      placa: dadosRegistro.placa,
+      prefixo: dadosRegistro.prefixo
+    };
+
     await atualizarTotaisInfoAbastecimento();
     await sincronizarTabelaPrincipalAbastecimento();
     fecharModal();
@@ -291,5 +304,83 @@ async function preencherTabelaAbastecimento(dados) {
 
 function abrirFormularioAbastecimento(dados = null) {
   const config = obterConfigFormularioAbastecimento();
+  if (!dados && memoriaAbastecimentoRecente) {
+    dados = {
+      tipo: memoriaAbastecimentoRecente.tipo,
+      placa: memoriaAbastecimentoRecente.placa,
+      prefixo: memoriaAbastecimentoRecente.prefixo
+    };
+  }
   abrirFormularioModal("abastecimento", config, dados, config.descricaoModal);
+}
+
+function validarInconsistenciaOdometro(dadosAbastecimento, linhaEditadaId = null) {
+  const placaNova = (dadosAbastecimento.placa || "").trim().toUpperCase();
+  if (!placaNova) return true;
+
+  const parseDataHora = (dataStr, horaStr) => {
+    if (!dataStr) return new Date(NaN);
+    let dia = "", mes = "", ano = "";
+    const hora = (!horaStr || horaStr.trim() === "-") ? "00:00" : horaStr.trim();
+
+    if (dataStr.includes("/")) {
+      const partes = dataStr.split("/");
+      if (partes.length === 3) [dia, mes, ano] = partes;
+    } else if (dataStr.includes("-")) {
+      const partes = dataStr.split("-");
+      if (partes.length === 3) {
+        if (partes[0].length === 4) {
+          [ano, mes, dia] = partes;
+        } else {
+          [dia, mes, ano] = partes;
+        }
+      }
+    }
+
+    if (ano && mes && dia) {
+      return new Date(`${ano}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}T${hora}`);
+    }
+    return new Date(`${dataStr}T${hora}`);
+  };
+
+  const dataHoraNova = parseDataHora(dadosAbastecimento.data, dadosAbastecimento.hora);
+  const odometroNovo = parseInt(String(dadosAbastecimento.odometro).replace(/\D/g, '')) || 0;
+
+  if (isNaN(dataHoraNova.getTime()) || odometroNovo === 0) return true;
+
+  let inconsistente = false;
+  let mensagemErro = "";
+
+  $(".abastecimento-table tbody tr").each(function() {
+    const $row = $(this);
+    if (linhaEditadaId && $row.attr('id') === linhaEditadaId) return;
+
+    const placaExistente = $row.find(".placa-item").text().trim().toUpperCase();
+    if (placaExistente !== placaNova) return;
+
+    const dataExistente = $row.find(".data-item").text().trim();
+    const horaExistente = $row.find(".hora-item").text().trim();
+    const dataHoraExistente = parseDataHora(dataExistente, horaExistente);
+    const odometroExistente = parseInt($row.find(".odometro-item").text().replace(/\D/g, '')) || 0;
+
+    if (isNaN(dataHoraExistente.getTime()) || odometroExistente === 0) return;
+
+    if (dataHoraNova > dataHoraExistente && odometroNovo < odometroExistente) {
+      inconsistente = true;
+      mensagemErro = `Inconsistência no Odômetro: O veículo ${placaNova} já possui um abastecimento em ${dataExistente} às ${horaExistente || "00:00"} com odômetro maior (${odometroExistente} km). O novo odômetro (${odometroNovo} km) não pode ser menor em uma data posterior.`;
+      return false;
+    }
+
+    if (dataHoraNova < dataHoraExistente && odometroNovo > odometroExistente) {
+      inconsistente = true;
+      mensagemErro = `Inconsistência no Odômetro: O veículo ${placaNova} já possui um abastecimento posterior em ${dataExistente} às ${horaExistente || "00:00"} com odômetro menor (${odometroExistente} km). O novo odômetro (${odometroNovo} km) não pode ser maior em uma data anterior.`;
+      return false;
+    }
+  });
+
+  if (inconsistente) {
+    mostrarDialogo("Erro de Odômetro", mensagemErro);
+    return false;
+  }
+  return true;
 }
