@@ -310,6 +310,7 @@ function configurarEventosFormularioMaterial() {
       atualizarNumeracaoLinhas();
       calcularTotalTabela();
       atualizarVisibilidadeContainers();
+      if (typeof window.salvarBackupLocal === 'function') window.salvarBackupLocal();
     }
   });
 }

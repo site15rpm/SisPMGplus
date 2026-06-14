@@ -26,18 +26,19 @@ function agregarDadosGrupo(rows) {
 
 async function criarOuAtualizarLinhaPrincipal(chave, dados) {
     let linhaExistente = $(`.principal-table tbody tr`).filter(function() {
-        return $(this).find(".descricao-item").text().trim() === chave;
+        return $(this).find('.descricao-item').text().trim() === chave.trim();
     });
 
     if (linhaExistente.length > 0) {
-        linhaExistente.find(".data-item").text(dados.data);
         linhaExistente.find(".quantidade-item").text(formatarNumero(dados.quantidade, 'decimal'));
         linhaExistente.find(".valorUnitario-item").text(formatarNumero(dados.valorUnitario, 'moeda'));
         linhaExistente.find(".subtotal-item").text(formatarNumero(dados.subtotal, 'moeda'));
-        linhaExistente.find(".observacao-item").text(dados.observacao);
+        linhaExistente.find(".observacao-item").text(dados.observacao || "");
     } else {
-        await inserirLinhaTabela(dados);
+        inserirLinhaTabela(dados);
     }
+    
+    if (typeof salvarBackupLocal === 'function') salvarBackupLocal();
 }
 
 function encontrarDadosPrincipaisPorDescricao(descricao, returnJqueryObject) {
@@ -293,7 +294,7 @@ async function editarRelatorio() {
 
   document.querySelector(".obsgeral")?.classList.add("editavel");
 
-  iniciarBackupObserver();
+  window.backupAtivo = true;
 
   if (!backupRecuperado) {
     salvarBackupLocal();
@@ -305,7 +306,7 @@ async function cancelarEdicao() {
   const confirmResult = await confirmarAcao("Confirmar Cancelamento", "Todos os dados editados e não salvos serão perdidos. Deseja continuar?");
   if (!confirmResult) return;
 
-  pararBackupObserver();
+  window.backupAtivo = false;
 
   try {
     const isInitialLaunchMode = (!valoresOriginais.principal || valoresOriginais.principal.length === 0) &&
@@ -395,7 +396,7 @@ async function salvarDados() {
     if (resultFinal && resultFinal.success) {
       // Limpa a fila local após o sucesso do salvamento principal
       itensParaSalvarNaPrimaria = [];
-      pararBackupObserver();
+      window.backupAtivo = false;
       apagarBackupLocal();
 
       const mapeamento = resultFinal.mapeamento;
@@ -576,6 +577,7 @@ async function configurarEventosDados() {
         SALVAR: function() {
           $(".obsgeral").text($("#dialog-observacao").val().trim() || "SEM OBSERVACOES");
           $(this).dialog("close");
+          if (typeof salvarBackupLocal === 'function') salvarBackupLocal();
         },
         CANCELAR: function() { $(this).dialog("close"); }
       },
@@ -611,7 +613,7 @@ function obterChaveBackup() {
 }
 
 function salvarBackupLocal() {
-  if (!window.backupObserverAtivo) return;
+  if (!window.backupAtivo) return;
   try {
     const chave = obterChaveBackup();
     
@@ -683,50 +685,7 @@ function salvarBackupLocal() {
   }
 }
 
-let backupTimeout = null;
-window.backupObserverAtivo = false;
-window.backupObserver = null;
-
-function iniciarBackupObserver() {
-  if (window.backupObserver) {
-    window.backupObserver.disconnect();
-  }
-  
-  window.backupObserverAtivo = true;
-
-  const observerCallback = () => {
-    if (!window.backupObserverAtivo) return;
-    clearTimeout(backupTimeout);
-    backupTimeout = setTimeout(() => {
-      salvarBackupLocal();
-    }, 500);
-  };
-
-  window.backupObserver = new MutationObserver(observerCallback);
-  const config = { childList: true, subtree: true, characterData: true };
-
-  const targets = [
-    document.querySelector(".principal-table tbody"),
-    document.querySelector(".abastecimento-table tbody"),
-    document.querySelector(".manutencao-table tbody"),
-    document.querySelector(".obsgeral")
-  ].filter(el => el);
-
-  targets.forEach(target => {
-    window.backupObserver.observe(target, config);
-  });
-
-  console.log("[SIC3 Backup] MutationObserver de backup ativo.");
-}
-
-function pararBackupObserver() {
-  window.backupObserverAtivo = false;
-  if (window.backupObserver) {
-    window.backupObserver.disconnect();
-    window.backupObserver = null;
-  }
-  console.log("[SIC3 Backup] MutationObserver de backup desativado.");
-}
+window.backupAtivo = false;
 
 function apagarBackupLocal() {
   try {
@@ -791,7 +750,5 @@ async function recuperarBackupLocal() {
 // Exportações explícitas
 window.obterChaveBackup = obterChaveBackup;
 window.salvarBackupLocal = salvarBackupLocal;
-window.iniciarBackupObserver = iniciarBackupObserver;
-window.pararBackupObserver = pararBackupObserver;
 window.apagarBackupLocal = apagarBackupLocal;
 window.recuperarBackupLocal = recuperarBackupLocal;

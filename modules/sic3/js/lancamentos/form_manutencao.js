@@ -76,6 +76,7 @@ async function processarSubmissaoManutencao(dadosForm, linhaEditadaId) {
     await atualizarTotaisInfoManutencao();
     await sincronizarTabelaPrincipalManutencao();
     fecharModal();
+    if (typeof window.salvarBackupLocal === 'function') window.salvarBackupLocal();
   } catch (error) {
     console.error("Erro ao processar submissão de manutenção:", error);
     mostrarDialogo("Erro", "Erro ao processar formulário de manutenção");
@@ -179,6 +180,7 @@ function criarLinhaRegistroManutencao(dados) {
       await atualizarTotaisInfoManutencao();
       await sincronizarTabelaPrincipalManutencao();
       atualizarVisibilidadeContainers();
+      if (typeof window.salvarBackupLocal === 'function') window.salvarBackupLocal();
     }
   });
   return row;

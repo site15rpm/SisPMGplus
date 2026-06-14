@@ -74,6 +74,7 @@ async function processarSubmissaoAbastecimento(dadosForm, linhaEditadaId) {
     await atualizarTotaisInfoAbastecimento();
     await sincronizarTabelaPrincipalAbastecimento();
     fecharModal();
+    if (typeof window.salvarBackupLocal === 'function') window.salvarBackupLocal();
   } catch (error) {
     console.error("Erro ao processar submissão de abastecimento:", error);
     mostrarDialogo("Erro", "Erro ao processar formulário de abastecimento");
@@ -183,6 +184,7 @@ function criarLinhaRegistroAbastecimento(dados) {
       await atualizarTotaisInfoAbastecimento();
       await sincronizarTabelaPrincipalAbastecimento();
       atualizarVisibilidadeContainers();
+      if (typeof window.salvarBackupLocal === 'function') window.salvarBackupLocal();
     }
   });
   return row;

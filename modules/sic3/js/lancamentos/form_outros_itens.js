@@ -161,6 +161,7 @@ async function configurarEventosFormularioOutros() {
       atualizarNumeracaoLinhas();
       calcularTotalTabela();
       atualizarVisibilidadeContainers();
+      if (typeof window.salvarBackupLocal === 'function') window.salvarBackupLocal();
     }
   });
 }
