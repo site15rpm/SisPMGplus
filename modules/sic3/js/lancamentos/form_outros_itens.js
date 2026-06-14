@@ -333,6 +333,7 @@ async function processarSubmissaoOutrosItens(tipo, config, dadosForm, linhaEdita
     }
     
     fecharModal();
+    if (typeof window.salvarBackupLocal === 'function') window.salvarBackupLocal();
   } catch (error) {
     console.error("Erro ao processar submissão de outros itens:", error);
     mostrarDialogo("Erro", "Erro ao processar formulário de outros itens");
