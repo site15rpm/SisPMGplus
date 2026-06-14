@@ -256,6 +256,7 @@
     const tabela = $("#tabela-lancamentos tbody").empty();
     const isAdmin = typeof mLog != "undefined" && mLog === "admin";
     $(".admin-only").toggle(isAdmin);
+    $(".sirconv-col").show(); // Sempre exibe para ambos
 
     if (lancamentos.length === 0) {
       tabela.append(
@@ -307,18 +308,26 @@
                         <div class="action-button-group anexo-actions">${btnAnexoD}${btnAnexoU}</div>
                       </div>`;
         if (linha.valorTotal > 0) {
-          sirconvHtml =
-            linha.sirconvStatus === "OK"
-              ? `<span class="status-icon status-verificado" title="Verificado no SIRCONV" data-municipio="${linha.municipio}" data-convenio="${linha.convenio}" data-ano="${linha.ano}" data-mes="${linha.mes}"><i class="fas fa-check-circle"></i></span>`
-              : `<button class="action-icon btn-verificar" title="Marcar como Verificado no SIRCONV" data-municipio="${linha.municipio}" data-convenio="${linha.convenio}" data-ano="${linha.ano}" data-mes="${linha.mes}"><i class="fas fa-check"></i></button>`;
-          if (linha.sirconvStatus === "OK") {
+          const statusRaw = (linha.sirconvStatus || "").trim();
+          const isSirconvOk = statusRaw === "OK" || statusRaw.startsWith("OK|");
+          const isSirconvPendente = statusRaw.startsWith("PENDENCIA|");
+
+          if (isSirconvOk) {
+            sirconvHtml = `<span class="status-icon status-verificado" title="Verificado no SIRCONV" data-municipio="${linha.municipio}" data-convenio="${linha.convenio}" data-ano="${linha.ano}" data-mes="${linha.mes}"><i class="fas fa-check-circle"></i></span>`;
             siadHtml =
               linha.siadStatus === "OK"
                 ? `<span class="status-icon status-registrado clicks-siad" title="Ver Detalhes do SIAD" style="cursor: pointer; display: block; text-align: center;" data-municipio="${linha.municipio}" data-convenio="${linha.convenio}" data-ano="${linha.ano}" data-mes="${linha.mes}" data-siad-l="${linha.siadInfo?.colL || ''}" data-siad-m="${linha.siadInfo?.colM || ''}" data-siad-n="${linha.siadInfo?.colN || ''}" data-siad-o="${linha.siadInfo?.colO || ''}" data-siad-p="${linha.siadInfo?.colP || ''}" data-siad-q="${linha.siadInfo?.colQ || ''}" data-siad-r="${linha.siadInfo?.colR || ''}" data-siad-s="${linha.siadInfo?.colS || ''}"><i class="fas fa-check-circle"></i></span>`
                 : `<span class="status-icon status-pendente" title="Pendente no SIAD (Rotina Automática)"><i class="fas fa-clock" style="color: #95a5a6;"></i></span>`;
+          } else if (isSirconvPendente) {
+            sirconvHtml = `<button class="action-icon btn-pendencias-sirconv" title="Ver Pendências no SIRCONV" data-municipio="${linha.municipio}" data-convenio="${linha.convenio}" data-ano="${linha.ano}" data-mes="${linha.mes}" data-status="${statusRaw.replace(/"/g, '&quot;')}"><i class="fas fa-exclamation-circle" style="color: #e74c3c;"></i></button>`;
+            siadHtml = '<span class="status-icon aguardando" title="Aguardando verificação no SIRCONV"><i class="fas fa-hourglass-half"></i></span>';
           } else {
-            siadHtml =
-              '<span class="status-icon aguardando" title="Aguardando verificação no SIRCONV"><i class="fas fa-hourglass-half"></i></span>';
+            if (isAdmin) {
+              sirconvHtml = `<button class="action-icon btn-verificar" title="Marcar como Verificado no SIRCONV" data-municipio="${linha.municipio}" data-convenio="${linha.convenio}" data-ano="${linha.ano}" data-mes="${linha.mes}"><i class="fas fa-check"></i></button>`;
+            } else {
+              sirconvHtml = `<span class="status-icon aguardando" title="Aguardando verificação no SIRCONV"><i class="fas fa-hourglass-half"></i></span>`;
+            }
+            siadHtml = '<span class="status-icon aguardando" title="Aguardando verificação no SIRCONV"><i class="fas fa-hourglass-half"></i></span>';
           }
         }
       } else {
@@ -364,8 +373,9 @@
           <td>${linha.timestamp || "-"}</td>
           <td class="cell-actions">${acaoHtml}</td>
           <td>${isAdmin ? statusHtml : nonAdminStatusDisplay}</td>`;
+      rowHtml += `<td class="sirconv-col">${sirconvHtml}</td>`;
       if (isAdmin)
-        rowHtml += `<td class="admin-only">${sirconvHtml}</td><td class="admin-only">${siadHtml}</td>`;
+        rowHtml += `<td class="admin-only">${siadHtml}</td>`;
       rowHtml += `</tr>`;
       tabela.append(rowHtml);
     });
@@ -376,6 +386,36 @@
     )
       filtrarLancamentosPorUnidade();
     configurarEventosBotoesTabelaAdmin();
+
+    // Requisito 3: Se for usuário normal e houver pendências nos lançamentos carregados, abre um modal de alerta
+    if (!isAdmin) {
+      const lancamentosComPendencias = lancamentos.filter(l => l.sirconvStatus && l.sirconvStatus.startsWith("PENDENCIA|"));
+      if (lancamentosComPendencias.length > 0) {
+        let listaMsg = "<ul style='margin-top: 10px; padding-left: 20px; font-family: sans-serif; font-size: 14px;'>";
+        lancamentosComPendencias.forEach(l => {
+          const partes = l.sirconvStatus.split("|");
+          const desc = partes[1] || "Sem descrição informada.";
+          listaMsg += `<li style='margin-bottom: 8px;'><strong>${l.municipio} - ${l.convenio} (${l.mes}/${l.ano})</strong>: ${desc}</li>`;
+        });
+        listaMsg += "</ul>";
+        
+        $("<div id='modal-pendencias-geral-user'></div>")
+          .html(`<p style='font-family: sans-serif; font-size: 14.5px;'>Atenção! Os seguintes relatórios possuem pendências no SIRCONV que precisam ser corrigidas:</p>${listaMsg}`)
+          .dialog({
+            modal: true,
+            width: 500,
+            title: "Pendências Detectadas no SIRCONV",
+            buttons: {
+              "Entendido": function() {
+                $(this).dialog("close");
+              }
+            },
+            close: function() {
+              $(this).dialog('destroy').remove();
+            }
+          });
+      }
+    }
   }
 
   async function configurarEventosBotoesTabelaAdmin() {
@@ -460,20 +500,110 @@
       }
     );
 
-    tabelaBody.on("click", ".btn-verificar", async function () {
+    tabelaBody.on("click", ".btn-verificar", function () {
       const btn = $(this);
       const { municipio, convenio, ano, mes } = btn.data();
-      await handleSirconvSiadUpdate(
-        authToken,
-        municipio,
-        convenio,
-        ano,
-        mes,
-        "SIRCONV",
-        "OK",
-        `Deseja marcar como Verificado no SIRCONV para ${municipio} - ${convenio} (${mes}/${ano})?`,
-        "Status do SIRCONV alterado com sucesso!"
-      );
+      
+      const content = `
+        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 14px; padding: 10px; text-align: center;">
+          <p style="margin-bottom: 20px; font-weight: 500;">
+            Selecione o tipo de conferência no SIRCONV para:<br>
+            <strong>${municipio} - ${convenio} (${mes}/${ano})</strong>
+          </p>
+        </div>
+      `;
+
+      $("<div id='modal-escolha-sirconv'></div>")
+        .html(content)
+        .dialog({
+          modal: true,
+          width: 450,
+          title: "Conferência SIRCONV",
+          buttons: {
+            "Conferido Sem Pendências": async function() {
+              $(this).dialog("close");
+              const userPM = window.userPM || "";
+              const userPosto = window.userPostoGraduacao || "";
+              const userNome = window.userNome || "";
+              const userSecao = window.userSecao || "";
+              const statusValue = `OK|${userPM}|${userPosto}|${userNome}|${userSecao}`;
+              
+              await handleSirconvSiadUpdate(
+                authToken,
+                municipio,
+                convenio,
+                ano,
+                mes,
+                "SIRCONV",
+                statusValue,
+                `Deseja marcar como Verificado no SIRCONV (Sem Pendências) para ${municipio} - ${convenio} (${mes}/${ano})?`,
+                "Status do SIRCONV alterado com sucesso!"
+              );
+            },
+            "Conferido Com Pendências": function() {
+              $(this).dialog("close");
+              abrirModalRegistrarPendencia(municipio, convenio, ano, mes, "");
+            },
+            "Cancelar": function() {
+              $(this).dialog("close");
+            }
+          },
+          close: function() {
+            $(this).dialog('destroy').remove();
+          }
+        });
+    });
+
+    tabelaBody.on("click", ".btn-pendencias-sirconv", function () {
+      const btn = $(this);
+      const { municipio, convenio, ano, mes, status } = btn.data();
+      
+      if (isAdmin) {
+        abrirModalRegistrarPendencia(municipio, convenio, ano, mes, status);
+      } else {
+        let pendenciaTexto = "Sem descrição.";
+        let infoCriador = "Administrador";
+        
+        if (status && status.startsWith("PENDENCIA|")) {
+          const partes = status.split("|");
+          pendenciaTexto = partes[1] || "Sem descrição.";
+          if (partes.length > 2) {
+            const pm = partes[2] || "-";
+            const posto = partes[3] || "-";
+            const nome = partes[4] || "-";
+            const secao = partes[5] || "-";
+            infoCriador = `${posto} ${nome} (Matrícula PM: ${pm}) - Seção: ${secao}`;
+          }
+        }
+        
+        const content = `
+          <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 14px; padding: 10px; color: #2c3e50;">
+            <div style="margin-bottom: 15px; padding: 10px; background: #fffdf0; border-radius: 6px; border-left: 5px solid #e74c3c; font-size: 13.5px; line-height: 1.5; box-shadow: inset 0 0 5px rgba(0,0,0,0.05);">
+              <strong>Pendências registradas:</strong><br>
+              <span style="display: block; margin-top: 5px; color: #555; font-style: italic;">"${pendenciaTexto}"</span>
+            </div>
+            <div style="font-size: 12.5px; color: #7f8c8d; border-top: 1px dashed #ddd; padding-top: 8px;">
+              <strong>Registrado por:</strong> ${infoCriador}
+            </div>
+          </div>
+        `;
+        
+        $("<div id='modal-view-pendencia-sirconv'></div>")
+          .html(content)
+          .dialog({
+            modal: true,
+            width: 450,
+            title: "Pendências do Relatório no SIRCONV",
+            buttons: {
+              "Fechar": function() {
+                $(this).dialog("close");
+              }
+            },
+            close: function() {
+              $(this).dialog('destroy').remove();
+            }
+          });
+      }
     });
 
     configurarEventosStatusVerificado(
@@ -605,7 +735,7 @@
         .hover(
           function () {
             const tr = $(this).closest("tr");
-            const siadCell = isAdmin ? tr.find("td.admin-only:eq(1)") : $();
+            const siadCell = isAdmin ? tr.find("td.admin-only") : $();
 
             if (
               siadCell.find(".btn-registrar").length ||
@@ -685,4 +815,112 @@
           }
         );
     });
+  }
+
+  function abrirModalRegistrarPendencia(municipio, convenio, ano, mes, statusAtual) {
+    let pendenciaTexto = "";
+    let infoCriador = "";
+    
+    if (statusAtual && statusAtual.startsWith("PENDENCIA|")) {
+      const partes = statusAtual.split("|");
+      pendenciaTexto = partes[1] || "";
+      if (partes.length > 2) {
+        const pm = partes[2] || "-";
+        const posto = partes[3] || "-";
+        const nome = partes[4] || "-";
+        const secao = partes[5] || "-";
+        infoCriador = `<div style="margin-bottom: 12px; padding: 8px; background: #f8f9fa; border-radius: 4px; border-left: 4px solid #f39c12; font-size: 12.5px;">
+          <strong>Registrado por:</strong> ${posto} ${nome} (Matrícula: ${pm}) - ${secao}
+        </div>`;
+      }
+    }
+
+    const modalHtml = `
+      <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 14px; padding: 10px;">
+        ${infoCriador}
+        <label for="sirconv-desc-pendencia" style="display: block; margin-bottom: 6px; font-weight: 600;">Descrição das Pendências:</label>
+        <textarea id="sirconv-desc-pendencia" rows="5" style="width: 100%; box-sizing: border-box; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-family: inherit; font-size: 13.5px;" placeholder="Digite aqui as irregularidades encontradas no SIRCONV...">${pendenciaTexto}</textarea>
+      </div>
+    `;
+
+    const buttons = {
+      "Salvar Pendência": async function() {
+        const desc = $("#sirconv-desc-pendencia").val().trim();
+        if (!desc) {
+          alert("A descrição das pendências não pode ficar vazia.");
+          return;
+        }
+        $(this).dialog("close");
+        
+        const userPM = window.userPM || "";
+        const userPosto = window.userPostoGraduacao || "";
+        const userNome = window.userNome || "";
+        const userSecao = window.userSecao || "";
+        const statusValue = `PENDENCIA|${desc}|${userPM}|${userPosto}|${userNome}|${userSecao}`;
+
+        mostrarCarregamento();
+        google.script.run
+          .withSuccessHandler((s) => {
+            ocultarCarregamento();
+            if (s && s.success) {
+              mostrarDialogo("Sucesso", "Pendências registradas com sucesso no SIRCONV!");
+              carregarLancamentos();
+            } else {
+              mostrarDialogo("Erro", (s && s.message) || "Erro ao salvar pendências.");
+            }
+          })
+          .withFailureHandler((err) => {
+            ocultarCarregamento();
+            manipularErro(err, "salvarPendenciasSirconv");
+          })
+          .atualizarStatusSirconvSiad(
+            sessionStorage.getItem("authToken"),
+            municipio,
+            convenio,
+            ano,
+            mes,
+            "SIRCONV",
+            statusValue
+          );
+      }
+    };
+
+    if (statusAtual && statusAtual.startsWith("PENDENCIA|")) {
+      buttons["Conferido Sem Pendências"] = async function() {
+        $(this).dialog("close");
+        const userPM = window.userPM || "";
+        const userPosto = window.userPostoGraduacao || "";
+        const userNome = window.userNome || "";
+        const userSecao = window.userSecao || "";
+        const statusValue = `OK|${userPM}|${userPosto}|${userNome}|${userSecao}`;
+        
+        await handleSirconvSiadUpdate(
+          sessionStorage.getItem("authToken"),
+          municipio,
+          convenio,
+          ano,
+          mes,
+          "SIRCONV",
+          statusValue,
+          `Deseja marcar como Verificado (Sem Pendências) para ${municipio} - ${convenio} (${mes}/${ano})?`,
+          "Status do SIRCONV alterado com sucesso!"
+        );
+      };
+    }
+
+    buttons["Cancelar"] = function() {
+      $(this).dialog("close");
+    };
+
+    $("<div id='modal-registro-pendencia-sirconv'></div>")
+      .html(modalHtml)
+      .dialog({
+        modal: true,
+        width: 500,
+        title: statusAtual ? "Editar Pendências SIRCONV" : "Registrar Pendências SIRCONV",
+        buttons: buttons,
+        close: function() {
+          $(this).dialog('destroy').remove();
+        }
+      });
   }
