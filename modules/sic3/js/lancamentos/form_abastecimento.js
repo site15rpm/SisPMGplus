@@ -1,4 +1,4 @@
-let memoriaAbastecimentoRecente = null;
+var memoriaAbastecimentoRecente = window.memoriaAbastecimentoRecente || null;
 
 function obterConfigFormularioAbastecimento() {
   return {
@@ -80,7 +80,7 @@ async function processarSubmissaoAbastecimento(dadosForm, linhaEditadaId) {
       await inserirRegistroAbastecimento(dadosRegistro);
     }
 
-    memoriaAbastecimentoRecente = {
+    window.memoriaAbastecimentoRecente = memoriaAbastecimentoRecente = {
       tipo: dadosRegistro.tipo,
       placa: dadosRegistro.placa,
       prefixo: dadosRegistro.prefixo
