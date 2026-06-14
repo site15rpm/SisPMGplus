@@ -77,7 +77,7 @@
   async function carregarDadosBrutosAdmin(ano, mes) {
     try {
       const queryStatus =
-        `SELECT A,B,C,D,E,F,H,I,J,K WHERE D='${ano}'` +
+        `SELECT A,B,C,D,E,F,H,I,J,K,L,M,N,O,P,Q,R,S WHERE D='${ano}'` +
         (mes !== "TODOS" ? ` AND E='${mes}'` : "");
 
       const [statusInfoRaw] = await Promise.all([
@@ -214,6 +214,16 @@
                   statusRowConv && statusRowConv[9]
                     ? String(statusRowConv[9]).trim()
                     : "",
+                siadInfo: statusRowConv ? {
+                  colL: statusRowConv[10] ? String(statusRowConv[10]).trim() : "",
+                  colM: statusRowConv[11] ? String(statusRowConv[11]).trim() : "",
+                  colN: statusRowConv[12] ? String(statusRowConv[12]).trim() : "",
+                  colO: statusRowConv[13] ? String(statusRowConv[13]).trim() : "",
+                  colP: statusRowConv[14] ? String(statusRowConv[14]).trim() : "",
+                  colQ: statusRowConv[15] ? String(statusRowConv[15]).trim() : "",
+                  colR: statusRowConv[16] ? String(statusRowConv[16]).trim() : "",
+                  colS: statusRowConv[17] ? String(statusRowConv[17]).trim() : "",
+                } : null,
                 semConvenio: false,
               });
             });
@@ -291,6 +301,16 @@
                   statusRowConv && statusRowConv[9]
                     ? String(statusRowConv[9]).trim()
                     : "",
+                siadInfo: statusRowConv ? {
+                  colL: statusRowConv[10] ? String(statusRowConv[10]).trim() : "",
+                  colM: statusRowConv[11] ? String(statusRowConv[11]).trim() : "",
+                  colN: statusRowConv[12] ? String(statusRowConv[12]).trim() : "",
+                  colO: statusRowConv[13] ? String(statusRowConv[13]).trim() : "",
+                  colP: statusRowConv[14] ? String(statusRowConv[14]).trim() : "",
+                  colQ: statusRowConv[15] ? String(statusRowConv[15]).trim() : "",
+                  colR: statusRowConv[16] ? String(statusRowConv[16]).trim() : "",
+                  colS: statusRowConv[17] ? String(statusRowConv[17]).trim() : "",
+                } : null,
                 semConvenio: false,
               });
               linhasAdicionadasParaEsteMes++;
