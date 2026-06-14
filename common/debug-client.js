@@ -8,24 +8,13 @@
     let isPolling = false;
     let serverOnline = false; // Começa como false para evitar spam no boot
     let isCheckingConnection = false;
-    let lastCheckTime = 0;
 
     async function sendToDebug(data) {
-        const now = Date.now();
-        
-        // Se o servidor está offline, só permitimos tentativas de heartbeat
-        // Com intervalo longo (60s) para não poluir o console do desenvolvedor
-        if (!serverOnline) {
-            if (data.type !== 'heartbeat') return;
-            if (isCheckingConnection || (now - lastCheckTime < 60000)) return;
-        }
-
-        // Se já existe uma verificação em curso, não iniciamos outra
-        if (isCheckingConnection && data.type === 'heartbeat') return;
+        if (!serverOnline) return;
+        if (isCheckingConnection) return;
 
         try {
             isCheckingConnection = true;
-            lastCheckTime = now;
 
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 1000); // Timeout bem curto para localhost
@@ -44,22 +33,49 @@
             });
             
             clearTimeout(timeoutId);
-            
-            if (!serverOnline) {
-                console.info(`[Debug] Conexão estabelecida com o servidor [${DEBUG_SERVER}].`);
-                serverOnline = true;
-                if (!isPolling) startPolling();
-            }
         } catch (e) {
-            // Se era a primeira tentativa de virar online, avisa uma vez
-            if (serverOnline || lastCheckTime === 0) {
-                // Não usamos console.warn aqui para evitar qualquer risco de loop, embora o filtro proteja
-                // Usamos console.debug que é mais discreto
-                if (serverOnline) console.debug(`[Debug] Servidor offline. Silenciando logs.`);
+            if (serverOnline) {
+                console.debug(`[Debug] Servidor offline. Silenciando logs.`);
                 serverOnline = false;
             }
         } finally {
             isCheckingConnection = false;
+        }
+    }
+
+    async function checkInitialConnection() {
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 1000); // Timeout curto para localhost
+
+            await fetch(DEBUG_SERVER, {
+                method: 'POST',
+                mode: 'cors',
+                headers: { 'Content-Type': 'application/json' },
+                signal: controller.signal,
+                body: JSON.stringify({
+                    type: 'heartbeat',
+                    clientId: CLIENT_ID,
+                    url: window.location.href,
+                    title: document.title
+                })
+            });
+            
+            clearTimeout(timeoutId);
+            
+            serverOnline = true;
+            console.info(`[Debug] Conexão estabelecida com o servidor [${DEBUG_SERVER}].`);
+            startPolling();
+            
+            // Inicia o heartbeat periódico a cada 15s
+            setInterval(() => {
+                if (serverOnline) {
+                    sendToDebug({ type: 'heartbeat' });
+                }
+            }, 15000);
+        } catch (e) {
+            // Falha silenciosa de conexão inicial.
+            serverOnline = false;
         }
     }
 
@@ -185,9 +201,8 @@
         }
     });
 
-    // Heartbeat: Tenta a primeira conexão imediatamente, depois a cada 15s (se online) ou 60s (se offline)
-    sendToDebug({ type: 'heartbeat' });
-    setInterval(() => sendToDebug({ type: 'heartbeat' }), 15000);
+    // Verifica a conexão apenas quando a página é carregada
+    checkInitialConnection();
     
     injectBridge();
     console.log(`[Debug] SisPMG+ Debug Client V2.8 (Standby) [ID: ${CLIENT_ID}]`);
