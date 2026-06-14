@@ -715,7 +715,7 @@ export class UIModule {
             // A lógica de verificação de administrador (isAdmin) agora é determinada após a resolução do nome da seção do usuário (se contém ALMOXARIFADO ou SOFI).
             
             // Tratamento da RPM amigável a partir do Tokiuz
-            let rpmNome = "15 RPM";
+            let rpmNome = "";
             if (decoded.r) {
                 rpmNome = String(decoded.r).replace('ª', '').trim();
             } else if (decoded.e) {
