@@ -36,6 +36,7 @@ async function inserirRegistroAbastecimento(dados) {
     const row = criarLinhaRegistroAbastecimento(dados);
     const tbody = $(".abastecimento-table tbody");
     tbody.append(row);
+    if (typeof ordenarTabelaAbastecimentoDOM === 'function') ordenarTabelaAbastecimentoDOM();
     await atualizarTotaisInfoAbastecimento();
     return true;
   } catch (error) {
@@ -68,6 +69,7 @@ async function processarSubmissaoAbastecimento(dadosForm, linhaEditadaId) {
         $(linhaEditada).find(".subtotal-item").text(formatarNumero(dadosRegistro.subtotal, "moeda"));
         $(linhaEditada).find(".notaFiscal-item").text(dadosRegistro.notaFiscal);
       }
+      if (typeof ordenarTabelaAbastecimentoDOM === 'function') ordenarTabelaAbastecimentoDOM();
     } else {
       await inserirRegistroAbastecimento(dadosRegistro);
     }
@@ -271,7 +273,8 @@ async function sincronizarTabelaPrincipalAbastecimento() {
 
 
 async function preencherTabelaAbastecimento(dados) {
-   if (!dados?.length) {
+  $(".abastecimento-container .filtro-tabela").val("");
+  if (!dados?.length) {
     $(".abastecimento-table tbody").empty();
     await atualizarTotaisInfoAbastecimento();
     return;
@@ -282,6 +285,7 @@ async function preencherTabelaAbastecimento(dados) {
     const row = criarLinhaRegistroAbastecimento(registro);
     tbody.append(row);
   }
+  if (typeof ordenarTabelaAbastecimentoDOM === 'function') ordenarTabelaAbastecimentoDOM();
   await atualizarTotaisInfoAbastecimento();
 }
 

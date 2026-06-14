@@ -36,6 +36,7 @@ async function inserirRegistroManutencao(dados) {
     const row = criarLinhaRegistroManutencao(dados);
     const tbody = $(".manutencao-table tbody");
     tbody.append(row);
+    if (typeof ordenarTabelaManutencaoDOM === 'function') ordenarTabelaManutencaoDOM();
     await atualizarTotaisInfoManutencao();
     return true;
   } catch (error) {
@@ -70,6 +71,7 @@ async function processarSubmissaoManutencao(dadosForm, linhaEditadaId) {
         $(linhaEditada).find(".subtotal-item").text(formatarNumero(dadosRegistro.subtotal, "moeda"));
         $(linhaEditada).find(".notaFiscal-item").text(dadosRegistro.notaFiscal);
       }
+      if (typeof ordenarTabelaManutencaoDOM === 'function') ordenarTabelaManutencaoDOM();
     } else {
       await inserirRegistroManutencao(dadosRegistro);
     }
@@ -266,7 +268,8 @@ async function sincronizarTabelaPrincipalManutencao() {
 
 
 async function preencherTabelaManutencao(dados) {
-   if (!dados?.length) {
+  $(".manutencao-container .filtro-tabela").val("");
+  if (!dados?.length) {
     $(".manutencao-table tbody").empty();
     await atualizarTotaisInfoManutencao();
     return;
@@ -277,6 +280,7 @@ async function preencherTabelaManutencao(dados) {
     const row = criarLinhaRegistroManutencao(registro);
     tbody.append(row);
   }
+  if (typeof ordenarTabelaManutencaoDOM === 'function') ordenarTabelaManutencaoDOM();
   await atualizarTotaisInfoManutencao();
 }
 

@@ -592,6 +592,30 @@ async function configurarEventosDados() {
   $(document).on("click", ".obsgeral:not(.editavel)", function() {
     mostrarDialogo("Observação Geral", $(this).text());
   });
+
+  $(document).on("input", ".abastecimento-container .filtro-tabela", function() {
+    const termo = $(this).val().toLowerCase().trim();
+    $(".abastecimento-table tbody tr").each(function() {
+      const $row = $(this);
+      const placa = $row.find(".placa-item").text().toLowerCase();
+      const prefixo = $row.find(".prefixo-item").text().toLowerCase();
+      const tipo = $row.find(".tipo-item").text().toLowerCase();
+      const matches = placa.includes(termo) || prefixo.includes(termo) || tipo.includes(termo);
+      $row.toggle(matches);
+    });
+  });
+
+  $(document).on("input", ".manutencao-container .filtro-tabela", function() {
+    const termo = $(this).val().toLowerCase().trim();
+    $(".manutencao-table tbody tr").each(function() {
+      const $row = $(this);
+      const placa = $row.find(".placa-item").text().toLowerCase();
+      const prefixo = $row.find(".prefixo-item").text().toLowerCase();
+      const descricao = $row.find(".descricao-item").text().toLowerCase();
+      const matches = placa.includes(termo) || prefixo.includes(termo) || descricao.includes(termo);
+      $row.toggle(matches);
+    });
+  });
 }
 
 function atualizarVisibilidadeContainers() {
@@ -752,3 +776,80 @@ window.obterChaveBackup = obterChaveBackup;
 window.salvarBackupLocal = salvarBackupLocal;
 window.apagarBackupLocal = apagarBackupLocal;
 window.recuperarBackupLocal = recuperarBackupLocal;
+
+// ==========================================
+// ORDENAÇÃO DE COMBUSTÍVEIS E MANUTENÇÕES
+// ==========================================
+
+function ordenarTabelaAbastecimentoDOM() {
+  const $tbody = $(".abastecimento-table tbody");
+  const rows = $tbody.find("tr").toArray();
+
+  rows.sort((a, b) => {
+    const $a = $(a);
+    const $b = $(b);
+
+    const dataA = $a.find(".data-item").text().trim();
+    const dataB = $b.find(".data-item").text().trim();
+    if (dataA !== dataB) {
+      return dataA.localeCompare(dataB);
+    }
+
+    const horaA = $a.find(".hora-item").text().trim() || "00:00";
+    const horaB = $b.find(".hora-item").text().trim() || "00:00";
+    if (horaA !== horaB) {
+      return horaA.localeCompare(horaB);
+    }
+
+    const prefixoA = $a.find(".prefixo-item").text().trim();
+    const prefixoB = $b.find(".prefixo-item").text().trim();
+    if (prefixoA !== prefixoB) {
+      return prefixoA.localeCompare(prefixoB);
+    }
+
+    const odometroA = parseInt($a.find(".odometro-item").text().replace(/\D/g, '')) || 0;
+    const odometroB = parseInt($b.find(".odometro-item").text().replace(/\D/g, '')) || 0;
+    return odometroA - odometroB;
+  });
+
+  $tbody.empty().append(rows);
+  
+  $tbody.find("tr").each((index, tr) => {
+    $(tr).find(".numero-item").text(index + 1);
+  });
+}
+
+function ordenarTabelaManutencaoDOM() {
+  const $tbody = $(".manutencao-table tbody");
+  const rows = $tbody.find("tr").toArray();
+
+  rows.sort((a, b) => {
+    const $a = $(a);
+    const $b = $(b);
+
+    const dataA = $a.find(".data-item").text().trim();
+    const dataB = $b.find(".data-item").text().trim();
+    if (dataA !== dataB) {
+      return dataA.localeCompare(dataB);
+    }
+
+    const prefixoA = $a.find(".prefixo-item").text().trim();
+    const prefixoB = $b.find(".prefixo-item").text().trim();
+    if (prefixoA !== prefixoB) {
+      return prefixoA.localeCompare(prefixoB);
+    }
+
+    const odometroA = parseInt($a.find(".odometro-item").text().replace(/\D/g, '')) || 0;
+    const odometroB = parseInt($b.find(".odometro-item").text().replace(/\D/g, '')) || 0;
+    return odometroA - odometroB;
+  });
+
+  $tbody.empty().append(rows);
+  
+  $tbody.find("tr").each((index, tr) => {
+    $(tr).find(".numero-item").text(index + 1);
+  });
+}
+
+window.ordenarTabelaAbastecimentoDOM = ordenarTabelaAbastecimentoDOM;
+window.ordenarTabelaManutencaoDOM = ordenarTabelaManutencaoDOM;
