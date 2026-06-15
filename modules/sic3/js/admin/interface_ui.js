@@ -525,13 +525,9 @@
               class: "btn-sirconv-sem-pendencias",
               click: async function() {
                 $(this).dialog("close");
-                const userPM = window.userPM || "";
-                const userPosto = window.userPostoGraduacao || "";
-                const userNome = window.userNome || "";
-                const userSecao = window.userSecao || "";
-                const statusValue = `OK|${userPM}|${userPosto}|${userNome}|${userSecao}`;
+                const statusValue = "OK";
                 
-                await handleSirconvSiadUpdate(
+                const sucesso = await handleSirconvSiadUpdate(
                   authToken,
                   municipio,
                   convenio,
@@ -542,6 +538,16 @@
                   `Deseja marcar como Verificado no SIRCONV (Sem Pendências) para ${municipio} - ${convenio} (${mes}/${ano})?`,
                   "Status do SIRCONV alterado com sucesso!"
                 );
+
+                if (sucesso) {
+                  mostrarCarregamento("Concluindo tarefas correspondentes na Agenda PM...");
+                  try {
+                    await concluirTarefaPendenciaSirconv(municipio, convenio, ano, mes);
+                  } catch (err) {
+                    console.error("Erro ao concluir tarefas da agenda:", err);
+                  }
+                  ocultarCarregamento();
+                }
               }
             },
             {
@@ -995,20 +1001,21 @@
       const dataHoraString = `${agora.getFullYear()}-${format2Digitos(agora.getMonth() + 1)}-${format2Digitos(agora.getDate())}T${format2Digitos(agora.getHours())}:${format2Digitos(agora.getMinutes())}:${format2Digitos(agora.getSeconds())}`;
       
       const userPM = window.userPM || "";
+      const userSecao = window.userSecao || "";
       const gasUrl = 'https://script.google.com/macros/s/AKfycbyriniVNqgHE206Vzx3_rplOVwSxV2f6HjyAr1zEhmyXoMH_l8AkGLyin1PK4jI0tHe/exec';
       
       const assunto = `Pendências no Relatório SIRCONV/SIC3 - ${municipio} (${mes}/${ano})`;
       const descricao = `Há pendências no relatório do SIRCONV/SIC3 referente ao município de ${municipio}, convênio ${convenio}, período ${mes}/${ano} que precisam ser verificadas.\n\n` +
                         `Detalhamento das pendências/irregularidades registradas:\n"${desc}"\n\n` +
                         `Tarefa gerada automaticamente pelo SisPMG+ a partir do registro de pendência.\n` +
-                        `Responsável pelo registro: ${window.userPostoGraduacao || ""} ${window.userNome || ""} (Matrícula: ${userPM}).`;
+                        `Responsável pelo registro: ${window.userPostoGraduacao || ""} ${window.userNome || ""} (Matrícula: ${userPM}) - Seção: ${userSecao}.`;
 
       const eventData = {
         id: `evt_${Date.now()}`,
         'data/hora': dataHoraString,
         assunto: assunto,
         autor: userPM,
-        abrangencia: `unidade:${unidadeSelecionada.value}`,
+        abrangencia: `c:${unidadeSelecionada.value}`,
         status: 'ACTIVE',
         autoConfirmarDias: 5,
         descricao: descricao,
@@ -1030,6 +1037,59 @@
 
     } catch (error) {
       console.error("[SIRCONV Pendências] Erro no fluxo de criação de tarefa da agenda:", error);
+    }
+  }
+
+  async function concluirTarefaPendenciaSirconv(municipio, convenio, ano, mes) {
+    try {
+      console.log(`[SIRCONV Pendências] Buscando tarefas ativas da agenda para o relatório de ${municipio} (${mes}/${ano}) para conclusão...`);
+      
+      const assuntoAlvo = `Pendências no Relatório SIRCONV/SIC3 - ${municipio} (${mes}/${ano})`;
+      const sheetId = '1wtk0NWpyXPm791PPB2ICoto1YnKyYJ4UCs5JxJIRM_U';
+      
+      const response = await enviarMensagemBackground('agenda-fetch-data', {
+        sheetId: sheetId,
+        sheet: 'tarefas',
+        query: `SELECT A, B, C, D, E, F, G, H, I, J, K WHERE G = 'ACTIVE'`
+      });
+
+      if (response && response.success && Array.isArray(response.data)) {
+        // Encontra as tarefas correspondentes pelo assunto
+        const tarefasAlvo = response.data.filter(row => {
+          const assunto = row[3] || "";
+          return assunto.trim() === assuntoAlvo.trim();
+        });
+
+        if (tarefasAlvo.length === 0) {
+          console.log("[SIRCONV Pendências] Nenhuma tarefa ativa correspondente encontrada na agenda.");
+          return;
+        }
+
+        console.log(`[SIRCONV Pendências] Encontrada(s) ${tarefasAlvo.length} tarefa(s) ativa(s) na agenda. Marcando-as como concluídas...`);
+        
+        const userPM = window.userPM || "";
+        const gasUrl = 'https://script.google.com/macros/s/AKfycbyriniVNqgHE206Vzx3_rplOVwSxV2f6HjyAr1zEhmyXoMH_l8AkGLyin1PK4jI0tHe/exec';
+        
+        for (const tarefa of tarefasAlvo) {
+          const taskId = tarefa[0];
+          console.log(`[SIRCONV Pendências] Concluindo tarefa de ID: ${taskId}`);
+          
+          await enviarMensagemBackground('agenda-add-event', {
+            gasUrl: gasUrl,
+            eventData: {
+              id: taskId,
+              autoConfirmarDias: 0, // 0 = concluída
+              editorNumero: userPM
+            }
+          });
+        }
+        
+        console.log("[SIRCONV Pendências] Todas as tarefas correspondentes na agenda foram concluídas!");
+      } else {
+        console.warn("[SIRCONV Pendências] Falha ao carregar tarefas da agenda para exclusão:", response ? response.error : "Sem resposta");
+      }
+    } catch (error) {
+      console.error("[SIRCONV Pendências] Erro ao concluir tarefa da agenda:", error);
     }
   }
 
