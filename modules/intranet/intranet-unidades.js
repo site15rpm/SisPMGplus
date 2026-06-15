@@ -60,7 +60,6 @@ class UnidadesModalHandler {
 
                             <div class="sispmg-unidades-checkbox-group">
                                 <label><input type="checkbox" id="unidades-exibir-codigo" checked> Exibir Código</label>
-                                <label><input type="checkbox" id="unidades-ver-endereco" checked> Exibir Endereço</label>
                                 <label><input type="checkbox" id="unidades-uni-princ"> Apenas Unidade Principal</label>
                             </div>
                         </div>
@@ -249,7 +248,6 @@ class UnidadesModalHandler {
 
             setVal('unidades-codigo-unidade', settings.codigoUnidade || '');
             setChk('unidades-exibir-codigo', settings.exibirCodigo ?? true);
-            setChk('unidades-ver-endereco', settings.verEndereco ?? true);
             setChk('unidades-uni-princ', settings.uniPrinc ?? false);
             setVal('unidades-schedule-frequency', settings.scheduleFrequency || 'none');
             setVal('unidades-gas-id', settings.gasId || '');
@@ -267,7 +265,6 @@ class UnidadesModalHandler {
             const settings = {
                 codigoUnidade: document.getElementById('unidades-codigo-unidade').value.trim(),
                 exibirCodigo: document.getElementById('unidades-exibir-codigo').checked,
-                verEndereco: document.getElementById('unidades-ver-endereco').checked,
                 uniPrinc: document.getElementById('unidades-uni-princ').checked,
                 scheduleFrequency: document.getElementById('unidades-schedule-frequency').value,
                 gasId: document.getElementById('unidades-gas-id').value.trim(),
