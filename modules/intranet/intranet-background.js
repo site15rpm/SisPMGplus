@@ -214,19 +214,19 @@ export async function handleIntranetMessages(request, sender) {
                 // O nome da seção do usuário deve ser a hierarquia inversa sem a RPM.
                 // Exemplo: se hierarquia for "15 RPM/19 BPM/232 CIA PM/1 PEL/2 GP/SGPM PM",
                 // a seção será "SGPM PM/2 GP/1 PEL/232 CIA PM/19 BPM"
-                let nomeSecao = targetUnit.secao;
+                let secao = targetUnit.secao;
                 if (targetUnit.hierarquia) {
                     const partes = targetUnit.hierarquia.split(/\s*\/\s*/).map(p => p.trim()).filter(Boolean);
                     if (partes.length > 1) {
                         // Remove o primeiro elemento (RPM)
                         const semRPM = partes.slice(1);
                         // Inverte a ordem e junta com "/"
-                        nomeSecao = semRPM.reverse().join('/');
-                        logBg(`[BG-Tratamento] Hierarquia inversa sem RPM construída para nomeSecao: "${nomeSecao}"`);
+                        secao = semRPM.reverse().join('/');
+                        logBg(`[BG-Tratamento] Hierarquia inversa sem RPM construída para secao: "${secao}"`);
                     } else if (partes.length === 1) {
                         // Caso especial onde há apenas 1 nível (a própria RPM)
-                        nomeSecao = partes[0];
-                        logBg(`[BG-Tratamento] Apenas RPM identificada na hierarquia. nomeSecao: "${nomeSecao}"`);
+                        secao = partes[0];
+                        logBg(`[BG-Tratamento] Apenas RPM identificada na hierarquia. secao: "${secao}"`);
                     }
                 }
                 
@@ -252,7 +252,7 @@ export async function handleIntranetMessages(request, sender) {
                 const resData = {
                     success: true,
                     codigoSecao: targetUnit.codigoSecao,
-                    nomeSecao: nomeSecao,
+                    secao: secao,
                     municipio: municipio,
                     codigoMunicipio: codigoMunicipio,
                     hierarquia: targetUnit.hierarquia,
