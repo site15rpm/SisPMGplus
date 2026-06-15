@@ -829,14 +829,14 @@ window.addEventListener('DOMContentLoaded', async () => {
         if (info) {
             window.userPM = info.numeroPM || "";
             window.userNome = info.nome || "";
-            window.userSecao = info.nomeSecao || "";
+            window.userSecao = info.secao || "";
             window.userRegiao = info.nomeRegiao || "";
             window.userPostoGraduacao = info.postoGraduacao || "";
             window.isAdmin = info.isAdmin === true;
             
             window.municipio = municipioParam ? decodeURIComponent(municipioParam).toUpperCase() : (info.municipio ? info.municipio.toUpperCase() : "");
             window.rpm = rpmParam ? rpmParam : (info.nomeRegiao || "");
-            window.secao = secaoParam ? decodeURIComponent(secaoParam) : (info.nomeSecao || "");
+            window.secao = secaoParam ? decodeURIComponent(secaoParam) : (info.secao || "");
             
             console.log("[SIC3 v3.0 Log] [SIC3-Mapeamento] Dados mapeados com sucesso:", {
                 userPM: window.userPM,
@@ -894,7 +894,7 @@ window.addEventListener('DOMContentLoaded', async () => {
             if (panel) {
                 if (nameEl) nameEl.textContent = `${info.postoGraduacao || ''} ${info.nome || 'Usuário'}`.trim();
                 if (pmEl) pmEl.textContent = `PM nº ${info.numeroPM || '-'}`;
-                if (secaoEl) secaoEl.textContent = info.nomeSecao || '-';
+                if (secaoEl) secaoEl.textContent = info.secao || '-';
                 if (regiaoEl) regiaoEl.textContent = info.nomeRegiao || `${info.codigoRegiao || '-'}ª RPM`;
                 
                 if (statusEl) {
