@@ -120,7 +120,22 @@ export function extrairConveniosDoConcedenteHTML(concedenteId, concedenteNome, h
         }
     }
     razaoSocial = razaoSocial.replace(/\s*-\s*$/, '').trim();
-
+    // Tenta extrair a Razão Social e o CNPJ da div.barra.item.info-convenio
+    const infoConvenio = doc.querySelector('.barra.item.info-convenio');
+    if (infoConvenio) {
+        const colunas = infoConvenio.querySelectorAll('.flex-coluna');
+        colunas.forEach(col => {
+            const labelEl = col.querySelector('.tc');
+            const label = labelEl ? labelEl.textContent.trim().toUpperCase() : '';
+            const valorText = col.textContent.replace(labelEl ? labelEl.textContent : '', '').trim();
+            
+            if (label === 'CNPJ') {
+                cnpj = valorText;
+            } else if (label === 'RAZÃO SOCIAL' || label === 'RAZAO SOCIAL') {
+                razaoSocial = valorText;
+            }
+        });
+    }
     // Se o CNPJ não foi encontrado no título, tenta buscar no corpo do documento
     if (!cnpj) {
         const labels = Array.from(doc.querySelectorAll('.tc.menor, td, th, label, div, span'));
