@@ -513,33 +513,6 @@ export async function rodarTesteConcedentesRPM() {
         throw error;
     }
 }
-        
-        const totalConcedentes = Array.from(concedentesMap).map(([id, nome]) => ({ id, nome }));
-        
-        console.log("%c[Teste RPM] Busca finalizada!", "color: green; font-weight: bold;");
-        console.log(`[Teste RPM] Total de concedentes únicos encontrados: ${totalConcedentes.length}`);
-        console.table(totalConcedentes);
-        
-        if (ui) {
-            ui.hideLoader();
-            if (typeof ui.showToast === 'function') {
-                ui.showToast(`Teste finalizado! ${totalConcedentes.length} concedentes encontrados na RPM. Veja o console.`, 'success');
-            }
-        }
-        
-        return totalConcedentes;
-        
-    } catch (error) {
-        console.error("[Teste RPM] Erro na rotina de teste:", error);
-        if (ui) {
-            ui.hideLoader();
-            if (typeof ui.showToast === 'function') {
-                ui.showToast(`Erro no teste: ${error.message}`, 'error');
-            }
-        }
-        throw error;
-    }
-}
 
 // Expõe globalmente se rodando no ambiente de navegador com window
 if (typeof window !== 'undefined') {
