@@ -1590,7 +1590,12 @@ function atualizarStatusEdicao(authToken, municipio, convenio, ano, mes, status)
         sheet.getRange(i + 1, 8).setNumberFormat("@STRING@").setValue(String(status)); 
         
         if (status === "NAO") {
+          try {
             agendarRebloqueio24h(municipio, convenio, ano, mes, usuario.username);
+          } catch (triggerErr) {
+            console.error("[GAS Erro] Falha ao agendar rebloqueio automático de 24h: " + triggerErr.toString());
+            registrarOperacao(local, usuario.username, municipio, "agendar_rebloqueio_falha", String(triggerErr));
+          }
         }
 
         registrarOperacao(local, usuario.username, municipio, status == "SIM" ? "bloquear_edicao" : "desbloquear_edicao", "success");
