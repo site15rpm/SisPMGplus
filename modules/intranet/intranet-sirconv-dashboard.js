@@ -615,8 +615,10 @@ export class SirconvDashboardModule {
         const { tipoBusca, municipio, includeCanceled } = this.lastFiltros;
 
         this.isLoading = true;
-        const msgLoader = tipoBusca === 'todos' ? 'Iniciando varredura profunda de concedentes...' : 'Carregando seus convênios ativos...';
-        if (this.ui) this.ui.showLoader(msgLoader);
+        const exibirLoader = (tipoBusca === 'todos');
+        if (exibirLoader && this.ui) {
+            this.ui.showLoader('Iniciando varredura profunda de concedentes...');
+        }
 
         try {
             let list = [];
@@ -761,7 +763,7 @@ export class SirconvDashboardModule {
                 this.processBackgroundQueue();
             }
 
-            if (this.ui) this.ui.hideLoader();
+            if (exibirLoader && this.ui) this.ui.hideLoader();
 
             // Só executa a varredura silenciosa se não for uma busca manual profunda
             if (tipoBusca !== 'todos') {
@@ -770,7 +772,7 @@ export class SirconvDashboardModule {
 
         } catch (error) { 
             console.error("Erro Dashboard:", error); 
-            if (this.ui) this.ui.hideLoader(); 
+            if (exibirLoader && this.ui) this.ui.hideLoader(); 
         } finally { 
             this.isLoading = false; 
         }
