@@ -5,7 +5,7 @@
  * CONFIGURAÇÃO: URL do GAS embutida no código para uso automático
  */
 import { fetchWithKeepAlive } from '../../common/keep-alive.js';
-import { obterConveniosAtivosJSON } from '../../common/busca-concedentes.js';
+import { obterConveniosAtivosJSON } from '../../common/busca-convenios.js';
 
 const LOGS_KEY = 'sirconvConveniosLogs';
 const LAST_RUN_KEY = 'sirconvConveniosLastRun'; // Armazena { userId: date }
@@ -71,7 +71,7 @@ async function markAsRunToday(userId) {
 // --- EXTRAÇÃO (VIA UTILITÁRIO CENTRALIZADO) ---
 async function fetchAndParseData() {
     try {
-        await addLog('Iniciando extração via utilitário busca-concedentes.js...', 'SISTEMA', 'process');
+        await addLog('Iniciando extração via utilitário busca-convenios.js...', 'SISTEMA', 'process');
         
         const convenios = await obterConveniosAtivosJSON();
 

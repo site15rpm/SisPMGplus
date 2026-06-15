@@ -1,7 +1,7 @@
 // Funções e lógica para o dashboard de convênios SIRCONV
 import { sendMessageToBackground, getCookie } from '../../common/utils.js';
 import { iconSVG_28 } from '../../common/icon.js';
-import { obterConveniosAtivosJSON, obterListaConcedentes, obterConveniosDeConcedentes } from '../../common/busca-concedentes.js';
+import { obterConveniosAtivosJSON, obterListaConcedentes, obterConveniosDeConcedentes } from '../../common/busca-convenios.js';
 
 /**
  * Módulo Dashboard SIRCONV
