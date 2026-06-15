@@ -680,7 +680,7 @@ export class SirconvDashboardModule {
                     }
                 });
             } else { 
-                list = await this.fetchAllConveniosFromConcedentes(municipio); 
+                list = await this.fetchAllConveniosFromConcedentes(municipio, tipoBusca !== 'todos'); 
             }
 
             if (!includeCanceled) {
@@ -786,7 +786,7 @@ export class SirconvDashboardModule {
         if (Date.now() - lastSync > 604800000) {
             console.log("[Dashboard] Iniciando varredura silenciosa de concedentes...");
             await sendMessageToBackground('setStorage', { 'sirconv_last_inactive_sync': Date.now() });
-            this.fetchAllConveniosFromConcedentes('todos').then(list => {
+            this.fetchAllConveniosFromConcedentes('todos', true).then(list => {
                 let mudou = false;
                 list.forEach(c => {
                     const id = String(c.ID);
@@ -800,7 +800,7 @@ export class SirconvDashboardModule {
         }
     }
 
-    async fetchAllConveniosFromConcedentes(municipioFiltro = 'todos') {
+    async fetchAllConveniosFromConcedentes(municipioFiltro = 'todos', silencioso = false) {
         try {
             const concedentes = await obterListaConcedentes(municipioFiltro);
             
@@ -809,12 +809,12 @@ export class SirconvDashboardModule {
                 return [];
             }
 
-            if (this.ui) this.ui.showLoader(`Localizando convênios em ${concedentes.length} concedentes...`);
+            if (!silencioso && this.ui) this.ui.showLoader(`Localizando convênios em ${concedentes.length} concedentes...`);
             this.updateBackgroundStatus(true, `Busca: 0/${concedentes.length}`);
             
             const includeCPE = this.lastFiltros?.includeCPE;
             const resultados = await obterConveniosDeConcedentes(concedentes, includeCPE, (atual, total, nomeConcedente) => {
-                if (this.ui) this.ui.updateLoaderMessage(`Extraindo ${atual}/${total}: ${nomeConcedente}`);
+                if (!silencioso && this.ui) this.ui.updateLoaderMessage(`Extraindo ${atual}/${total}: ${nomeConcedente}`);
                 this.updateBackgroundStatus(true, `Busca: ${atual}/${total}`);
             });
             
