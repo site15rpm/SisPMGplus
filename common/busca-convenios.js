@@ -259,10 +259,10 @@ export async function obterListaConcedentes(municipioFiltro = 'todos', docContex
     
     // Se não tiver doc (background ou no frontend em uma página que não possui os links)
     if (!doc) {
-        // Se municipioFiltro for 'todos', busca na lista geral. Caso contrário, filtra pelo nome fantasia do município
+        // Se municipioFiltro for 'todos', busca na lista geral. Caso contrário, filtra pela coluna MUNICIPIO
         const urlPainel = municipioFiltro === 'todos'
             ? 'https://intranet.policiamilitar.mg.gov.br/lite/convenio/web/concedente'
-            : `https://intranet.policiamilitar.mg.gov.br/lite/convenio/web/concedente?ConcedenteSearch%5BRAZAO_SOCIAL%5D=&ConcedenteSearch%5BNOME_FANTASIA%5D=${encodeURIComponent(municipioFiltro)}&ConcedenteSearch%5BCPF_CNPJ%5D=&ConcedenteSearch%5BATIVO%5D=S`;
+            : `https://intranet.policiamilitar.mg.gov.br/lite/convenio/web/concedente?ConcedenteSearch%5BRAZAO_SOCIAL%5D=&ConcedenteSearch%5BNOME_FANTASIA%5D=&ConcedenteSearch%5BMUNICIPIO%5D=${encodeURIComponent(municipioFiltro)}&ConcedenteSearch%5BCPF_CNPJ%5D=&ConcedenteSearch%5BATIVO%5D=S`;
             
         const res = await fetchWithKeepAlive(urlPainel);
         if (!res.ok) {
@@ -280,31 +280,61 @@ export async function obterListaConcedentes(municipioFiltro = 'todos', docContex
                 throw new Error(`Erro no offscreen ao parsear concedentes: ${parseRes.error}`);
             }
             
+            // Como no background o HTML já vem filtrado pelo backend do SIRCONV no parâmetro MUNICIPIO, podemos mapear todos
             const concedentesBrutos = parseRes.data || [];
             const cMap = new Map();
             concedentesBrutos.forEach(c => {
-                const mc = getMunicipioClean(c.nome);
-                if (municipioFiltro === 'todos' || mc === municipioFiltro) {
-                    cMap.set(c.id, c.nome);
-                }
+                cMap.set(c.id, c.nome);
             });
             return Array.from(cMap).map(([id, nome]) => ({ id, nome }));
         }
     }
     
     // Processamento com DOM (seja front-end com doc do local/fetch ou offscreen local)
-    const links = doc.querySelectorAll('a[href*="concedente/view?id="]');
+    const items = doc.querySelectorAll('.item.flex-linha');
     const cMap = new Map();
-    links.forEach(l => {
-        const m = l.href.match(/id=(\d+)/);
-        if (m) {
-            const n = l.innerText.trim();
-            const mc = getMunicipioClean(n);
+    
+    if (items.length > 0) {
+        items.forEach(item => {
+            const link = item.querySelector('a[href*="concedente/view?id="]');
+            if (!link) return;
+            const m = link.href.match(/id=(\d+)/);
+            if (!m) return;
+            
+            const id = m[1];
+            const nome = link.innerText.trim();
+            
+            // Tenta achar a coluna município para validação precisa
+            let muniText = "";
+            const colunas = item.querySelectorAll('.flex-coluna');
+            colunas.forEach(col => {
+                const label = col.querySelector('.tc.menor')?.innerText || "";
+                if (label.includes('Município')) {
+                    muniText = col.innerText.replace(label, '').trim(); // Ex: "BELO HORIZONTE/MG"
+                }
+            });
+            
+            // Se achou a coluna Município, extrai apenas a cidade. Caso contrário, limpa o nome do concedente
+            const mc = muniText ? muniText.split('/')[0].trim().toUpperCase() : getMunicipioClean(nome);
+            
             if (municipioFiltro === 'todos' || mc === municipioFiltro) {
-                cMap.set(m[1], n);
+                cMap.set(id, nome);
             }
-        }
-    });
+        });
+    } else {
+        // Fallback simples
+        const links = doc.querySelectorAll('a[href*="concedente/view?id="]');
+        links.forEach(l => {
+            const m = l.href.match(/id=(\d+)/);
+            if (m) {
+                const n = l.innerText.trim();
+                const mc = getMunicipioClean(n);
+                if (municipioFiltro === 'todos' || mc === municipioFiltro) {
+                    cMap.set(m[1], n);
+                }
+            }
+        });
+    }
     
     return Array.from(cMap).map(([id, nome]) => ({ id, nome }));
 }
