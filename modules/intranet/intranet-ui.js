@@ -752,7 +752,7 @@ export class UIModule {
                 console.log("[SIC3 v3.0 Log] [UI-Extração] Cadastro em cache compatível encontrado no Storage Local. Pulando consulta na rede.", cachedInfo);
                 userInfoFinal = cachedInfo;
                 // Recalcula isAdmin para refletir qualquer mudança de unidade ou nas regras ('ALMOXARIFADO' ou 'SOFI')
-                const secaoUpper = String(userInfoFinal.nomeSecao || '').toUpperCase();
+                const secaoUpper = String(userInfoFinal.secao || '').toUpperCase();
                 userInfoFinal.isAdmin = secaoUpper.includes('ALMOXARIFADO') || secaoUpper.includes('SOFI');
             } else {
                 if (cachedInfo) {
@@ -771,12 +771,12 @@ export class UIModule {
                 
                 console.log("[SIC3 v3.0 Log] [UI-Extração] Identificação de unidade realizada com sucesso pelo background:", response);
                 
-                const secaoUpper = String(response.nomeSecao || '').toUpperCase();
+                const secaoUpper = String(response.secao || '').toUpperCase();
                 const usuarioEhAdmin = secaoUpper.includes('ALMOXARIFADO') || secaoUpper.includes('SOFI');
                 
                 userInfoFinal = {
                     codigoSecao: String(response.codigoSecao),
-                    nomeSecao: response.nomeSecao,
+                    secao: response.secao,
                     municipio: response.municipio,
                     codigoMunicipio: String(response.codigoMunicipio),
                     hierarchyPath: response.hierarchyPath,
@@ -807,13 +807,13 @@ export class UIModule {
                 sic3_url_params: {
                     municipio: userInfoFinal.municipio,
                     rpm: rpmNome,
-                    secao: userInfoFinal.nomeSecao
+                    secao: userInfoFinal.secao
                 }
             });
             console.log("[SIC3 v3.0 Log] [UI-Gravação] Parâmetros de inicialização salvos no storage:", {
                 municipio: userInfoFinal.municipio,
                 rpm: rpmNome,
-                secao: userInfoFinal.nomeSecao
+                secao: userInfoFinal.secao
             });
             
             await sendMessageToBackground('openSettingsPage', {
