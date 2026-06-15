@@ -57,7 +57,7 @@ function convertToCSV(data) {
     const rows = [headers.join(';')];
     data.forEach(item => {
         const row = [
-            item.hierarchyPath, item.unitName, item.code,
+            item.hierarchyPath, item.unitName, item.codigoSecao,
             item.municipio, item.codigoMunicipio
         ].map(escapeCSV);
         rows.push(row.join(';'));
@@ -120,8 +120,9 @@ async function executeExtraction(userId) {
         const today = new Date().toLocaleDateString('pt-BR');
         await browser.storage.local.set({ [STORAGE_LAST_RUN_KEY]: { [userId]: today } });
 
+        console.log("SisPMG+ [Unidades Extraídas]: Dados resultantes da extração:", parsedData);
         await addUnidadesLog('Extração concluída com sucesso!', 'SISTEMA', 'success');
-        return { success: true };
+        return { success: true, data: parsedData };
     } catch (error) {
         console.error("SisPMG+ [Unidades]: Erro durante extração:", error);
         await addUnidadesLog(`Erro: ${error.message}`, 'SISTEMA', 'error');
