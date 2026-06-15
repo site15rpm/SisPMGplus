@@ -15,6 +15,7 @@ const DRIVE_FOLDER_ID = "14TPdLFpf2bEMzWdLjxEtVIeUuoIrFuNu";
  * Trata as requisições OPTIONS (Preflight de CORS do Navegador)
  */
 function doOptions(e) {
+  console.log("[GAS Log] Função 'doOptions' acionada com " + arguments.length + " argumentos: " + Array.prototype.slice.call(arguments).map(function(a){ try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch(e) { return String(a); } }).join(', '));
   return ContentService.createTextOutput("OK")
     .setMimeType(ContentService.MimeType.TEXT);
 }
@@ -23,6 +24,7 @@ function doOptions(e) {
  * Trata as requisições GET (Exibe status simples se acessado diretamente)
  */
 function doGet(e) {
+  console.log("[GAS Log] Função 'doGet' acionada com " + arguments.length + " argumentos: " + Array.prototype.slice.call(arguments).map(function(a){ try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch(e) { return String(a); } }).join(', '));
   const status = {
     status: "online",
     versao: "3.0",
@@ -37,6 +39,7 @@ function doGet(e) {
  * Trata as requisições POST recebidas da extensão SisPMG+
  */
 function doPost(e) {
+  console.log("[GAS Log] Função 'doPost' acionada com " + arguments.length + " argumentos: " + Array.prototype.slice.call(arguments).map(function(a){ try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch(e) { return String(a); } }).join(', '));
   try {
     if (!e || !e.postData || !e.postData.contents) {
       throw new Error("Nenhum dado recebido no corpo da requisição.");
@@ -66,6 +69,7 @@ function doPost(e) {
  * Roteia as ações da API para suas respectivas funções
  */
 function handleApiAction(action, body) {
+  console.log("[GAS Log] Função 'handleApiAction' acionada com " + arguments.length + " argumentos: " + Array.prototype.slice.call(arguments).map(function(a){ try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch(e) { return String(a); } }).join(', '));
   const params = body.params || [];
   let result;
   
@@ -173,6 +177,7 @@ function handleApiAction(action, body) {
  * Formata e normaliza o nome da RPM para o padrão "XXRPM"
  */
 function formatarNomeRPM(rpm) {
+  console.log("[GAS Log] Função 'formatarNomeRPM' acionada com " + arguments.length + " argumentos: " + Array.prototype.slice.call(arguments).map(function(a){ try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch(e) { return String(a); } }).join(', '));
   if (!rpm) {
     throw new Error("A identificação da RPM (Região) é obrigatória e não foi fornecida.");
   }
@@ -187,6 +192,7 @@ function formatarNomeRPM(rpm) {
  * Obtém ou cria a subpasta correspondente à RPM na pasta pai do SIC3
  */
 function obterOuCriarPastaRPM(rpm) {
+  console.log("[GAS Log] Função 'obterOuCriarPastaRPM' acionada com " + arguments.length + " argumentos: " + Array.prototype.slice.call(arguments).map(function(a){ try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch(e) { return String(a); } }).join(', '));
   const folderName = formatarNomeRPM(rpm);
   const rootFolder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
   const subFolders = rootFolder.getFoldersByName(folderName);
@@ -203,6 +209,7 @@ function obterOuCriarPastaRPM(rpm) {
  * Resolve o ID da planilha (banco de dados) correspondente ao contexto da requisição
  */
 function obterSpreadsheetIdDoContexto(body) {
+  console.log("[GAS Log] Função 'obterSpreadsheetIdDoContexto' acionada com " + arguments.length + " argumentos: " + Array.prototype.slice.call(arguments).map(function(a){ try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch(e) { return String(a); } }).join(', '));
   let rpm = body.rpm;
   let ano = body.ano;
 
@@ -239,6 +246,7 @@ function obterSpreadsheetIdDoContexto(body) {
  * Pesquisa ou inicializa arquivos permanentes e comuns do SIC3 no Drive (Locais por RPM ou Globais)
  */
 function obterIdArquivoCompartilhado(nomeBase, rpm) {
+  console.log("[GAS Log] Função 'obterIdArquivoCompartilhado' acionada com " + arguments.length + " argumentos: " + Array.prototype.slice.call(arguments).map(function(a){ try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch(e) { return String(a); } }).join(', '));
   const isGlobal = nomeBase === "SIC3_TBPrimaria" || nomeBase === "SIC3_TBSecundaria";
   
   if (isGlobal) {
@@ -339,6 +347,7 @@ function obterIdArquivoCompartilhado(nomeBase, rpm) {
  * Obtém ou cria o arquivo de log de acesso anual na pasta da RPM
  */
 function obterIdLogAcesso(rpm, ano) {
+  console.log("[GAS Log] Função 'obterIdLogAcesso' acionada com " + arguments.length + " argumentos: " + Array.prototype.slice.call(arguments).map(function(a){ try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch(e) { return String(a); } }).join(', '));
   const folderRPM = obterOuCriarPastaRPM(rpm);
   const nomeLog = "SIC3_LOG" + String(ano).trim();
   const files = folderRPM.getFilesByName(nomeLog);
@@ -377,6 +386,7 @@ function obterIdLogAcesso(rpm, ano) {
  * Obtém ou cria a planilha de banco de dados correspondente ao Ano dentro da pasta da RPM
  */
 function obterOuCriarPlanilhaAnual(rpm, ano) {
+  console.log("[GAS Log] Função 'obterOuCriarPlanilhaAnual' acionada com " + arguments.length + " argumentos: " + Array.prototype.slice.call(arguments).map(function(a){ try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch(e) { return String(a); } }).join(', '));
   const folderRPM = obterOuCriarPastaRPM(rpm);
   const nomePlanilha = "SIC3_BD" + String(ano).trim();
   const files = folderRPM.getFilesByName(nomePlanilha);
@@ -432,6 +442,7 @@ function obterOuCriarPlanilhaAnual(rpm, ano) {
  * Função da API para obter o ID da planilha atual e seus arquivos compartilhados associados
  */
 function obterIdPlanilha(rpm, ano) {
+  console.log("[GAS Log] Função 'obterIdPlanilha' acionada com " + arguments.length + " argumentos: " + Array.prototype.slice.call(arguments).map(function(a){ try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch(e) { return String(a); } }).join(', '));
   try {
     const id = obterOuCriarPlanilhaAnual(rpm, ano);
     return {
@@ -453,6 +464,7 @@ function obterIdPlanilha(rpm, ano) {
  * Analisa a pasta da RPM no Drive do SIC3 e retorna os anos para os quais existem planilhas de dados.
  */
 function obterAnosDisponiveis(rpm) {
+  console.log("[GAS Log] Função 'obterAnosDisponiveis' acionada com " + arguments.length + " argumentos: " + Array.prototype.slice.call(arguments).map(function(a){ try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch(e) { return String(a); } }).join(', '));
   try {
     const folderRPM = obterOuCriarPastaRPM(rpm);
     const files = folderRPM.getFiles();
@@ -483,6 +495,7 @@ function obterAnosDisponiveis(rpm) {
 // ========== SISTEMA DE AUTENTICAÇÃO POR TOKENS JWT ==========
 
 function getSecretKey() {
+  console.log("[GAS Log] Função 'getSecretKey' acionada com " + arguments.length + " argumentos: " + Array.prototype.slice.call(arguments).map(function(a){ try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch(e) { return String(a); } }).join(', '));
   const scriptProperties = PropertiesService.getScriptProperties();
   let secretKey = scriptProperties.getProperty('JWT_SECRET_KEY');
   if (!secretKey) {
@@ -499,6 +512,7 @@ function getSecretKey() {
 const TOKEN_EXPIRATION_TIME = 8 * 60 * 60; // 8 horas
 
 function generateAuthToken(username, municipio, isAdmin) {
+  console.log("[GAS Log] Função 'generateAuthToken' acionada com " + arguments.length + " argumentos: " + Array.prototype.slice.call(arguments).map(function(a){ try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch(e) { return String(a); } }).join(', '));
   try {
     const secretKey = getSecretKey();
     const header = { alg: "HS256", typ: "JWT" };
@@ -525,6 +539,7 @@ function generateAuthToken(username, municipio, isAdmin) {
 }
 
 function generateHmacSignature(data, key) {
+  console.log("[GAS Log] Função 'generateHmacSignature' acionada com " + arguments.length + " argumentos: " + Array.prototype.slice.call(arguments).map(function(a){ try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch(e) { return String(a); } }).join(', '));
   try {
     const signatureBytes = Utilities.computeHmacSignature(
       Utilities.MacAlgorithm.HMAC_SHA_256, 
@@ -540,6 +555,7 @@ function generateHmacSignature(data, key) {
 }
 
 function validateAuthToken(token) {
+  console.log("[GAS Log] Função 'validateAuthToken' acionada com " + arguments.length + " argumentos: " + Array.prototype.slice.call(arguments).map(function(a){ try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch(e) { return String(a); } }).join(', '));
   if (!token) return null;
   if (token === "bypass") {
     return {
@@ -584,6 +600,7 @@ function validateAuthToken(token) {
 }
 
 function autorizarAcesso(authToken, municipio, operacao, convenio, ano, mes) {
+  console.log("[GAS Log] Função 'autorizarAcesso' acionada com " + arguments.length + " argumentos: " + Array.prototype.slice.call(arguments).map(function(a){ try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch(e) { return String(a); } }).join(', '));
   try {
     if (!authToken) {
       return { autorizado: false, mensagem: "Necessário autenticar-se", codigoErro: "AUTH_REQUIRED" };
@@ -615,6 +632,7 @@ function autorizarAcesso(authToken, municipio, operacao, convenio, ano, mes) {
  * Rota para obter token de bypass a partir da extensão
  */
 function obterTokenBypass(username, municipio, isAdmin) {
+  console.log("[GAS Log] Função 'obterTokenBypass' acionada com " + arguments.length + " argumentos: " + Array.prototype.slice.call(arguments).map(function(a){ try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch(e) { return String(a); } }).join(', '));
   try {
     const isUserAdmin = isAdmin === true || isAdmin === "true" || municipio === "admin";
     const token = generateAuthToken(username, municipio, isUserAdmin);
@@ -630,6 +648,7 @@ function obterTokenBypass(username, municipio, isAdmin) {
 // ========== SISTEMA DE CONVÊNIOS ==========
 
 function carregarConveniosMunicipio(municipio, userInfo) {
+  console.log("[GAS Log] Função 'carregarConveniosMunicipio' acionada com " + arguments.length + " argumentos: " + Array.prototype.slice.call(arguments).map(function(a){ try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch(e) { return String(a); } }).join(', '));
   const local = "carregarConveniosMunicipio";
   registrarOperacao(local, userInfo.username || "SYSTEM", userInfo.municipio || "SYSTEM", "load_convenios", `initiated for ${municipio}`);
   try {
@@ -663,6 +682,7 @@ function carregarConveniosMunicipio(municipio, userInfo) {
 }
 
 function incluirConvenio(authToken, municipio, convenio, preposto_n, preposto_pg, preposto, unidade, dataInicio, dataFim) {
+  console.log("[GAS Log] Função 'incluirConvenio' acionada com " + arguments.length + " argumentos: " + Array.prototype.slice.call(arguments).map(function(a){ try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch(e) { return String(a); } }).join(', '));
   const local = "incluirConvenio";
   const usuario = validateAuthToken(authToken);
 
@@ -695,6 +715,7 @@ function incluirConvenio(authToken, municipio, convenio, preposto_n, preposto_pg
 }
 
 function alterarConvenio(authToken, municipio, convenio, preposto_n, preposto_pg, preposto, unidade, dataInicio, dataFim) {
+  console.log("[GAS Log] Função 'alterarConvenio' acionada com " + arguments.length + " argumentos: " + Array.prototype.slice.call(arguments).map(function(a){ try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch(e) { return String(a); } }).join(', '));
   const local = "alterarConvenio";
   const usuario = validateAuthToken(authToken);
 
@@ -729,6 +750,7 @@ function alterarConvenio(authToken, municipio, convenio, preposto_n, preposto_pg
 }
 
 function excluirConvenio(authToken, municipio, convenio) {
+  console.log("[GAS Log] Função 'excluirConvenio' acionada com " + arguments.length + " argumentos: " + Array.prototype.slice.call(arguments).map(function(a){ try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch(e) { return String(a); } }).join(', '));
   const local = "excluirConvenio";
   const usuario = validateAuthToken(authToken);
 
@@ -757,6 +779,7 @@ function excluirConvenio(authToken, municipio, convenio) {
 // ========== ESCRITA DE DADOS EM LOTE (LANCAMENTOS) ==========
 
 function salvarDadosNaPlanilha(authToken, municipio, convenio, ano, mes, dados) {
+  console.log("[GAS Log] Função 'salvarDadosNaPlanilha' acionada com " + arguments.length + " argumentos: " + Array.prototype.slice.call(arguments).map(function(a){ try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch(e) { return String(a); } }).join(', '));
   const local = "salvarDadosNaPlanilha";
   const usuario = validateAuthToken(authToken);
 
@@ -881,6 +904,7 @@ function salvarDadosNaPlanilha(authToken, municipio, convenio, ano, mes, dados) 
 }
 
 function salvarItensPrimariosEmLote(itens) {
+  console.log("[GAS Log] Função 'salvarItensPrimariosEmLote' acionada com " + arguments.length + " argumentos: " + Array.prototype.slice.call(arguments).map(function(a){ try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch(e) { return String(a); } }).join(', '));
     if (!Array.isArray(itens) || itens.length === 0) {
         return;
     }
@@ -890,6 +914,7 @@ function salvarItensPrimariosEmLote(itens) {
 }
 
 function salvarItemPrimario(itemData) {
+  console.log("[GAS Log] Função 'salvarItemPrimario' acionada com " + arguments.length + " argumentos: " + Array.prototype.slice.call(arguments).map(function(a){ try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch(e) { return String(a); } }).join(', '));
   const local = "salvarItemPrimario";
   const lock = LockService.getScriptLock();
   try {
@@ -927,6 +952,7 @@ function salvarItemPrimario(itemData) {
 // ========== GERENCIAMENTO DE ITENS 99 ==========
 
 function obterDadosItens99(authToken, filtros) {
+  console.log("[GAS Log] Função 'obterDadosItens99' acionada com " + arguments.length + " argumentos: " + Array.prototype.slice.call(arguments).map(function(a){ try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch(e) { return String(a); } }).join(', '));
     const local = "obterDadosItens99";
     const usuarioInfo = validateAuthToken(authToken);
 
@@ -972,6 +998,7 @@ function obterDadosItens99(authToken, filtros) {
 }
 
 function getNextItem99Code(authToken) {
+  console.log("[GAS Log] Função 'getNextItem99Code' acionada com " + arguments.length + " argumentos: " + Array.prototype.slice.call(arguments).map(function(a){ try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch(e) { return String(a); } }).join(', '));
   const lock = LockService.getScriptLock();
   try {
     lock.waitLock(15000);
@@ -1004,6 +1031,7 @@ function getNextItem99Code(authToken) {
 }
 
 function gerenciarItem99(operacao, dados) {
+  console.log("[GAS Log] Função 'gerenciarItem99' acionada com " + arguments.length + " argumentos: " + Array.prototype.slice.call(arguments).map(function(a){ try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch(e) { return String(a); } }).join(', '));
   const local = "gerenciarItem99";
   const { codigo, authToken } = dados;
   const autorizacao = validateAuthToken(authToken);
@@ -1089,6 +1117,7 @@ function gerenciarItem99(operacao, dados) {
 }
 
 function sincronizarItens99(authToken, spreadsheet, municipio, convenio, ano, mes, dadosPrincipais, timestamp, usuario) {
+  console.log("[GAS Log] Função 'sincronizarItens99' acionada com " + arguments.length + " argumentos: " + Array.prototype.slice.call(arguments).map(function(a){ try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch(e) { return String(a); } }).join(', '));
   const local = "sincronizarItens99";
   const item99Sheet = spreadsheet.getSheetByName("item99");
   
@@ -1221,6 +1250,7 @@ function sincronizarItens99(authToken, spreadsheet, municipio, convenio, ano, me
 }
 
 function excluirItem99Principal(authToken, item99Codigo) {
+  console.log("[GAS Log] Função 'excluirItem99Principal' acionada com " + arguments.length + " argumentos: " + Array.prototype.slice.call(arguments).map(function(a){ try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch(e) { return String(a); } }).join(', '));
   const local = "excluirItem99Principal";
   const usuarioInfo = validateAuthToken(authToken);
 
@@ -1274,6 +1304,7 @@ function excluirItem99Principal(authToken, item99Codigo) {
 }
 
 function atualizarStatusItem99(authToken, item99Codigo, novoStatus) {
+  console.log("[GAS Log] Função 'atualizarStatusItem99' acionada com " + arguments.length + " argumentos: " + Array.prototype.slice.call(arguments).map(function(a){ try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch(e) { return String(a); } }).join(', '));
   const local = "atualizarStatusItem99";
   const usuarioInfo = validateAuthToken(authToken);
 
@@ -1306,6 +1337,7 @@ function atualizarStatusItem99(authToken, item99Codigo, novoStatus) {
 }
 
 function substituirItem99(authToken, dados) {
+  console.log("[GAS Log] Função 'substituirItem99' acionada com " + arguments.length + " argumentos: " + Array.prototype.slice.call(arguments).map(function(a){ try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch(e) { return String(a); } }).join(', '));
     const local = "substituirItem99";
     const { item99Codigo, itemConsumoCodigo, itemConsumoDescricao, itemConsumoDespesa, itemConsumoUnidade } = dados;
     const usuarioInfo = validateAuthToken(authToken);
@@ -1370,6 +1402,7 @@ function substituirItem99(authToken, dados) {
 }
 
 function atualizarObsGeralAposModificacao(spreadsheet, municipio, convenio, ano, mes) {
+  console.log("[GAS Log] Função 'atualizarObsGeralAposModificacao' acionada com " + arguments.length + " argumentos: " + Array.prototype.slice.call(arguments).map(function(a){ try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch(e) { return String(a); } }).join(', '));
     const principalSheet = spreadsheet.getSheetByName("principal");
     const obsgeralSheet = spreadsheet.getSheetByName("obsgeral");
     const item99Sheet = spreadsheet.getSheetByName("item99");
@@ -1404,6 +1437,7 @@ function atualizarObsGeralAposModificacao(spreadsheet, municipio, convenio, ano,
 // ========== GERENCIAMENTO DE ENDEREÇOS E MEDIDORES ==========
 
 function gerenciarEnderecoMedidor(authToken, dados) {
+  console.log("[GAS Log] Função 'gerenciarEnderecoMedidor' acionada com " + arguments.length + " argumentos: " + Array.prototype.slice.call(arguments).map(function(a){ try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch(e) { return String(a); } }).join(', '));
   const local = "gerenciarEnderecoMedidor";
   const usuario = validateAuthToken(authToken);
   
@@ -1514,6 +1548,7 @@ function gerenciarEnderecoMedidor(authToken, dados) {
 // ========== STATUS E BLOQUEIO DE EDIÇÃO ==========
 
 function verificarStatusBloqueio(municipio, convenio, ano, mes) {
+  console.log("[GAS Log] Função 'verificarStatusBloqueio' acionada com " + arguments.length + " argumentos: " + Array.prototype.slice.call(arguments).map(function(a){ try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch(e) { return String(a); } }).join(', '));
   try {
     const ss = SpreadsheetApp.openById(CURRENT_SPREADSHEET_ID);
     const sheet = ss.getSheetByName("obsgeral");
@@ -1532,6 +1567,7 @@ function verificarStatusBloqueio(municipio, convenio, ano, mes) {
 }
 
 function atualizarStatusEdicao(authToken, municipio, convenio, ano, mes, status) {
+  console.log("[GAS Log] Função 'atualizarStatusEdicao' acionada com " + arguments.length + " argumentos: " + Array.prototype.slice.call(arguments).map(function(a){ try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch(e) { return String(a); } }).join(', '));
   const local = "atualizarStatusEdicao";
   const usuario = validateAuthToken(authToken);
 
@@ -1570,6 +1606,7 @@ function atualizarStatusEdicao(authToken, municipio, convenio, ano, mes, status)
 }
 
 function agendarRebloqueio24h(municipio, convenio, ano, mes, username) {
+  console.log("[GAS Log] Função 'agendarRebloqueio24h' acionada com " + arguments.length + " argumentos: " + Array.prototype.slice.call(arguments).map(function(a){ try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch(e) { return String(a); } }).join(', '));
     const trigger = ScriptApp.newTrigger("executarRebloqueioAutomatico")
         .timeBased()
         .after(24 * 60 * 60 * 1000)
@@ -1591,6 +1628,7 @@ function agendarRebloqueio24h(municipio, convenio, ano, mes, username) {
 }
 
 function executarRebloqueioAutomatico(e) {
+  console.log("[GAS Log] Função 'executarRebloqueioAutomatico' acionada com " + arguments.length + " argumentos: " + Array.prototype.slice.call(arguments).map(function(a){ try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch(e) { return String(a); } }).join(', '));
     const local = "executarRebloqueioAutomatico";
     const triggerId = e.triggerUid;
     const props = PropertiesService.getScriptProperties();
@@ -1638,6 +1676,7 @@ function executarRebloqueioAutomatico(e) {
  * Gatilho cron executado periodicamente para bloquear relatórios antigos de meses anteriores em todas as planilhas
  */
 function bloquearRelatoriosAntigosAutomaticamente() {
+  console.log("[GAS Log] Função 'bloquearRelatoriosAntigosAutomaticamente' acionada com " + arguments.length + " argumentos: " + Array.prototype.slice.call(arguments).map(function(a){ try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch(e) { return String(a); } }).join(', '));
   const folder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
   const subfolders = folder.getFolders();
   let totalProcessado = 0;
@@ -1666,6 +1705,7 @@ function bloquearRelatoriosAntigosAutomaticamente() {
 }
 
 function bloquearRelatoriosAntigosNaPlanilha(spreadsheetId) {
+  console.log("[GAS Log] Função 'bloquearRelatoriosAntigosNaPlanilha' acionada com " + arguments.length + " argumentos: " + Array.prototype.slice.call(arguments).map(function(a){ try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch(e) { return String(a); } }).join(', '));
   const lock = LockService.getScriptLock();
   try {
     lock.waitLock(15000);
@@ -1708,6 +1748,7 @@ function bloquearRelatoriosAntigosNaPlanilha(spreadsheetId) {
 // ========== BUSCAS NO PORTAL DE COMPRAS MG ==========
 
 function obterDetalhesItemPortal(itemId) {
+  console.log("[GAS Log] Função 'obterDetalhesItemPortal' acionada com " + arguments.length + " argumentos: " + Array.prototype.slice.call(arguments).map(function(a){ try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch(e) { return String(a); } }).join(', '));
   if (!itemId) return null;
   try {
     const url = `https://www1.compras.mg.gov.br/servico/catalogo/itemmaterialservico/Consulta/recuperarDetalhesItemMaterial?id=${itemId}&operacao=visualizar&realizarBuscaCaracteristica=false`;
@@ -1736,6 +1777,7 @@ function obterDetalhesItemPortal(itemId) {
 }
 
 function buscarNoPortalCompras(termoBusca) {
+  console.log("[GAS Log] Função 'buscarNoPortalCompras' acionada com " + arguments.length + " argumentos: " + Array.prototype.slice.call(arguments).map(function(a){ try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch(e) { return String(a); } }).join(', '));
   if (!termoBusca) return [];
   try {
     const url = "https://www1.compras.mg.gov.br/servico/catalogo/itemmaterialservico/Consulta/pesquisar";
@@ -1769,6 +1811,7 @@ function buscarNoPortalCompras(termoBusca) {
 // ========== FUNÇÕES AUXILIARES E DE PERSISTÊNCIA ==========
 
 function registrarOperacao(local, username, municipio, operacao, resultado) {
+  console.log("[GAS Log] Função 'registrarOperacao' acionada com " + arguments.length + " argumentos: " + Array.prototype.slice.call(arguments).map(function(a){ try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch(e) { return String(a); } }).join(', '));
   try {
     const rpm = CURRENT_RPM;
     if (!rpm) return;
@@ -1786,6 +1829,7 @@ function registrarOperacao(local, username, municipio, operacao, resultado) {
 }
 
 function appendRowAndFormatAsText(sheet, rowData) {
+  console.log("[GAS Log] Função 'appendRowAndFormatAsText' acionada com " + arguments.length + " argumentos: " + Array.prototype.slice.call(arguments).map(function(a){ try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch(e) { return String(a); } }).join(', '));
   try {
     sheet.insertRowBefore(2); 
     const newRowRange = sheet.getRange(2, 1, 1, rowData.length);
@@ -1797,6 +1841,7 @@ function appendRowAndFormatAsText(sheet, rowData) {
 }
 
 function inserirDados(sheet, dados) {
+  console.log("[GAS Log] Função 'inserirDados' acionada com " + arguments.length + " argumentos: " + Array.prototype.slice.call(arguments).map(function(a){ try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch(e) { return String(a); } }).join(', '));
   if (!sheet || !dados || dados.length === 0) return;
   sheet.insertRowsAfter(1, dados.length);
   const range = sheet.getRange(2, 1, dados.length, dados[0].length);
@@ -1805,6 +1850,7 @@ function inserirDados(sheet, dados) {
 }
 
 function removerRegistrosExistentes(sheet, municipio, convenio, ano, mes) {
+  console.log("[GAS Log] Função 'removerRegistrosExistentes' acionada com " + arguments.length + " argumentos: " + Array.prototype.slice.call(arguments).map(function(a){ try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch(e) { return String(a); } }).join(', '));
   if (!sheet) return;
   const data = sheet.getDataRange().getValues();
   let rangeStart = -1;
@@ -1835,6 +1881,7 @@ function removerRegistrosExistentes(sheet, municipio, convenio, ano, mes) {
 }
 
 function sanitizeData(data) {
+  console.log("[GAS Log] Função 'sanitizeData' acionada com " + arguments.length + " argumentos: " + Array.prototype.slice.call(arguments).map(function(a){ try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch(e) { return String(a); } }).join(', '));
   if (typeof data === 'string') return data.replace(/\u00A0/g, ' ');
   if (Array.isArray(data)) return data.map(sanitizeData);
   if (typeof data === 'object' && data !== null) {
@@ -1847,6 +1894,7 @@ function sanitizeData(data) {
 }
 
 function uploadNotaFiscal(fileObject, existingFileUrl = null) {
+  console.log("[GAS Log] Função 'uploadNotaFiscal' acionada com " + arguments.length + " argumentos: " + Array.prototype.slice.call(arguments).map(function(a){ try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch(e) { return String(a); } }).join(', '));
   try {
     if (existingFileUrl) {
       try {
@@ -1872,6 +1920,7 @@ function uploadNotaFiscal(fileObject, existingFileUrl = null) {
 }
 
 function formatDataForSheet(dateString) {
+  console.log("[GAS Log] Função 'formatDataForSheet' acionada com " + arguments.length + " argumentos: " + Array.prototype.slice.call(arguments).map(function(a){ try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch(e) { return String(a); } }).join(', '));
   if (!dateString || typeof dateString != 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
     return dateString; 
   }
@@ -1880,10 +1929,12 @@ function formatDataForSheet(dateString) {
 }
 
 function mNumerico(valor, retorno = 'texto') {
+  console.log("[GAS Log] Função 'mNumerico' acionada com " + arguments.length + " argumentos: " + Array.prototype.slice.call(arguments).map(function(a){ try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch(e) { return String(a); } }).join(', '));
   return converterMes(valor, retorno);
 }
 
 function converterMes(valor, formato = 'texto') {
+  console.log("[GAS Log] Função 'converterMes' acionada com " + arguments.length + " argumentos: " + Array.prototype.slice.call(arguments).map(function(a){ try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch(e) { return String(a); } }).join(', '));
   const meses = {
     'JANEIRO': { texto: '01', numero: 1, nome: 'janeiro' }, 'FEVEREIRO': { texto: '02', numero: 2, nome: 'fevereiro' },
     'MARÇO': { texto: '03', numero: 3, nome: 'março' }, 'MARCO': { texto: '03', numero: 3, nome: 'março' },
@@ -1907,6 +1958,7 @@ function converterMes(valor, formato = 'texto') {
 }
 
 function atualizarStatusSirconvSiad(authToken, municipio, convenio, ano, mes, tipo, status) {
+  console.log("[GAS Log] Função 'atualizarStatusSirconvSiad' acionada com " + arguments.length + " argumentos: " + Array.prototype.slice.call(arguments).map(function(a){ try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch(e) { return String(a); } }).join(', '));
   const local = "atualizarStatusSirconvSiad";
   const usuario = validateAuthToken(authToken);
 
