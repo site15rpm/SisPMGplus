@@ -229,15 +229,15 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
                                 }
                             }
 
-                             const hierarchyPath = hierarchyStack.join('/');
-                             const unitName = [...hierarchyStack].reverse().join('/');
+                             const hierarchyPath = hierarchyStack.join('/').replace(/\s*\/\s*/g, '/');
+                             const unitName = [...hierarchyStack].reverse().join('/').replace(/\s*\/\s*/g, '/');
                              logParser(`  > hierarchyPath resultante: "${hierarchyPath}"`);
                              logParser(`  > unitName resultante (hierarquia inversa): "${unitName}"`);
                              
                              parsedData.push({
                                  hierarchyPath,
                                  unitName,
-                                 code,
+                                 codigoSecao: code,
                                  municipio: municipioStack[stackIndex] || "",
                                  codigoMunicipio: codigoMunicipioStack[stackIndex] || ""
                              });
