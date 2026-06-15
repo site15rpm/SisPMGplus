@@ -970,10 +970,10 @@
         await gravarDadosStorage('sic3_unidades_rpm', unidades);
       }
 
-      // Normalização robusta do formato para lidar com dados do cache no formato cru {codigoSecao/code, nomeSecao/unitName} ou formatado {value, label}
+      // Normalização robusta do formato para lidar com dados do cache no formato cru {codigoSecao/code, secao/nomeSecao/unitName} ou formatado {value, label}
       const unidadesMapeadas = unidades.map(u => ({
         value: u.value || u.codigoSecao || u.code || "",
-        label: u.label || `${u.codigoSecao || u.code} - ${u.nomeSecao || u.unitName}` || "",
+        label: u.label || `${u.codigoSecao || u.code} - ${u.secao || u.nomeSecao || u.unitName}` || "",
         hierarchyPath: u.hierarquia || u.hierarchyPath || "",
         municipio: u.municipio || "",
         codigoMunicipio: u.codigoMunicipio || ""
