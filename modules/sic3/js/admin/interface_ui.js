@@ -841,6 +841,39 @@
       .trim();
   }
 
+  // Função utilitária para obter dados do storage local da extensão
+  function obterDadosStorage(key) {
+    return new Promise((resolve) => {
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        chrome.storage.local.get(key, (result) => {
+          resolve(result[key] || null);
+        });
+      } else if (typeof browser !== 'undefined' && browser.storage && browser.storage.local) {
+        browser.storage.local.get(key).then(result => {
+          resolve(result[key] || null);
+        }).catch(() => resolve(null));
+      } else {
+        resolve(null);
+      }
+    });
+  }
+
+  // Função utilitária para gravar dados no storage local da extensão
+  function gravarDadosStorage(key, value) {
+    return new Promise((resolve) => {
+      const data = { [key]: value };
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        chrome.storage.local.set(data, () => {
+          resolve();
+        });
+      } else if (typeof browser !== 'undefined' && browser.storage && browser.storage.local) {
+        browser.storage.local.set(data).then(resolve).catch(() => resolve());
+      } else {
+        resolve();
+      }
+    });
+  }
+
   // Função utilitária para enviar mensagens ao background
   function enviarMensagemBackground(action, payload) {
     return new Promise((resolve, reject) => {
@@ -912,20 +945,38 @@
         return;
       }
 
-      console.log(`[SIRCONV Pendências] Consultando subunidades para cUEOp: ${cUEOp}`);
-      
-      // 3. Busca a lista de subunidades na intranet
-      const response = await enviarMensagemBackground('agenda-fetch-unidades', { userRegionCode: cUEOp });
-      if (!response || !response.success || !response.data || response.data.length === 0) {
-        console.error("[SIRCONV Pendências] Falha ao obter a árvore de unidades da Intranet:", response ? response.error : "Sem resposta");
-        return;
+      // 3. Tenta obter a lista de unidades do cache do storage local primeiro
+      let unidadesRaw = await obterDadosStorage('sic3_unidades_rpm');
+      let unidades = [];
+
+      if (unidadesRaw && Array.isArray(unidadesRaw) && unidadesRaw.length > 0) {
+        console.log(`[SIRCONV Pendências] Recuperando ${unidadesRaw.length} unidades diretamente do cache local ('sic3_unidades_rpm').`);
+        unidades = unidadesRaw;
+      } else {
+        console.log(`[SIRCONV Pendências] Cache 'sic3_unidades_rpm' vazio ou inválido. Consultando subunidades via rede (cUEOp: ${cUEOp})...`);
+        const response = await enviarMensagemBackground('agenda-fetch-unidades', { userRegionCode: cUEOp });
+        if (!response || !response.success || !response.data || response.data.length === 0) {
+          console.error("[SIRCONV Pendências] Falha ao obter a árvore de unidades da Intranet PM:", response ? response.error : "Sem resposta");
+          return;
+        }
+        unidades = response.data;
+        // Grava no storage local para evitar consultas de rede nas próximas pendências
+        await gravarDadosStorage('sic3_unidades_rpm', unidades);
       }
 
-      const unidades = response.data;
+      // Normalização robusta do formato para lidar com dados do cache no formato cru {code, unitName} ou formatado {value, label}
+      const unidadesMapeadas = unidades.map(u => ({
+        value: u.value || u.code || "",
+        label: u.label || `${u.code} - ${u.unitName}` || "",
+        hierarchyPath: u.hierarchyPath || "",
+        municipio: u.municipio || "",
+        codigoMunicipio: u.codigoMunicipio || ""
+      }));
+
       const municipioAlvoNormalizado = normalizarString(municipio);
       
       // 4. Identifica a unidade correspondente ao município
-      const candidatas = unidades.filter(u => normalizarString(u.municipio) === municipioAlvoNormalizado);
+      const candidatas = unidadesMapeadas.filter(u => normalizarString(u.municipio) === municipioAlvoNormalizado);
       
       if (candidatas.length === 0) {
         console.warn(`[SIRCONV Pendências] Nenhuma unidade na intranet foi mapeada para o município "${municipio}" (${municipioAlvoNormalizado}).`);
