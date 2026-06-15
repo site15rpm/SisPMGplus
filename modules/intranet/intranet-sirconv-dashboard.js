@@ -1,6 +1,7 @@
 // Funções e lógica para o dashboard de convênios SIRCONV
 import { sendMessageToBackground, getCookie } from '../../common/utils.js';
 import { iconSVG_28 } from '../../common/icon.js';
+import { obterConveniosAtivosJSON, obterListaConcedentes, obterConveniosDeConcedentes } from '../../common/busca-convenios.js';
 
 /**
  * Módulo Dashboard SIRCONV
@@ -622,10 +623,7 @@ export class SirconvDashboardModule {
             const idsToForceAudit = new Set();
 
             if (tipoBusca === 'ativos') {
-                const pesquisa = JSON.stringify({ preposto: "", numeroConvenio: "", numeroFace: "", status: "" });
-                const res = await fetch(`https://intranet.policiamilitar.mg.gov.br/lite/convenio/web/convenio/meus-convenios?pesquisa=${encodeURIComponent(pesquisa)}`);
-                const data = await res.json();
-                if (data?.convenios) list = data.convenios;
+                list = await obterConveniosAtivosJSON();
 
                 const fetchedIds = new Set(list.map(c => String(c.ID)));
 
@@ -802,73 +800,31 @@ export class SirconvDashboardModule {
     }
 
     async fetchAllConveniosFromConcedentes(municipioFiltro = 'todos') {
-        const links = document.querySelectorAll('a[href*="concedente/view?id="]');
-        const cMap = new Map();
-        links.forEach(l => {
-            const m = l.href.match(/id=(\d+)/);
-            if (m) {
-                const n = l.innerText.trim(), mc = this.getMunicipioClean(n);
-                if (municipioFiltro === 'todos' || mc === municipioFiltro) cMap.set(m[1], n);
+        try {
+            const concedentes = await obterListaConcedentes(municipioFiltro);
+            
+            if (concedentes.length === 0) {
+                console.warn("Nenhum concedente encontrado para a busca.");
+                return [];
             }
-        });
-        const concedentes = Array.from(cMap).map(([id, nome]) => ({ id, nome }));
-        const resultados = [];
-        const includeCPE = this.lastFiltros?.includeCPE;
-        
-        if (concedentes.length === 0) {
-            console.warn("Nenhum concedente encontrado para a busca.");
-            return resultados;
-        }
 
-        if (this.ui) this.ui.showLoader(`Localizando convênios em ${concedentes.length} concedentes...`);
-        this.updateBackgroundStatus(true, `Busca: 0/${concedentes.length}`);
-        
-        for (let i = 0; i < concedentes.length; i++) {
-            const c = concedentes[i];
-            if (this.ui) this.ui.updateLoaderMessage(`Extraindo ${i + 1}/${concedentes.length}: ${c.nome}`);
-            this.updateBackgroundStatus(true, `Busca: ${i + 1}/${concedentes.length}`);
-            try {
-                const resH = await fetch(`https://intranet.policiamilitar.mg.gov.br/lite/convenio/web/concedente/view?id=${c.id}`);
-                const hTxt = await resH.text(), doc = new DOMParser().parseFromString(hTxt, 'text/html');
-                const nReal = doc.querySelector('.barra.item h2')?.innerText.trim() || c.nome;
-                const targetH = Array.from(doc.querySelectorAll('h2')).find(h => h.textContent.includes('Convênios firmados'));
-                if (targetH?.parentElement) {
-                    const items = targetH.parentElement.querySelectorAll('a.item.flex-linha');
-                    for (const item of items) {
-                        const lIdM = item.href.match(/id=(\d+)/);
-                        if (!lIdM) continue;
-                        let cod = lIdM[1], face = '', val = '0', uni = '-', vigFim = '-', st = 'S', dtIni = '-';
-                        const statusTexto = item.querySelector('.flex-coluna.tam-g .ne')?.innerText.trim() || '';
-                        const isInactive = statusTexto.toLowerCase().includes('cancelado') || statusTexto.toLowerCase().includes('finalizado');
-                        if (isInactive) st = 'N';
-                        item.querySelectorAll('.flex-coluna').forEach(col => {
-                            const lblEl = col.querySelector('.tc.menor'), lbl = lblEl?.innerText.trim() || '', v = col.innerText.replace(lbl, '').trim();
-                            if (lbl.includes('Código') && !cod) cod = v; 
-                            else if (lbl.includes('face')) face = v; 
-                            else if (lbl.includes('Valor')) val = v; 
-                            else if (lbl.includes('Unidade')) uni = v; 
-                            else if (lbl.includes('Término') || lbl.includes('Vigência') || lbl.includes('Fim')) {
-                                if (v.includes(' a ')) {
-                                    const partes = v.split(' a ');
-                                    dtIni = partes[0].trim();
-                                    vigFim = partes[1].trim();
-                                } else if (v.match(/\d{2}\/\d{2}\/\d{4}/)) {
-                                    vigFim = v;
-                                }
-                            }
-                            else if (lbl.includes('Início') || lbl.includes('Começo')) dtIni = v;
-                        });
-                        if (!includeCPE && uni.toUpperCase().includes('CPE')) continue;
-                        const cleanVal = parseFloat(val.replace(/[^\d,]/g, '').replace(',', '.')) || 0;
-                        resultados.push({ ID: String(cod), NUMERO_FACE: face || '-', CONCEDENTE: nReal, UNI_NOME_PRINCIPAL: uni, DTINICIAL: dtIni, DTFINAL: vigFim, VALOR_ESTIMADO: cleanVal, ATIVO: st, STATUS_TEXTO: statusTexto, VENCIDO: (vigFim !== '-' && this.parseDate(vigFim) < new Date() ? '1' : '0') });
-                    }
-                }
-            } catch (e) { console.error(`Erro ao extrair concedente ${c.id}:`, e); }
-            await new Promise(r => setTimeout(r, 50));
+            if (this.ui) this.ui.showLoader(`Localizando convênios em ${concedentes.length} concedentes...`);
+            this.updateBackgroundStatus(true, `Busca: 0/${concedentes.length}`);
+            
+            const includeCPE = this.lastFiltros?.includeCPE;
+            const resultados = await obterConveniosDeConcedentes(concedentes, includeCPE, (atual, total, nomeConcedente) => {
+                if (this.ui) this.ui.updateLoaderMessage(`Extraindo ${atual}/${total}: ${nomeConcedente}`);
+                this.updateBackgroundStatus(true, `Busca: ${atual}/${total}`);
+            });
+            
+            console.log(`[Dashboard] Busca finalizada. Total extraído: ${resultados.length} convênios.`);
+            this.updateBackgroundStatus(false);
+            return resultados;
+        } catch (e) {
+            console.error("Erro ao buscar convênios dos concedentes:", e);
+            this.updateBackgroundStatus(false);
+            return [];
         }
-        console.log(`[Dashboard] Busca finalizada. Total extraído: ${resultados.length} convênios.`);
-        this.updateBackgroundStatus(false);
-        return resultados;
     }
 
     async processBackgroundQueue(isSynchronous = false) {
