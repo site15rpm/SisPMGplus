@@ -206,8 +206,6 @@ $(document).ready(async () => {
         if (acao === 'visualizar') {
             $('.btn-editarDados, .btn-salvarDados, .btn-cancelarEdicao, .btn-inserirAbastecimento, .btn-inserirManutencao, .outrosDropdown-toggle, .pesquisa-container').prop('disabled', true).hide();
             $('.acao-item').hide();
-        } else if (acao === 'lancar') {
-            editarRelatorio();
         } else if (acao === 'editar') {
             $('.btn-editarDados').prop('disabled', false).show();
         }
