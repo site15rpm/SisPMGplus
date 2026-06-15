@@ -187,10 +187,9 @@ export class SirconvDashboardModule {
     }
 
     showDashboard() {
-        if (this.ui) this.ui.showLoader('Carregando Dashboard...');
         document.body.style.overflow = 'hidden';
         const container = document.getElementById('sispmg-plus-container');
-        if (!container) { if (this.ui) this.ui.hideLoader(); return; }
+        if (!container) return;
 
         document.getElementById('sispmg-sirconv-dashboard-overlay')?.remove();
         this.currentView = 'meus';
