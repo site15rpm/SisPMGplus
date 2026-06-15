@@ -3,6 +3,7 @@
 import { fetchWithKeepAlive } from '../../common/keep-alive.js';
 import { parseGoogleSheetResponse } from '../../common/google-sheets.js';
 import { sendMessageToOffscreen, closeOffscreenDocument } from './intranet-agenda-offscreen.js';
+import { fetchUnidadesHTML, parseUnidades } from '../../common/unidades-util.js';
 
 async function fetchApiData(url, token, options = {}) {
     const defaultOptions = {
@@ -191,50 +192,13 @@ export async function handleIntranetMessages(request, sender) {
 
             logBg(`[BG-Identificação] Iniciando identificação no background. Parâmetros recebidos -> e (Região): ${e}, c (Seção alvo): ${c}`);
             try {
-                const url = "https://intranet.policiamilitar.mg.gov.br/legado/operacoes/unidades/default.asp";
-                const bodyParams = new URLSearchParams({
-                    acao: 'Consulta',
-                    cUEOp: e,
-                    ExibeCodigo: '1'
-                });
+                logBg(`[BG-Identificação] Efetuando requisição de árvore de unidades com parâmetro cUEOp=${e}`);
+                const htmlText = await fetchUnidadesHTML(e, true, false);
                 
-                logBg(`[BG-Identificação] Efetuando requisição POST para consulta de árvore de unidades: ${url} com parâmetros: cUEOp=${e}`);
-                const response = await fetchWithKeepAlive(url, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
-                    },
-                    body: bodyParams.toString(),
-                    credentials: 'include'
-                });
+                logBg(`[BG-Identificação] HTML recebido com sucesso. Tamanho: ${htmlText.length} caracteres. Enviando para parser...`);
+                const parsedData = await parseUnidades(htmlText);
                 
-                if (!response.ok) {
-                    throw new Error(`Erro na requisição de unidades: ${response.status} ${response.statusText}`);
-                }
-                
-                logBg("[BG-Identificação] Resposta HTTP recebida com sucesso. Decodificando corpo em ISO-8859-1...");
-                const buffer = await response.arrayBuffer();
-                const decoder = new TextDecoder("iso-8859-1");
-                const htmlText = decoder.decode(buffer);
-                
-                logBg(`[BG-Identificação] HTML decodificado com sucesso. Tamanho do HTML: ${htmlText.length} caracteres. Enviando para offscreen parser...`);
-                
-                const result = await sendMessageToOffscreen('parse-unidades-html', { html: htmlText });
-
-                // Acumula os logs de depuração do parser offscreen no bgLogs
-                if (result.parserLogs && Array.isArray(result.parserLogs)) {
-                    result.parserLogs.forEach(logLine => {
-                        logBg(`[Offscreen Parser] ${logLine}`);
-                    });
-                }
-                
-                if (result.error) {
-                    throw new Error(result.error);
-                }
-                
-                const parsedData = result.data || [];
-                logBg(`[BG-Identificação] Offscreen retornou ${parsedData.length} unidades listadas na árvore.`);
+                logBg(`[BG-Identificação] Parser retornou ${parsedData.length} unidades listadas na árvore.`);
                 
                 // Procurar a unidade correspondente ao código 'c' do usuário
                 logBg(`[BG-Identificação] Buscando unidade alvo pelo código c: "${c}"...`);
