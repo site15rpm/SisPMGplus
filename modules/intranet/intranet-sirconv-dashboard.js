@@ -12,8 +12,8 @@ export class SirconvDashboardModule {
     constructor(config) {
         this.config = config;
         this.ui = window.SisPMG_UI;
-        this.activeData = {}; // Convênios Ativos (Vigentes ou Vencidos) - Persistente 12h
-        this.inactiveData = {}; // Convênios Inativos - Persistente Permanente
+        this.meusConvenios = {}; // Meus Convênios - Persistente 12h
+        this.outrosConvenios = {}; // Outros Convênios - Persistente Permanente
         this.advSearchIds = []; // IDs da última busca avançada (Volátil)
         this.currentView = 'meus'; // 'meus', 'adv' ou 'consolidado'
         this.conveniosData = []; // Array derivado para exibição e ordenação
@@ -48,15 +48,15 @@ export class SirconvDashboardModule {
             const keys = [this.STORAGE_KEY_ACTIVE, this.STORAGE_KEY_INACTIVE];
             const response = await sendMessageToBackground('getStorage', { keys });
             if (response && response.success) {
-                this.activeData = response.value[this.STORAGE_KEY_ACTIVE] || {};
-                this.inactiveData = response.value[this.STORAGE_KEY_INACTIVE] || {};
+                this.meusConvenios = response.value[this.STORAGE_KEY_ACTIVE] || {};
+                this.outrosConvenios = response.value[this.STORAGE_KEY_INACTIVE] || {};
                 
                 const agora = Date.now();
                 let mudou = false;
                 // Manutenção de Ativos (12h TTL)
-                for (const id in this.activeData) {
-                    if (agora - (this.activeData[id].lastUpdate || 0) > this.DATA_TTL_ACTIVE) {
-                        delete this.activeData[id];
+                for (const id in this.meusConvenios) {
+                    if (agora - (this.meusConvenios[id].lastUpdate || 0) > this.DATA_TTL_ACTIVE) {
+                        delete this.meusConvenios[id];
                         mudou = true;
                     }
                 }
@@ -70,8 +70,8 @@ export class SirconvDashboardModule {
     async savePersistentCache() {
         try {
             const dataToSave = {};
-            dataToSave[this.STORAGE_KEY_ACTIVE] = this.activeData;
-            dataToSave[this.STORAGE_KEY_INACTIVE] = this.inactiveData;
+            dataToSave[this.STORAGE_KEY_ACTIVE] = this.meusConvenios;
+            dataToSave[this.STORAGE_KEY_INACTIVE] = this.outrosConvenios;
             await sendMessageToBackground('setStorage', dataToSave);
         } catch (e) { console.error("[Dashboard] Erro ao salvar Cache:", e); }
     }
@@ -80,7 +80,7 @@ export class SirconvDashboardModule {
         const idStr = String(id);
         const agora = Date.now();
         
-        let existing = this.activeData[idStr] || this.inactiveData[idStr];
+        let existing = this.meusConvenios[idStr] || this.outrosConvenios[idStr];
         
         // Determina isMeus combinando dados existentes e newData
         let combinedData = existing ? { ...existing, ...newData } : newData;
@@ -94,18 +94,18 @@ export class SirconvDashboardModule {
         const pertenceAMeus = !!combinedData.isMeus;
 
         if (pertenceAMeus) {
-            if (!this.activeData[idStr]) {
-                this.activeData[idStr] = this.inactiveData[idStr] || { ID: idStr, audit: null, pendencias: [] };
+            if (!this.meusConvenios[idStr]) {
+                this.meusConvenios[idStr] = this.outrosConvenios[idStr] || { ID: idStr, audit: null, pendencias: [] };
             }
-            delete this.inactiveData[idStr];
+            delete this.outrosConvenios[idStr];
         } else {
-            if (!this.inactiveData[idStr]) {
-                this.inactiveData[idStr] = this.activeData[idStr] || { ID: idStr, audit: null, pendencias: [] };
+            if (!this.outrosConvenios[idStr]) {
+                this.outrosConvenios[idStr] = this.meusConvenios[idStr] || { ID: idStr, audit: null, pendencias: [] };
             }
-            delete this.activeData[idStr];
+            delete this.meusConvenios[idStr];
         }
 
-        const entry = pertenceAMeus ? this.activeData[idStr] : this.inactiveData[idStr];
+        const entry = pertenceAMeus ? this.meusConvenios[idStr] : this.outrosConvenios[idStr];
         
         for (const key in newData) {
             if (key === 'audit' && newData.audit) {
@@ -186,7 +186,7 @@ export class SirconvDashboardModule {
     }
 
     refreshConveniosList() {
-        const all = { ...this.activeData, ...this.inactiveData };
+        const all = { ...this.meusConvenios, ...this.outrosConvenios };
         if (this.currentView === 'meus') {
             this.conveniosData = Object.values(all).filter(c => c.isMeus);
         } else if (this.currentView === 'adv') {
@@ -282,8 +282,8 @@ export class SirconvDashboardModule {
 
         modalContainer.querySelector('#sispmg-dashboard-clear-cache').onclick = async () => {
             if (confirm("Isso apagará TODO o histórico de convênios salvos localmente, forçando sistema recarregar os dados na próxima execução. Continuar?")) {
-                this.activeData = {};
-                this.inactiveData = {};
+                this.meusConvenios = {};
+                this.outrosConvenios = {};
                 await sendMessageToBackground('removeStorage', { keys: [this.STORAGE_KEY_ACTIVE, this.STORAGE_KEY_INACTIVE] });
                 this.advSearchIds = [];
                 this.currentView = 'meus';
@@ -465,7 +465,7 @@ export class SirconvDashboardModule {
             maxScore = (parseInt(range.anoFim) * 100) + mP[range.mesFim];
         }
 
-        const source = (range?.tipoBusca === 'todos' || this.currentView === 'consolidado') ? { ...this.activeData, ...this.inactiveData } : this.activeData;
+        const source = (range?.tipoBusca === 'todos' || this.currentView === 'consolidado') ? { ...this.meusConvenios, ...this.outrosConvenios } : this.meusConvenios;
         const dataToConsolidate = Object.values(source).filter(c => {
             if (range?.tipoBusca === 'todos') return true;
             return c.isMeus || this.advSearchIds.includes(String(c.ID));
@@ -639,7 +639,7 @@ export class SirconvDashboardModule {
 
                 // Premissa 1: Busca pelo concedente para atualizar orfãos, em vez de assumir inatividade.
                 const missingIds = [];
-                for (const id in this.activeData) {
+                for (const id in this.meusConvenios) {
                     if (!fetchedIds.has(id)) {
                         missingIds.push(id);
                     }
@@ -648,7 +648,7 @@ export class SirconvDashboardModule {
                 if (missingIds.length > 0) {
                     console.log(`[Dashboard] Verificando ${missingIds.length} convênios que não apareceram na lista 'meus'...`);
                     for (const id of missingIds) {
-                        const entry = this.activeData[id];
+                        const entry = this.meusConvenios[id];
                         if (entry && entry.CONCEDENTE_ID) {
                             try {
                                 const resH = await fetch(`https://intranet.policiamilitar.mg.gov.br/lite/convenio/web/concedente/view?id=${entry.CONCEDENTE_ID}`);
@@ -671,7 +671,7 @@ export class SirconvDashboardModule {
 
                 // Premissa 3: Comparar apenas campos vitais com precisão para evitar auditorias falsas
                 list.forEach(c => {
-                    const existing = this.activeData[String(c.ID)];
+                    const existing = this.meusConvenios[String(c.ID)];
                     if (existing) {
                         const valExt = parseFloat(c.VALOR_ESTIMADO) || 0;
                         const valLoc = parseFloat(existing.VALOR_ESTIMADO) || 0;
@@ -707,11 +707,11 @@ export class SirconvDashboardModule {
             }
 
             // Premissa 2: Remoção de duplicidades (Limpa do inativo se estiver no ativo)
-            for (const id in this.activeData) {
-                if (this.inactiveData[id]) delete this.inactiveData[id];
+            for (const id in this.meusConvenios) {
+                if (this.outrosConvenios[id]) delete this.outrosConvenios[id];
             }
 
-            const all = { ...this.activeData, ...this.inactiveData };
+            const all = { ...this.meusConvenios, ...this.outrosConvenios };
             for (const id in all) { 
                 if (all[id].audit) all[id].pendencias = this.analisarPendencias(all[id].audit, this.lastFiltros, all[id]); 
             }
@@ -735,7 +735,7 @@ export class SirconvDashboardModule {
                 this.conveniosData;
 
             const allToAudit = baseList.filter(c => {
-                const entry = this.activeData[c.ID] || this.inactiveData[c.ID];
+                const entry = this.meusConvenios[c.ID] || this.outrosConvenios[c.ID];
 
                 // Otimização: Filtrar por período se houver range (Consolidação)
                 if (range) {
@@ -799,7 +799,7 @@ export class SirconvDashboardModule {
                 let mudou = false;
                 list.forEach(c => {
                     const id = String(c.ID);
-                    if (this.inactiveData[id] || !this.activeData[id]) {
+                    if (this.outrosConvenios[id] || !this.meusConvenios[id]) {
                         this.syncConvenio(id, c, false);
                         mudou = true;
                     }
@@ -858,7 +858,7 @@ export class SirconvDashboardModule {
                     this.syncConvenio(convId, { audit: auditData });
                     
                     // Se foi auditado via "orfão", remove o isMeus se confirmarmos inatividade.
-                    const entry = this.activeData[convId] || this.inactiveData[convId];
+                    const entry = this.meusConvenios[convId] || this.outrosConvenios[convId];
                     if (entry && this.getStatusLabel(entry) === 'Inativo' && entry.isMeus) {
                          this.syncConvenio(convId, { isMeus: false });
                     }
@@ -910,7 +910,7 @@ export class SirconvDashboardModule {
         const mP = { 'JAN': 0, 'FEV': 1, 'MAR': 2, 'ABR': 3, 'MAI': 4, 'JUN': 5, 'JUL': 6, 'AGO': 7, 'SET': 8, 'OUT': 9, 'NOV': 10, 'DEZ': 11, 'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5, 'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11 };
         
         let isFirst = true;
-        const entryOriginal = this.activeData[String(convId)] || this.inactiveData[String(convId)];
+        const entryOriginal = this.meusConvenios[String(convId)] || this.outrosConvenios[String(convId)];
         const rawCronogramas = [];
 
         while (currentId && !visitedIds.has(currentId)) {
@@ -921,7 +921,7 @@ export class SirconvDashboardModule {
                 const singleAudit = await this.fetchSingleAudit(currentId);
                 if (!singleAudit) break;
 
-                const entry = this.activeData[currentId] || this.inactiveData[currentId];
+                const entry = this.meusConvenios[currentId] || this.outrosConvenios[currentId];
 
                 // 2. Data de Início Absoluta (A mais antiga da cadeia)
                 let dtIni = null;
@@ -1219,7 +1219,7 @@ export class SirconvDashboardModule {
 
     async loadAuditData(convId) {
         this.activeConvId = convId;
-        const entry = this.activeData[String(convId)] || this.inactiveData[String(convId)];
+        const entry = this.meusConvenios[String(convId)] || this.outrosConvenios[String(convId)];
         if (!entry) return;
         if (entry.audit && (Date.now() - (entry.audit.timestamp || 0) < this.CACHE_TTL)) { this.renderAuditSidebar(entry); return; }
         if (this.ui) this.ui.showLoader(`Buscando detalhes do convênio ${convId}...`);
@@ -1227,7 +1227,7 @@ export class SirconvDashboardModule {
             const auditData = await this.performDeepAudit(convId);
             if (auditData) {
                 this.syncConvenio(convId, { audit: auditData });
-                const updated = this.activeData[convId] || this.inactiveData[convId];
+                const updated = this.meusConvenios[convId] || this.outrosConvenios[convId];
                 this.renderAuditSidebar(updated);
                 this.updateSummaryCards();
             }
@@ -1593,7 +1593,7 @@ export class SirconvDashboardModule {
             const uniqueIds = [...new Set(data.map(r => r.ID))];
             totalCount = uniqueIds.length;
             
-            const allSource = { ...this.activeData, ...this.inactiveData };
+            const allSource = { ...this.meusConvenios, ...this.outrosConvenios };
             uniqueIds.forEach(id => {
                 const conv = allSource[id];
                 if (conv) {
