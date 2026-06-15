@@ -214,7 +214,7 @@ export async function handleIntranetMessages(request, sender) {
                 // O nome da seção do usuário deve ser a hierarquia inversa sem a RPM.
                 // Exemplo: se hierarquia for "15 RPM/19 BPM/232 CIA PM/1 PEL/2 GP/SGPM PM",
                 // a seção será "SGPM PM/2 GP/1 PEL/232 CIA PM/19 BPM"
-                let nomeSecao = targetUnit.nomeSecao;
+                let nomeSecao = targetUnit.secao;
                 if (targetUnit.hierarquia) {
                     const partes = targetUnit.hierarquia.split(/\s*\/\s*/).map(p => p.trim()).filter(Boolean);
                     if (partes.length > 1) {
@@ -238,8 +238,8 @@ export async function handleIntranetMessages(request, sender) {
                 };
 
                 // O município e o código do município já vêm processados e herdados do offscreen parser.
-                // Fallback para município utiliza a folha limpa da seção (nomeSecao) para evitar usar a hierarquia inversa longa.
-                let municipio = normalizarMunicipio(targetUnit.municipio || targetUnit.nomeSecao);
+                // Fallback para município utiliza a folha limpa da seção (secao) para evitar usar a hierarquia inversa longa.
+                let municipio = normalizarMunicipio(targetUnit.municipio || targetUnit.secao);
                 let codigoMunicipio = targetUnit.codigoMunicipio || targetUnit.codigoSecao;
                 
                 logBg(`[BG-Tratamento] Município e código resolvidos diretamente do parser offscreen (com suporte a herança hierárquica): ${JSON.stringify({
