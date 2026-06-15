@@ -57,7 +57,7 @@ function convertToCSV(data) {
     const rows = [headers.join(';')];
     data.forEach(item => {
         const row = [
-            item.hierarchyPath, item.unitName, item.codigoSecao,
+            item.hierarquia, item.nomeSecao, item.codigoSecao,
             item.municipio, item.codigoMunicipio
         ].map(escapeCSV);
         rows.push(row.join(';'));
