@@ -25,7 +25,7 @@ export async function fetchUnidadesForAgenda(userRegionCode) {
         // Formata os dados para o que a UI da agenda precisa
         const formattedUnits = parsedData.map(unit => ({
             value: unit.codigoSecao,
-            label: `${unit.codigoSecao} - ${unit.nomeSecao}`,
+            label: `${unit.codigoSecao} - ${unit.secao}`,
             hierarchyPath: unit.hierarquia || '', // Inclui o caminho da hierarquia
             municipio: unit.municipio || '',
             codigoMunicipio: unit.codigoMunicipio || ''
