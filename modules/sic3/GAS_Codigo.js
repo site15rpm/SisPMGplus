@@ -1599,7 +1599,8 @@ function atualizarStatusEdicao(authToken, municipio, convenio, ano, mes, status)
     }
     return { success: false, message: "Registro não encontrado.", errorCode: "NOT_FOUND" };
   } catch (error) {
-    return { success: false, message: "Erro ao processar alteração de status.", errorCode: "PROCESSING_ERROR" };
+    console.error("[GAS Erro] Erro na função atualizarStatusEdicao: " + error.toString() + "\nStack: " + error.stack);
+    return { success: false, message: "Erro ao processar alteração de status. Detalhes: " + error.toString(), errorCode: "PROCESSING_ERROR" };
   } finally {
     lock.releaseLock();
   }
