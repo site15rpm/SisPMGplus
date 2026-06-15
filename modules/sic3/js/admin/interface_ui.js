@@ -1178,13 +1178,9 @@
         class: "btn-sirconv-sem-pendencias",
         click: async function() {
           $(this).dialog("close");
-          const userPM = window.userPM || "";
-          const userPosto = window.userPostoGraduacao || "";
-          const userNome = window.userNome || "";
-          const userSecao = window.userSecao || "";
-          const statusValue = `OK|${userPM}|${userPosto}|${userNome}|${userSecao}`;
+          const statusValue = "OK";
           
-          await handleSirconvSiadUpdate(
+          const sucesso = await handleSirconvSiadUpdate(
             sessionStorage.getItem("authToken"),
             municipio,
             convenio,
@@ -1195,6 +1191,16 @@
             `Deseja marcar como Verificado (Sem Pendências) para ${municipio} - ${convenio} (${mes}/${ano})?`,
             "Status do SIRCONV alterado com sucesso!"
           );
+
+          if (sucesso) {
+            mostrarCarregamento("Concluindo tarefas correspondentes na Agenda PM...");
+            try {
+              await concluirTarefaPendenciaSirconv(municipio, convenio, ano, mes);
+            } catch (err) {
+              console.error("Erro ao concluir tarefas da agenda:", err);
+            }
+            ocultarCarregamento();
+          }
         }
       });
     }
