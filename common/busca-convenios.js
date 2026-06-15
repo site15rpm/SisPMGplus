@@ -351,34 +351,41 @@ export async function rodarTesteConcedentesRPM() {
         console.log(`[Teste RPM] RPM identificada pelo token: ${userRegionCode}`);
         if (ui) ui.updateLoaderMessage(`RPM identificada: ${userRegionCode}. Buscando unidades...`);
         
-        // 2. Fazer a busca de unidades principais da RPM
-        // Passamos exibirCodigo = true e apenasPrincipal = true para buscar as UEOps principais (Batalhões/Companhias)
-        const unidades = await obterUnidades(userRegionCode, true, true);
+        // 2. Fazer a busca de todas as unidades da RPM (apenasPrincipal = false)
+        const unidades = await obterUnidades(userRegionCode, true, false);
         if (unidades.length === 0) {
-            throw new Error(`Nenhuma unidade principal encontrada para a RPM ${userRegionCode}`);
+            throw new Error(`Nenhuma unidade encontrada para a RPM ${userRegionCode}`);
         }
         
-        console.log(`[Teste RPM] ${unidades.length} unidades principais encontradas:`, unidades.map(u => u.secao));
+        console.log(`[Teste RPM] ${unidades.length} unidades encontradas:`, unidades.map(u => u.secao));
         
-        // 3. Buscar concedentes para cada unidade
+        // Extrai os municípios únicos das unidades para evitar buscar o mesmo município repetidamente
+        const municipiosUnicos = Array.from(new Set(
+            unidades
+                .map(u => u.municipio ? u.municipio.trim() : "")
+                .filter(m => m !== "")
+        ));
+        
+        console.log(`[Teste RPM] ${municipiosUnicos.length} municípios identificados nas unidades:`, municipiosUnicos);
+        
+        // 3. Buscar concedentes para cada município
         const concedentesMap = new Map();
-        const totalUnits = unidades.length;
+        const totalMunicipios = municipiosUnicos.length;
         
-        for (let i = 0; i < totalUnits; i++) {
-            const u = unidades[i];
-            const nomeUnidade = u.secao; // Nome curto, ex: "19 BPM"
-            if (ui) ui.updateLoaderMessage(`Buscando concedentes para ${nomeUnidade} (${i + 1}/${totalUnits})...`);
-            console.log(`[Teste RPM] Buscando concedentes para unidade: ${nomeUnidade}...`);
+        for (let i = 0; i < totalMunicipios; i++) {
+            const municipio = municipiosUnicos[i];
+            if (ui) ui.updateLoaderMessage(`Buscando concedentes para ${municipio} (${i + 1}/${totalMunicipios})...`);
+            console.log(`[Teste RPM] Buscando concedentes para município: ${municipio}...`);
             
             try {
-                // Faz a busca parametrizada por nome fantasia
-                const list = await obterListaConcedentes(nomeUnidade);
-                console.log(`[Teste RPM] Unidade ${nomeUnidade} retornou ${list.length} concedentes.`);
+                // Faz a busca parametrizada por nome fantasia (nome do município)
+                const list = await obterListaConcedentes(municipio);
+                console.log(`[Teste RPM] Município ${municipio} retornou ${list.length} concedentes.`);
                 list.forEach(c => {
                     concedentesMap.set(String(c.id), c.nome);
                 });
             } catch (err) {
-                console.error(`[Teste RPM] Erro ao buscar concedentes para a unidade ${nomeUnidade}:`, err);
+                console.error(`[Teste RPM] Erro ao buscar concedentes para o município ${municipio}:`, err);
             }
             
             // Pequeno delay entre requisições de concedentes
