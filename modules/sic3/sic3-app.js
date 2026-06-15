@@ -568,7 +568,6 @@ export async function navegarPara(pagina, contexto = {}) {
             await carregarJS('js/lancamentos/form_manutencao.js');
             await carregarJS('js/lancamentos/form_outros_itens.js');
             await carregarJS('js/lancamentos/form_material.js');
-            await carregarJS('js/lancamentos/autocompletar.js');
             await carregarJS('js/lancamentos/system_init.js');
             console.log("[SIC3 v3.0 Log] Scripts do Lançamento injetados com sucesso.");
         } else if (pagina === 'item99') {

@@ -134,7 +134,6 @@ async function abrirFormularioModal(tipo, config, dados = null, modalTitle = nul
     modal.scrollTop = 0;
 
     calcularTotalFormulario();
-    adicionarBotaoAutocompletarDev(tipo);
 
   } catch (error) {
     console.error("Erro ao abrir modal:", error);
