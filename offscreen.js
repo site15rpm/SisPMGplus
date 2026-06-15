@@ -263,6 +263,100 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
                     break;
                 }
 
+                case 'parse-concedente-html': {
+                    try {
+                        const { concedenteId, concedenteNome, includeCPE } = request;
+                        const resultados = [];
+                        const nReal = doc.querySelector('.barra.item h2')?.innerText.trim() || concedenteNome;
+                        const targetH = Array.from(doc.querySelectorAll('h2')).find(h => h.textContent.includes('Convênios firmados'));
+                        
+                        if (targetH?.parentElement) {
+                            const items = targetH.parentElement.querySelectorAll('a.item.flex-linha');
+                            for (const item of items) {
+                                const lIdM = item.href.match(/id=(\d+)/);
+                                if (!lIdM) continue;
+                                
+                                let cod = lIdM[1], face = '', val = '0', uni = '-', vigFim = '-', st = 'S', dtIni = '-';
+                                const statusTexto = item.querySelector('.flex-coluna.tam-g .ne')?.innerText.trim() || '';
+                                const isInactive = statusTexto.toLowerCase().includes('cancelado') || statusTexto.toLowerCase().includes('finalizado');
+                                if (isInactive) st = 'N';
+                                
+                                item.querySelectorAll('.flex-coluna').forEach(col => {
+                                    const lblEl = col.querySelector('.tc.menor');
+                                    const lbl = lblEl?.innerText.trim() || '';
+                                    const v = col.innerText.replace(lbl, '').trim();
+                                    
+                                    if (lbl.includes('Código') && !cod) {
+                                        cod = v;
+                                    } else if (lbl.includes('face')) {
+                                        face = v;
+                                    } else if (lbl.includes('Valor')) {
+                                        val = v;
+                                    } else if (lbl.includes('Unidade')) {
+                                        uni = v;
+                                    } else if (lbl.includes('Término') || lbl.includes('Vigência') || lbl.includes('Fim')) {
+                                        if (v.includes(' a ')) {
+                                            const partes = v.split(' a ');
+                                            dtIni = partes[0].trim();
+                                            vigFim = partes[1].trim();
+                                        } else if (v.match(/\d{2}\/\d{2}\/\d{4}/)) {
+                                            vigFim = v;
+                                        }
+                                    } else if (lbl.includes('Início') || lbl.includes('Começo')) {
+                                        dtIni = v;
+                                    }
+                                });
+                                
+                                if (!includeCPE && uni.toUpperCase().includes('CPE')) continue;
+                                
+                                const cleanVal = parseFloat(val.replace(/[^\d,]/g, '').replace(',', '.')) || 0;
+                                
+                                const parseDateLocal = (d) => { 
+                                    if (!d || d === '-') return null; 
+                                    const p = d.split(' ')[0].split(/[\/-]/); 
+                                    return p[0].length === 4 ? new Date(p[0], p[1]-1, p[2]) : new Date(p[2], p[1]-1, p[0]); 
+                                };
+                                const vencido = (vigFim !== '-' && parseDateLocal(vigFim) < new Date() ? '1' : '0');
+                                
+                                resultados.push({
+                                    ID: String(cod),
+                                    NUMERO_FACE: face || '-',
+                                    CONCEDENTE: nReal,
+                                    CONCEDENTE_ID: String(concedenteId),
+                                    UNI_NOME_PRINCIPAL: uni,
+                                    DTINICIAL: dtIni,
+                                    DTFINAL: vigFim,
+                                    VALOR_ESTIMADO: cleanVal,
+                                    ATIVO: st,
+                                    STATUS_TEXTO: statusTexto,
+                                    VENCIDO: vencido
+                                });
+                            }
+                        }
+                        sendResponse({ data: resultados });
+                    } catch (err) {
+                        sendResponse({ error: err.message });
+                    }
+                    break;
+                }
+
+                case 'parse-concedentes-links': {
+                    try {
+                        const links = doc.querySelectorAll('a[href*="concedente/view?id="]');
+                        const concedentes = [];
+                        links.forEach(l => {
+                            const m = l.href.match(/id=(\d+)/);
+                            if (m) {
+                                concedentes.push({ id: m[1], nome: l.innerText.trim() });
+                            }
+                        });
+                        sendResponse({ data: concedentes });
+                    } catch (err) {
+                        sendResponse({ error: err.message });
+                    }
+                    break;
+                }
+
                 default:
                     sendResponse({ error: `Ação desconhecida: ${request.action}` });
             }
