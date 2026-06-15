@@ -1,5 +1,5 @@
-// Arquivo: common/busca-convenios.js
-// Funções centralizadas e reutilizáveis para extração e parsing de convênios do SIRCONV.
+// Arquivo: common/busca-concedentes.js
+// Funções centralizadas e reutilizáveis para extração e parsing de convênios/concedentes do SIRCONV.
 
 import { fetchWithKeepAlive } from './keep-alive.js';
 import { sendMessageToOffscreen, closeOffscreenDocument } from '../modules/intranet/intranet-agenda-offscreen.js';
