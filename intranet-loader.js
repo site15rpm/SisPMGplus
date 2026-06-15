@@ -459,6 +459,12 @@ async function loadSirconvDashboardModule() {
         const { SirconvDashboardModule } = await import(globalConfig.sirconvDashboardModuleUrl);
         sirconvDashboardModuleInstance = new SirconvDashboardModule(globalConfig);
         await sirconvDashboardModuleInstance.init();
+        
+        // Injeta de forma independente o utilitário de busca de concedentes na página
+        const baseUrl = globalConfig.sirconvDashboardModuleUrl.split('/modules/')[0];
+        import(`${baseUrl}/common/busca-concedentes.js`).catch(err => {
+            console.error("SisPMG+: Falha ao carregar busca-concedentes.js", err);
+        });
     } catch(e) {
          console.error("SisPMG+: Falha ao carregar o módulo SIRCONV Dashboard.", e);
     }
