@@ -95,7 +95,44 @@ async function abrirFormularioModal(tipo, config, dados = null, modalTitle = nul
       });
     }
 
+    // Ajuste 1: Configurar min, max e valor inicial para inputs de data com base no período do relatório
+    const mesesMap = {
+      "JANEIRO": "01", "FEVEREIRO": "02", "MARCO": "03", "MARÇO": "03",
+      "ABRIL": "04", "MAIO": "05", "JUNHO": "06", "JULHO": "07",
+      "AGOSTO": "08", "SETEMBRO": "09", "OUTUBRO": "10", "NOVEMBRO": "11",
+      "DEZEMBRO": "12"
+    };
+    const anoRelatorio = window.ano ? String(window.ano).trim() : new Date().getFullYear().toString();
+    const mesRelatorioStr = window.mes ? String(window.mes).trim().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "";
+    const mesNum = mesesMap[mesRelatorioStr];
+    
+    const inputsData = form.querySelectorAll('input[type="date"]');
+    inputsData.forEach(input => {
+      if (mesNum && anoRelatorio) {
+        const dataMin = `${anoRelatorio}-${mesNum}-01`;
+        const ultimoDia = new Date(parseInt(anoRelatorio, 10), parseInt(mesNum, 10), 0).getDate();
+        const dataMax = `${anoRelatorio}-${mesNum}-${String(ultimoDia).padStart(2, '0')}`;
+        
+        input.setAttribute("min", dataMin);
+        input.setAttribute("max", dataMax);
+        
+        // Se estiver vazio, define o primeiro dia do período como valor padrão para abrir o calendário no período correto
+        if (!input.value) {
+          input.value = dataMin;
+          input.dispatchEvent(new Event("change"));
+        }
+      }
+    });
+
     modal.style.display = "flex";
+
+    // Ajuste 2: Garantir que a barra de rolagem volte ao ponto zero ao abrir o formulário
+    const modalContent = modal.querySelector(".modal-content");
+    if (modalContent) modalContent.scrollTop = 0;
+    const modalBody = modal.querySelector(".modal-body");
+    if (modalBody) modalBody.scrollTop = 0;
+    modal.scrollTop = 0;
+
     calcularTotalFormulario();
     adicionarBotaoAutocompletarDev(tipo);
 
