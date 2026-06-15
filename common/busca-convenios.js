@@ -3,6 +3,8 @@
 
 import { fetchWithKeepAlive } from './keep-alive.js';
 import { sendMessageToOffscreen, closeOffscreenDocument } from '../modules/intranet/intranet-agenda-offscreen.js';
+import { getCookie, decodeJwt } from './utils.js';
+import { obterUnidades } from './busca-unidades.js';
 
 /**
  * Converte uma string de data (DD/MM/AAAA ou AAAA-MM-DD) para um objeto Date.
@@ -314,4 +316,103 @@ export async function obterListaConcedentes(municipioFiltro = 'todos', docContex
  */
 export async function buscarConcedentes(nomeFantasia = '') {
     return obterListaConcedentes(nomeFantasia || 'todos');
+}
+
+/**
+ * Teste: Identifica a RPM do usuário logado pelo token tokiuz,
+ * busca as unidades principais dessa RPM e depois busca cada uma das unidades
+ * na busca de concedentes, extraindo e retornando todos os concedentes encontrados.
+ * @returns {Promise<Array>} Lista de concedentes únicos.
+ */
+export async function rodarTesteConcedentesRPM() {
+    console.log("%c[Teste RPM] Iniciando rotina de teste de concedentes da RPM...", "color: #b3a368; font-weight: bold;");
+    
+    // Tentamos usar o loader visual se a UI global estiver disponível no window
+    const ui = window.uiModuleInstance || (window.sirconvDashboard && window.sirconvDashboard.ui);
+    if (ui) ui.showLoader('Identificando sua RPM e unidades...');
+    
+    try {
+        // 1. Identificar a RPM do usuário logado pelo token tokiuz
+        const token = getCookie('tokiuz');
+        if (!token) {
+            throw new Error("Token 'tokiuz' não encontrado. Faça login na Intranet novamente.");
+        }
+        
+        const decoded = decodeJwt(token);
+        if (!decoded) {
+            throw new Error("Não foi possível decodificar o token tokiuz.");
+        }
+        
+        const userRegionCode = String(decoded.e || ''); // Código cUEOp (RPM)
+        if (!userRegionCode) {
+            throw new Error("Código de região (RPM) do usuário não encontrado no token tokiuz.");
+        }
+        
+        console.log(`[Teste RPM] RPM identificada pelo token: ${userRegionCode}`);
+        if (ui) ui.updateLoaderMessage(`RPM identificada: ${userRegionCode}. Buscando unidades...`);
+        
+        // 2. Fazer a busca de unidades principais da RPM
+        // Passamos exibirCodigo = true e apenasPrincipal = true para buscar as UEOps principais (Batalhões/Companhias)
+        const unidades = await obterUnidades(userRegionCode, true, true);
+        if (unidades.length === 0) {
+            throw new Error(`Nenhuma unidade principal encontrada para a RPM ${userRegionCode}`);
+        }
+        
+        console.log(`[Teste RPM] ${unidades.length} unidades principais encontradas:`, unidades.map(u => u.secao));
+        
+        // 3. Buscar concedentes para cada unidade
+        const concedentesMap = new Map();
+        const totalUnits = unidades.length;
+        
+        for (let i = 0; i < totalUnits; i++) {
+            const u = unidades[i];
+            const nomeUnidade = u.secao; // Nome curto, ex: "19 BPM"
+            if (ui) ui.updateLoaderMessage(`Buscando concedentes para ${nomeUnidade} (${i + 1}/${totalUnits})...`);
+            console.log(`[Teste RPM] Buscando concedentes para unidade: ${nomeUnidade}...`);
+            
+            try {
+                // Faz a busca parametrizada por nome fantasia
+                const list = await obterListaConcedentes(nomeUnidade);
+                console.log(`[Teste RPM] Unidade ${nomeUnidade} retornou ${list.length} concedentes.`);
+                list.forEach(c => {
+                    concedentesMap.set(String(c.id), c.nome);
+                });
+            } catch (err) {
+                console.error(`[Teste RPM] Erro ao buscar concedentes para a unidade ${nomeUnidade}:`, err);
+            }
+            
+            // Pequeno delay entre requisições de concedentes
+            await new Promise(r => setTimeout(r, 100));
+        }
+        
+        const totalConcedentes = Array.from(concedentesMap).map(([id, nome]) => ({ id, nome }));
+        
+        console.log("%c[Teste RPM] Busca finalizada!", "color: green; font-weight: bold;");
+        console.log(`[Teste RPM] Total de concedentes únicos encontrados: ${totalConcedentes.length}`);
+        console.table(totalConcedentes);
+        
+        if (ui) {
+            ui.hideLoader();
+            if (typeof ui.showToast === 'function') {
+                ui.showToast(`Teste finalizado! ${totalConcedentes.length} concedentes encontrados na RPM. Veja o console.`, 'success');
+            }
+        }
+        
+        return totalConcedentes;
+        
+    } catch (error) {
+        console.error("[Teste RPM] Erro na rotina de teste:", error);
+        if (ui) {
+            ui.hideLoader();
+            if (typeof ui.showToast === 'function') {
+                ui.showToast(`Erro no teste: ${error.message}`, 'error');
+            }
+        }
+        throw error;
+    }
+}
+
+// Expõe globalmente se rodando no ambiente de navegador com window
+if (typeof window !== 'undefined') {
+    window.rodarTesteConcedentesRPM = rodarTesteConcedentesRPM;
 }
