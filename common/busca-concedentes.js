@@ -111,12 +111,24 @@ export async function obterListaConcedentes(municipioFiltro = 'todos', docContex
         if (municipioFiltro === 'todos') {
             concedentesTabela.forEach(c => cMap.set(c.id, c.razaoSocial));
         } else {
-            const termoNorm = normalizarComp(municipioFiltro);
+            // Gera o padrão de expressão regular para o município buscado removendo conectivos e aplicando curinga
+            const conectivos = ["DE", "DA", "DO", "DOS", "DAS", "E"];
+            const palavrasFiltradas = normalizarComp(municipioFiltro)
+                .split(/\s+/)
+                .filter(p => !conectivos.includes(p) && p !== "");
+                
+            const pattern = palavrasFiltradas.join(".*");
+            
+            // Regex para busca primária (cobre início e fim da coluna município)
+            const regexPrimaria = new RegExp("^" + pattern + "$", "i");
+            
+            // Regex para busca secundária (substring flexível para nome fantasia e razão social)
+            const regexSecundaria = new RegExp(pattern, "i");
             
             // 1. Busca primária: coluna municipio
             let matches = concedentesTabela.filter(c => {
                 const muniNorm = normalizarComp(c.municipio);
-                return muniNorm === termoNorm;
+                return regexPrimaria.test(muniNorm);
             });
             
             // 2. Busca secundária (caso não encontre por município): nome fantasia e razão social
@@ -124,7 +136,7 @@ export async function obterListaConcedentes(municipioFiltro = 'todos', docContex
                 matches = concedentesTabela.filter(c => {
                     const fantasiaNorm = normalizarComp(c.nomeFantasia);
                     const razaoNorm = normalizarComp(c.razaoSocial);
-                    return fantasiaNorm.includes(termoNorm) || razaoNorm.includes(termoNorm);
+                    return regexSecundaria.test(fantasiaNorm) || regexSecundaria.test(razaoNorm);
                 });
             }
             
