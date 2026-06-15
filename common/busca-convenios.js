@@ -259,10 +259,8 @@ export async function obterListaConcedentes(municipioFiltro = 'todos', docContex
     
     // Se não tiver doc (background ou no frontend em uma página que não possui os links)
     if (!doc) {
-        // Se municipioFiltro for 'todos', busca na lista geral. Caso contrário, filtra pela coluna MUNICIPIO
-        const urlPainel = municipioFiltro === 'todos'
-            ? 'https://intranet.policiamilitar.mg.gov.br/lite/convenio/web/concedente'
-            : `https://intranet.policiamilitar.mg.gov.br/lite/convenio/web/concedente?ConcedenteSearch%5BRAZAO_SOCIAL%5D=&ConcedenteSearch%5BNOME_FANTASIA%5D=&ConcedenteSearch%5BMUNICIPIO%5D=${encodeURIComponent(municipioFiltro)}&ConcedenteSearch%5BCPF_CNPJ%5D=&ConcedenteSearch%5BATIVO%5D=S`;
+        // SEMPRE faz a consulta geral de todos os concedentes do estado (sem parâmetros de busca)
+        const urlPainel = 'https://intranet.policiamilitar.mg.gov.br/lite/convenio/web/concedente';
             
         const res = await fetchWithKeepAlive(urlPainel);
         if (!res.ok) {
@@ -271,7 +269,6 @@ export async function obterListaConcedentes(municipioFiltro = 'todos', docContex
         const html = await res.text();
         
         if (typeof DOMParser !== 'undefined') {
-            // Frontend: parseia localmente usando DOMParser
             doc = new DOMParser().parseFromString(html, 'text/html');
         } else {
             // Background: delega o parsing de links para o offscreen
@@ -280,21 +277,36 @@ export async function obterListaConcedentes(municipioFiltro = 'todos', docContex
                 throw new Error(`Erro no offscreen ao parsear concedentes: ${parseRes.error}`);
             }
             
-            // Como no background o HTML já vem filtrado pelo backend do SIRCONV no parâmetro MUNICIPIO, podemos mapear todos
+            // Background fallback: filtra por getMunicipioClean no background
             const concedentesBrutos = parseRes.data || [];
             const cMap = new Map();
             concedentesBrutos.forEach(c => {
-                cMap.set(c.id, c.nome);
+                const mc = getMunicipioClean(c.nome);
+                if (municipioFiltro === 'todos' || mc === municipioFiltro) {
+                    cMap.set(c.id, c.nome);
+                }
             });
             return Array.from(cMap).map(([id, nome]) => ({ id, nome }));
         }
     }
     
-    // Processamento com DOM (seja front-end com doc do local/fetch ou offscreen local)
+    // Processamento com DOM (seja no front-end ou offscreen local no frontend)
     const items = doc.querySelectorAll('.item.flex-linha');
     const cMap = new Map();
     
+    // Função auxiliar para normalizar comparação (caixa alta, sem acentos, sem Ç)
+    const normalizarComp = (str) => {
+        if (!str) return "";
+        return str.trim()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/Ç/g, "C")
+            .toUpperCase();
+    };
+    
     if (items.length > 0) {
+        // Extrai todos os concedentes da tabela HTML estruturada
+        const concedentesTabela = [];
         items.forEach(item => {
             const link = item.querySelector('a[href*="concedente/view?id="]');
             if (!link) return;
@@ -302,27 +314,56 @@ export async function obterListaConcedentes(municipioFiltro = 'todos', docContex
             if (!m) return;
             
             const id = m[1];
-            const nome = link.innerText.trim();
+            const razaoSocial = link.innerText.trim();
             
-            // Tenta achar a coluna município para validação precisa
-            let muniText = "";
+            let nomeFantasia = "";
+            let municipio = "";
+            
             const colunas = item.querySelectorAll('.flex-coluna');
             colunas.forEach(col => {
-                const label = col.querySelector('.tc.menor')?.innerText || "";
-                if (label.includes('Município')) {
-                    muniText = col.innerText.replace(label, '').trim(); // Ex: "BELO HORIZONTE/MG"
+                const labelEl = col.querySelector('.tc.menor');
+                const label = labelEl ? labelEl.innerText.trim() : "";
+                const valorText = col.innerText.replace(label, '').trim();
+                
+                if (label.includes('Nome Fantasia')) {
+                    nomeFantasia = valorText;
+                } else if (label.includes('Município')) {
+                    municipio = valorText.split('/')[0].trim();
                 }
             });
             
-            // Se achou a coluna Município, extrai apenas a cidade. Caso contrário, limpa o nome do concedente
-            const mc = muniText ? muniText.split('/')[0].trim().toUpperCase() : getMunicipioClean(nome);
-            
-            if (municipioFiltro === 'todos' || mc === municipioFiltro) {
-                cMap.set(id, nome);
-            }
+            concedentesTabela.push({
+                id: String(id),
+                razaoSocial: razaoSocial,
+                nomeFantasia: nomeFantasia || razaoSocial,
+                municipio: municipio
+            });
         });
+        
+        if (municipioFiltro === 'todos') {
+            concedentesTabela.forEach(c => cMap.set(c.id, c.razaoSocial));
+        } else {
+            const termoNorm = normalizarComp(municipioFiltro);
+            
+            // 1. Busca primária: coluna municipio
+            let matches = concedentesTabela.filter(c => {
+                const muniNorm = normalizarComp(c.municipio);
+                return muniNorm === termoNorm;
+            });
+            
+            // 2. Busca secundária (caso não encontre por município): nome fantasia e razão social
+            if (matches.length === 0) {
+                matches = concedentesTabela.filter(c => {
+                    const fantasiaNorm = normalizarComp(c.nomeFantasia);
+                    const razaoNorm = normalizarComp(c.razaoSocial);
+                    return fantasiaNorm.includes(termoNorm) || razaoNorm.includes(termoNorm);
+                });
+            }
+            
+            matches.forEach(c => cMap.set(c.id, c.razaoSocial));
+        }
     } else {
-        // Fallback simples
+        // Fallback simples caso a estrutura da tabela div.item.flex-linha não esteja presente
         const links = doc.querySelectorAll('a[href*="concedente/view?id="]');
         links.forEach(l => {
             const m = l.href.match(/id=(\d+)/);
@@ -352,6 +393,7 @@ export async function buscarConcedentes(nomeFantasia = '') {
  * Teste: Identifica a RPM do usuário logado pelo token tokiuz,
  * busca as unidades principais dessa RPM e depois busca cada uma das unidades
  * na busca de concedentes, extraindo e retornando todos os concedentes encontrados.
+ * Realiza uma única busca geral de todos os concedentes e filtra localmente em memória.
  * @returns {Promise<Array>} Lista de concedentes únicos.
  */
 export async function rodarTesteConcedentesRPM() {
@@ -389,7 +431,7 @@ export async function rodarTesteConcedentesRPM() {
         
         console.log(`[Teste RPM] ${unidades.length} unidades encontradas:`, unidades.map(u => u.secao));
         
-        // Extrai os termos de busca de municípios (com e sem acento/cedilha) para evitar requisições redundantes
+        // Extrai os termos de busca de municípios (com e sem acento/cedilha)
         const termosBusca = new Set();
         unidades.forEach(u => {
             if (u.municipio) {
@@ -410,29 +452,67 @@ export async function rodarTesteConcedentesRPM() {
         const termosLista = Array.from(termosBusca);
         console.log(`[Teste RPM] ${termosLista.length} termos de busca de municípios identificados (com e sem acento/ç):`, termosLista);
         
-        // 3. Buscar concedentes para cada termo de busca de município
+        if (ui) ui.updateLoaderMessage("Buscando lista geral de concedentes do estado...");
+        console.log("[Teste RPM] Fazendo requisição única da listagem geral de concedentes do estado...");
+        
+        // 3. Fazer uma única requisição geral
+        const urlGeral = 'https://intranet.policiamilitar.mg.gov.br/lite/convenio/web/concedente';
+        const resGeral = await fetchWithKeepAlive(urlGeral);
+        if (!resGeral.ok) {
+            throw new Error(`Erro ao obter a lista geral de concedentes: ${resGeral.status}`);
+        }
+        
+        const htmlGeral = await resGeral.text();
+        const docGeral = new DOMParser().parseFromString(htmlGeral, 'text/html');
+        
+        console.log("[Teste RPM] Lista geral obtida. Buscando concedentes para cada município localmente...");
+        
+        // 4. Buscar concedentes para cada município de forma local na memória (sem requisições adicionais)
         const concedentesMap = new Map();
         const totalTermos = termosLista.length;
         
         for (let i = 0; i < totalTermos; i++) {
             const termo = termosLista[i];
-            if (ui) ui.updateLoaderMessage(`Buscando concedentes para ${termo} (${i + 1}/${totalTermos})...`);
-            console.log(`[Teste RPM] Buscando concedentes para termo: ${termo}...`);
+            if (ui) ui.updateLoaderMessage(`Processando concedentes de ${termo} (${i + 1}/${totalTermos})...`);
             
             try {
-                // Faz a busca parametrizada por nome fantasia
-                const list = await obterListaConcedentes(termo);
+                // Passamos o docGeral já parseado para filtrar na memória localmente
+                const list = await obterListaConcedentes(termo, docGeral);
                 console.log(`[Teste RPM] Termo ${termo} retornou ${list.length} concedentes.`);
                 list.forEach(c => {
                     concedentesMap.set(String(c.id), c.nome);
                 });
             } catch (err) {
-                console.error(`[Teste RPM] Erro ao buscar concedentes para o termo ${termo}:`, err);
+                console.error(`[Teste RPM] Erro ao processar concedentes para o termo ${termo}:`, err);
             }
-            
-            // Pequeno delay entre requisições de concedentes
-            await new Promise(r => setTimeout(r, 100));
         }
+        
+        const totalConcedentes = Array.from(concedentesMap).map(([id, nome]) => ({ id, nome }));
+        
+        console.log("%c[Teste RPM] Busca finalizada!", "color: green; font-weight: bold;");
+        console.log(`[Teste RPM] Total de concedentes únicos encontrados: ${totalConcedentes.length}`);
+        console.table(totalConcedentes);
+        
+        if (ui) {
+            ui.hideLoader();
+            if (typeof ui.showToast === 'function') {
+                ui.showToast(`Teste finalizado! ${totalConcedentes.length} concedentes encontrados na RPM. Veja o console.`, 'success');
+            }
+        }
+        
+        return totalConcedentes;
+        
+    } catch (error) {
+        console.error("[Teste RPM] Erro na rotina de teste:", error);
+        if (ui) {
+            ui.hideLoader();
+            if (typeof ui.showToast === 'function') {
+                ui.showToast(`Erro no teste: ${error.message}`, 'error');
+            }
+        }
+        throw error;
+    }
+}
         
         const totalConcedentes = Array.from(concedentesMap).map(([id, nome]) => ({ id, nome }));
         
