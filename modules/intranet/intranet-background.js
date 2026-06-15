@@ -202,7 +202,7 @@ export async function handleIntranetMessages(request, sender) {
                 
                 // Procurar a unidade correspondente ao código 'c' do usuário
                 logBg(`[BG-Identificação] Buscando unidade alvo pelo código c: "${c}"...`);
-                const targetUnit = parsedData.find(unit => String(unit.code) === String(c));
+                const targetUnit = parsedData.find(unit => String(unit.codigoSecao) === String(c));
                 
                 if (!targetUnit) {
                     logBg(`[BG-Identificação] Unidade/seção do usuário (${c}) não encontrada na árvore de subunidades da região/unidade (${e}).`);
@@ -212,8 +212,8 @@ export async function handleIntranetMessages(request, sender) {
                 logBg(`[BG-Identificação] Unidade correspondente encontrada na árvore: ${JSON.stringify(targetUnit)}`);
                 
                 // O nome da seção do usuário deve ser a hierarquia inversa sem a RPM.
-                // Exemplo: se hierarchyPath for "15 RPM / 19 BPM / 232 CIA PM / 1 PEL / 2 GP / SGPM PM",
-                // a seção será "SGPM PM / 2 GP / 1 PEL / 232 CIA PM / 19 BPM"
+                // Exemplo: se hierarchyPath for "15 RPM/19 BPM/232 CIA PM/1 PEL/2 GP/SGPM PM",
+                // a seção será "SGPM PM/2 GP/1 PEL/232 CIA PM/19 BPM"
                 let nomeSecao = targetUnit.unitName;
                 if (targetUnit.hierarchyPath) {
                     const partes = targetUnit.hierarchyPath.split(/\s*\/\s*/).map(p => p.trim()).filter(Boolean);
@@ -240,7 +240,7 @@ export async function handleIntranetMessages(request, sender) {
                 // O município e o código do município já vêm processados e herdados do offscreen parser.
                 // Fallback para município utiliza a folha limpa da seção (unitName) para evitar usar a hierarquia inversa longa.
                 let municipio = normalizarMunicipio(targetUnit.municipio || targetUnit.unitName);
-                let codigoMunicipio = targetUnit.codigoMunicipio || targetUnit.code;
+                let codigoMunicipio = targetUnit.codigoMunicipio || targetUnit.codigoSecao;
                 
                 logBg(`[BG-Tratamento] Município e código resolvidos diretamente do parser offscreen (com suporte a herança hierárquica): ${JSON.stringify({
                     municipioOriginalNoNode: targetUnit.municipio,
@@ -251,7 +251,7 @@ export async function handleIntranetMessages(request, sender) {
                 
                 const resData = {
                     success: true,
-                    codigoSecao: targetUnit.code,
+                    codigoSecao: targetUnit.codigoSecao,
                     nomeSecao: nomeSecao,
                     municipio: municipio,
                     codigoMunicipio: codigoMunicipio,
