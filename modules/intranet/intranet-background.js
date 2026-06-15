@@ -295,6 +295,13 @@ export async function handleIntranetMessages(request, sender) {
                     bgLogs: bgLogs
                 };
                 
+                try {
+                    await browser.storage.local.set({ sic3_unidades_rpm: parsedData });
+                    logBg(`[BG-Identificação] Cache de unidades gravado com sucesso no storage local (chave 'sic3_unidades_rpm', ${parsedData.length} registros).`);
+                } catch (storageErr) {
+                    logBg(`[BG-Erro Storage] Falha ao salvar cache de unidades: ${storageErr.message}`);
+                }
+                
                 logBg(`[BG-Identificação] Processo finalizado com sucesso no background. Detalhe das chaves obtidas:
                 - codigoSecao: "${resData.codigoSecao}" (Chave 'c' do Tokiuz do usuário, correspondente ao ID na árvore)
                 - nomeSecao: "${resData.nomeSecao}" (Nome limpo da seção funcional extraído da árvore)
