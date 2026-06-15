@@ -247,19 +247,28 @@ export async function obterConveniosDeConcedentes(concedentes, includeCPE = fals
 export async function obterListaConcedentes(municipioFiltro = 'todos', docContext = null) {
     let doc = docContext;
     
-    if (!doc) {
-        if (typeof document !== 'undefined') {
+    // No frontend, tenta ler do document atual se ele possuir os links de concedente
+    if (!doc && typeof document !== 'undefined') {
+        const links = document.querySelectorAll('a[href*="concedente/view?id="]');
+        if (links.length > 0) {
             doc = document;
+        }
+    }
+    
+    // Se não tiver doc (background ou no frontend em uma página que não possui os links)
+    if (!doc) {
+        const urlPainel = 'https://intranet.policiamilitar.mg.gov.br/lite/convenio/web/';
+        const res = await fetchWithKeepAlive(urlPainel);
+        if (!res.ok) {
+            throw new Error(`Erro ao obter painel do SIRCONV: ${res.status}`);
+        }
+        const html = await res.text();
+        
+        if (typeof DOMParser !== 'undefined') {
+            // Frontend: parseia localmente usando DOMParser
+            doc = new DOMParser().parseFromString(html, 'text/html');
         } else {
-            // Background: Faz requisição na página inicial do painel SIRCONV
-            const urlPainel = 'https://intranet.policiamilitar.mg.gov.br/lite/convenio/web/';
-            const res = await fetchWithKeepAlive(urlPainel);
-            if (!res.ok) {
-                throw new Error(`Erro ao obter painel do SIRCONV: ${res.status}`);
-            }
-            const html = await res.text();
-            
-            // Background delega o parsing de links para o offscreen
+            // Background: delega o parsing de links para o offscreen
             const parseRes = await sendMessageToOffscreen('parse-concedentes-links', { html });
             if (parseRes.error) {
                 throw new Error(`Erro no offscreen ao parsear concedentes: ${parseRes.error}`);
@@ -277,7 +286,7 @@ export async function obterListaConcedentes(municipioFiltro = 'todos', docContex
         }
     }
     
-    // Processamento com DOM (seja front-end ou offscreen)
+    // Processamento com DOM (seja front-end com doc do local/fetch ou offscreen local)
     const links = doc.querySelectorAll('a[href*="concedente/view?id="]');
     const cMap = new Map();
     links.forEach(l => {
