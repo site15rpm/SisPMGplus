@@ -2,7 +2,7 @@
 import { sendMessageToBackground, getCookie } from '../../common/utils.js';
 import { iconSVG_28 } from '../../common/icon.js';
 import { obterConveniosAtivosJSON, obterConveniosDeConcedentes } from '../../common/busca-convenios.js';
-import { obterListaConcedentes, rodarTesteConcedentesRPM } from '../../common/busca-concedentes.js';
+import { obterListaConcedentes, rodarTesteConcedentesRPM, obterMunicipiosDaRPM } from '../../common/busca-concedentes.js';
 
 /**
  * Módulo Dashboard SIRCONV
@@ -21,6 +21,7 @@ export class SirconvDashboardModule {
         this.consolidatedData = []; // Array de registros achatados para consolidação
         this.filteredData = [];
         this.activeFilters = {}; 
+        this.rpmMunicipios = []; // Nomes dos municípios da RPM do usuário logado
         this.lastFiltros = { tipoBusca: 'todos', tipo: 'todos', periodo: 'todos', manual: '', municipio: 'todos', includeCPE: false };
         this.isLoading = false;
         this.activeConvId = null;
@@ -547,13 +548,26 @@ export class SirconvDashboardModule {
         statusEl.querySelector('span').innerText = message;
     }
 
-    showFilterSidebar() {
+    async showFilterSidebar() {
         const layout = document.getElementById('sispmg-dashboard-layout'), sidebar = document.getElementById('sispmg-dashboard-sidebar');
         if (!layout || !sidebar) return;
+        
+        if (this.rpmMunicipios.length === 0) {
+            if (this.ui) this.ui.showLoader('Carregando municípios da sua RPM...');
+            try {
+                this.rpmMunicipios = await obterMunicipiosDaRPM();
+            } catch (err) {
+                console.error("Erro ao obter municípios da RPM:", err);
+                this.rpmMunicipios = [...new Set(this.conveniosData.map(c => this.getMunicipioClean(c.CONCEDENTE)))].sort();
+            } finally {
+                if (this.ui) this.ui.hideLoader();
+            }
+        }
+
         layout.classList.remove('audit-active'); layout.classList.add('filter-active'); sidebar.classList.add('active');
         
         this.updateActionButtons();
-        const municipios = [...new Set(this.conveniosData.map(c => this.getMunicipioClean(c.CONCEDENTE)))].sort();
+        const municipios = this.rpmMunicipios;
 
         sidebar.innerHTML = `
             <div style="display: flex; flex-direction: column; height: 100%; padding: 0;">

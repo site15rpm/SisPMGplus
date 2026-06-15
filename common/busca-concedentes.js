@@ -329,7 +329,44 @@ export async function rodarTesteConcedentesRPM() {
     }
 }
 
+/**
+ * Obtém a lista única e ordenada de municípios da RPM do usuário logado.
+ * Identifica a RPM a partir do token tokiuz e busca as unidades principais.
+ * @returns {Promise<Array>} Lista de nomes de municípios.
+ */
+export async function obterMunicipiosDaRPM() {
+    const token = getCookie('tokiuz');
+    if (!token) {
+        throw new Error("Token 'tokiuz' não encontrado. Faça login na Intranet novamente.");
+    }
+    
+    const decoded = decodeJwt(token);
+    if (!decoded) {
+        throw new Error("Não foi possível decodificar o token tokiuz.");
+    }
+    
+    const userRegionCode = String(decoded.e || '');
+    if (!userRegionCode) {
+        throw new Error("Código de região (RPM) do usuário não encontrado no token tokiuz.");
+    }
+    
+    const unidades = await obterUnidades(userRegionCode, true, false);
+    const municipiosSet = new Set();
+    
+    unidades.forEach(u => {
+        if (u.municipio) {
+            const muni = u.municipio.trim().toUpperCase();
+            if (muni) {
+                municipiosSet.add(muni);
+            }
+        }
+    });
+    
+    return Array.from(municipiosSet).sort();
+}
+
 // Expõe globalmente se rodando no ambiente de navegador com window
 if (typeof window !== 'undefined') {
     window.rodarTesteConcedentesRPM = rodarTesteConcedentesRPM;
+    window.obterMunicipiosDaRPM = obterMunicipiosDaRPM;
 }
