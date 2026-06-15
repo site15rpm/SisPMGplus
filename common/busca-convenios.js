@@ -237,9 +237,9 @@ export async function obterConveniosDeConcedentes(concedentes, includeCPE = fals
 }
 
 /**
- * Obtém a lista de concedentes a partir da página principal do SIRCONV.
+ * Obtém a lista de concedentes a partir da listagem do SIRCONV.
  * Se rodar no front-end com links na página, lê do document atual.
- * Se rodar no background (ou sem DOMContext), faz fetch no painel principal e analisa via offscreen.
+ * Se rodar no background (ou sem DOMContext), faz fetch na listagem de concedentes e analisa via offscreen.
  * @param {string} municipioFiltro - Filtro de município ('todos' ou o nome limpo do município)
  * @param {Document} docContext - Opcional. Documento DOM contendo a lista.
  * @returns {Promise<Array>} Lista de concedentes { id, nome }.
@@ -257,10 +257,14 @@ export async function obterListaConcedentes(municipioFiltro = 'todos', docContex
     
     // Se não tiver doc (background ou no frontend em uma página que não possui os links)
     if (!doc) {
-        const urlPainel = 'https://intranet.policiamilitar.mg.gov.br/lite/convenio/web/';
+        // Se municipioFiltro for 'todos', busca na lista geral. Caso contrário, filtra pelo nome fantasia do município
+        const urlPainel = municipioFiltro === 'todos'
+            ? 'https://intranet.policiamilitar.mg.gov.br/lite/convenio/web/concedente'
+            : `https://intranet.policiamilitar.mg.gov.br/lite/convenio/web/concedente?ConcedenteSearch%5BRAZAO_SOCIAL%5D=&ConcedenteSearch%5BNOME_FANTASIA%5D=${encodeURIComponent(municipioFiltro)}&ConcedenteSearch%5BCPF_CNPJ%5D=&ConcedenteSearch%5BATIVO%5D=S`;
+            
         const res = await fetchWithKeepAlive(urlPainel);
         if (!res.ok) {
-            throw new Error(`Erro ao obter painel do SIRCONV: ${res.status}`);
+            throw new Error(`Erro ao obter concedentes do SIRCONV: ${res.status}`);
         }
         const html = await res.text();
         
@@ -301,4 +305,13 @@ export async function obterListaConcedentes(municipioFiltro = 'todos', docContex
     });
     
     return Array.from(cMap).map(([id, nome]) => ({ id, nome }));
+}
+
+/**
+ * Busca concedentes filtrados por nome fantasia ou traz a lista completa de concedentes (busca-concedente).
+ * @param {string} nomeFantasia - Nome fantasia ou município do concedente.
+ * @returns {Promise<Array>} Lista de concedentes cadastrados no formato { id, nome }.
+ */
+export async function buscarConcedentes(nomeFantasia = '') {
+    return obterListaConcedentes(nomeFantasia || 'todos');
 }
