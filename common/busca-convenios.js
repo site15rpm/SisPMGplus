@@ -121,6 +121,33 @@ export function extrairConveniosDoConcedenteHTML(concedenteId, concedenteNome, h
     }
     razaoSocial = razaoSocial.replace(/\s*-\s*$/, '').trim();
 
+    // Se o CNPJ não foi encontrado no título, tenta buscar no corpo do documento
+    if (!cnpj) {
+        const labels = Array.from(doc.querySelectorAll('.tc.menor, td, th, label, div, span'));
+        const cnpjEl = labels.find(el => {
+            const text = el.textContent.trim().toUpperCase();
+            return text === 'CPF/CNPJ' || text === 'CPF / CNPJ' || text === 'CNPJ';
+        });
+
+        if (cnpjEl) {
+            const flexColuna = cnpjEl.closest('.flex-coluna');
+            if (flexColuna) {
+                cnpj = flexColuna.textContent.replace(cnpjEl.textContent, '').trim();
+            } else {
+                const tr = cnpjEl.closest('tr');
+                if (tr) {
+                    const tds = tr.querySelectorAll('td');
+                    if (tds.length > 0) {
+                        cnpj = tds[tds.length - 1].textContent.trim();
+                    }
+                }
+                if (!cnpj && cnpjEl.nextElementSibling) {
+                    cnpj = cnpjEl.nextElementSibling.textContent.trim();
+                }
+            }
+        }
+    }
+
     const targetH = Array.from(doc.querySelectorAll('h2')).find(h => h.textContent.includes('Convênios firmados'));
     
     if (targetH?.parentElement) {
