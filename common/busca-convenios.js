@@ -108,6 +108,19 @@ export function extrairConveniosDoConcedenteHTML(concedenteId, concedenteNome, h
     
     const resultados = [];
     const nReal = doc.querySelector('.barra.item h2')?.innerText.trim() || concedenteNome;
+    
+    // Extrai Razão Social e CNPJ de nReal de forma robusta
+    let cnpj = '';
+    let razaoSocial = nReal.replace(/^CONCEDENTE\s*:\s*/i, '');
+    if (razaoSocial.includes('CNPJ')) {
+        const parts = razaoSocial.split(/-\s*CNPJ\s*:\s*|CNPJ\s*:\s*/i);
+        razaoSocial = parts[0].trim();
+        if (parts[1]) {
+            cnpj = parts[1].trim();
+        }
+    }
+    razaoSocial = razaoSocial.replace(/\s*-\s*$/, '').trim();
+
     const targetH = Array.from(doc.querySelectorAll('h2')).find(h => h.textContent.includes('Convênios firmados'));
     
     if (targetH?.parentElement) {
@@ -116,7 +129,7 @@ export function extrairConveniosDoConcedenteHTML(concedenteId, concedenteNome, h
             const lIdM = item.href.match(/id=(\d+)/);
             if (!lIdM) continue;
             
-            let cod = lIdM[1], face = '', val = '0', uni = '-', vigFim = '-', st = 'S', dtIni = '-';
+            let cod = lIdM[1], face = '', val = '0', uni = '-', vigFim = '-', st = 'S', dtIni = '-', prep = '-';
             const statusTexto = item.querySelector('.flex-coluna.tam-g .ne')?.innerText.trim() || '';
             const isInactive = statusTexto.toLowerCase().includes('cancelado') || statusTexto.toLowerCase().includes('finalizado');
             if (isInactive) st = 'N';
@@ -130,6 +143,8 @@ export function extrairConveniosDoConcedenteHTML(concedenteId, concedenteNome, h
                     cod = v;
                 } else if (lbl.includes('face')) {
                     face = v;
+                } else if (lbl.includes('Preposto')) {
+                    prep = v;
                 } else if (lbl.includes('Valor')) {
                     val = v;
                 } else if (lbl.includes('Unidade')) {
@@ -155,7 +170,8 @@ export function extrairConveniosDoConcedenteHTML(concedenteId, concedenteNome, h
             resultados.push({
                 ID: String(cod),
                 NUMERO_FACE: face || '-',
-                CONCEDENTE: nReal,
+                PREPOSTO: prep || '-',
+                CONCEDENTE: razaoSocial,
                 CONCEDENTE_ID: String(concedenteId),
                 UNI_NOME_PRINCIPAL: uni,
                 DTINICIAL: dtIni,
@@ -163,7 +179,9 @@ export function extrairConveniosDoConcedenteHTML(concedenteId, concedenteNome, h
                 VALOR_ESTIMADO: cleanVal,
                 ATIVO: st,
                 STATUS_TEXTO: statusTexto,
-                VENCIDO: vencido
+                VENCIDO: vencido,
+                CNPJ: cnpj,
+                RAZAO_SOCIAL: razaoSocial
             });
         }
     }
@@ -218,6 +236,20 @@ export async function obterConveniosDeConcedentes(concedentes, includeCPE = fals
                     conveniosDoConcedente = parseRes.data || [];
                 }
             }
+            
+            // Associa os dados da unidade e do concedente ao convênio extraído
+            conveniosDoConcedente.forEach(conv => {
+                conv.CNPJ = conv.CNPJ || c.cnpj || '';
+                conv.RAZAO_SOCIAL = conv.RAZAO_SOCIAL || c.razaoSocial || c.nome;
+                
+                // Copia as propriedades de unidade vindas da busca de concedentes da RPM
+                if (c.unidadeNivel !== undefined) conv.unidadeNivel = c.unidadeNivel;
+                if (c.unidadeHierarquia !== undefined) conv.unidadeHierarquia = c.unidadeHierarquia;
+                if (c.unidadeCodigoSecao !== undefined) conv.unidadeCodigoSecao = c.unidadeCodigoSecao;
+                if (c.unidadeSecao !== undefined) conv.unidadeSecao = c.unidadeSecao;
+                if (c.unidadeCodigoMunicipio !== undefined) conv.unidadeCodigoMunicipio = c.unidadeCodigoMunicipio;
+                if (c.unidadeMunicipio !== undefined) conv.unidadeMunicipio = c.unidadeMunicipio;
+            });
             
             resultados.push(...conveniosDoConcedente);
             
