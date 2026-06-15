@@ -45,7 +45,7 @@ const addUnidadesLog = async (message, system = 'UNIDADES', type = 'info') => {
 
 function convertToCSV(data) {
     if (!data || data.length === 0) throw new Error('Nenhum dado para converter.');
-    const headers = ["Hierarquia Completa", "Unidade", "Código", "Município", "Código Município"];
+    const headers = ["Hierarquia Completa", "Unidade", "Código", "Nível", "Município", "Código Município"];
     const escapeCSV = (value) => {
         if (value === null || value === undefined) return '';
         const str = String(value);
@@ -57,7 +57,7 @@ function convertToCSV(data) {
     const rows = [headers.join(';')];
     data.forEach(item => {
         const row = [
-            item.hierarquia, item.nomeSecao, item.codigoSecao,
+            item.hierarquia, item.nomeSecao, item.codigoSecao, item.nivel,
             item.municipio, item.codigoMunicipio
         ].map(escapeCSV);
         rows.push(row.join(';'));
