@@ -255,19 +255,50 @@ export async function rodarTesteConcedentesRPM() {
             const termo = termosLista[i];
             if (ui) ui.updateLoaderMessage(`Processando concedentes de ${termo} (${i + 1}/${totalTermos})...`);
             
+            // Encontra a unidade correspondente a este termo de busca para vincular seus dados
+            const conectivos = ["DE", "DA", "DO", "DOS", "DAS", "E"];
+            const palavrasTermo = normalizarComp(termo)
+                .split(/\s+/)
+                .filter(p => !conectivos.includes(p) && p !== "");
+            const patternTermo = palavrasTermo.join(".*");
+            const regexTermo = new RegExp("^" + patternTermo + "$", "i");
+            
+            // Filtra as unidades que batem com o município (ordena por menor nível para priorizar a principal)
+            const unidadesCorrespondentes = unidades.filter(u => {
+                const muniNorm = normalizarComp(u.municipio);
+                return regexTermo.test(muniNorm);
+            });
+            unidadesCorrespondentes.sort((a, b) => a.nivel - b.nivel);
+            const unidadeOrigem = unidadesCorrespondentes[0] || null;
+            
             try {
                 // Passamos o docGeral já parseado para filtrar na memória localmente
                 const list = await obterListaConcedentes(termo, docGeral);
                 console.log(`[Teste RPM] Termo ${termo} retornou ${list.length} concedentes.`);
                 list.forEach(c => {
-                    concedentesMap.set(String(c.id), c.nome);
+                    const concedenteId = String(c.id);
+                    
+                    // Cria o objeto do concedente mesclado com todas as informações da unidade correspondente
+                    const dadosVinculados = {
+                        id: concedenteId,
+                        nome: c.nome,
+                        // Informações detalhadas da Unidade de origem da busca:
+                        unidadeNivel: unidadeOrigem ? unidadeOrigem.nivel : null,
+                        unidadeHierarquia: unidadeOrigem ? unidadeOrigem.hierarquia : null,
+                        unidadeCodigoSecao: unidadeOrigem ? unidadeOrigem.codigoSecao : null,
+                        unidadeSecao: unidadeOrigem ? unidadeOrigem.secao : null,
+                        unidadeCodigoMunicipio: unidadeOrigem ? unidadeOrigem.codigoMunicipio : null,
+                        unidadeMunicipio: unidadeOrigem ? unidadeOrigem.municipio : null
+                    };
+                    
+                    concedentesMap.set(concedenteId, dadosVinculados);
                 });
             } catch (err) {
                 console.error(`[Teste RPM] Erro ao processar concedentes para o termo ${termo}:`, err);
             }
         }
         
-        const totalConcedentes = Array.from(concedentesMap).map(([id, nome]) => ({ id, nome }));
+        const totalConcedentes = Array.from(concedentesMap.values());
         
         console.log("%c[Teste RPM] Busca finalizada!", "color: green; font-weight: bold;");
         console.log(`[Teste RPM] Total de concedentes únicos encontrados: ${totalConcedentes.length}`);
