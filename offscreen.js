@@ -235,8 +235,8 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
                              logParser(`  > unitName resultante (hierarquia inversa): "${unitName}"`);
                              
                              parsedData.push({
-                                 hierarchyPath,
-                                 unitName,
+                                 hierarquia: hierarchyPath,
+                                 nomeSecao: unitName,
                                  codigoSecao: code,
                                  municipio: municipioStack[stackIndex] || "",
                                  codigoMunicipio: codigoMunicipioStack[stackIndex] || ""
