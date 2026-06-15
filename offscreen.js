@@ -238,6 +238,7 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
                                  hierarquia: hierarchyPath,
                                  nomeSecao: unitName,
                                  codigoSecao: code,
+                                 nivel: level,
                                  municipio: municipioStack[stackIndex] || "",
                                  codigoMunicipio: codigoMunicipioStack[stackIndex] || ""
                              });
