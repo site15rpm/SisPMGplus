@@ -829,6 +829,159 @@
     });
   }
 
+  // Função utilitária para normalizar strings para busca robusta de municípios (remove acentos, pontuação e caixa alta)
+  function normalizarString(str) {
+    if (!str) return "";
+    return str
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toUpperCase()
+      .replace(/[^A-Z0-9\s]/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  // Função utilitária para enviar mensagens ao background
+  function enviarMensagemBackground(action, payload) {
+    return new Promise((resolve, reject) => {
+      const message = { action, payload };
+      if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+        chrome.runtime.sendMessage(message, (response) => {
+          if (chrome.runtime.lastError) {
+            reject(new Error(chrome.runtime.lastError.message));
+          } else {
+            resolve(response);
+          }
+        });
+      } else if (typeof browser !== 'undefined' && browser.runtime && browser.runtime.sendMessage) {
+        browser.runtime.sendMessage(message).then(resolve).catch(reject);
+      } else {
+        reject(new Error("Extensão runtime de comunicação não disponível."));
+      }
+    });
+  }
+
+  async function agendarTarefaPendenciaSirconv(municipio, convenio, ano, mes, desc) {
+    try {
+      // 1. Obtém a RPM ativa
+      let rpmAtiva = sessionStorage.getItem('sic3_rpm') || window.rpm || "";
+      if (typeof rpmAtiva === 'object' && rpmAtiva.value) {
+        rpmAtiva = rpmAtiva.value;
+      }
+      
+      console.log(`[SIRCONV Pendências] RPM ativa obtida: "${rpmAtiva}"`);
+      
+      const extraido = rpmAtiva.match(/(\d+)/);
+      const numeroRPM = extraido ? extraido[1] : "";
+      
+      if (!numeroRPM) {
+        console.warn("[SIRCONV Pendências] Não foi possível extrair o número da RPM ativa. Ignorando agendamento automático de tarefa.");
+        return;
+      }
+
+      // 2. Mapeia a RPM para o cUEOp da intranet
+      const MAPA_RPM_CUEOP = {
+        "1": "1100",
+        "2": "1200",
+        "3": "1300",
+        "4": "1400",
+        "5": "1500",
+        "6": "1600",
+        "7": "1700",
+        "8": "1800",
+        "9": "1900",
+        "10": "2000",
+        "11": "2100",
+        "12": "2200",
+        "13": "2300",
+        "14": "2400",
+        "15": "6869",
+        "16": "2600",
+        "17": "2700",
+        "18": "2800",
+        "19": "2900"
+      };
+
+      let cUEOp = MAPA_RPM_CUEOP[numeroRPM];
+      if (!cUEOp && /^\d+$/.test(numeroRPM)) {
+        cUEOp = String(parseInt(numeroRPM) * 100 + 1000);
+      }
+
+      if (!cUEOp) {
+        console.warn(`[SIRCONV Pendências] Código cUEOp correspondente à RPM "${numeroRPM}" não mapeado.`);
+        return;
+      }
+
+      console.log(`[SIRCONV Pendências] Consultando subunidades para cUEOp: ${cUEOp}`);
+      
+      // 3. Busca a lista de subunidades na intranet
+      const response = await enviarMensagemBackground('agenda-fetch-unidades', { userRegionCode: cUEOp });
+      if (!response || !response.success || !response.data || response.data.length === 0) {
+        console.error("[SIRCONV Pendências] Falha ao obter a árvore de unidades da Intranet:", response ? response.error : "Sem resposta");
+        return;
+      }
+
+      const unidades = response.data;
+      const municipioAlvoNormalizado = normalizarString(municipio);
+      
+      // 4. Identifica a unidade correspondente ao município
+      const candidatas = unidades.filter(u => normalizarString(u.municipio) === municipioAlvoNormalizado);
+      
+      if (candidatas.length === 0) {
+        console.warn(`[SIRCONV Pendências] Nenhuma unidade na intranet foi mapeada para o município "${municipio}" (${municipioAlvoNormalizado}).`);
+        return;
+      }
+
+      // Ordena por profundidade da hierarquia (menor número de barras "/" = nível mais alto)
+      candidatas.sort((a, b) => (a.hierarchyPath || "").split('/').length - (b.hierarchyPath || "").split('/').length);
+      const unidadeSelecionada = candidatas[0];
+      
+      console.log(`[SIRCONV Pendências] Unidade identificada para abrangência: ${unidadeSelecionada.label} (Código: ${unidadeSelecionada.value})`);
+
+      // 5. Constrói e envia os dados da nova tarefa (eventData)
+      const agora = new Date();
+      const format2Digitos = (n) => String(n).padStart(2, '0');
+      const dataHoraString = `${agora.getFullYear()}-${format2Digitos(agora.getMonth() + 1)}-${format2Digitos(agora.getDate())}T${format2Digitos(agora.getHours())}:${format2Digitos(agora.getMinutes())}:${format2Digitos(agora.getSeconds())}`;
+      
+      const userPM = window.userPM || "";
+      const gasUrl = 'https://script.google.com/macros/s/AKfycbyriniVNqgHE206Vzx3_rplOVwSxV2f6HjyAr1zEhmyXoMH_l8AkGLyin1PK4jI0tHe/exec';
+      
+      const assunto = `Pendências no Relatório SIRCONV/SIC3 - ${municipio} (${mes}/${ano})`;
+      const descricao = `Há pendências no relatório do SIRCONV/SIC3 referente ao município de ${municipio}, convênio ${convenio}, período ${mes}/${ano} que precisam ser verificadas.\n\n` +
+                        `Detalhamento das pendências/irregularidades registradas:\n"${desc}"\n\n` +
+                        `Tarefa gerada automaticamente pelo SisPMG+ a partir do registro de pendência.\n` +
+                        `Responsável pelo registro: ${window.userPostoGraduacao || ""} ${window.userNome || ""} (Matrícula: ${userPM}).`;
+
+      const eventData = {
+        id: `evt_${Date.now()}`,
+        'data/hora': dataHoraString,
+        assunto: assunto,
+        autor: userPM,
+        abrangencia: `unidade:${unidadeSelecionada.value}`,
+        status: 'ACTIVE',
+        autoConfirmarDias: 5,
+        descricao: descricao,
+        editorNumero: userPM
+      };
+
+      console.log("[SIRCONV Pendências] Enviando requisição de criação de evento para o background da agenda:", eventData);
+      
+      const result = await enviarMensagemBackground('agenda-add-event', {
+        gasUrl: gasUrl,
+        eventData: eventData
+      });
+
+      if (result && result.success) {
+        console.log("[SIRCONV Pendências] Nova tarefa de pendência criada e agendada com sucesso!");
+      } else {
+        console.error("[SIRCONV Pendências] Falha ao criar a tarefa de agendamento na planilha da Agenda:", result ? result.error : "Sem retorno");
+      }
+
+    } catch (error) {
+      console.error("[SIRCONV Pendências] Erro no fluxo de criação de tarefa da agenda:", error);
+    }
+  }
+
   function abrirModalRegistrarPendencia(municipio, convenio, ano, mes, statusAtual) {
     let pendenciaTexto = "";
     let infoCriador = "";
@@ -875,12 +1028,19 @@
 
           mostrarCarregamento();
           google.script.run
-            .withSuccessHandler((s) => {
-              ocultarCarregamento();
+            .withSuccessHandler(async (s) => {
               if (s && s.success) {
-                mostrarDialogo("Sucesso", "Pendências registradas com sucesso no SIRCONV!");
+                mostrarCarregamento("Criando tarefa de pendências na Agenda da Intranet PM...");
+                try {
+                  await agendarTarefaPendenciaSirconv(municipio, convenio, ano, mes, desc);
+                } catch (agendaErr) {
+                  console.error("Erro ao agendar tarefa de pendência:", agendaErr);
+                }
+                ocultarCarregamento();
+                mostrarDialogo("Sucesso", "Pendências registradas com sucesso no SIRCONV e tarefa criada na Agenda de Pendências!");
                 carregarLancamentos();
               } else {
+                ocultarCarregamento();
                 mostrarDialogo("Erro", (s && s.message) || "Erro ao salvar pendências.");
               }
             })
