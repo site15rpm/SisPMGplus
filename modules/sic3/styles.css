@@ -651,3 +651,11 @@ body {
   border-color: var(--cor-caqui) !important;
   box-shadow: 0 0 0 3px rgba(160, 143, 99, 0.15) !important;
 }
+
+/* Correção do z-index para diálogos do jQuery UI ficarem acima de overlays de carregamento */
+.ui-dialog {
+  z-index: 10005 !important;
+}
+.ui-widget-overlay {
+  z-index: 10004 !important;
+}
