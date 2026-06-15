@@ -83,7 +83,7 @@ async function sendToGoogleSheets(data, gasId) {
     return result;
 }
 
-async function executeExtraction(userId) {
+async function executeExtraction(userId, settingsOverride = null) {
     if (isExtractionRunning) {
         console.log("SisPMG+ [Unidades]: Extração já em andamento.");
         return { success: false, error: 'Extração já em andamento' };
@@ -93,12 +93,17 @@ async function executeExtraction(userId) {
     
     try {
         await addUnidadesLog('Iniciando extração de unidades...', 'SISTEMA', 'info');
-        const { [STORAGE_SETTINGS_KEY]: settings } = await browser.storage.local.get(STORAGE_SETTINGS_KEY);
+        let settings = settingsOverride;
+        if (!settings) {
+            const { [STORAGE_SETTINGS_KEY]: storedSettings } = await browser.storage.local.get(STORAGE_SETTINGS_KEY);
+            settings = storedSettings;
+        }
+
         if (!settings || !settings.codigoUnidade) {
             throw new Error('Configurações não encontradas. Configure o módulo antes de extrair.');
         }
 
-        const parsedData = await obterUnidades(settings.codigoUnidade, settings.exibirCodigo, settings.uniPrinc);
+        const parsedData = await obterUnidades(settings.codigoUnidade, settings.exibirCodigo ?? true, settings.uniPrinc ?? false);
         if (!parsedData || parsedData.length === 0) throw new Error('Nenhum dado encontrado na resposta.');
 
         await addUnidadesLog(`${parsedData.length} unidades extraídas.`, 'SISTEMA', 'success');
@@ -213,7 +218,7 @@ export async function handleUnidadesMessages(request, sender) {
         case 'unidades-extract-now': {
             // Para execução manual, podemos pegar o usuário de um contexto recente se disponível
             const { userPM } = (await browser.storage.local.get('lastUserContext'))?.lastUserContext || {};
-            const result = await executeExtraction(userPM || 'manual');
+            const result = await executeExtraction(userPM || 'manual', payload?.settings);
             return result;
         }
 

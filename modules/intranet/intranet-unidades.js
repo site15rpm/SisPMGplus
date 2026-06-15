@@ -300,7 +300,18 @@ class UnidadesModalHandler {
 
             await this._logFeedback('Extração manual iniciada pelo usuário.', 'info');
 
-            const response = await sendMessageToBackground('unidades-extract-now', {});
+            const settingsTemp = {
+                codigoUnidade: document.getElementById('unidades-codigo-unidade').value.trim(),
+                exibirCodigo: document.getElementById('unidades-exibir-codigo').checked,
+                uniPrinc: document.getElementById('unidades-uni-princ').checked
+            };
+
+            if (!settingsTemp.codigoUnidade) {
+                await this._showInfoModal('Por favor, informe o código da unidade (cUEOp) antes de extrair.', 'error');
+                return;
+            }
+
+            const response = await sendMessageToBackground('unidades-extract-now', { settings: settingsTemp });
             
             if (response.success) {
                 console.log("SisPMG+ [Unidades Extraídas no Front-end]:", response.data);
