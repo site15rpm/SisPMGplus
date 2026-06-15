@@ -235,12 +235,12 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
                              logParser(`  > unitName resultante (hierarquia inversa): "${unitName}"`);
                              
                              parsedData.push({
-                                 hierarquia: hierarchyPath,
-                                 nomeSecao: unitName,
-                                 codigoSecao: code,
                                  nivel: level,
-                                 municipio: municipioStack[stackIndex] || "",
-                                 codigoMunicipio: codigoMunicipioStack[stackIndex] || ""
+                                 hierarquia: hierarchyPath,
+                                 codigoSecao: code,
+                                 secao: unitName,
+                                 codigoMunicipio: codigoMunicipioStack[stackIndex] || "",
+                                 municipio: municipioStack[stackIndex] || ""
                              });
                         });
 
