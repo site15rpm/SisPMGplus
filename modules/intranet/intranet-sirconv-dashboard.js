@@ -196,9 +196,10 @@ export class SirconvDashboardModule {
     }
 
     showDashboard() {
+        if (this.ui) this.ui.showLoader('Carregando Dashboard...');
         document.body.style.overflow = 'hidden';
         const container = document.getElementById('sispmg-plus-container');
-        if (!container) return;
+        if (!container) { if (this.ui) this.ui.hideLoader(); return; }
 
         document.getElementById('sispmg-sirconv-dashboard-overlay')?.remove();
         this.currentView = 'meus';
@@ -306,7 +307,7 @@ export class SirconvDashboardModule {
         overlay.onclick = (e) => { if (e.target === overlay) this.closeAllFilterDropdowns(); };
         modalContainer.onclick = () => this.closeAllFilterDropdowns();
 
-        this.fetchConveniosData({ tipoBusca: 'ativos' });
+        this.fetchConveniosData({ tipoBusca: 'ativos' }, false, true);
     }
 
     showConsolidationSidebar() {
@@ -613,7 +614,7 @@ export class SirconvDashboardModule {
         };
     }
 
-    async fetchConveniosData(filtrosInput = null, waitForAudit = false) {
+    async fetchConveniosData(filtrosInput = null, waitForAudit = false, isInitialLoad = false) {
         if (this.isLoading) {
             console.log("[Dashboard] Já existe uma busca em andamento. Ignorando nova solicitação.");
             return;
@@ -623,9 +624,9 @@ export class SirconvDashboardModule {
         const { tipoBusca, municipio, includeCanceled } = this.lastFiltros;
 
         this.isLoading = true;
-        const exibirLoader = (tipoBusca === 'todos');
+        const exibirLoader = (tipoBusca === 'todos') || isInitialLoad;
         if (exibirLoader && this.ui) {
-            this.ui.showLoader('Iniciando varredura profunda de concedentes...');
+            this.ui.showLoader(isInitialLoad ? 'Carregando seus convênios ativos...' : 'Iniciando varredura profunda de concedentes...');
         }
 
         try {
