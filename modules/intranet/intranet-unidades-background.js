@@ -1,6 +1,6 @@
 // Arquivo: modules/intranet/intranet-unidades-background.js
 // Lógica de background específica para o módulo de Extração de Unidades.
-import { fetchWithKeepAlive } from '../../common/keep-alive.js';
+import { obterUnidades } from '../../common/unidades-util.js';
 
 // --- Constantes ---
 const STORAGE_SETTINGS_KEY = 'unidadesSettings';
@@ -41,114 +41,11 @@ const addUnidadesLog = async (message, system = 'UNIDADES', type = 'info') => {
     }
 };
 
-// --- FUNÇÕES OFFSCREEN ---
-async function setupOffscreenDocument(path) {
-    try {
-        if (typeof browser.offscreen !== 'undefined') {
-            let existingContexts = [];
-            try {
-                if (typeof browser.runtime.getContexts === 'function') {
-                    existingContexts = await browser.runtime.getContexts({
-                        contextTypes: ['OFFSCREEN_DOCUMENT'],
-                        documentUrls: [browser.runtime.getURL(path)]
-                    });
-                }
-            } catch (e) { /* ignore */ }
-
-            if (existingContexts.length > 0) return;
-
-            await browser.offscreen.createDocument({
-                url: path,
-                reasons: [browser.offscreen.Reason.DOM_PARSER],
-                justification: 'Parse HTML content',
-            });
-        } else {
-            // Fallback Firefox
-            if (document.getElementById('sispmg-offscreen-iframe')) return;
-            const iframe = document.createElement('iframe');
-            iframe.id = 'sispmg-offscreen-iframe';
-            iframe.src = browser.runtime.getURL(path);
-            iframe.style.display = 'none';
-            document.body.appendChild(iframe);
-            await new Promise(resolve => { iframe.onload = () => setTimeout(resolve, 300); });
-        }
-    } catch (e) {
-        if (e.message && !e.message.includes('Only a single offscreen document may be created.')) {
-            console.error("SisPMG+ [Offscreen]: Erro ao configurar documento offscreen.", e);
-            throw e;
-        }
-    }
-}
-
-async function sendMsgToOffscreen(action, data) {
-    try {
-        await setupOffscreenDocument(OFFSCREEN_DOCUMENT_PATH);
-        const response = await browser.runtime.sendMessage({
-            target: 'offscreen',
-            action: action,
-            ...data
-        });
-        return response;
-    } catch (error) {
-        console.error(`SisPMG+ [Offscreen]: Erro ao enviar/receber mensagem para offscreen (${action}):`, error);
-        return { error: `Falha na comunicação com offscreen (${action})` };
-    }
-}
-
-async function closeOffscreenDocument() {
-    try {
-        if (typeof browser.offscreen !== 'undefined') {
-            const contexts = await browser.runtime.getContexts({ contextTypes: ['OFFSCREEN_DOCUMENT'] });
-            if (contexts.length > 0) {
-                await browser.offscreen.closeDocument();
-            }
-        } else {
-            document.getElementById('sispmg-offscreen-iframe')?.remove();
-        }
-    } catch (closeError) {
-        // Ignora erros se o documento já foi fechado
-    }
-}
-
-// --- FUNÇÕES DE EXTRAÇÃO ---
-
-async function fetchUnidadesData(settings) {
-    const url = "https://intranet.policiamilitar.mg.gov.br/legado/operacoes/unidades/endereco.asp";
-    const bodyParams = new URLSearchParams({
-        acao: 'Consulta',
-        cUEOp: settings.codigoUnidade || '6869'
-    });
-
-    if (settings.exibirCodigo) bodyParams.append('ExibeCodigo', '1');
-    if (settings.verEndereco) bodyParams.append('cVerEnd', '1');
-    if (settings.uniPrinc) bodyParams.append('UniPrinc', '1');
-
-    const response = await fetchWithKeepAlive(url, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
-        },
-        body: bodyParams.toString(),
-        credentials: 'include'
-    });
-    
-    if (!response.ok) throw new Error(`Erro na requisição: ${response.status} ${response.statusText}`);
-
-    const buffer = await response.arrayBuffer();
-    const decoder = new TextDecoder("iso-8859-1");
-    return decoder.decode(buffer);
-}
-
-async function parseUnidadesHTML(htmlText) {
-    const result = await sendMsgToOffscreen('parse-unidades-html', { html: htmlText });
-    if (result.error) throw new Error(result.error);
-    return result.data;
-}
+// --- FUNÇÕES DE EXTRAÇÃO REMOVIDAS (UTILIZANDO O UTILITÁRIO CENTRAL) ---
 
 function convertToCSV(data) {
     if (!data || data.length === 0) throw new Error('Nenhum dado para converter.');
-    const headers = ["Hierarquia Completa", "Unidade", "Código", "Localidade", "Endereço", "CEP"];
+    const headers = ["Hierarquia Completa", "Unidade", "Código", "Município", "Código Município"];
     const escapeCSV = (value) => {
         if (value === null || value === undefined) return '';
         const str = String(value);
@@ -161,7 +58,7 @@ function convertToCSV(data) {
     data.forEach(item => {
         const row = [
             item.hierarchyPath, item.unitName, item.code,
-            item.location, item.address, item.cep
+            item.municipio, item.codigoMunicipio
         ].map(escapeCSV);
         rows.push(row.join(';'));
     });
@@ -201,8 +98,7 @@ async function executeExtraction(userId) {
             throw new Error('Configurações não encontradas. Configure o módulo antes de extrair.');
         }
 
-        const htmlData = await fetchUnidadesData(settings);
-        const parsedData = await parseUnidadesHTML(htmlData);
+        const parsedData = await obterUnidades(settings.codigoUnidade, settings.exibirCodigo, settings.uniPrinc);
         if (!parsedData || parsedData.length === 0) throw new Error('Nenhum dado encontrado na resposta.');
 
         await addUnidadesLog(`${parsedData.length} unidades extraídas.`, 'SISTEMA', 'success');
@@ -232,7 +128,6 @@ async function executeExtraction(userId) {
         return { success: false, error: error.message };
     } finally {
         isExtractionRunning = false;
-        await closeOffscreenDocument();
     }
 }
 
