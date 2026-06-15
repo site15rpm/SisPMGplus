@@ -229,16 +229,18 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
                                 }
                             }
 
-                            const hierarchyPath = hierarchyStack.join(' / ');
-                            logParser(`  > hierarchyPath resultante: "${hierarchyPath}"`);
-                            
-                            parsedData.push({
-                                hierarchyPath,
-                                unitName: name,
-                                code,
-                                municipio: municipioStack[stackIndex] || "",
-                                codigoMunicipio: codigoMunicipioStack[stackIndex] || ""
-                            });
+                             const hierarchyPath = hierarchyStack.join('/');
+                             const unitName = [...hierarchyStack].reverse().join('/');
+                             logParser(`  > hierarchyPath resultante: "${hierarchyPath}"`);
+                             logParser(`  > unitName resultante (hierarquia inversa): "${unitName}"`);
+                             
+                             parsedData.push({
+                                 hierarchyPath,
+                                 unitName,
+                                 code,
+                                 municipio: municipioStack[stackIndex] || "",
+                                 codigoMunicipio: codigoMunicipioStack[stackIndex] || ""
+                             });
                         });
 
                         logParser(`Processamento concluído. Unidades válidas parseadas: ${parsedData.length}`);
