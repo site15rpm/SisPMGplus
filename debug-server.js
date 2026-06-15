@@ -105,17 +105,31 @@ function processIncomingData(data) {
         const snapshotDir = path.join(DEBUG_DIR, folderName);
         if (!fs.existsSync(snapshotDir)) fs.mkdirSync(snapshotDir, { recursive: true });
 
-        const snapshotFile = path.join(snapshotDir, `snapshot_${clientId}.json`);
+        // Salva o JSON do snapshot como current_state.json na pasta específica
+        const snapshotFile = path.join(snapshotDir, 'current_state.json');
         fs.writeFileSync(snapshotFile, JSON.stringify(data, null, 2));
         
         // Salva o arquivo HTML correspondente na pasta específica deste snapshot
         if (data.html) {
             fs.writeFileSync(path.join(snapshotDir, 'view.html'), data.html);
         }
-        
-        // Mantém arquivos de fácil acesso na raiz do debug para visualização rápida (legado/atalho)
-        fs.writeFileSync(path.join(DEBUG_DIR, 'current_state.json'), JSON.stringify(data, null, 2));
-        if (data.html) fs.writeFileSync(path.join(DEBUG_DIR, 'view.html'), data.html);
+
+        // Move o log de navegação acumulado na raiz para a pasta específica do snapshot
+        const rootLogPath = path.join(DEBUG_DIR, 'browser.log');
+        if (fs.existsSync(rootLogPath)) {
+            const destLogPath = path.join(snapshotDir, 'browser.log');
+            try {
+                fs.renameSync(rootLogPath, destLogPath);
+            } catch (e) {
+                // Caso falhe o rename (ex: partições diferentes), tentamos copiar e apagar
+                try {
+                    fs.copyFileSync(rootLogPath, destLogPath);
+                    fs.unlinkSync(rootLogPath);
+                } catch (err) {
+                    console.error("[DebugServer] Erro ao mover browser.log:", err);
+                }
+            }
+        }
         
         console.log(`[DebugServer] Snapshot recebido de ${clientId} salvo em ${folderName}`);
     }
