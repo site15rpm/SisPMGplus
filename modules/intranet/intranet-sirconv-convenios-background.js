@@ -5,6 +5,7 @@
  * CONFIGURAÇÃO: URL do GAS embutida no código para uso automático
  */
 import { fetchWithKeepAlive } from '../../common/keep-alive.js';
+import { obterConveniosAtivosJSON } from '../../common/busca-convenios.js';
 
 const LOGS_KEY = 'sirconvConveniosLogs';
 const LAST_RUN_KEY = 'sirconvConveniosLastRun'; // Armazena { userId: date }
@@ -12,9 +13,6 @@ const MAX_LOG_ENTRIES = 50;
 
 // URL do Google Apps Script (FIXO - configurado no código)
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbwrgsnhG3ACcNFvCOOU-jjoQoTqnHvhxyhQLkYHBwGifkUMxBzSLn1-dJT8cxap1EJz0A/exec';
-
-// URL JSON para buscar todos os convênios da unidade/usuário logado
-const SIRCONV_JSON_URL = 'https://intranet.policiamilitar.mg.gov.br/lite/convenio/web/convenio/meus-convenios?pesquisa=%7B%22preposto%22:%22%22,%22numeroConvenio%22:%22%22,%22numeroFace%22:%22%22,%22todasUnidades%22:%22%22,%22unidade%22:%22%22,%22status%22:%22%22,%22dtInicio1%22:null,%22dtInicio2%22:null,%22dtFim1%22:null,%22dtFim2%22:null%7D';
 
 // --- LOGS ---
 async function addLog(message, system = 'CONVÊNIOS', type = 'info') {
@@ -70,28 +68,12 @@ async function markAsRunToday(userId) {
     await browser.storage.local.set({ [LAST_RUN_KEY]: lastRunData });
 }
 
-// --- EXTRAÇÃO (VIA JSON) ---
+// --- EXTRAÇÃO (VIA UTILITÁRIO CENTRALIZADO) ---
 async function fetchAndParseData() {
     try {
-        await addLog('Iniciando requisição JSON ao SIRCONV...', 'SISTEMA', 'process');
+        await addLog('Iniciando extração via utilitário busca-convenios.js...', 'SISTEMA', 'process');
         
-        const response = await fetchWithKeepAlive(SIRCONV_JSON_URL, {
-            method: 'GET',
-            headers: { 
-                'Accept': 'application/json, text/javascript, */*; q=0.01',
-                'X-Requested-With': 'XMLHttpRequest'
-            },
-            credentials: 'include' // Importante para enviar cookies de autenticação
-        });
-
-        if (!response.ok) throw new Error(`Erro HTTP: ${response.status}`);
-        
-        const jsonData = await response.json();
-        const convenios = jsonData.convenios || [];
-
-        if (!Array.isArray(convenios)) {
-            throw new Error("Formato de resposta inválido (array 'convenios' não encontrado).");
-        }
+        const convenios = await obterConveniosAtivosJSON();
 
         await addLog(`Dados obtidos com sucesso: ${convenios.length} convênios.`, 'SISTEMA', 'success');
         return convenios;
