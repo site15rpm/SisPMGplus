@@ -8,6 +8,20 @@ import { obterUnidades } from './busca-unidades.js';
 import { getMunicipioClean } from './busca-convenios.js';
 
 /**
+ * Normaliza uma string de município/concedente para comparação insensível a acentuação, cedilha e caixa alta.
+ * @param {string} str - A string a ser normalizada.
+ * @returns {string} A string normalizada.
+ */
+function normalizarComp(str) {
+    if (!str) return "";
+    return str.trim()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/Ç/g, "C")
+        .toUpperCase();
+}
+
+/**
  * Obtém a lista de concedentes a partir da listagem geral do SIRCONV.
  * Faz a consulta geral de todos os concedentes do estado e realiza a filtragem local na memória.
  * @param {string} municipioFiltro - Filtro de município ('todos' ou o nome limpo do município)
@@ -61,16 +75,6 @@ export async function obterListaConcedentes(municipioFiltro = 'todos', docContex
     // Processamento com DOM (seja no front-end ou offscreen local no frontend)
     const items = doc.querySelectorAll('.item.flex-linha');
     const cMap = new Map();
-    
-    // Função auxiliar para normalizar comparação (caixa alta, sem acentos, sem Ç)
-    const normalizarComp = (str) => {
-        if (!str) return "";
-        return str.trim()
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "")
-            .replace(/Ç/g, "C")
-            .toUpperCase();
-    };
     
     if (items.length > 0) {
         // Extrai todos os concedentes da tabela HTML estruturada
