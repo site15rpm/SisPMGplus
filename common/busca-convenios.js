@@ -359,33 +359,45 @@ export async function rodarTesteConcedentesRPM() {
         
         console.log(`[Teste RPM] ${unidades.length} unidades encontradas:`, unidades.map(u => u.secao));
         
-        // Extrai os municípios únicos das unidades para evitar buscar o mesmo município repetidamente
-        const municipiosUnicos = Array.from(new Set(
-            unidades
-                .map(u => u.municipio ? u.municipio.trim() : "")
-                .filter(m => m !== "")
-        ));
+        // Extrai os termos de busca de municípios (com e sem acento/cedilha) para evitar requisições redundantes
+        const termosBusca = new Set();
+        unidades.forEach(u => {
+            if (u.municipio) {
+                const muniOriginal = u.municipio.trim().toUpperCase();
+                if (muniOriginal) {
+                    termosBusca.add(muniOriginal);
+                    
+                    // Gera o nome normalizado sem acentos e sem Ç
+                    const semAcentos = muniOriginal
+                        .normalize("NFD")
+                        .replace(/[\u0300-\u036f]/g, "")
+                        .replace(/Ç/g, "C");
+                    termosBusca.add(semAcentos);
+                }
+            }
+        });
         
-        console.log(`[Teste RPM] ${municipiosUnicos.length} municípios identificados nas unidades:`, municipiosUnicos);
+        const termosLista = Array.from(termosBusca);
+        console.log(`[Teste RPM] ${termosLista.length} termos de busca de municípios identificados (com e sem acento/ç):`, termosLista);
         
-        // 3. Buscar concedentes para cada município
+        // 3. Buscar concedentes para cada termo de busca de município
         const concedentesMap = new Map();
-        const totalMunicipios = municipiosUnicos.length;
+        const totalTermos = termosLista.length;
         
-        for (let i = 0; i < totalMunicipios; i++) {
-            const municipio = municipiosUnicos[i];
-            if (ui) ui.updateLoaderMessage(`Buscando concedentes para ${municipio} (${i + 1}/${totalMunicipios})...`);
-            console.log(`[Teste RPM] Buscando concedentes para município: ${municipio}...`);
+        for (let i = 0; i < totalTermos; i++) {
+            const termo = termosLista[i];
+            if (ui) ui.updateLoaderMessage(`Buscando concedentes para ${termo} (${i + 1}/${totalTermos})...`);
+            console.log(`[Teste RPM] Buscando concedentes para termo: ${termo}...`);
             
             try {
-                // Faz a busca parametrizada por nome fantasia (nome do município)
-                const list = await obterListaConcedentes(municipio);
-                console.log(`[Teste RPM] Município ${municipio} retornou ${list.length} concedentes.`);
+                // Faz a busca parametrizada por nome fantasia
+                const list = await obterListaConcedentes(termo);
+                console.log(`[Teste RPM] Termo ${termo} retornou ${list.length} concedentes.`);
                 list.forEach(c => {
                     concedentesMap.set(String(c.id), c.nome);
                 });
             } catch (err) {
-                console.error(`[Teste RPM] Erro ao buscar concedentes para o município ${municipio}:`, err);
+                console.error(`[Teste RPM] Erro ao buscar concedentes para o termo ${termo}:`, err);
             }
             
             // Pequeno delay entre requisições de concedentes
