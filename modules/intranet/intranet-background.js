@@ -3,7 +3,7 @@
 import { fetchWithKeepAlive } from '../../common/keep-alive.js';
 import { parseGoogleSheetResponse } from '../../common/google-sheets.js';
 import { sendMessageToOffscreen, closeOffscreenDocument } from './intranet-agenda-offscreen.js';
-import { fetchUnidadesHTML, parseUnidades } from '../../common/unidades-util.js';
+import { fetchUnidadesHTML, parseUnidades } from '../../common/busca-unidades.js';
 
 async function fetchApiData(url, token, options = {}) {
     const defaultOptions = {

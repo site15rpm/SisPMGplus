@@ -1,4 +1,4 @@
-// Arquivo: common/unidades-util.js
+// Arquivo: common/busca-unidades.js
 // Funções centrais e reutilizáveis para busca e parse de unidades da intranet.
 
 import { fetchWithKeepAlive } from './keep-alive.js';

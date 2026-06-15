@@ -1,7 +1,7 @@
 // Arquivo: modules/intranet/intranet-agenda-unidades.js
 // Lógica de background para buscar unidades para o módulo de Agenda.
 
-import { obterUnidades } from '../../common/unidades-util.js';
+import { obterUnidades } from '../../common/busca-unidades.js';
 
 /**
  * Função principal para buscar e processar as unidades para a agenda.

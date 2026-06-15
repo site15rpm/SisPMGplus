@@ -1,6 +1,6 @@
 // Arquivo: modules/intranet/intranet-unidades-background.js
 // Lógica de background específica para o módulo de Extração de Unidades.
-import { obterUnidades } from '../../common/unidades-util.js';
+import { obterUnidades } from '../../common/busca-unidades.js';
 
 // --- Constantes ---
 const STORAGE_SETTINGS_KEY = 'unidadesSettings';
