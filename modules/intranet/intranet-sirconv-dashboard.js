@@ -28,8 +28,8 @@ export class SirconvDashboardModule {
         this.currentQueueSessionId = 0; // Identificador de sessão de fila
         this.CACHE_TTL = 8 * 60 * 60 * 1000; // 8 horas para validade da auditoria profunda
         this.DATA_TTL_ACTIVE = 12 * 60 * 60 * 1000; // 12 horas para manutenção dos ativos
-        this.STORAGE_KEY_ACTIVE = 'sirconv_active_data';
-        this.STORAGE_KEY_INACTIVE = 'sirconv_inactive_data';
+        this.STORAGE_KEY_ACTIVE = 'sirconv_meus_convenios';
+        this.STORAGE_KEY_INACTIVE = 'sirconv_outros_convenios';
         console.log("SirconvDashboardModule: Instância inicializada.");
     }
 
@@ -81,12 +81,19 @@ export class SirconvDashboardModule {
         const agora = Date.now();
         
         let existing = this.activeData[idStr] || this.inactiveData[idStr];
-        const combinedData = existing ? { ...existing, ...newData } : newData;
+        
+        // Determina isMeus combinando dados existentes e newData
+        let combinedData = existing ? { ...existing, ...newData } : newData;
+        if (newData && newData.hasOwnProperty('isMeus')) {
+            combinedData.isMeus = newData.isMeus;
+        } else if (isMeus) {
+            combinedData.isMeus = true;
+        }
 
-        const statusLabel = this.getStatusLabel(combinedData);
-        const isActive = statusLabel === 'Vigente' || statusLabel === 'Vencido' || combinedData.ATIVO === 'S';
+        // Pertence a Meus Convênios se combinedData.isMeus for true
+        const pertenceAMeus = !!combinedData.isMeus;
 
-        if (isActive) {
+        if (pertenceAMeus) {
             if (!this.activeData[idStr]) {
                 this.activeData[idStr] = this.inactiveData[idStr] || { ID: idStr, audit: null, pendencias: [] };
             }
@@ -98,8 +105,7 @@ export class SirconvDashboardModule {
             delete this.activeData[idStr];
         }
 
-        const entry = isActive ? this.activeData[idStr] : this.inactiveData[idStr];
-        if (isMeus) entry.isMeus = true;
+        const entry = pertenceAMeus ? this.activeData[idStr] : this.inactiveData[idStr];
         
         for (const key in newData) {
             if (key === 'audit' && newData.audit) {
@@ -109,6 +115,9 @@ export class SirconvDashboardModule {
                 entry[key] = newData[key];
             }
         }
+        
+        if (isMeus) entry.isMeus = true;
+        if (newData && newData.hasOwnProperty('isMeus')) entry.isMeus = newData.isMeus;
         
         // Substitui a data de início do convênio atual pela data de início mais antiga da cadeia se identificada na auditoria
         if (entry.audit && entry.audit.dtInicialAbsoluta) {
@@ -851,9 +860,7 @@ export class SirconvDashboardModule {
                     // Se foi auditado via "orfão", remove o isMeus se confirmarmos inatividade.
                     const entry = this.activeData[convId] || this.inactiveData[convId];
                     if (entry && this.getStatusLabel(entry) === 'Inativo' && entry.isMeus) {
-                         entry.isMeus = false;
-                         this.inactiveData[convId] = entry;
-                         delete this.activeData[convId];
+                         this.syncConvenio(convId, { isMeus: false });
                     }
 
                     const row = document.querySelector(`.sispmg-clickable-row[onclick*="'${convId}'"]`);
