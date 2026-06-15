@@ -303,7 +303,8 @@ class UnidadesModalHandler {
             const response = await sendMessageToBackground('unidades-extract-now', {});
             
             if (response.success) {
-                await this._showInfoModal('Extração concluída com sucesso!', 'success');
+                console.log("SisPMG+ [Unidades Extraídas no Front-end]:", response.data);
+                await this._showInfoModal('Extração concluída com sucesso! Os dados detalhados foram impressos no Console do Desenvolvedor.', 'success');
             } else {
                 throw new Error(response.error || 'Erro na extração');
             }
