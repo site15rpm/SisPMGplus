@@ -121,6 +121,13 @@ export class SirconvDashboardModule {
         if (isMeus) entry.isMeus = true;
         if (newData && newData.hasOwnProperty('isMeus')) entry.isMeus = newData.isMeus;
         
+        // Preserva a data inicial original antes de qualquer modificação por auditoria
+        if (entry.DTINICIAL && !entry.DTINICIAL_ORIGINAL) {
+            entry.DTINICIAL_ORIGINAL = entry.DTINICIAL;
+        } else if (newData.DTINICIAL && !entry.DTINICIAL_ORIGINAL) {
+            entry.DTINICIAL_ORIGINAL = newData.DTINICIAL;
+        }
+        
         // Substitui a data de início do convênio atual pela data de início mais antiga da cadeia se identificada na auditoria
         if (entry.audit && entry.audit.dtInicialAbsoluta) {
             let dtAntigaDate = entry.audit.dtInicialAbsoluta;
