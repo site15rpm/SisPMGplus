@@ -1,12 +1,13 @@
 // Funções e lógica para o dashboard de convênios SIRCONV
 import { sendMessageToBackground, getCookie } from '../../common/utils.js';
 import { iconSVG_28 } from '../../common/icon.js';
-import { obterConveniosAtivosJSON, obterListaConcedentes, obterConveniosDeConcedentes } from '../../common/busca-convenios.js';
+import { obterConveniosAtivosJSON, obterConveniosDeConcedentes } from '../../common/busca-convenios.js';
+import { obterListaConcedentes, rodarTesteConcedentesRPM } from '../../common/busca-concedentes.js';
 
 /**
  * Módulo Dashboard SIRCONV
  * Gerencia a extração, auditoria e exibição de dados de convênios.
- * Utiliza duas bases JSON persistidas: ativos (12h TTL) e inativos (Permanente).
+ * Utiliza duas bases JSON persistidas: meus_convenios (12h TTL) e outros_convenios (Permanente).
  */
 export class SirconvDashboardModule {
     constructor(config) {
@@ -27,9 +28,9 @@ export class SirconvDashboardModule {
         this.isQueueProcessing = false;
         this.currentQueueSessionId = 0; // Identificador de sessão de fila
         this.CACHE_TTL = 8 * 60 * 60 * 1000; // 8 horas para validade da auditoria profunda
-        this.DATA_TTL_ACTIVE = 12 * 60 * 60 * 1000; // 12 horas para manutenção dos ativos
-        this.STORAGE_KEY_ACTIVE = 'sirconv_meus_convenios';
-        this.STORAGE_KEY_INACTIVE = 'sirconv_outros_convenios';
+        this.DATA_TTL_MEUS = 12 * 60 * 60 * 1000; // 12 horas para manutenção dos meus convênios
+        this.STORAGE_KEY_MEUS = 'sirconv_meus_convenios';
+        this.STORAGE_KEY_OUTROS = 'sirconv_outros_convenios';
         console.log("SirconvDashboardModule: Instância inicializada.");
     }
 
@@ -45,17 +46,17 @@ export class SirconvDashboardModule {
      */
     async loadPersistentCache() {
         try {
-            const keys = [this.STORAGE_KEY_ACTIVE, this.STORAGE_KEY_INACTIVE];
+            const keys = [this.STORAGE_KEY_MEUS, this.STORAGE_KEY_OUTROS];
             const response = await sendMessageToBackground('getStorage', { keys });
             if (response && response.success) {
-                this.meusConvenios = response.value[this.STORAGE_KEY_ACTIVE] || {};
-                this.outrosConvenios = response.value[this.STORAGE_KEY_INACTIVE] || {};
+                this.meusConvenios = response.value[this.STORAGE_KEY_MEUS] || {};
+                this.outrosConvenios = response.value[this.STORAGE_KEY_OUTROS] || {};
                 
                 const agora = Date.now();
                 let mudou = false;
-                // Manutenção de Ativos (12h TTL)
+                // Manutenção de Meus Convênios (12h TTL)
                 for (const id in this.meusConvenios) {
-                    if (agora - (this.meusConvenios[id].lastUpdate || 0) > this.DATA_TTL_ACTIVE) {
+                    if (agora - (this.meusConvenios[id].lastUpdate || 0) > this.DATA_TTL_MEUS) {
                         delete this.meusConvenios[id];
                         mudou = true;
                     }
@@ -70,8 +71,8 @@ export class SirconvDashboardModule {
     async savePersistentCache() {
         try {
             const dataToSave = {};
-            dataToSave[this.STORAGE_KEY_ACTIVE] = this.meusConvenios;
-            dataToSave[this.STORAGE_KEY_INACTIVE] = this.outrosConvenios;
+            dataToSave[this.STORAGE_KEY_MEUS] = this.meusConvenios;
+            dataToSave[this.STORAGE_KEY_OUTROS] = this.outrosConvenios;
             await sendMessageToBackground('setStorage', dataToSave);
         } catch (e) { console.error("[Dashboard] Erro ao salvar Cache:", e); }
     }
@@ -278,14 +279,13 @@ export class SirconvDashboardModule {
         };
 
         modalContainer.querySelector('#sispmg-dashboard-refresh').onclick = () => this.showFilterSidebar();
-
         modalContainer.querySelector('#sispmg-dashboard-consolidate').onclick = () => this.showConsolidationSidebar();
 
         modalContainer.querySelector('#sispmg-dashboard-clear-cache').onclick = async () => {
-            if (confirm("Isso apagará TODO o histórico de convênios salvos localmente, forçando sistema recarregar os dados na próxima execução. Continuar?")) {
+            if (confirm("Deseja realmente limpar toda a base persistente local? Isso exigirá uma nova sincronização silenciosa e auditorias completas.")) {
+                await sendMessageToBackground('removeStorage', { keys: [this.STORAGE_KEY_MEUS, this.STORAGE_KEY_OUTROS] });
                 this.meusConvenios = {};
                 this.outrosConvenios = {};
-                await sendMessageToBackground('removeStorage', { keys: [this.STORAGE_KEY_ACTIVE, this.STORAGE_KEY_INACTIVE] });
                 this.advSearchIds = [];
                 this.currentView = 'meus';
                 this.refreshConveniosList();
@@ -307,7 +307,8 @@ export class SirconvDashboardModule {
         overlay.onclick = (e) => { if (e.target === overlay) this.closeAllFilterDropdowns(); };
         modalContainer.onclick = () => this.closeAllFilterDropdowns();
 
-        this.fetchConveniosData({ tipoBusca: 'ativos' }, false, true);
+        console.log("[Dashboard] Primeira carga de dados iniciada...");
+        this.fetchConveniosData({ tipoBusca: 'meus' }, false, true);
     }
 
     showConsolidationSidebar() {
@@ -336,7 +337,7 @@ export class SirconvDashboardModule {
                     <div>
                         <label style="display: block; font-weight: 600; margin-bottom: 8px; font-size: 13px;">Tipo de Busca:</label>
                         <select id="sispmg-consolidate-tipo-busca" style="width: 100%; min-width: 0; max-width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #dcd3c5; background: #fff; box-sizing: border-box;">
-                            <option value="ativos">Convênios Ativos</option>
+                            <option value="meus">Meus Convênios</option>
                             <option value="todos" selected>Todos os Convênios</option>
                         </select>
                     </div>
@@ -567,7 +568,7 @@ export class SirconvDashboardModule {
                     <div>
                         <label style="display: block; font-weight: 600; margin-bottom: 8px; font-size: 13px;">Tipo de Busca:</label>
                         <select id="sispmg-dashboard-tipo-busca" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #dcd3c5; background: #fff;">
-                            <option value="ativos" ${this.lastFiltros?.tipoBusca === 'ativos' && this.currentView !== 'meus' ? 'selected' : ''}>Convênios Ativos</option>
+                            <option value="meus" ${this.lastFiltros?.tipoBusca === 'meus' && this.currentView !== 'meus' ? 'selected' : ''}>Meus Convênios</option>
                             <option value="todos" ${this.lastFiltros?.tipoBusca === 'todos' || this.currentView === 'meus' || !this.lastFiltros?.tipoBusca ? 'selected' : ''}>Todos os Convênios</option>
                         </select>
                     </div>
@@ -626,14 +627,14 @@ export class SirconvDashboardModule {
         this.isLoading = true;
         const exibirLoader = (tipoBusca === 'todos') || isInitialLoad;
         if (exibirLoader && this.ui) {
-            this.ui.showLoader(isInitialLoad ? 'Carregando seus convênios ativos...' : 'Iniciando varredura profunda de concedentes...');
+            this.ui.showLoader(isInitialLoad ? 'Carregando seus convênios...' : 'Iniciando varredura profunda de concedentes...');
         }
 
         try {
             let list = [];
             const idsToForceAudit = new Set();
 
-            if (tipoBusca === 'ativos') {
+            if (tipoBusca === 'meus') {
                 list = await obterConveniosAtivosJSON();
 
                 const fetchedIds = new Set(list.map(c => String(c.ID)));
@@ -700,14 +701,14 @@ export class SirconvDashboardModule {
                 });
             }
 
-            if (tipoBusca === 'ativos') { 
+            if (tipoBusca === 'meus') { 
                 list.forEach(c => this.syncConvenio(c.ID, c, true)); 
             } else { 
                 this.advSearchIds = list.map(r => String(r.ID)); 
                 list.forEach(r => this.syncConvenio(r.ID, r)); 
             }
 
-            // Premissa 2: Remoção de duplicidades (Limpa do inativo se estiver no ativo)
+            // Premissa 2: Remoção de duplicidades (Limpa do outros_convenios se estiver no meus_convenios)
             for (const id in this.meusConvenios) {
                 if (this.outrosConvenios[id]) delete this.outrosConvenios[id];
             }
@@ -776,7 +777,7 @@ export class SirconvDashboardModule {
 
             // Só executa a varredura silenciosa se não for uma busca manual profunda
             if (tipoBusca !== 'todos') {
-                this.checkInactiveUpdatesSilently();
+                this.checkOutrosUpdatesSilently();
             }
 
         } catch (error) { 
@@ -787,15 +788,15 @@ export class SirconvDashboardModule {
         }
     }
 
-    async checkInactiveUpdatesSilently() {
-        const keys = ['sirconv_last_inactive_sync'];
+    async checkOutrosUpdatesSilently() {
+        const keys = ['sirconv_last_outros_sync'];
         const response = await sendMessageToBackground('getStorage', { keys });
-        const lastSync = (response && response.success && response.value['sirconv_last_inactive_sync']) || 0;
+        const lastSync = (response && response.success && response.value['sirconv_last_outros_sync']) || 0;
         
         // 7 dias = 604800000 ms
         if (Date.now() - lastSync > 604800000) {
             console.log("[Dashboard] Iniciando varredura silenciosa de concedentes...");
-            await sendMessageToBackground('setStorage', { 'sirconv_last_inactive_sync': Date.now() });
+            await sendMessageToBackground('setStorage', { 'sirconv_last_outros_sync': Date.now() });
             this.fetchAllConveniosFromConcedentes('todos', true).then(list => {
                 let mudou = false;
                 list.forEach(c => {
@@ -812,7 +813,12 @@ export class SirconvDashboardModule {
 
     async fetchAllConveniosFromConcedentes(municipioFiltro = 'todos', silencioso = false) {
         try {
-            const concedentes = await obterListaConcedentes(municipioFiltro);
+            let concedentes = [];
+            if (municipioFiltro === 'todos') {
+                concedentes = await rodarTesteConcedentesRPM();
+            } else {
+                concedentes = await obterListaConcedentes(municipioFiltro);
+            }
             
             if (concedentes.length === 0) {
                 console.warn("Nenhum concedente encontrado para a busca.");
