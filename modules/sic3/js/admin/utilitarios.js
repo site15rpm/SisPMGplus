@@ -113,7 +113,7 @@
     }
   }
 
-  async function handleSirconvSiadUpdate(
+  function handleSirconvSiadUpdate(
     authToken,
     municipio,
     convenio,
@@ -124,39 +124,46 @@
     mensagemConfirmacao,
     mensagemSucesso
   ) {
-    const confirmado = await confirmarAcao(
-      "Confirmar Ação",
-      mensagemConfirmacao
-    );
-    if (confirmado) {
-      mostrarCarregamento();
-      google.script.run
-        .withSuccessHandler((s) => {
-          ocultarCarregamento();
-          if (s && s.success) {
-            mostrarDialogo("Sucesso", mensagemSucesso);
-            carregarLancamentos();
-          } else {
-            mostrarDialogo(
-              "Erro",
-              (s && s.message) || `Erro ao atualizar ${tipo}`
-            );
-          }
-        })
-        .withFailureHandler((err) => {
-          ocultarCarregamento();
-          manipularErro(err, `atualizarStatusSirconvSiad_${tipo}`);
-        })
-        .atualizarStatusSirconvSiad(
-          authToken,
-          municipio,
-          convenio,
-          ano,
-          mes,
-          tipo,
-          novoStatus
-        );
-    }
+    return new Promise(async (resolve) => {
+      const confirmado = await confirmarAcao(
+        "Confirmar Ação",
+        mensagemConfirmacao
+      );
+      if (confirmado) {
+        mostrarCarregamento();
+        google.script.run
+          .withSuccessHandler((s) => {
+            ocultarCarregamento();
+            if (s && s.success) {
+              mostrarDialogo("Sucesso", mensagemSucesso);
+              carregarLancamentos();
+              resolve(true);
+            } else {
+              mostrarDialogo(
+                "Erro",
+                (s && s.message) || `Erro ao atualizar ${tipo}`
+              );
+              resolve(false);
+            }
+          })
+          .withFailureHandler((err) => {
+            ocultarCarregamento();
+            manipularErro(err, `atualizarStatusSirconvSiad_${tipo}`);
+            resolve(false);
+          })
+          .atualizarStatusSirconvSiad(
+            authToken,
+            municipio,
+            convenio,
+            ano,
+            mes,
+            tipo,
+            novoStatus
+          );
+      } else {
+        resolve(false);
+      }
+    });
   }
 
   async function alterarStatusEdicao(
