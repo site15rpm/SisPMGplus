@@ -61,7 +61,7 @@ export class SirconvDashboardModule {
                     }
                 }
                 
-                if (mudou) await this.savePersistentCache();
+                if (mudou) this.savePersistentCache();
                 this.refreshConveniosList();
             }
         } catch (e) { console.error("[Dashboard] Erro ao carregar Cache:", e); }
@@ -706,7 +706,7 @@ export class SirconvDashboardModule {
                 if (all[id].audit) all[id].pendencias = this.analisarPendencias(all[id].audit, this.lastFiltros, all[id]); 
             }
 
-            await this.savePersistentCache();
+            this.savePersistentCache();
             this.refreshConveniosList();
             this.applyFilters();
 
@@ -871,7 +871,7 @@ export class SirconvDashboardModule {
             if (isSynchronous && this.ui) {
                 this.ui.updateLoaderMessage(`Extração detalhada: ${processed}/${total} convênios...`);
             }
-            if (processed % 5 === 0) { this.updateSummaryCards(); await this.savePersistentCache(); }
+            if (processed % 5 === 0) { this.updateSummaryCards(); this.savePersistentCache(); }
             await new Promise(r => setTimeout(r, 600));
         }
 
@@ -879,7 +879,7 @@ export class SirconvDashboardModule {
             this.isQueueProcessing = false;
             this.updateBackgroundStatus(false);
             this.updateSummaryCards();
-            await this.savePersistentCache();
+            this.savePersistentCache();
         }
     }
 
