@@ -11,6 +11,12 @@ const KEEPALIVE_INTERVAL = 5 * 1000; // 5 segundos
  * @returns {Promise<Response>} A promessa que resolve para a resposta do fetch.
  */
 export async function fetchWithKeepAlive(resource, options) {
+    // Se executado no contexto do front-end (onde a API browser não está definida),
+    // realiza um fetch comum sem o mecanismo de keep-alive.
+    if (typeof browser === 'undefined' || typeof browser.storage === 'undefined') {
+        return fetch(resource, options);
+    }
+
     let keepAliveInterval;
 
     const startKeepAlive = () => {
