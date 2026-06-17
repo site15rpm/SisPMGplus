@@ -478,6 +478,9 @@ export async function navegarPara(pagina, contexto = {}) {
             const dynamicMenu = document.getElementById('header-dynamic-menu');
             if (dynamicMenu) {
                 dynamicMenu.innerHTML = `
+                    <button id="btnSincronizarConvenios" class="btn-info" style="margin-right: 10px;">
+                        <i class="fas fa-sync-alt"></i> SINCRONIZAR CONVÊNIOS
+                    </button>
                     <button id="btnGerenciarItem99" class="btn-info" style="margin-right: 10px;">
                         <i class="fas fa-tasks"></i> GERENCIAR ITENS 99
                     </button>
@@ -918,8 +921,54 @@ window.addEventListener('DOMContentLoaded', async () => {
     window.mostrarCarregamentoGlobal("Inicializando banco de dados do SIC3...");
     try {
         await window.resolverIdsPlanilhas(false);
+        
+        // --- EXTRAÇÃO AUTOMÁTICA DE CONVÊNIOS SEMANAL PARA NÃO-ADMINISTRADORES ---
+        let precisaSincronizar = false;
+        if (!window.isAdmin && window.userPM) {
+            const lastRunKey = `sic3_last_auto_sync_${window.userPM}`;
+            const lastRunResult = await new Promise(resolve => {
+                let storage = null;
+                if (typeof browser !== 'undefined' && browser.storage && browser.storage.local) {
+                    storage = browser.storage.local;
+                } else if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+                    storage = chrome.storage.local;
+                }
+                
+                if (storage) {
+                    storage.get(lastRunKey, res => resolve(res ? res[lastRunKey] : null));
+                } else {
+                    resolve(null);
+                }
+            });
+            
+            const hoje = Date.now();
+            const umaSemanaMs = 7 * 24 * 60 * 60 * 1000;
+            if (!lastRunResult || (hoje - lastRunResult) >= umaSemanaMs) {
+                precisaSincronizar = true;
+            }
+        }
+        
+        if (precisaSincronizar) {
+            window.mostrarCarregamentoGlobal("Iniciando sincronização automática de convênios semanal...");
+            const { executarSincronizacaoConvenios } = await import('./js/sync-convenios.js');
+            await executarSincronizacaoConvenios();
+            
+            const lastRunKey = `sic3_last_auto_sync_${window.userPM}`;
+            let storage = null;
+            if (typeof browser !== 'undefined' && browser.storage && browser.storage.local) {
+                storage = browser.storage.local;
+            } else if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+                storage = chrome.storage.local;
+            }
+            if (storage) {
+                await new Promise(resolve => {
+                    storage.set({ [lastRunKey]: Date.now() }, resolve);
+                });
+            }
+        }
+        
     } catch (e) {
-        console.error("[SIC3 v3.0 Log] Erro ao resolver ID do banco de dados na inicialização:", e);
+        console.error("[SIC3 v3.0 Log] Erro ao inicializar ou sincronizar convênios:", e);
         window.idbase = "";
     } finally {
         window.ocultarCarregamentoGlobal();
