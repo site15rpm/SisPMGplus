@@ -96,6 +96,25 @@
           alternarVisualizacaoTela("lancamentos");
         });
 
+      $("#btnSincronizarConvenios")
+        .off("click.admin")
+        .on("click.admin", async function () {
+          if (confirm("Deseja sincronizar os convênios com o Portal PM agora? Este processo pode levar alguns instantes.")) {
+            try {
+              mostrarCarregamento();
+              const { executarSincronizacaoConvenios } = await import('../sync-convenios.js');
+              await executarSincronizacaoConvenios();
+              alert("Sincronização manual concluída com sucesso!");
+              await inicializarAdmin();
+            } catch (err) {
+              console.error("Erro na sincronização manual:", err);
+              alert("Falha na sincronização: " + err.message);
+            } finally {
+              ocultarCarregamento();
+            }
+          }
+        });
+
       $("#municipio, #mes, #ano, #convenio").off("change.admin");
 
       let changeTimeout;
