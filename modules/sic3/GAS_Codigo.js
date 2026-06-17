@@ -155,6 +155,10 @@ function handleApiAction(action, body) {
       result = excluirConvenio(params[0], params[1], params[2]);
       break;
  
+    case "sincronizarConveniosLote":
+      result = sincronizarConveniosLote(params[0], params[1]);
+      break;
+ 
     case "salvarItensPrimariosEmLote":
       result = salvarItensPrimariosEmLote(params[0]);
       break;
@@ -318,7 +322,7 @@ function obterIdArquivoCompartilhado(nomeBase, rpm) {
     let nomeAba = "";
     if (nomeBase === "SIC3_BDConvenios") {
       nomeAba = "convenios";
-      cabecalho = ["municipio", "convenio", "preposto_n", "preposto_pg", "preposto", "unidade", "dataInicio", "dataFim"];
+      cabecalho = ["MUNICIPIO", "ID", "PREPOSTO_ID", "PREPOSTO_POSTOGRAD", "PREPOSTO_NOME", "NOME_SECAO", "DTINICIAL_ORIGINAL", "DTFINAL", "NUMERO_FACE", "UNI_NOME_PRINCIPAL", "ADITIVO", "ATIVO", "status_texto", "CONCEDENTE", "CONCEDENTE_ID", "CNPJ", "UNIDADE_RESPONSAVEL"];
     } else if (nomeBase === "SIC3_BDEnderecos") {
       nomeAba = "enderecos";
       cabecalho = ["municipio", "convenio", "endereco", "dtEndereco", "medidorAgua", "dtMedidorAgua", "medidorEnergia", "dtMedidorEnergia"];
@@ -655,7 +659,7 @@ function carregarConveniosMunicipio(municipio, userInfo) {
     const ss = SpreadsheetApp.openById(obterIdArquivoCompartilhado("SIC3_BDConvenios"));
     const sheet = ss.getSheetByName("convenios");
     const isAdmin = userInfo.municipio === "admin" || userInfo.isAdmin;
-    const dados = sheet.getRange("A:H").getValues();
+    const dados = sheet.getDataRange().getValues();
     const convenios = [];
     
     for (let i = 1; i < dados.length; i++) {
@@ -704,7 +708,8 @@ function incluirConvenio(authToken, municipio, convenio, preposto_n, preposto_pg
       String(preposto), 
       String(unidade), 
       dataInicio ? formatDataForSheet(dataInicio) : "", 
-      dataFim ? formatDataForSheet(dataFim) : ""
+      dataFim ? formatDataForSheet(dataFim) : "",
+      "", "", "", "", "", "", "", "", ""
   ];
   conveniosSheet.appendRow(novaLinha);
   const ultimaLinha = conveniosSheet.getLastRow();
@@ -775,6 +780,92 @@ function excluirConvenio(authToken, municipio, convenio) {
   registrarOperacao(local, usuario.username, municipio, "delete_convenio", "not_found");
   return { success: false, message: "Convênio não encontrado para exclusão." };
 }
+
+function sincronizarConveniosLote(authToken, convenios) {
+  console.log("[GAS Log] Função 'sincronizarConveniosLote' acionada.");
+  const local = "sincronizarConveniosLote";
+  const usuario = validateAuthToken(authToken);
+
+  if (!usuario) {
+    return { success: false, message: "Acesso negado." };
+  }
+
+  try {
+    const ss = SpreadsheetApp.openById(obterIdArquivoCompartilhado("SIC3_BDConvenios"));
+    const sheet = ss.getSheetByName("convenios");
+    
+    if (!sheet) {
+      throw new Error("Aba 'convenios' não encontrada na planilha de convênios.");
+    }
+    
+    // Lê todos os dados existentes
+    const range = sheet.getDataRange();
+    const dados = range.getValues();
+    
+    // Cria um mapa dos registros existentes indexados por convenio_id (coluna B/ID, índice 1)
+    const mapaExistentes = {};
+    for (let i = 1; i < dados.length; i++) {
+      const id = String(dados[i][1]).trim();
+      if (id) {
+        mapaExistentes[id] = {
+          linha: i + 1,
+          valores: dados[i]
+        };
+      }
+    }
+    
+    let novosCount = 0;
+    let atualizadosCount = 0;
+    
+    // Itera sobre os novos convênios para inserir ou atualizar
+    convenios.forEach(function(conv) {
+      const id = String(conv.ID || conv.id).trim();
+      if (!id) return;
+      
+      const novaLinha = [
+        String(conv.MUNICIPIO || conv.municipio || ""),
+        id,
+        String(conv.PREPOSTO_ID || conv.preposto_id || ""),
+        String(conv.PREPOSTO_POSTOGRAD || conv.preposto_postograd || ""),
+        String(conv.PREPOSTO_NOME || conv.preposto_nome || ""),
+        String(conv.NOME_SECAO || conv.nome_secao || ""),
+        conv.DTINICIAL_ORIGINAL || conv.dtinicial_original || "",
+        conv.DTFINAL || conv.dtfinal || "",
+        String(conv.NUMERO_FACE || conv.numero_face || ""),
+        String(conv.UNI_NOME_PRINCIPAL || conv.uni_nome_principal || ""),
+        String(conv.ADITIVO || conv.aditivo || ""),
+        String(conv.ATIVO || conv.ativo || ""),
+        String(conv.status_texto || conv.STATUS_TEXTO || ""),
+        String(conv.CONCEDENTE || conv.concedente || ""),
+        String(conv.CONCEDENTE_ID || conv.concedente_id || ""),
+        String(conv.CNPJ || conv.cnpj || ""),
+        String(conv.UNIDADE_RESPONSAVEL || conv.unidade_responsavel || "")
+      ];
+      
+      if (mapaExistentes[id]) {
+        // Atualiza a linha existente
+        const numLinha = mapaExistentes[id].linha;
+        sheet.getRange(numLinha, 1, 1, novaLinha.length).setValues([novaLinha]);
+        sheet.getRange(numLinha, 1, 1, novaLinha.length).setNumberFormat("@STRING@");
+        atualizadosCount++;
+      } else {
+        // Insere nova linha
+        sheet.appendRow(novaLinha);
+        const numLinha = sheet.getLastRow();
+        sheet.getRange(numLinha, 1, 1, novaLinha.length).setNumberFormat("@STRING@");
+        novosCount++;
+      }
+    });
+    
+    registrarOperacao(local, usuario.username, "lote", "sync_convenios", `success: ${novosCount} novos, ${atualizadosCount} atualizados`);
+    return { success: true, message: `Sincronização concluída: ${novosCount} novos, ${atualizadosCount} atualizados.` };
+  } catch (error) {
+    console.error("Erro na sincronização de convênios em lote:", error);
+    registrarOperacao(local, usuario?.username || "SYSTEM", "lote", "sync_convenios", `error: ${error.message}`);
+    return { success: false, error: error.message };
+  }
+}
+
 
 // ========== ESCRITA DE DADOS EM LOTE (LANCAMENTOS) ==========
 
