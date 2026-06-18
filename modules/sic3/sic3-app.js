@@ -920,6 +920,25 @@ window.addEventListener('DOMContentLoaded', async () => {
         console.error("[SIC3 v3.0 Log] Falha ao configurar contexto do usuário:", e);
     }
 
+    // --- VALIDAÇÃO DE CONVÊNIOS ATIVOS (BLOQUEIO DE ACESSO) ---
+    if (!window.isAdmin) {
+        window.mostrarCarregamentoGlobal("Validando permissões de acesso...");
+        try {
+            const { obterConveniosAtivosJSON } = await import('../../common/busca-convenios.js');
+            const conveniosUsuario = await obterConveniosAtivosJSON();
+            if (!conveniosUsuario || conveniosUsuario.length === 0) {
+                window.ocultarCarregamentoGlobal();
+                alert("Acesso Negado: O acesso ao SIC3 é restrito a militares cadastrados em pelo menos um convênio no Portal de Convênios.");
+                window.close();
+                return;
+            }
+        } catch (errVal) {
+            console.error("[SIC3 v3.0 Log] Erro ao validar convênios do usuário:", errVal);
+        } finally {
+            window.ocultarCarregamentoGlobal();
+        }
+    }
+
     // Resolve dinamicamente o ID do banco de dados (Spreadsheet) correspondente à RPM e ao Ano ativos
     window.mostrarCarregamentoGlobal("Inicializando banco de dados do SIC3...");
     try {
