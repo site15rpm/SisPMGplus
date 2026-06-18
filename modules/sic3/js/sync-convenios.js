@@ -16,6 +16,17 @@ function normalizarSemAcento(str) {
               .trim();
 }
 
+function normalizarParaCompararRPM(str) {
+    if (!str) return "";
+    return str.normalize("NFD")
+              .replace(/[\u0300-\u036f]/g, "")
+              .replace(/ª/g, "")
+              .replace(/º/g, "")
+              .toUpperCase()
+              .replace(/\s+/g, "")
+              .trim();
+}
+
 function limparCampoHtml(str) {
     if (!str) return "";
     let s = String(str).trim();
@@ -46,13 +57,17 @@ export async function executarSincronizacaoConvenios() {
     console.log("[SIC3 Sync] [Log] Iniciando o processo de sincronização de convênios semanal...");
     
     try {
-        // 1. Obter a RPM do usuário extraída diretamente do Tokiuz (browser storage)
+        // 1. Obter a RPM e matrícula do usuário extraídas diretamente do Tokiuz (browser storage)
         let codigoRpmTokiuz = "";
+        let nomeRegiaoTokiuz = "";
+        let userPMTokiuz = "";
         const storageResult = await browser.storage.local.get('sic3_user_info');
         const info = storageResult.sic3_user_info;
-        if (info && info.codigoRegiao) {
-            codigoRpmTokiuz = String(info.codigoRegiao).trim();
-            console.log(`[SIC3 Sync] [Log] Código da RPM do usuário extraído diretamente do Tokiuz (storage): "${codigoRpmTokiuz}"`);
+        if (info) {
+            if (info.codigoRegiao) codigoRpmTokiuz = String(info.codigoRegiao).trim();
+            if (info.nomeRegiao) nomeRegiaoTokiuz = String(info.nomeRegiao).trim();
+            if (info.numeroPM) userPMTokiuz = String(info.numeroPM).trim();
+            console.log(`[SIC3 Sync] [Log] Dados do Tokiuz do usuário extraídos (storage): RPM="${codigoRpmTokiuz}", Região="${nomeRegiaoTokiuz}", PM="${userPMTokiuz}"`);
         }
         
         if (!codigoRpmTokiuz) {
@@ -64,6 +79,12 @@ export async function executarSincronizacaoConvenios() {
         if (!codigoRpmTokiuz) {
             throw new Error("Não foi possível extrair o código de RPM do Tokiuz do usuário.");
         }
+
+        const rpmDoUsuario = nomeRegiaoTokiuz 
+            ? String(nomeRegiaoTokiuz).replace('ª', '').trim() 
+            : (codigoRpmTokiuz ? codigoRpmTokiuz + " RPM" : "");
+        const rpmUsuarioNorm = normalizarParaCompararRPM(rpmDoUsuario);
+        console.log(`[SIC3 Sync] [Log] RPM para comparação: "${rpmDoUsuario}" | Normalizada: "${rpmUsuarioNorm}"`);
         
         // 2. Buscar unidades da RPM pelo motor de busca-unidades
         console.log("[SIC3 Sync] [Log] Chamando obterUnidades para a RPM extraída do Tokiuz: " + codigoRpmTokiuz);
@@ -188,6 +209,19 @@ export async function executarSincronizacaoConvenios() {
                             }
                         });
                         
+                        // Filtrar cancelados (Requisito 4)
+                        if (statusTexto && statusTexto.toLowerCase().includes('cancelado')) {
+                            console.log(`[SIC3 Sync] [Log] Ignorando convênio ID ${idConvenio} pois seu status é Cancelado.`);
+                            continue;
+                        }
+
+                        // Filtrar por RPM da unidade principal (Requisito 5)
+                        const uniNorm = normalizarParaCompararRPM(uni);
+                        if (rpmUsuarioNorm && !uniNorm.includes(rpmUsuarioNorm)) {
+                            console.log(`[SIC3 Sync] [Log] Ignorando convênio ID ${idConvenio} pois a unidade "${uni}" não pertence à RPM do usuário ("${rpmDoUsuario}").`);
+                            continue;
+                        }
+
                         // Recupera a razão social original do JSON inicial de convênios para evitar capturar do HTML
                         const convOriginal = conveniosUsuario.find(c => String(c.ID || c.id) === String(idConvenio));
                         const razaoSocialOriginal = convOriginal ? (convOriginal.CONCEDENTE || convOriginal.concedente || "") : "";
@@ -244,6 +278,13 @@ export async function executarSincronizacaoConvenios() {
                 const numeroFace = limparCampoHtml(detalhes.NUMERO_FACE || detalhes.numero_face || conv.NUMERO_FACE || "");
                 const uniNomePrincipal = limparCampoHtml(detalhes.UNI_NOME_PRINCIPAL || detalhes.uni_nome_principal || conv.UNI_NOME_PRINCIPAL || "");
                 
+                // Filtrar por RPM da unidade principal (Requisito 5)
+                const uniNomePrincipalNorm = normalizarParaCompararRPM(uniNomePrincipal);
+                if (rpmUsuarioNorm && !uniNomePrincipalNorm.includes(rpmUsuarioNorm)) {
+                    console.log(`[SIC3 Sync] [Log] Ignorando convênio ID ${conv.ID} nos detalhes pois a unidade principal "${uniNomePrincipal}" não pertence à RPM do usuário.`);
+                    continue;
+                }
+
                 // Mapeia aditivo de forma segura contra nulos e strings indesejadas
                 let aditivo = "N";
                 if (detalhes.ADITIVO !== undefined && detalhes.ADITIVO !== null) {
@@ -259,6 +300,21 @@ export async function executarSincronizacaoConvenios() {
                 // Garante que o concedente (Razão Social) esteja sempre preenchido, usando Nome Fantasia como fallback
                 const concedenteFinal = conv.CONCEDENTE || detalhes.CONCEDENTE || detalhes.concedente || detalhes.NOME_FANTASIA || detalhes.nome_fantasia || "";
                 const concedenteLimpo = limparCampoHtml(concedenteFinal);
+
+                // Buscar plano de trabalho do convênio para obter os elementos de despesa (Requisito 6)
+                const planoUrl = `https://intranet.policiamilitar.mg.gov.br/lite/convenio/web/plano/get-plano?convenio=${conv.ID}`;
+                const resPlano = await fetch(planoUrl, { credentials: 'include' });
+                let elementosDespesa = "";
+                if (resPlano.ok) {
+                    const jsonPlano = await resPlano.json();
+                    if (jsonPlano && jsonPlano.success && Array.isArray(jsonPlano.planos)) {
+                        const itens = [...new Set(jsonPlano.planos.map(p => String(p.ITEM || p.item || '').trim()).filter(Boolean))];
+                        elementosDespesa = itens.join('|');
+                    }
+                    console.log(`[SIC3 Sync] [Log] Elementos de despesa obtidos para o convênio ${conv.ID}: "${elementosDespesa}"`);
+                } else {
+                    console.warn(`[SIC3 Sync] [Log] Falha ao obter plano de trabalho para o convênio ${conv.ID}. Status HTTP: ${resPlano.status}`);
+                }
                 
                 // 5.2 PASSO 4: Tratar campos para extrair o município e cruzar com o motor de busca-unidades
                 let municipioLimpo = "";
@@ -338,6 +394,8 @@ export async function executarSincronizacaoConvenios() {
                     CONCEDENTE_ID: String(conv.CONCEDENTE_ID),
                     CNPJ: String(conv.CNPJ),
                     UNIDADE_RESPONSAVEL: String(unidadeResponsavel),
+                    ELEMENTOS_DESPESA: elementosDespesa,
+                    USER_PM: userPMTokiuz,
                     
                     // Anexa todas as informações disponíveis de busca-unidades
                     unidadeNivel: unidadeEncontrada ? unidadeEncontrada.nivel : "",
