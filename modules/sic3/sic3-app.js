@@ -922,9 +922,9 @@ window.addEventListener('DOMContentLoaded', async () => {
     try {
         await window.resolverIdsPlanilhas(false);
         
-        // --- EXTRAÇÃO AUTOMÁTICA DE CONVÊNIOS SEMANAL PARA NÃO-ADMINISTRADORES ---
+        // --- EXTRAÇÃO AUTOMÁTICA DE CONVÊNIOS SEMANAL ---
         let precisaSincronizar = false;
-        if (!window.isAdmin && window.userPM) {
+        if (window.userPM) {
             const lastRunKey = `sic3_last_auto_sync_${window.userPM}`;
             const lastRunResult = await new Promise(resolve => {
                 let storage = null;
