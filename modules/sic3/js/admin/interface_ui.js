@@ -1004,6 +1004,22 @@
       const userSecao = window.userSecao || "";
       const gasUrl = 'https://script.google.com/macros/s/AKfycbyriniVNqgHE206Vzx3_rplOVwSxV2f6HjyAr1zEhmyXoMH_l8AkGLyin1PK4jI0tHe/exec';
       
+      let prepostoPM = "";
+      let userPMConv = "";
+      if (typeof ADMIN_CONFIG !== 'undefined' && ADMIN_CONFIG.dados && ADMIN_CONFIG.dados.convenios) {
+        const convEnc = ADMIN_CONFIG.dados.convenios.find(
+          c => String(c.convenio).trim() === String(convenio).trim() && String(c.municipio).trim() === String(municipio).trim()
+        );
+        if (convEnc) {
+          prepostoPM = String(convEnc.preposto_n || "").trim();
+          userPMConv = String(convEnc.user_pm || "").trim();
+        }
+      }
+
+      const uniquePMs = [...new Set([prepostoPM, userPMConv, userPM])].map(x => String(x).trim()).filter(Boolean);
+      const abrangenciaG = uniquePMs.length > 0 ? `,g:${uniquePMs.join('|')}` : "";
+      const abrangenciaFinal = `c:${unidadeSelecionada.value}${abrangenciaG}`;
+
       const assunto = `Pendências no Relatório SIRCONV/SIC3 - ${municipio} (${mes}/${ano})`;
       const descricao = `Há pendências no relatório do SIRCONV/SIC3 referente ao município de ${municipio}, convênio ${convenio}, período ${mes}/${ano} que precisam ser verificadas.\n\n` +
                         `Detalhamento das pendências/irregularidades registradas:\n"${desc}"\n\n` +
@@ -1015,7 +1031,7 @@
         'data/hora': dataHoraString,
         assunto: assunto,
         autor: userPM,
-        abrangencia: `c:${unidadeSelecionada.value}`,
+        abrangencia: abrangenciaFinal,
         status: 'ACTIVE',
         autoConfirmarDias: 5,
         descricao: descricao,
