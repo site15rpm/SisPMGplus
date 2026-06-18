@@ -477,10 +477,13 @@ export async function navegarPara(pagina, contexto = {}) {
             console.log("[SIC3 v3.0 Log] Carregando fragmento HTML local de admin...");
             const dynamicMenu = document.getElementById('header-dynamic-menu');
             if (dynamicMenu) {
-                dynamicMenu.innerHTML = `
+                const btnSyncHtml = window.isAdmin ? `
                     <button id="btnSincronizarConvenios" class="btn-info" style="margin-right: 10px;">
                         <i class="fas fa-sync-alt"></i> SINCRONIZAR CONVÊNIOS
                     </button>
+                ` : '';
+                dynamicMenu.innerHTML = `
+                    ${btnSyncHtml}
                     <button id="btnGerenciarItem99" class="btn-info" style="margin-right: 10px;">
                         <i class="fas fa-tasks"></i> GERENCIAR ITENS 99
                     </button>
@@ -924,7 +927,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         
         // --- EXTRAÇÃO AUTOMÁTICA DE CONVÊNIOS SEMANAL ---
         let precisaSincronizar = false;
-        if (window.userPM) {
+        if (window.userPM && !window.isAdmin) {
             const lastRunKey = `sic3_last_auto_sync_${window.userPM}`;
             const lastRunResult = await new Promise(resolve => {
                 let storage = null;
