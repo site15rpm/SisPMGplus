@@ -13,6 +13,19 @@ function normalizarSemAcento(str) {
               .trim();
 }
 
+function extrairMunicipioLimpo(nomeBruto) {
+    if (!nomeBruto) return "";
+    let nome = getMunicipioClean(nomeBruto);
+    // Remove sufixos comuns entre parênteses, hífen MG ou tags específicas
+    nome = nome.replace(/\s*\([^)]+\)/g, '')
+               .replace(/\s*-\s*MG\s*$/i, '')
+               .replace(/\s*\(PARTICULAR\)/i, '')
+               .trim();
+    // Limpa prefixos de preposições que restarem
+    nome = nome.replace(/^(DE|DO|DA)\s+/i, '').trim();
+    return nome;
+}
+
 /**
  * Executa a extração dos convênios do Portal PM e a gravação/atualização no banco do GAS.
  */
@@ -223,20 +236,28 @@ export async function executarSincronizacaoConvenios() {
                 if (resDet.ok) {
                     const jsonDet = await resDet.json();
                     detalhes = jsonDet.convenio || jsonDet.data || jsonDet || {};
-                    console.log(`[SIC3 Sync] [Log] Detalhes do convênio ${conv.ID} carregados com sucesso.`);
+                    console.log(`[SIC3 Sync] [Log] Detalhes do convênio ${conv.ID} carregados com sucesso:`, detalhes);
                 } else {
                     console.warn(`[SIC3 Sync] [Log] Não foi possível ler detalhes JSON do convênio ${conv.ID}. Status HTTP: ${resDet.status}`);
                 }
                 
-                // Extração dos campos do JSON ou do HTML de fallback
+                // Extração dos campos do JSON usando o mapeamento correto retornado por get-convenio-detalhes
                 const prepostoId = detalhes.PREPOSTO_ID || detalhes.preposto_id || "";
-                const prepostoPostoGrad = detalhes.PREPOSTO_POSTOGRAD || detalhes.preposto_postograd || "";
-                const prepostoNome = detalhes.PREPOSTO_NOME || detalhes.preposto_nome || "";
-                const dtInicialOriginal = detalhes.DTINICIAL_ORIGINAL || detalhes.dtinicial_original || detalhes.DTINICIAL || "";
-                const dtFinal = detalhes.DTFINAL || detalhes.dtfinal || "";
-                const numeroFace = detalhes.NUMERO_FACE || detalhes.numero_face || "";
+                const prepostoPostoGrad = detalhes.PES_POSTOGRAD || detalhes.pes_postograd || detalhes.PREPOSTO_POSTOGRAD || detalhes.preposto_postograd || "";
+                const prepostoNome = detalhes.PES_NOME || detalhes.pes_nome || detalhes.PREPOSTO_NOME || detalhes.preposto_nome || "";
+                const dtInicialOriginal = detalhes.DT_VIGENCIA_INICIAL || detalhes.dt_vigencia_inicial || detalhes.DTINICIAL_ORIGINAL || detalhes.dtinicial_original || detalhes.DTINICIAL || "";
+                const dtFinal = detalhes.DT_VIGENCIA_FINAL || detalhes.dt_vigencia_final || detalhes.DTFINAL || detalhes.dtfinal || "";
+                const numeroFace = detalhes.NUMERO_FACE || detalhes.numero_face || conv.NUMERO_FACE || "";
                 const uniNomePrincipal = detalhes.UNI_NOME_PRINCIPAL || detalhes.uni_nome_principal || conv.UNI_NOME_PRINCIPAL || "";
-                const aditivo = detalhes.ADITIVO || detalhes.aditivo || "N";
+                
+                // Mapeia aditivo de forma segura contra nulos
+                let aditivo = "N";
+                if (detalhes.ADITIVO !== undefined && detalhes.ADITIVO !== null) {
+                    aditivo = String(detalhes.ADITIVO);
+                } else if (detalhes.aditivo !== undefined && detalhes.aditivo !== null) {
+                    aditivo = String(detalhes.aditivo);
+                }
+                
                 const ativo = detalhes.ATIVO || detalhes.ativo || "S";
                 const statusTexto = detalhes.SITUACAO_CONV || detalhes.situacao_conv || conv.status_texto || "";
                 const unidadeResponsavel = detalhes.UNIDADE_RESPONSAVEL || detalhes.unidade_responsavel || "";
@@ -244,11 +265,12 @@ export async function executarSincronizacaoConvenios() {
                 // 5.2 PASSO 4: Tratar campos para extrair o município e cruzar com o motor de busca-unidades
                 let municipioLimpo = "";
                 let unidadeEncontrada = null;
+                const nomeFantasiaDetalhes = detalhes.NOME_FANTASIA || detalhes.nome_fantasia || "";
                 
-                // Candidatos para extração do município: Concedente (Razão Social) e Nome Fantasia
-                const candidatos = [conv.CONCEDENTE, conv.NOME_FANTASIA].filter(Boolean);
-                for (const cand of candidatos) {
-                    const limpo = getMunicipioClean(cand);
+                console.log(`[SIC3 Sync] [Log] Identificando município a partir de NOME_FANTASIA de get-convenio-detalhes: "${nomeFantasiaDetalhes}"`);
+                
+                if (nomeFantasiaDetalhes) {
+                    const limpo = extrairMunicipioLimpo(nomeFantasiaDetalhes);
                     const normalizado = normalizarSemAcento(limpo);
                     
                     if (normalizado && unidades && unidades.length > 0) {
@@ -256,11 +278,32 @@ export async function executarSincronizacaoConvenios() {
                         if (unidadeEncontrada) {
                             municipioLimpo = unidadeEncontrada.municipio;
                             console.log(`[SIC3 Sync] [Log] Município "${normalizado}" localizado com sucesso na busca-unidades. Unidade correspondente: "${unidadeEncontrada.secao}"`);
-                            break;
                         }
                     }
-                    if (limpo && !municipioLimpo) {
+                    if (!municipioLimpo) {
                         municipioLimpo = limpo;
+                    }
+                }
+                
+                // Fallback caso NOME_FANTASIA em detalhes esteja vazio
+                if (!municipioLimpo) {
+                    console.log(`[SIC3 Sync] [Log] NOME_FANTASIA ausente em detalhes. Aplicando candidatos de concedente fallback...`);
+                    const candidatos = [conv.CONCEDENTE, conv.NOME_FANTASIA].filter(Boolean);
+                    for (const cand of candidatos) {
+                        const limpo = extrairMunicipioLimpo(cand);
+                        const normalizado = normalizarSemAcento(limpo);
+                        
+                        if (normalizado && unidades && unidades.length > 0) {
+                            unidadeEncontrada = unidades.find(u => normalizarSemAcento(u.municipio) === normalizado);
+                            if (unidadeEncontrada) {
+                                municipioLimpo = unidadeEncontrada.municipio;
+                                console.log(`[SIC3 Sync] [Log] Município "${normalizado}" (de concedente fallback) localizado com sucesso. Unidade correspondente: "${unidadeEncontrada.secao}"`);
+                                break;
+                            }
+                        }
+                        if (limpo && !municipioLimpo) {
+                            municipioLimpo = limpo;
+                        }
                     }
                 }
                 
@@ -268,7 +311,7 @@ export async function executarSincronizacaoConvenios() {
                 const nomeSecao = unidadeEncontrada ? unidadeEncontrada.secao : "";
                 
                 if (!unidadeEncontrada) {
-                    console.log(`[SIC3 Sync] [Log] Atenção: Não foi localizada unidade específica na busca de unidades para o município candidato: "${municipioLimpo}"`);
+                    console.log(`[SIC3 Sync] [Log] Atenção: Não foi localizada unidade na busca de unidades para o município candidato: "${municipioLimpo}"`);
                 }
                 
                 // 5.3 PASSO 5: Unificar as informações coletadas por meio do ID do convênio, Concedente ID e Nome do Município
@@ -289,11 +332,19 @@ export async function executarSincronizacaoConvenios() {
                     CONCEDENTE: String(conv.CONCEDENTE),
                     CONCEDENTE_ID: String(conv.CONCEDENTE_ID),
                     CNPJ: String(conv.CNPJ),
-                    UNIDADE_RESPONSAVEL: String(unidadeResponsavel)
+                    UNIDADE_RESPONSAVEL: String(unidadeResponsavel),
+                    
+                    // Anexa todas as informações disponíveis de busca-unidades
+                    unidadeNivel: unidadeEncontrada ? unidadeEncontrada.nivel : "",
+                    unidadeHierarquia: unidadeEncontrada ? unidadeEncontrada.hierarquia : "",
+                    unidadeCodigoSecao: unidadeEncontrada ? unidadeEncontrada.codigoSecao : "",
+                    unidadeSecao: unidadeEncontrada ? unidadeEncontrada.secao : "",
+                    unidadeCodigoMunicipio: unidadeEncontrada ? unidadeEncontrada.codigoMunicipio : "",
+                    unidadeMunicipio: unidadeEncontrada ? unidadeEncontrada.municipio : ""
                 };
                 
                 resultadoFinal.push(registroUnificado);
-                console.log(`[SIC3 Sync] [Log] Convênio ${conv.ID} unificado e pronto para envio.`, registroUnificado);
+                console.log(`[SIC3 Sync] [Log] Convênio ${conv.ID} unificado e pronto para envio:`, registroUnificado);
                 
             } catch (errConv) {
                 console.error(`[SIC3 Sync] [Log] Falha ao processar e unificar convênio ${conv.ID}:`, errConv);
