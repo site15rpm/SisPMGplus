@@ -9,6 +9,7 @@ function normalizarSemAcento(str) {
     if (!str) return "";
     return str.normalize("NFD")
               .replace(/[\u0300-\u036f]/g, "")
+              .replace(/Ç/g, "C")
               .toUpperCase()
               .trim();
 }
@@ -21,7 +22,7 @@ function extrairMunicipioLimpo(nomeBruto) {
                .replace(/\s*-\s*MG\s*$/i, '')
                .replace(/\s*\(PARTICULAR\)/i, '')
                .trim();
-    // Limpa prefixos de preposições que restarem
+    // Limpa prefixos de preposições que restarem no início
     nome = nome.replace(/^(DE|DO|DA)\s+/i, '').trim();
     return nome;
 }
@@ -34,28 +35,34 @@ export async function executarSincronizacaoConvenios() {
     console.log("[SIC3 Sync] [Log] Iniciando o processo de sincronização de convênios semanal...");
     
     try {
-        // 1. Obter a RPM do usuário do contexto do SIC3
-        let rpm = sessionStorage.getItem("sic3_rpm") || window.rpm || "";
-        if (!rpm) {
-            const storageResult = await browser.storage.local.get('sic3_user_info');
-            const info = storageResult.sic3_user_info;
-            if (info && info.codigoRegiao) {
-                rpm = String(info.codigoRegiao);
-            }
+        // 1. Obter a RPM do usuário extraída diretamente do Tokiuz (browser storage)
+        let codigoRpmTokiuz = "";
+        const storageResult = await browser.storage.local.get('sic3_user_info');
+        const info = storageResult.sic3_user_info;
+        if (info && info.codigoRegiao) {
+            codigoRpmTokiuz = String(info.codigoRegiao).trim();
+            console.log(`[SIC3 Sync] [Log] Código da RPM do usuário extraído diretamente do Tokiuz (storage): "${codigoRpmTokiuz}"`);
         }
         
-        if (!rpm) {
-            throw new Error("Não foi possível identificar a RPM do usuário para extração de unidades.");
+        if (!codigoRpmTokiuz) {
+            let rpm = sessionStorage.getItem("sic3_rpm") || window.rpm || "";
+            codigoRpmTokiuz = String(rpm).match(/\d+/)?.[0] || rpm;
+            console.log(`[SIC3 Sync] [Log] Fallback: Código da RPM extraído de context/session: "${codigoRpmTokiuz}"`);
         }
         
-        const rpmLimpa = String(rpm).match(/\d+/)?.[0] || rpm;
-        console.log(`[SIC3 Sync] [Log] RPM identificada para o usuário: "${rpmLimpa}"`);
+        if (!codigoRpmTokiuz) {
+            throw new Error("Não foi possível extrair o código de RPM do Tokiuz do usuário.");
+        }
         
         // 2. Buscar unidades da RPM pelo motor de busca-unidades
-        console.log("[SIC3 Sync] [Log] Chamando obterUnidades para a RPM: " + rpmLimpa);
+        console.log("[SIC3 Sync] [Log] Chamando obterUnidades para a RPM extraída do Tokiuz: " + codigoRpmTokiuz);
         window.mostrarCarregamentoGlobal("Buscando lista de unidades da RPM...");
-        const unidades = await obterUnidades(rpmLimpa);
-        console.log(`[SIC3 Sync] [Log] ${unidades.length} unidades carregadas com sucesso para a RPM ${rpmLimpa}`);
+        const unidades = await obterUnidades(codigoRpmTokiuz);
+        
+        console.log(`[SIC3 Sync] [Log] Foram localizadas ${unidades.length} unidades na busca de unidades da RPM ${codigoRpmTokiuz}:`);
+        unidades.forEach((u, idx) => {
+            console.log(`  [Unidade ${idx+1}] Município: "${u.municipio}" | Seção: "${u.secao}" | Nível: ${u.nivel} | Hierarquia: "${u.hierarquia}" | CódigoSeção: "${u.codigoSecao}"`);
+        });
         
         // 3. PASSO 1: Buscar convênios ativos no Portal PM para extrair os IDs dos concedentes
         console.log("[SIC3 Sync] [Log] [Passo 1] Buscando id dos concedentes a partir de meus-convenios...");
@@ -74,7 +81,7 @@ export async function executarSincronizacaoConvenios() {
         const concedenteIds = [...new Set(conveniosUsuario.map(conv => conv.CONCEDENTE_ID || conv.concedente_id).filter(Boolean))];
         console.log(`[SIC3 Sync] [Log] [Passo 1] Identificados ${concedenteIds.length} IDs de concedentes únicos:`, concedenteIds);
         
-        // 4. PASSO 2: Acessar a página de cada concedente e coletar convênios listados
+        // 4. PASSO 2: Acessar a página de cada concedente e coletar convênios listados (coletando APENAS o CNPJ na página)
         const convsColetadosHTML = [];
         let indexConc = 0;
         
@@ -96,21 +103,16 @@ export async function executarSincronizacaoConvenios() {
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(htmlText, 'text/html');
                 
-                // Extração dos metadados do Concedente (Razão Social, CNPJ, Nome Fantasia)
-                const nReal = doc.querySelector('.barra.item h2')?.innerText.trim() || "";
-                let razaoSocial = nReal.replace(/^CONCEDENTE\s*:\s*/i, '');
+                // Coleta estritamente e apenas o CNPJ na página do Concedente
                 let cnpj = "";
-                
-                if (razaoSocial.includes('CNPJ')) {
-                    const parts = razaoSocial.split(/-\s*CNPJ\s*:\s*|CNPJ\s*:\s*/i);
-                    razaoSocial = parts[0].trim();
+                const nReal = doc.querySelector('.barra.item h2')?.innerText.trim() || "";
+                if (nReal.includes('CNPJ')) {
+                    const parts = nReal.split(/-\s*CNPJ\s*:\s*|CNPJ\s*:\s*/i);
                     if (parts[1]) {
                         cnpj = parts[1].trim();
                     }
                 }
-                razaoSocial = razaoSocial.replace(/\s*-\s*$/, '').trim();
                 
-                let nomeFantasia = "";
                 const infoConvenio = doc.querySelector('.barra.item.info-convenio');
                 if (infoConvenio) {
                     const colunas = infoConvenio.querySelectorAll('.flex-coluna');
@@ -118,13 +120,8 @@ export async function executarSincronizacaoConvenios() {
                         const labelEl = col.querySelector('.tc');
                         const label = labelEl ? labelEl.textContent.trim().toUpperCase() : '';
                         const valorText = col.textContent.replace(labelEl ? labelEl.textContent : '', '').trim();
-                        
                         if (label === 'CNPJ') {
                             cnpj = valorText;
-                        } else if (label === 'RAZÃO SOCIAL' || label === 'RAZAO SOCIAL') {
-                            razaoSocial = valorText;
-                        } else if (label === 'NOME FANTASIA') {
-                            nomeFantasia = valorText;
                         }
                     });
                 }
@@ -155,24 +152,7 @@ export async function executarSincronizacaoConvenios() {
                     }
                 }
                 
-                // Fallback para Nome Fantasia se não encontrado nas colunas
-                if (!nomeFantasia) {
-                    const labels = Array.from(doc.querySelectorAll('.tc.menor, td, th, label, div, span'));
-                    const fantEl = labels.find(el => {
-                        const text = el.textContent.trim().toUpperCase();
-                        return text === 'NOME FANTASIA' || text === 'FANTASIA';
-                    });
-                    if (fantEl) {
-                        const flexColuna = fantEl.closest('.flex-coluna');
-                        if (flexColuna) {
-                            nomeFantasia = flexColuna.textContent.replace(fantEl.textContent, '').trim();
-                        } else if (fantEl.nextElementSibling) {
-                            nomeFantasia = fantEl.nextElementSibling.textContent.trim();
-                        }
-                    }
-                }
-                
-                console.log(`[SIC3 Sync] [Log] Concedente ID ${concedenteId}: CNPJ="${cnpj}", Razão Social="${razaoSocial}", Nome Fantasia="${nomeFantasia}"`);
+                console.log(`[SIC3 Sync] [Log] Concedente ID ${concedenteId}: CNPJ="${cnpj}" (Razão Social e Nome Fantasia da página ignorados)`);
                 
                 // Varre os convênios firmados expostos na página HTML do concedente
                 const targetH = Array.from(doc.querySelectorAll('h2')).find(h => h.textContent.includes('Convênios firmados'));
@@ -197,14 +177,17 @@ export async function executarSincronizacaoConvenios() {
                             }
                         });
                         
+                        // Recupera a razão social original do JSON inicial de convênios para evitar capturar do HTML
+                        const convOriginal = conveniosUsuario.find(c => String(c.ID || c.id) === String(idConvenio));
+                        const razaoSocialOriginal = convOriginal ? (convOriginal.CONCEDENTE || convOriginal.concedente || "") : "";
+                        
                         convsColetadosHTML.push({
                             ID: idConvenio,
                             CONCEDENTE_ID: String(concedenteId),
                             status_texto: statusTexto,
                             UNI_NOME_PRINCIPAL: uni,
                             CNPJ: cnpj,
-                            CONCEDENTE: razaoSocial,
-                            NOME_FANTASIA: nomeFantasia
+                            CONCEDENTE: razaoSocialOriginal
                         });
                     }
                 }
@@ -267,17 +250,22 @@ export async function executarSincronizacaoConvenios() {
                 let unidadeEncontrada = null;
                 const nomeFantasiaDetalhes = detalhes.NOME_FANTASIA || detalhes.nome_fantasia || "";
                 
-                console.log(`[SIC3 Sync] [Log] Identificando município a partir de NOME_FANTASIA de get-convenio-detalhes: "${nomeFantasiaDetalhes}"`);
+                console.log(`[SIC3 Sync] [Log] Tratando município para convênio ID ${conv.ID}:`);
+                console.log(`  - NOME_FANTASIA original de detalhes: "${nomeFantasiaDetalhes}"`);
                 
                 if (nomeFantasiaDetalhes) {
                     const limpo = extrairMunicipioLimpo(nomeFantasiaDetalhes);
-                    const normalizado = normalizarSemAcento(limpo);
+                    const candidatoNormalizado = normalizarSemAcento(limpo);
+                    console.log(`  - Município limpo extraído: "${limpo}" | Normalizado (sem acentos e ç): "${candidatoNormalizado}"`);
                     
-                    if (normalizado && unidades && unidades.length > 0) {
-                        unidadeEncontrada = unidades.find(u => normalizarSemAcento(u.municipio) === normalizado);
+                    if (candidatoNormalizado && unidades && unidades.length > 0) {
+                        // Cruza usando normalização sem acentos e ç em ambas as pontas
+                        unidadeEncontrada = unidades.find(u => normalizarSemAcento(u.municipio) === candidatoNormalizado);
                         if (unidadeEncontrada) {
-                            municipioLimpo = unidadeEncontrada.municipio;
-                            console.log(`[SIC3 Sync] [Log] Município "${normalizado}" localizado com sucesso na busca-unidades. Unidade correspondente: "${unidadeEncontrada.secao}"`);
+                            municipioLimpo = unidadeEncontrada.municipio; // O município com acentos correto da busca-unidades!
+                            console.log(`  => Match com unidade: "${unidadeEncontrada.secao}" (Município da busca-unidades: "${unidadeEncontrada.municipio}")`);
+                        } else {
+                            console.log(`  - Não foi encontrada unidade correspondente na lista para o município normalizado: "${candidatoNormalizado}"`);
                         }
                     }
                     if (!municipioLimpo) {
@@ -287,17 +275,18 @@ export async function executarSincronizacaoConvenios() {
                 
                 // Fallback caso NOME_FANTASIA em detalhes esteja vazio
                 if (!municipioLimpo) {
-                    console.log(`[SIC3 Sync] [Log] NOME_FANTASIA ausente em detalhes. Aplicando candidatos de concedente fallback...`);
+                    console.log(`  - NOME_FANTASIA de detalhes vazio. Aplicando fallback de candidatos do concedente:`);
                     const candidatos = [conv.CONCEDENTE, conv.NOME_FANTASIA].filter(Boolean);
                     for (const cand of candidatos) {
                         const limpo = extrairMunicipioLimpo(cand);
-                        const normalizado = normalizarSemAcento(limpo);
+                        const candidatoNormalizado = normalizarSemAcento(limpo);
+                        console.log(`    - Candidato original: "${cand}" | Limpo: "${limpo}" | Normalizado: "${candidatoNormalizado}"`);
                         
-                        if (normalizado && unidades && unidades.length > 0) {
-                            unidadeEncontrada = unidades.find(u => normalizarSemAcento(u.municipio) === normalizado);
+                        if (candidatoNormalizado && unidades && unidades.length > 0) {
+                            unidadeEncontrada = unidades.find(u => normalizarSemAcento(u.municipio) === candidatoNormalizado);
                             if (unidadeEncontrada) {
                                 municipioLimpo = unidadeEncontrada.municipio;
-                                console.log(`[SIC3 Sync] [Log] Município "${normalizado}" (de concedente fallback) localizado com sucesso. Unidade correspondente: "${unidadeEncontrada.secao}"`);
+                                console.log(`    => Match fallback com unidade: "${unidadeEncontrada.secao}" (Município da busca-unidades: "${unidadeEncontrada.municipio}")`);
                                 break;
                             }
                         }
@@ -307,11 +296,12 @@ export async function executarSincronizacaoConvenios() {
                     }
                 }
                 
+                // Município acentuado original da busca-unidades (nomeMunicipioComAcento) para a planilha
                 const nomeMunicipioComAcento = unidadeEncontrada ? unidadeEncontrada.municipio : (municipioLimpo || "-");
                 const nomeSecao = unidadeEncontrada ? unidadeEncontrada.secao : "";
                 
                 if (!unidadeEncontrada) {
-                    console.log(`[SIC3 Sync] [Log] Atenção: Não foi localizada unidade na busca de unidades para o município candidato: "${municipioLimpo}"`);
+                    console.log(`  - Atenção: Não foi localizada unidade específica na busca de unidades para o município candidato: "${municipioLimpo}"`);
                 }
                 
                 // 5.3 PASSO 5: Unificar as informações coletadas por meio do ID do convênio, Concedente ID e Nome do Município
