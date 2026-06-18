@@ -839,7 +839,13 @@ function sincronizarConveniosLote(authToken, convenios) {
         String(conv.CONCEDENTE || conv.concedente || ""),
         String(conv.CONCEDENTE_ID || conv.concedente_id || ""),
         String(conv.CNPJ || conv.cnpj || ""),
-        String(conv.UNIDADE_RESPONSAVEL || conv.unidade_responsavel || "")
+        String(conv.UNIDADE_RESPONSAVEL || conv.unidade_responsavel || ""),
+        String(conv.unidadeNivel || conv.unidade_nivel || ""),
+        String(conv.unidadeHierarquia || conv.unidade_hierarquia || ""),
+        String(conv.unidadeCodigoSecao || conv.unidade_codigo_secao || ""),
+        String(conv.unidadeSecao || conv.unidade_secao || ""),
+        String(conv.unidadeCodigoMunicipio || conv.unidade_codigo_municipio || ""),
+        String(conv.unidadeMunicipio || conv.unidade_municipio || "")
       ];
       
       if (mapaExistentes[id]) {

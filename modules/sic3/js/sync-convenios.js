@@ -11,7 +11,18 @@ function normalizarSemAcento(str) {
               .replace(/[\u0300-\u036f]/g, "")
               .replace(/Ç/g, "C")
               .toUpperCase()
+              .replace(/\b(DE|DO|DA|DOS|DAS)\b/g, "")
+              .replace(/\s+/g, " ")
               .trim();
+}
+
+function limparCampoHtml(str) {
+    if (!str) return "";
+    let s = String(str).trim();
+    if (s.toLowerCase().includes("nao definido") || s.toLowerCase().includes("não definido") || s.toLowerCase().includes("not-set") || s.toLowerCase().includes("undefined") || s.toLowerCase().includes("null")) {
+        return "";
+    }
+    return s.replace(/<\/?[^>]+(>|$)/g, "").trim();
 }
 
 function extrairMunicipioLimpo(nomeBruto) {
@@ -224,26 +235,30 @@ export async function executarSincronizacaoConvenios() {
                     console.warn(`[SIC3 Sync] [Log] Não foi possível ler detalhes JSON do convênio ${conv.ID}. Status HTTP: ${resDet.status}`);
                 }
                 
-                // Extração dos campos do JSON usando o mapeamento correto retornado por get-convenio-detalhes
-                const prepostoId = detalhes.PREPOSTO_ID || detalhes.preposto_id || "";
-                const prepostoPostoGrad = detalhes.PES_POSTOGRAD || detalhes.pes_postograd || detalhes.PREPOSTO_POSTOGRAD || detalhes.preposto_postograd || "";
-                const prepostoNome = detalhes.PES_NOME || detalhes.pes_nome || detalhes.PREPOSTO_NOME || detalhes.preposto_nome || "";
-                const dtInicialOriginal = detalhes.DT_VIGENCIA_INICIAL || detalhes.dt_vigencia_inicial || detalhes.DTINICIAL_ORIGINAL || detalhes.dtinicial_original || detalhes.DTINICIAL || "";
-                const dtFinal = detalhes.DT_VIGENCIA_FINAL || detalhes.dt_vigencia_final || detalhes.DTFINAL || detalhes.dtfinal || "";
-                const numeroFace = detalhes.NUMERO_FACE || detalhes.numero_face || conv.NUMERO_FACE || "";
-                const uniNomePrincipal = detalhes.UNI_NOME_PRINCIPAL || detalhes.uni_nome_principal || conv.UNI_NOME_PRINCIPAL || "";
+                // Extração dos campos do JSON usando o mapeamento correto retornado por get-convenio-detalhes e limpando HTML/indefinidos
+                const prepostoId = limparCampoHtml(detalhes.PREPOSTO_ID || detalhes.preposto_id || "");
+                const prepostoPostoGrad = limparCampoHtml(detalhes.PES_POSTOGRAD || detalhes.pes_postograd || detalhes.PREPOSTO_POSTOGRAD || detalhes.preposto_postograd || "");
+                const prepostoNome = limparCampoHtml(detalhes.PES_NOME || detalhes.pes_nome || detalhes.PREPOSTO_NOME || detalhes.preposto_nome || "");
+                const dtInicialOriginal = limparCampoHtml(detalhes.DT_VIGENCIA_INICIAL || detalhes.dt_vigencia_inicial || detalhes.DTINICIAL_ORIGINAL || detalhes.dtinicial_original || detalhes.DTINICIAL || "");
+                const dtFinal = limparCampoHtml(detalhes.DT_VIGENCIA_FINAL || detalhes.dt_vigencia_final || detalhes.DTFINAL || detalhes.dtfinal || "");
+                const numeroFace = limparCampoHtml(detalhes.NUMERO_FACE || detalhes.numero_face || conv.NUMERO_FACE || "");
+                const uniNomePrincipal = limparCampoHtml(detalhes.UNI_NOME_PRINCIPAL || detalhes.uni_nome_principal || conv.UNI_NOME_PRINCIPAL || "");
                 
-                // Mapeia aditivo de forma segura contra nulos
+                // Mapeia aditivo de forma segura contra nulos e strings indesejadas
                 let aditivo = "N";
                 if (detalhes.ADITIVO !== undefined && detalhes.ADITIVO !== null) {
-                    aditivo = String(detalhes.ADITIVO);
+                    aditivo = limparCampoHtml(detalhes.ADITIVO) || "N";
                 } else if (detalhes.aditivo !== undefined && detalhes.aditivo !== null) {
-                    aditivo = String(detalhes.aditivo);
+                    aditivo = limparCampoHtml(detalhes.aditivo) || "N";
                 }
                 
-                const ativo = detalhes.ATIVO || detalhes.ativo || "S";
-                const statusTexto = detalhes.SITUACAO_CONV || detalhes.situacao_conv || conv.status_texto || "";
-                const unidadeResponsavel = detalhes.UNIDADE_RESPONSAVEL || detalhes.unidade_responsavel || "";
+                const ativo = limparCampoHtml(detalhes.ATIVO || detalhes.ativo || "S");
+                const statusTexto = limparCampoHtml(detalhes.SITUACAO_CONV || detalhes.situacao_conv || conv.status_texto || "");
+                const unidadeResponsavel = limparCampoHtml(detalhes.UNIDADE_RESPONSAVEL || detalhes.unidade_responsavel || "");
+                
+                // Garante que o concedente (Razão Social) esteja sempre preenchido, usando Nome Fantasia como fallback
+                const concedenteFinal = conv.CONCEDENTE || detalhes.CONCEDENTE || detalhes.concedente || detalhes.NOME_FANTASIA || detalhes.nome_fantasia || "";
+                const concedenteLimpo = limparCampoHtml(concedenteFinal);
                 
                 // 5.2 PASSO 4: Tratar campos para extrair o município e cruzar com o motor de busca-unidades
                 let municipioLimpo = "";
@@ -259,7 +274,7 @@ export async function executarSincronizacaoConvenios() {
                     console.log(`  - Município limpo extraído: "${limpo}" | Normalizado (sem acentos e ç): "${candidatoNormalizado}"`);
                     
                     if (candidatoNormalizado && unidades && unidades.length > 0) {
-                        // Cruza usando normalização sem acentos e ç em ambas as pontas
+                        // Cruza usando normalização sem acentos, ç, preposições e artigos em ambas as pontas
                         unidadeEncontrada = unidades.find(u => normalizarSemAcento(u.municipio) === candidatoNormalizado);
                         if (unidadeEncontrada) {
                             municipioLimpo = unidadeEncontrada.municipio; // O município com acentos correto da busca-unidades!
@@ -276,7 +291,7 @@ export async function executarSincronizacaoConvenios() {
                 // Fallback caso NOME_FANTASIA em detalhes esteja vazio
                 if (!municipioLimpo) {
                     console.log(`  - NOME_FANTASIA de detalhes vazio. Aplicando fallback de candidatos do concedente:`);
-                    const candidatos = [conv.CONCEDENTE, conv.NOME_FANTASIA].filter(Boolean);
+                    const candidatos = [concedenteLimpo, conv.NOME_FANTASIA].filter(Boolean);
                     for (const cand of candidatos) {
                         const limpo = extrairMunicipioLimpo(cand);
                         const candidatoNormalizado = normalizarSemAcento(limpo);
@@ -319,7 +334,7 @@ export async function executarSincronizacaoConvenios() {
                     ADITIVO: String(aditivo),
                     ATIVO: String(ativo),
                     status_texto: String(statusTexto),
-                    CONCEDENTE: String(conv.CONCEDENTE),
+                    CONCEDENTE: String(concedenteLimpo),
                     CONCEDENTE_ID: String(conv.CONCEDENTE_ID),
                     CNPJ: String(conv.CNPJ),
                     UNIDADE_RESPONSAVEL: String(unidadeResponsavel),

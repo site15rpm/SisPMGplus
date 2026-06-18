@@ -213,7 +213,10 @@
         })
         .reduce((acc, item) => acc + (parseFloat(String(item.subtotal).replace(/[^\d,-]/g, "").replace(",", ".")) || 0), 0);
       
-      const totalGeral = totalConsumo + totalAbastecimentos + totalServicos;
+      // Cálculo do Total Geral independente dos filtros dos subtotais, somando item por item
+      const totalGeral = dadosAnexo.principal.reduce((acc, item) => {
+        return acc + (parseFloat(String(item.subtotal).replace(/[^\d,-]/g, "").replace(",", ".")) || 0);
+      }, 0);
       
       const totalConsumoFormatado = formatarNumero(totalConsumo, "moeda");
       const totalAbastecimentosFormatado = formatarNumero(totalAbastecimentos, "moeda");
