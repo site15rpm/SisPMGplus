@@ -11,7 +11,7 @@
         carregarDadosPlanilha({
           sheetId: idbase,
           sheet: "convenios",
-          query: `SELECT A,B,C,D,E,F,G,H WHERE ${condicaoWhere}`,
+          query: `SELECT A,B,C,D,E,F,G,H,M,X,Y WHERE ${condicaoWhere}`,
         }),
         carregarDadosPlanilha({
           sheetId: idbase,
@@ -37,6 +37,9 @@
             unidade,
             dataInicio,
             dataFim,
+            status_texto,
+            elementos_despesa,
+            user_pm
           ] = row;
           if (municipio) {
             ADMIN_CONFIG.dados.convenios.push({
@@ -48,6 +51,9 @@
               unidade: String(unidade || "").trim(),
               dataInicio: String(dataInicio || "").trim(),
               dataFim: String(dataFim || "").trim(),
+              status_texto: String(status_texto || "").trim(),
+              elementos_despesa: String(elementos_despesa || "").trim(),
+              user_pm: String(user_pm || "").trim()
             });
           }
         });
@@ -179,6 +185,7 @@
             (item) =>
               item.municipio === mun &&
               item.convenio !== "-" &&
+              String(item.status_texto || "").toLowerCase() === "aberto" &&
               verificarVigenciaConvenio(item, ano, mesFiltro)
           );
           if (conveniosDoMunicipioNoMes.length > 0) {
@@ -254,6 +261,7 @@
 
           if (convenioFiltro === "TODOS") {
             conveniosParaEsteMes = conveniosDoMunicipio.filter((conv) =>
+              String(conv.status_texto || "").toLowerCase() === "aberto" &&
               verificarVigenciaConvenio(conv, ano, nomeMesCorrente)
             );
           } else {
