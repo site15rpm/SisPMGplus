@@ -28,6 +28,9 @@ async function carregarInformacoesConvenio() {
     preposto_pg = cItem.preposto_pg;
     preposto = cItem.preposto;
 
+    // Guarda elementos de despesa na global para uso no form_validation
+    window.elementosDespesaConvenioAtivo = cItem.elementos_despesa || "";
+
     $("#ano-info").val(ano);
     $("#mes-info").val(mes);
     $("#municipio-info").val(municipio);
@@ -61,18 +64,19 @@ async function carregarInformacoes() {
     const conveniosData = await carregarDadosPlanilha({
       sheetId: idbase,
       sheet: "convenios",
-      query: `SELECT A,B,C,D,E,F WHERE A='${municipio}' AND B='${convenio}'`
+      query: `SELECT A,B,C,D,E,F,X WHERE A='${municipio}' AND B='${convenio}'`
     });
     const resultado = { convenios: [] };
     conveniosData.forEach((row) => {
-      const [municipioAtual, convenioNum, preposto_n_val, preposto_pg_val, preposto_val, unidade_val] = row;
+      const [municipioAtual, convenioNum, preposto_n_val, preposto_pg_val, preposto_val, unidade_val, elementos_despesa_val] = row;
       resultado.convenios.push({
         municipio: municipioAtual,
         convenio: convenioNum,
         preposto_n: preposto_n_val,
         preposto_pg: preposto_pg_val,
         preposto: preposto_val,
-        unidade: unidade_val
+        unidade: unidade_val,
+        elementos_despesa: elementos_despesa_val || ""
       });
     });
     return resultado;
