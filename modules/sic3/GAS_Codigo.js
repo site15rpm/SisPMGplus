@@ -672,7 +672,10 @@ function carregarConveniosMunicipio(municipio, userInfo) {
           preposto: dados[i][4] || "",
           unidade: dados[i][5] || "",
           dataInicio: dados[i][6] ? Utilities.formatDate(new Date(dados[i][6]), "GMT", "dd/MM/yyyy") : "",
-          dataFim: dados[i][7] ? Utilities.formatDate(new Date(dados[i][7]), "GMT", "dd/MM/yyyy") : ""
+          dataFim: dados[i][7] ? Utilities.formatDate(new Date(dados[i][7]), "GMT", "dd/MM/yyyy") : "",
+          status_texto: dados[i][12] || "",
+          elementos_despesa: dados[i][23] || "",
+          user_pm: dados[i][24] || ""
         });
       }
     }
@@ -709,7 +712,8 @@ function incluirConvenio(authToken, municipio, convenio, preposto_n, preposto_pg
       String(unidade), 
       dataInicio ? formatDataForSheet(dataInicio) : "", 
       dataFim ? formatDataForSheet(dataFim) : "",
-      "", "", "", "", "", "", "", "", ""
+      "", "", "", "", "", "", "", "", "",
+      "", "", "", "", "", "", "", ""
   ];
   conveniosSheet.appendRow(novaLinha);
   const ultimaLinha = conveniosSheet.getLastRow();
@@ -845,7 +849,9 @@ function sincronizarConveniosLote(authToken, convenios) {
         String(conv.unidadeCodigoSecao || conv.unidade_codigo_secao || ""),
         String(conv.unidadeSecao || conv.unidade_secao || ""),
         String(conv.unidadeCodigoMunicipio || conv.unidade_codigo_municipio || ""),
-        String(conv.unidadeMunicipio || conv.unidade_municipio || "")
+        String(conv.unidadeMunicipio || conv.unidade_municipio || ""),
+        String(conv.ELEMENTOS_DESPESA || conv.elementos_despesa || ""),
+        String(conv.USER_PM || conv.user_pm || "")
       ];
       
       if (mapaExistentes[id]) {
