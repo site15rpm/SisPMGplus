@@ -1,26 +1,7 @@
 // Arquivo: modules/terminal/terminal-login.js
 // Contém a lógica de fluxo de login, captura de credenciais e automação.
 
-function decodeJwt(token) {
-    if (!token || typeof token !== 'string') return null;
-    try { 
-        const parts = token.split('.');
-        if (parts.length !== 3) return null;
-        let payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
-        const pad = payload.length % 4;
-        if (pad) payload += '='.repeat(4 - pad);
-        return JSON.parse(atob(payload)); 
-    } catch (e) { 
-        console.error("Erro ao decodificar JWT:", e); 
-        return null; 
-    } 
-}
-function getCookie(name) { 
-    const v = `; ${document.cookie}`; 
-    const p = v.split(`; ${name}=`); 
-    if (p.length === 2) return p.pop().split(';').shift(); 
-    return undefined; 
-}
+import { getCookie, decodeJwt } from '../../common/utils.js';
 
 
 export function initLogin(prototype) {
