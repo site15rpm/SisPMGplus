@@ -7,7 +7,7 @@ import { handleTerminalMessages, initBackgroundListeners } from './modules/termi
 import { handleIntranetMessages } from './modules/intranet/intranet-background.js';
 import { handleAbastecimentosMessages, initializeAbastecimentosBackground } from './modules/abastecimentos/abastecimentos-background.js';
 import { handleSicorMessages, initializeSicorBackground } from './modules/intranet/intranet-sicor-background.js';
-import { handleSirconvConveniosMessages, initializeSirconvConveniosBackground } from './modules/intranet/intranet-sirconv-convenios-background.js';
+// Módulo sirconv-convenios-background removido (sincronização de convênios migrada para o SIC3)
 import { handleUnidadesMessages, initializeUnidadesBackground } from './modules/intranet/intranet-unidades-background.js';
 import { handleAgendaMessages, initializeAgendaBackground } from './modules/intranet/intranet-agenda-background.js';
 
@@ -15,7 +15,7 @@ import { handleAgendaMessages, initializeAgendaBackground } from './modules/intr
 initBackgroundListeners();
 initializeAbastecimentosBackground();
 initializeSicorBackground();
-initializeSirconvConveniosBackground();
+// Sincronização do SIRCONV removida do background
 initializeUnidadesBackground();
 initializeAgendaBackground();
 
@@ -26,7 +26,6 @@ const messageHandlers = [
     handleIntranetMessages,
     handleAgendaMessages,
     handleAbastecimentosMessages,
-    handleSirconvConveniosMessages,
     handleUnidadesMessages,
     handleSicorMessages
 ];
