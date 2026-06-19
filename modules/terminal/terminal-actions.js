@@ -5,10 +5,6 @@
 
 import { getCookie, decodeJwt } from '../../common/utils.js';
 
-// Expõe no escopo global para garantir a compatibilidade com rotinas antigas do usuário que as chamam diretamente
-window.getCookie = getCookie;
-window.decodeJwt = decodeJwt;
-
 class UserCancellationError extends Error {
     constructor(message) {
         super(message);
