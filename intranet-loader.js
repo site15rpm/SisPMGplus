@@ -185,6 +185,7 @@ function checkAllModules() {
     }
 
     // O módulo de SIRCONV Convenios gráfica/sincronização local na intranet foi desativado e integrado ao SIC3.
+    const isSirconvConveniosPage = window.location.href.includes('/lite/convenio/');
     if (moduleSettings.sirconvDashboardModuleEnabled !== false) {
         if (isSirconvConveniosPage && !sirconvDashboardModuleInstance) {
             loadSirconvDashboardModule();
