@@ -2,29 +2,7 @@
 // Roteador e Controlador Principal do SPA do SIC3 na extensão SisPMGplus.
 
 import { executarApi, getGasApiUrl, saveGasApiUrl } from './api.js';
-
-// Funções de decodificação de credenciais do tokiuz (Intranet PM)
-function decodeJwt(token) {
-    if (!token || typeof token !== 'string') return null;
-    try { 
-        const parts = token.split('.');
-        if (parts.length !== 3) return null;
-        let payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
-        const pad = payload.length % 4;
-        if (pad) payload += '='.repeat(4 - pad);
-        return JSON.parse(atob(payload)); 
-    } catch (e) { 
-        console.error("Erro ao decodificar JWT:", e); 
-        return null; 
-    } 
-}
-
-function getCookie(name) { 
-    const v = `; ${document.cookie}`; 
-    const p = v.split(`; ${name}=`); 
-    if (p.length === 2) return p.pop().split(';').shift(); 
-    return undefined; 
-}
+import { getCookie, decodeJwt } from '../../common/utils.js';
 
 function extrairRpmDoToken() {
     try {
