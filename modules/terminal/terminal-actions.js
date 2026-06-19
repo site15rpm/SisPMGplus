@@ -3,36 +3,11 @@
 // NOTA: Funções assíncronas aqui definidas NÃO precisam da palavra-chave 'await'
 // quando usadas no editor de rotinas, pois o processador de rotinas a insere automaticamente.
 
-/**
- * Decodifica um token JWT para extrair seu payload.
- * @param {string} token O token JWT.
- * @returns {object|null} O payload do token ou null se a decodificação falhar.
- */
-function decodeJwt(token) {
-    if (!token || typeof token !== 'string') return null;
-    try { 
-        const parts = token.split('.');
-        if (parts.length !== 3) return null;
-        let payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
-        const pad = payload.length % 4;
-        if (pad) payload += '='.repeat(4 - pad);
-        return JSON.parse(atob(payload)); 
-    } catch (e) { 
-        console.error("SisPMG+: Erro ao decodificar JWT:", e); 
-        return null; 
-    } 
-}
-/**
- * Obtém o valor de um cookie a partir do seu nome.
- * @param {string} name O nome do cookie.
- * @returns {string|undefined} O valor do cookie ou undefined se não for encontrado.
- */
-function getCookie(name) { 
-    const v = `; ${document.cookie}`; 
-    const p = v.split(`; ${name}=`); 
-    if (p.length === 2) return p.pop().split(';').shift(); 
-    return undefined; 
-}
+import { getCookie, decodeJwt } from '../../common/utils.js';
+
+// Expõe no escopo global para garantir a compatibilidade com rotinas antigas do usuário que as chamam diretamente
+window.getCookie = getCookie;
+window.decodeJwt = decodeJwt;
 
 class UserCancellationError extends Error {
     constructor(message) {
