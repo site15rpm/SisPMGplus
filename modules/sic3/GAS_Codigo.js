@@ -857,6 +857,28 @@ function sincronizarConveniosLote(authToken, convenios) {
       if (mapaExistentes[id]) {
         // Atualiza a linha existente
         const numLinha = mapaExistentes[id].linha;
+        
+        // Se já existir um número de usuário em bdconvenio, adiciona o novo separado por '|' sem duplicar
+        const pmExistenteStr = String(mapaExistentes[id].valores[24] || "").trim();
+        const pmNovoStr = String(conv.USER_PM || conv.user_pm || "").trim();
+        let pmFinalStr = pmNovoStr;
+        if (pmExistenteStr) {
+          const pmsExistentes = pmExistenteStr.split("|").map(function(p) { return p.trim(); }).filter(Boolean);
+          if (pmNovoStr) {
+            const pmsNovos = pmNovoStr.split("|").map(function(p) { return p.trim(); }).filter(Boolean);
+            const pmsUnicos = [];
+            pmsExistentes.concat(pmsNovos).forEach(function(pm) {
+              if (pmsUnicos.indexOf(pm) === -1) {
+                pmsUnicos.push(pm);
+              }
+            });
+            pmFinalStr = pmsUnicos.join("|");
+          } else {
+            pmFinalStr = pmExistenteStr;
+          }
+        }
+        novaLinha[24] = pmFinalStr;
+        
         sheet.getRange(numLinha, 1, 1, novaLinha.length).setValues([novaLinha]);
         sheet.getRange(numLinha, 1, 1, novaLinha.length).setNumberFormat("@STRING@");
         atualizadosCount++;

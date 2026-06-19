@@ -1016,7 +1016,15 @@
         }
       }
 
-      const uniquePMs = [...new Set([prepostoPM, userPMConv, userPM])].map(x => String(x).trim()).filter(Boolean);
+      // Separa múltiplos PMs que estejam concatenados com '|'
+      const splitPMs = (str) => String(str || "").split('|').map(x => x.trim()).filter(Boolean);
+      const allPMs = [
+        ...splitPMs(prepostoPM),
+        ...splitPMs(userPMConv),
+        ...splitPMs(userPM)
+      ];
+
+      const uniquePMs = [...new Set(allPMs)];
       const abrangenciaG = uniquePMs.length > 0 ? `,g:${uniquePMs.join('|')}` : "";
       const abrangenciaFinal = `c:${unidadeSelecionada.value}${abrangenciaG}`;
 

@@ -340,7 +340,7 @@ body {
 }
 
 .loading-message {
-  color: var(--cor-caqui);
+  color: var(--cor-linha);
   font-family: var(--font-family-title);
   font-size: 16px;
   font-weight: 700;

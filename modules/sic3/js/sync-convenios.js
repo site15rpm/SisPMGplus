@@ -66,7 +66,12 @@ export async function executarSincronizacaoConvenios() {
         if (info) {
             if (info.codigoRegiao) codigoRpmTokiuz = String(info.codigoRegiao).trim();
             if (info.nomeRegiao) nomeRegiaoTokiuz = String(info.nomeRegiao).trim();
-            if (info.numeroPM) userPMTokiuz = String(info.numeroPM).trim();
+            
+            // Administradores não devem ter seus números PM inseridos no bdconvenio
+            const eAdmin = (info.isAdmin === true || window.isAdmin === true);
+            if (info.numeroPM && !eAdmin) {
+                userPMTokiuz = String(info.numeroPM).trim();
+            }
             console.log(`[SIC3 Sync] [Log] Dados do Tokiuz do usuário extraídos (storage): RPM="${codigoRpmTokiuz}", Região="${nomeRegiaoTokiuz}", PM="${userPMTokiuz}"`);
         }
         

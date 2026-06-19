@@ -185,7 +185,6 @@
             (item) =>
               item.municipio === mun &&
               item.convenio !== "-" &&
-              String(item.status_texto || "").toLowerCase() === "aberto" &&
               verificarVigenciaConvenio(item, ano, mesFiltro)
           );
           if (conveniosDoMunicipioNoMes.length > 0) {
@@ -261,7 +260,6 @@
 
           if (convenioFiltro === "TODOS") {
             conveniosParaEsteMes = conveniosDoMunicipio.filter((conv) =>
-              String(conv.status_texto || "").toLowerCase() === "aberto" &&
               verificarVigenciaConvenio(conv, ano, nomeMesCorrente)
             );
           } else {
