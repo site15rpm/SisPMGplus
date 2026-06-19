@@ -221,7 +221,7 @@ export async function handleSirconvConveniosMessages(request, sender) {
 
         case 'intranet-user-identified':
             // Extração automática disparada quando usuário navega pela página
-            if (payload?.system === 'SIRCONV') {
+            if (payload?.system === 'INTRANET' || payload?.system === 'SIRCONV') {
                 checkTrigger(payload);
             }
             // Não retorna resposta, pois é apenas um gatilho
