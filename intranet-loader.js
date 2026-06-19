@@ -6,7 +6,7 @@ let uiModuleInstance = null;
 let aniverModuleInstance = null;
 let agendaModuleInstance = null; // Módulo da Agenda
 let sirconvModuleInstance = null;
-let sirconvConveniosModuleInstance = null;
+// sirconvConveniosModuleInstance desativado (sincronização movida para o SIC3)
 let sirconvDashboardModuleInstance = null;
 let sicorModuleInstance = null;
 let praticasModuleInstance = null;
@@ -105,6 +105,10 @@ async function main(config) {
             const decoded = decodeJwt(token);
             if (decoded) {
                 userTokiuzE = decoded.e ? String(decoded.e) : null;
+                
+                // OTIMIZAÇÃO: Armazena o Tokiuz decodificado no sessionStorage para uso rápido em todos os scripts/módulos
+                sessionStorage.setItem('sispmg_user_tokiuz', JSON.stringify(decoded));
+
                 if (decoded.g) {
                     sendMessageToBackground('intranet-user-identified', {
                         userPM: decoded.g,
@@ -180,18 +184,7 @@ function checkAllModules() {
         destroySirconvModule();
     }
 
-    // Verifica o módulo do SIRCONV Convenios e Dashboard
-    const isSirconvConveniosPage = window.location.href.includes('/lite/convenio/');
-    const isSirconvConveniosEnabled = moduleSettings.sirconvConveniosModuleEnabled !== false && userTokiuzE === '6869';
-    if (isSirconvConveniosEnabled) {
-        if (isSirconvConveniosPage && !sirconvConveniosModuleInstance) {
-            loadSirconvConveniosModule();
-        } else if (!isSirconvConveniosPage && sirconvConveniosModuleInstance) {
-            destroySirconvConveniosModule();
-        }
-    } else if (sirconvConveniosModuleInstance) {
-        destroySirconvConveniosModule();
-    }
+    // O módulo de SIRCONV Convenios gráfica/sincronização local na intranet foi desativado e integrado ao SIC3.
     if (moduleSettings.sirconvDashboardModuleEnabled !== false) {
         if (isSirconvConveniosPage && !sirconvDashboardModuleInstance) {
             loadSirconvDashboardModule();
@@ -418,38 +411,7 @@ function destroySirconvModule() {
     sirconvModuleInstance = null;
 }
 
-/** Carrega o módulo SIRCONV Convênios de forma segura. */
-async function loadSirconvConveniosModule() {
-    try {
-        console.log("SisPMG+: Página SIRCONV Convênios detectada. Carregando módulo...");
-        
-        // Se houver URL de CSS definida, carrega (evita erro 404 se undefined)
-        if (globalConfig.sirconvConveniosCssUrl) {
-            loadCSS(globalConfig.sirconvConveniosCssUrl);
-        }
-
-        const module = await import(globalConfig.sirconvConveniosModuleUrl);
-        
-        if (typeof module.initSirconvConveniosModule === 'function') {
-            module.initSirconvConveniosModule(globalConfig); 
-            sirconvConveniosModuleInstance = module; 
-        } else {
-            console.error("SisPMG+: A função initSirconvConveniosModule não foi encontrada no módulo exportado.");
-        }
-
-    } catch(e) {
-         console.error("SisPMG+: Falha ao carregar o módulo SIRCONV Convênios.", e);
-    }
-}
-
-/** Descarrega o módulo SIRCONV Convênios. */
-function destroySirconvConveniosModule() {
-    console.log("SisPMG+: Saindo da página SIRCONV Convênios. Descarregando módulo.");
-    if (sirconvConveniosModuleInstance && typeof sirconvConveniosModuleInstance.destroySirconvConveniosModule === 'function') {
-        sirconvConveniosModuleInstance.destroySirconvConveniosModule();
-    }
-    sirconvConveniosModuleInstance = null;
-}
+// As funções loadSirconvConveniosModule e destroySirconvConveniosModule foram desativadas e removidas.
 
 /** Carrega o módulo SIRCONV Dashboard de forma segura. */
 async function loadSirconvDashboardModule() {
