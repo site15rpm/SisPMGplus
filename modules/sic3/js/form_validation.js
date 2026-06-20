@@ -382,9 +382,30 @@ function validarFormulario(contexto = {}, formElement = null) {
   });
 
   if (isValid) {
+    let valDespesaCompleto = "";
     const campoDespesa = form.querySelector('#despesa');
     if (campoDespesa && campoDespesa.value) {
-      const valDespesaCompleto = String(campoDespesa.value).trim();
+      valDespesaCompleto = String(campoDespesa.value).trim();
+    } else {
+      const tipoForm = form.getAttribute("data-tipo-form");
+      if (tipoForm === "abastecimento") {
+        valDespesaCompleto = "3026 - COMBUSTIVEIS E LUBRIFICANTES PARA VEICULOS AUTOMOTORES";
+      } else if (tipoForm === "manutencao") {
+        valDespesaCompleto = "3918 - REPAROS DE VEICULOS";
+      } else if (tipoForm && tipoForm.startsWith("O")) {
+        const config = $(form).data('formConfig');
+        if (config && config.despesa) {
+          valDespesaCompleto = config.despesa;
+        } else if (typeof obterConfigOutrosItens === 'function') {
+          const configOutro = obterConfigOutrosItens(tipoForm);
+          if (configOutro && configOutro.despesa) {
+            valDespesaCompleto = configOutro.despesa;
+          }
+        }
+      }
+    }
+
+    if (valDespesaCompleto) {
       const matchCod = valDespesaCompleto.match(/^\d+/);
       if (matchCod) {
         const codigoDespesaForm = matchCod[0];
@@ -394,7 +415,9 @@ function validarFormulario(contexto = {}, formElement = null) {
           .filter(Boolean);
 
         if (elementosPermitidos.length === 0) {
-          mostrarErroValidacao(campoDespesa, "Este convênio não possui elementos de despesa cadastrados no plano de trabalho.");
+          if (campoDespesa) {
+            mostrarErroValidacao(campoDespesa, "Este convênio não possui elementos de despesa cadastrados no plano de trabalho.");
+          }
           mostrarDialogo("Plano de Trabalho Vazio", "Este convênio não possui elementos de despesa cadastrados no plano de trabalho no banco de dados. Sincronize os convênios para atualizar.");
           return false;
         }
@@ -407,7 +430,9 @@ function validarFormulario(contexto = {}, formElement = null) {
         });
 
         if (!matchPermitido) {
-          mostrarErroValidacao(campoDespesa, `O elemento de despesa "${codigoDespesaForm}" não está contido no plano de trabalho.`);
+          if (campoDespesa) {
+            mostrarErroValidacao(campoDespesa, `O elemento de despesa "${codigoDespesaForm}" não está contido no plano de trabalho.`);
+          }
           mostrarDialogo("Elemento Não Permitido", `O elemento de despesa "${valDespesaCompleto}" não é permitido no plano de trabalho deste convênio. Elementos permitidos: ${elementosPermitidos.join(', ')}`);
           return false;
         }
