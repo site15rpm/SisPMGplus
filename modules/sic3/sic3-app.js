@@ -456,17 +456,17 @@ export async function navegarPara(pagina, contexto = {}) {
             const dynamicMenu = document.getElementById('header-dynamic-menu');
             if (dynamicMenu) {
                 const btnSyncHtml = window.isAdmin ? `
-                    <button id="btnSincronizarConvenios" class="btn-info" style="margin-right: 10px;">
-                        <i class="fas fa-sync-alt"></i> SINCRONIZAR CONVÊNIOS
+                    <button id="btnSincronizarConvenios" class="btn-info btn-expand" style="margin-right: 10px;">
+                        <i class="fas fa-sync-alt"></i> <span>SINCRONIZAR CONVÊNIOS</span>
                     </button>
                 ` : '';
                 dynamicMenu.innerHTML = `
                     ${btnSyncHtml}
-                    <button id="btnGerenciarItem99" class="btn-info" style="margin-right: 10px;">
-                        <i class="fas fa-tasks"></i> GERENCIAR ITENS 99
+                    <button id="btnGerenciarItem99" class="btn-info btn-expand" style="margin-right: 10px;">
+                        <i class="fas fa-tasks"></i> <span>GERENCIAR ITENS 99</span>
                     </button>
-                    <button id="btnIrParaPesquisa" class="btn-info" style="margin-right: 10px;">
-                        <i class="fas fa-search"></i> MATERIAIS DE CONSUMO
+                    <button id="btnIrParaPesquisa" class="btn-info btn-expand" style="margin-right: 10px;">
+                        <i class="fas fa-search"></i> <span>MATERIAIS DE CONSUMO</span>
                     </button>
                     <button id="btnVoltarLancamentos" class="btn-info" style="display: none; margin-right: 10px;">
                         <i class="fas fa-arrow-left"></i> VOLTAR
@@ -870,20 +870,18 @@ window.addEventListener('DOMContentLoaded', async () => {
         if (info) {
             const panel = document.getElementById('user-profile-panel');
             const nameEl = document.getElementById('user-profile-name');
-            const pmEl = document.getElementById('user-profile-pm');
-            const secaoEl = document.getElementById('user-profile-secao');
             const regiaoEl = document.getElementById('user-profile-regiao');
+            const secaoEl = document.getElementById('user-profile-secao');
             const statusEl = document.getElementById('user-profile-admin-status');
             
             if (panel) {
                 if (nameEl) nameEl.textContent = `${info.postoGraduacao || ''} ${info.nome || 'Usuário'}`.trim();
-                if (pmEl) pmEl.textContent = `PM nº ${info.numeroPM || '-'}`;
-                if (secaoEl) secaoEl.textContent = info.secao || '-';
                 if (regiaoEl) regiaoEl.textContent = info.nomeRegiao || `${info.codigoRegiao || '-'}ª RPM`;
+                if (secaoEl) secaoEl.textContent = info.secao || '-';
                 
                 if (statusEl) {
                     if (window.isAdmin) {
-                        statusEl.innerHTML = `<span class="admin-badge"><i class="fas fa-user-shield"></i> Administrador</span>`;
+                        statusEl.innerHTML = `<span class="admin-badge"><i class="fas fa-user-shield"></i> Admin</span>`;
                     } else {
                         statusEl.innerHTML = '';
                     }

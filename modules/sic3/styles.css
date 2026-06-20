@@ -566,6 +566,61 @@ body {
   gap: 12px;
 }
 
+/* Botões dinâmicos expansíveis do menu administrativo no Header */
+.header-dynamic-menu button.btn-expand {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: flex-start !important;
+  overflow: hidden !important;
+  white-space: nowrap !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  padding: 0 !important;
+  width: 42px !important;
+  height: 42px !important;
+  border-radius: 21px !important;
+  margin-right: 10px !important;
+  border: none !important;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important;
+  cursor: pointer !important;
+}
+
+.header-dynamic-menu button.btn-expand i {
+  margin: 0 !important;
+  font-size: 16px !important;
+  min-width: 42px !important;
+  height: 42px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.header-dynamic-menu button.btn-expand span {
+  max-width: 0 !important;
+  opacity: 0 !important;
+  overflow: hidden !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  display: inline-block !important;
+  font-weight: 600 !important;
+  font-size: 13px !important;
+  text-transform: uppercase !important;
+  vertical-align: middle !important;
+}
+
+/* Hover expand */
+.header-dynamic-menu button.btn-expand:hover {
+  width: auto !important;
+  max-width: 280px !important;
+  padding-right: 18px !important;
+  border-radius: 8px !important;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+.header-dynamic-menu button.btn-expand:hover span {
+  max-width: 240px !important;
+  opacity: 1 !important;
+  margin-left: 4px !important;
+}
+
 /* Custom Modais de Pendencias e Escolha do SIRCONV */
 #modal-escolha-sirconv,
 #modal-registro-pendencia-sirconv,
