@@ -185,7 +185,8 @@
             (item) =>
               item.municipio === mun &&
               item.convenio !== "-" &&
-              verificarVigenciaConvenio(item, ano, mesFiltro)
+              verificarVigenciaConvenio(item, ano, mesFiltro) &&
+              (convenioFiltro === "TODOS" || item.status_texto === convenioFiltro)
           );
           if (conveniosDoMunicipioNoMes.length > 0) {
             conveniosDoMunicipioNoMes.forEach((conv) => {
@@ -234,18 +235,20 @@
               });
             });
           } else {
-            lancamentosParaTabela.push({
-              municipio: mun,
-              convenio: "-",
-              ano,
-              mes: mesFiltro,
-              valorTotal: 0,
-              edicaoBloqueada: false,
-              sirconvStatus: "",
-              siadStatus: "",
-              timestamp: "",
-              semConvenio: true,
-            });
+            if (convenioFiltro === "TODOS") {
+              lancamentosParaTabela.push({
+                municipio: mun,
+                convenio: "-",
+                ano,
+                mes: mesFiltro,
+                valorTotal: 0,
+                edicaoBloqueada: false,
+                sirconvStatus: "",
+                siadStatus: "",
+                timestamp: "",
+                semConvenio: true,
+              });
+            }
           }
         });
       } else {
