@@ -313,7 +313,11 @@ export async function executarSincronizacaoConvenios() {
                 if (resPlano.ok) {
                     const jsonPlano = await resPlano.json();
                     if (jsonPlano && jsonPlano.success && Array.isArray(jsonPlano.planos)) {
-                        const itens = [...new Set(jsonPlano.planos.map(p => String(p.ITEM || p.item || '').trim()).filter(Boolean))];
+                        const itens = [...new Set(jsonPlano.planos.map(p => {
+                            const itemStr = String(p.ITEM || p.item || '').trim();
+                            const apenasNumeros = itemStr.replace(/\D/g, '');
+                            return apenasNumeros.length >= 4 ? apenasNumeros.slice(-4) : apenasNumeros;
+                        }).filter(Boolean))];
                         elementosDespesa = itens.join('|');
                     }
                     console.log(`[SIC3 Sync] [Log] Elementos de despesa obtidos para o convênio ${conv.ID}: "${elementosDespesa}"`);
