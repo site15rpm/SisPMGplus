@@ -115,8 +115,31 @@
 
       let baseConveniosParaFiltrar;
       if (municipio === "TODOS") {
+        selectConvenio.innerHTML = "";
+        $(selectConvenio).prop("disabled", false);
+
+        // Coleta todos os status_texto distintos
+        const statusUnicos = [
+          ...new Set(
+            ADMIN_CONFIG.dados.convenios
+              .map((c) => c.status_texto)
+              .filter((st) => st && st !== "-" && st.trim() !== "")
+          ),
+        ].sort();
+
         selectConvenio.appendChild(new Option("TODOS", "TODOS"));
-        $(selectConvenio).val("TODOS").prop("disabled", true);
+        statusUnicos.forEach((status) => {
+          selectConvenio.appendChild(new Option(status, status));
+        });
+
+        // Exibe por padrão os convênios abertos
+        const valorAberto = statusUnicos.find(st => st.toLowerCase() === "aberto");
+        if (valorAberto) {
+          $(selectConvenio).val(valorAberto);
+        } else {
+          $(selectConvenio).val("TODOS");
+        }
+
         atualizarInfoConvenioPreposto();
         return ADMIN_CONFIG.dados.convenios.filter(
           (item) => item.convenio !== "-"
