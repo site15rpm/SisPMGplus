@@ -99,7 +99,8 @@
 
       return { status: statusInfoFiltrados };
     } catch (error) {
-      manipularErro(error, "carregarDadosBrutosAdmin");
+      // Silencia o erro para evitar travar a tela em caso de aba obsgeral vazia ou incompleta
+      manipularErro(error, "carregarDadosBrutosAdmin", true);
       return { principal: [], status: [] };
     }
   }
