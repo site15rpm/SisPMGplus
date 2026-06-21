@@ -344,7 +344,59 @@ window.resolverIdsPlanilhas = async function(forcarRecarregamento = false) {
         }
     }
 
-    // Tenta resolver a partir da Planilha Central de Links via GViz (rápido, sem passar pelo GAS!)
+    // 1. Tenta obter a lista de URLs de APIs atualizadas a partir da aba 'apis' da planilha central antes de resolver os IDs específicos
+    try {
+        console.log("[SIC3 v3.0 Log] Atualizando URLs de Web Apps das APIs a partir da planilha central...");
+        const apisRows = await window.carregarDadosPlanilha({
+            sheetId: "1hP7wQgtsgUMuSNDC7Ac4gHKX0uWPVMTQV7Q5Xwpqwic",
+            sheet: "apis",
+            query: "SELECT A, B"
+        });
+
+        if (apisRows && apisRows.length > 0) {
+            const mapUrls = {};
+            apisRows.forEach(r => {
+                const key = String(r[0] || "").trim();
+                const url = String(r[1] || "").trim();
+                if (key && url) {
+                    mapUrls[key] = url;
+                }
+            });
+            
+            // Salva no local storage importando do api.js
+            const { saveGasApiUrls } = await import('./api.js');
+            await saveGasApiUrls(mapUrls);
+            console.log("[SIC3 v3.0 Log] URLs de APIs atualizadas com sucesso no storage:", mapUrls);
+        }
+    } catch (apisErr) {
+        console.warn("[SIC3 v3.0 Log] Não foi possível carregar as URLs de APIs personalizadas da central:", apisErr);
+    }
+
+    // 2. Tenta obter também os IDs globais de tabelas da aba 'config' da planilha central
+    let configGlobais = { TBPrimaria: "", TBSecundaria: "" };
+    try {
+        console.log("[SIC3 v3.0 Log] Carregando IDs globais de tabelas da aba 'config'...");
+        const configRows = await window.carregarDadosPlanilha({
+            sheetId: "1hP7wQgtsgUMuSNDC7Ac4gHKX0uWPVMTQV7Q5Xwpqwic",
+            sheet: "config",
+            query: "SELECT A, B"
+        });
+
+        if (configRows && configRows.length > 0) {
+            configRows.forEach(r => {
+                const key = String(r[0] || "").trim();
+                const val = String(r[1] || "").trim();
+                if (key === "TBPrimaria" || key === "TBSecundaria") {
+                    configGlobais[key] = val;
+                }
+            });
+            console.log("[SIC3 v3.0 Log] IDs globais de TBPrimaria e TBSecundaria carregados com sucesso:", configGlobais);
+        }
+    } catch (configErr) {
+        console.warn("[SIC3 v3.0 Log] Não foi possível carregar as configurações globais da aba 'config':", configErr);
+    }
+
+    // 3. Tenta resolver a partir da Planilha Central de Links via GViz (rápido, sem passar pelo GAS!)
     console.log(`[SIC3 v3.0 Log] Tentando obter IDs da planilha central links para RPM: ${rpmAtiva}, Ano: ${anoAtivo}`);
     let linksResolvidos = null;
     try {
@@ -379,7 +431,7 @@ window.resolverIdsPlanilhas = async function(forcarRecarregamento = false) {
         console.error("[SIC3 v3.0 Log] Erro ao buscar IDs na planilha central de links via GViz:", gvizErr);
     }
 
-    // Se não encontrou na planilha de links (por exemplo, nova RPM ou novo ano não inicializado)
+    // 4. Se não encontrou na planilha de links (por exemplo, nova RPM ou novo ano não inicializado)
     if (!linksResolvidos) {
         console.warn(`[SIC3 v3.0 Log] Mapeamento não encontrado para RPM: ${rpmAtiva}, Ano: ${anoAtivo}. Solicitando criação da estrutura ao GAS...`);
         try {
@@ -394,58 +446,6 @@ window.resolverIdsPlanilhas = async function(forcarRecarregamento = false) {
             console.error("[SIC3 v3.0 Log] Erro crítico ao solicitar criação de estrutura ao GAS:", apiErr);
             throw new Error("Não foi possível inicializar os bancos de dados do SIC3 para esta RPM/Ano.");
         }
-    }
-
-    // Tenta obter também a lista de URLs de APIs atualizadas a partir da aba 'apis' da planilha central
-    try {
-        console.log("[SIC3 v3.0 Log] Atualizando URLs de Web Apps das APIs a partir da planilha central...");
-        const apisRows = await window.carregarDadosPlanilha({
-            sheetId: "1hP7wQgtsgUMuSNDC7Ac4gHKX0uWPVMTQV7Q5Xwpqwic",
-            sheet: "apis",
-            query: "SELECT A, B"
-        });
-
-        if (apisRows && apisRows.length > 0) {
-            const mapUrls = {};
-            apisRows.forEach(r => {
-                const key = String(r[0] || "").trim();
-                const url = String(r[1] || "").trim();
-                if (key && url) {
-                    mapUrls[key] = url;
-                }
-            });
-            
-            // Salva no local storage importando do api.js
-            const { saveGasApiUrls } = await import('./api.js');
-            await saveGasApiUrls(mapUrls);
-            console.log("[SIC3 v3.0 Log] URLs de APIs atualizadas com sucesso no storage:", mapUrls);
-        }
-    } catch (apisErr) {
-        console.warn("[SIC3 v3.0 Log] Não foi possível carregar as URLs de APIs personalizadas da central:", apisErr);
-    }
-
-    // Tenta obter também os IDs globais de tabelas da aba 'config' da planilha central
-    let configGlobais = { TBPrimaria: "", TBSecundaria: "" };
-    try {
-        console.log("[SIC3 v3.0 Log] Carregando IDs globais de tabelas da aba 'config'...");
-        const configRows = await window.carregarDadosPlanilha({
-            sheetId: "1hP7wQgtsgUMuSNDC7Ac4gHKX0uWPVMTQV7Q5Xwpqwic",
-            sheet: "config",
-            query: "SELECT A, B"
-        });
-
-        if (configRows && configRows.length > 0) {
-            configRows.forEach(r => {
-                const key = String(r[0] || "").trim();
-                const val = String(r[1] || "").trim();
-                if (key === "TBPrimaria" || key === "TBSecundaria") {
-                    configGlobais[key] = val;
-                }
-            });
-            console.log("[SIC3 v3.0 Log] IDs globais de TBPrimaria e TBSecundaria carregados com sucesso:", configGlobais);
-        }
-    } catch (configErr) {
-        console.warn("[SIC3 v3.0 Log] Não foi possível carregar as configurações globais da aba 'config':", configErr);
     }
 
     if (linksResolvidos && linksResolvidos.success && linksResolvidos.spreadsheetId) {
