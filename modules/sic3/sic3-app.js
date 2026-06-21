@@ -332,6 +332,7 @@ window.resolverIdsPlanilhas = async function(forcarRecarregamento = false) {
                 window.idTBPrimaria = cachedData.arquivosCompartilhados.TBPrimaria;
                 window.idTBSecundaria = cachedData.arquivosCompartilhados.TBSecundaria;
 
+                sessionStorage.setItem("sic3_idbase", window.idbase);
                 sessionStorage.setItem("sic3_idBDConvenios", window.idBDConvenios);
                 sessionStorage.setItem("sic3_idBDEnderecos", window.idBDEnderecos);
                 sessionStorage.setItem("sic3_idTBPrimaria", window.idTBPrimaria);
@@ -343,19 +344,97 @@ window.resolverIdsPlanilhas = async function(forcarRecarregamento = false) {
         }
     }
 
-    // Caso não tenha cache ou precise forçar, busca do servidor GAS
-    console.log(`[SIC3 v3.0 Log] Requisitando obterIdPlanilha do servidor para RPM: ${rpmAtiva}, Ano: ${anoAtivo}`);
-    const resId = await executarApi("obterIdPlanilha", [rpmAtiva, anoAtivo]);
-    console.log("[SIC3 v3.0 Log] Resultado obterIdPlanilha do servidor:", resId);
+    // Tenta resolver a partir da Planilha Central de Links via GViz (rápido, sem passar pelo GAS!)
+    console.log(`[SIC3 v3.0 Log] Tentando obter IDs da planilha central links para RPM: ${rpmAtiva}, Ano: ${anoAtivo}`);
+    let linksResolvidos = null;
+    try {
+        const linksRows = await window.carregarDadosPlanilha({
+            sheetId: "1hP7wQgtsgUMuSNDC7Ac4gHKX0uWPVMTQV7Q5Xwpqwic",
+            sheet: "links",
+            query: "SELECT A, B, C, D, E, F, G"
+        });
 
-    if (resId && resId.success && resId.spreadsheetId) {
-        window.idbase = resId.spreadsheetId;
-        if (resId.arquivosCompartilhados) {
-            window.idBDConvenios = resId.arquivosCompartilhados.BDConvenios;
-            window.idBDEnderecos = resId.arquivosCompartilhados.BDEnderecos;
-            window.idTBPrimaria = resId.arquivosCompartilhados.TBPrimaria;
-            window.idTBSecundaria = resId.arquivosCompartilhados.TBSecundaria;
+        const rpmNorm = String(rpmAtiva).trim().replace(/\s+/g, '').toUpperCase();
+        const anoNorm = String(anoAtivo).trim();
 
+        // Encontra a linha correspondente
+        const row = linksRows.find(r => {
+            const rowRpm = String(r[0] || "").trim().replace(/\s+/g, '').toUpperCase();
+            const rowAno = String(r[1] || "").trim();
+            return (rowRpm === rpmNorm || rowRpm === rpmNorm + "RPM") && rowAno === anoNorm;
+        });
+
+        if (row) {
+            linksResolvidos = {
+                success: true,
+                spreadsheetId: String(row[2]).trim(),
+                arquivosCompartilhados: {
+                    BDConvenios: String(row[3]).trim(),
+                    BDEnderecos: String(row[4]).trim(),
+                    TBPrimaria: String(row[5]).trim(),
+                    TBSecundaria: String(row[6]).trim()
+                }
+            };
+            console.log(`[SIC3 v3.0 Log] IDs resolvidos com sucesso da planilha central de links para ${rpmAtiva}/${anoAtivo}`);
+        }
+    } catch (gvizErr) {
+        console.error("[SIC3 v3.0 Log] Erro ao buscar IDs na planilha central de links via GViz:", gvizErr);
+    }
+
+    // Se não encontrou na planilha de links (por exemplo, nova RPM ou novo ano não inicializado)
+    if (!linksResolvidos) {
+        console.warn(`[SIC3 v3.0 Log] Mapeamento não encontrado para RPM: ${rpmAtiva}, Ano: ${anoAtivo}. Solicitando criação da estrutura ao GAS...`);
+        try {
+            // Chama a API de estrutura do GAS que criará os arquivos no Drive, registrará na central de links e responderá os IDs
+            const resCriacao = await executarApi("criarEstruturaRpmAno", [rpmAtiva, anoAtivo]);
+            if (resCriacao && resCriacao.success && resCriacao.spreadsheetId) {
+                linksResolvidos = resCriacao;
+            } else {
+                throw new Error(resCriacao?.error || "Falha na criação de estrutura.");
+            }
+        } catch (apiErr) {
+            console.error("[SIC3 v3.0 Log] Erro crítico ao solicitar criação de estrutura ao GAS:", apiErr);
+            throw new Error("Não foi possível inicializar os bancos de dados do SIC3 para esta RPM/Ano.");
+        }
+    }
+
+    // Tenta obter também a lista de URLs de APIs atualizadas a partir da aba 'apis' da planilha central
+    try {
+        console.log("[SIC3 v3.0 Log] Atualizando URLs de Web Apps das APIs a partir da planilha central...");
+        const apisRows = await window.carregarDadosPlanilha({
+            sheetId: "1hP7wQgtsgUMuSNDC7Ac4gHKX0uWPVMTQV7Q5Xwpqwic",
+            sheet: "apis",
+            query: "SELECT A, B"
+        });
+
+        if (apisRows && apisRows.length > 0) {
+            const mapUrls = {};
+            apisRows.forEach(r => {
+                const key = String(r[0] || "").trim();
+                const url = String(r[1] || "").trim();
+                if (key && url) {
+                    mapUrls[key] = url;
+                }
+            });
+            
+            // Salva no local storage importando do api.js
+            const { saveGasApiUrls } = await import('./api.js');
+            await saveGasApiUrls(mapUrls);
+            console.log("[SIC3 v3.0 Log] URLs de APIs atualizadas com sucesso no storage:", mapUrls);
+        }
+    } catch (apisErr) {
+        console.warn("[SIC3 v3.0 Log] Não foi possível carregar as URLs de APIs personalizadas da central:", apisErr);
+    }
+
+    if (linksResolvidos && linksResolvidos.success && linksResolvidos.spreadsheetId) {
+        window.idbase = linksResolvidos.spreadsheetId;
+        if (linksResolvidos.arquivosCompartilhados) {
+            window.idBDConvenios = linksResolvidos.arquivosCompartilhados.BDConvenios;
+            window.idBDEnderecos = linksResolvidos.arquivosCompartilhados.BDEnderecos;
+            window.idTBPrimaria = linksResolvidos.arquivosCompartilhados.TBPrimaria;
+            window.idTBSecundaria = linksResolvidos.arquivosCompartilhados.TBSecundaria;
+
+            sessionStorage.setItem("sic3_idbase", window.idbase);
             sessionStorage.setItem("sic3_idBDConvenios", window.idBDConvenios);
             sessionStorage.setItem("sic3_idBDEnderecos", window.idBDEnderecos);
             sessionStorage.setItem("sic3_idTBPrimaria", window.idTBPrimaria);
@@ -363,17 +442,17 @@ window.resolverIdsPlanilhas = async function(forcarRecarregamento = false) {
 
             if (storage) {
                 const dataToCache = {
-                    spreadsheetId: resId.spreadsheetId,
-                    arquivosCompartilhados: resId.arquivosCompartilhados
+                    spreadsheetId: linksResolvidos.spreadsheetId,
+                    arquivosCompartilhados: linksResolvidos.arquivosCompartilhados
                 };
                 storage.set({ [cacheKey]: dataToCache }, () => {
-                    console.log(`[SIC3 v3.0 Log] Cache permanente salvo para ${cacheKey}`);
+                    console.log(`[SIC3 v3.0 Log] Cache permanente atualizado para ${cacheKey}`);
                 });
             }
         }
-        return resId;
+        return linksResolvidos;
     } else {
-        throw new Error("Não foi possível obter os IDs da planilha do servidor.");
+        throw new Error("Não foi possível resolver os IDs das planilhas.");
     }
 };
 
