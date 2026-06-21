@@ -718,6 +718,13 @@ async function initConfigBar() {
 
 // Inicializa a aplicação
 window.addEventListener('DOMContentLoaded', async () => {
+    // Garante o carregamento dos utilitários globais de planilha
+    try {
+        await carregarJS('js/utils_global.js');
+    } catch(errJS) {
+        console.error("[SIC3 v3.0 Log] Erro crítico ao carregar js/utils_global.js:", errJS);
+    }
+
     // 0. Validação de Segurança contra Acesso Direto por URL/Favorito
     const isSessionActive = sessionStorage.getItem('sic3_active_session') === 'true';
     let authorized = false;
