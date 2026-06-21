@@ -1025,7 +1025,30 @@
       
       const userPM = window.userPM || "";
       const userSecao = window.userSecao || "";
-      const gasUrl = 'https://script.google.com/macros/s/AKfycbyriniVNqgHE206Vzx3_rplOVwSxV2f6HjyAr1zEhmyXoMH_l8AkGLyin1PK4jI0tHe/exec';
+      
+      // Recupera o ID do script da agenda do storage local (sincronizado da planilha central)
+      let agendaScriptId = 'AKfycbyriniVNqgHE206Vzx3_rplOVwSxV2f6HjyAr1zEhmyXoMH_l8AkGLyin1PK4jI0tHe'; // Fallback padrão
+      try {
+        const apisResult = await new Promise(resolve => {
+          if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+            chrome.storage.local.get('sic3_apis_urls', (res) => resolve(res.sic3_apis_urls || {}));
+          } else if (typeof browser !== 'undefined' && browser.storage && browser.storage.local) {
+            browser.storage.local.get('sic3_apis_urls').then(res => resolve(res.sic3_apis_urls || {})).catch(() => resolve({}));
+          } else {
+            resolve({});
+          }
+        });
+        if (apisResult && apisResult.agenda) {
+          agendaScriptId = apisResult.agenda;
+        }
+      } catch (err) {
+        console.warn("[SIC3 v3.0 Log] Não foi possível ler o ID do script da agenda do storage, usando o padrão.", err);
+      }
+      
+      let gasUrl = agendaScriptId;
+      if (!agendaScriptId.includes('http://') && !agendaScriptId.includes('https://')) {
+        gasUrl = `https://script.google.com/macros/s/${agendaScriptId}/exec`;
+      }
       
       let prepostoPM = "";
       let userPMConv = "";
@@ -1115,7 +1138,30 @@
         console.log(`[SIRCONV Pendências] Encontrada(s) ${tarefasAlvo.length} tarefa(s) ativa(s) na agenda. Marcando-as como concluídas...`);
         
         const userPM = window.userPM || "";
-        const gasUrl = 'https://script.google.com/macros/s/AKfycbyriniVNqgHE206Vzx3_rplOVwSxV2f6HjyAr1zEhmyXoMH_l8AkGLyin1PK4jI0tHe/exec';
+        
+        // Recupera o ID do script da agenda do storage local (sincronizado da planilha central)
+        let agendaScriptId = 'AKfycbyriniVNqgHE206Vzx3_rplOVwSxV2f6HjyAr1zEhmyXoMH_l8AkGLyin1PK4jI0tHe'; // Fallback padrão
+        try {
+          const apisResult = await new Promise(resolve => {
+            if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+              chrome.storage.local.get('sic3_apis_urls', (res) => resolve(res.sic3_apis_urls || {}));
+            } else if (typeof browser !== 'undefined' && browser.storage && browser.storage.local) {
+              browser.storage.local.get('sic3_apis_urls').then(res => resolve(res.sic3_apis_urls || {})).catch(() => resolve({}));
+            } else {
+              resolve({});
+            }
+          });
+          if (apisResult && apisResult.agenda) {
+            agendaScriptId = apisResult.agenda;
+          }
+        } catch (err) {
+          console.warn("[SIC3 v3.0 Log] Não foi possível ler o ID do script da agenda do storage, usando o padrão.", err);
+        }
+        
+        let gasUrl = agendaScriptId;
+        if (!agendaScriptId.includes('http://') && !agendaScriptId.includes('https://')) {
+          gasUrl = `https://script.google.com/macros/s/${agendaScriptId}/exec`;
+        }
         
         for (const tarefa of tarefasAlvo) {
           const taskId = tarefa[0];
