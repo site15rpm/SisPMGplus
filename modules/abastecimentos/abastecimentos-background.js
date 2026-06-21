@@ -2,6 +2,7 @@
  * Abastecimento PRIME & POC - Background Script Unificado
  */
 import { fetchWithKeepAlive } from '../../common/keep-alive.js';
+import { sendMessageToOffscreen } from '../intranet/intranet-offscreen.js';
 
 // --- Nomes para Alarmes e Storage ---
 const ALARM_SCHEDULER_CHECK = 'abastecimentos-scheduler-check';
@@ -9,7 +10,6 @@ const STORAGE_CONFIG_KEY = 'app-config';
 const STORAGE_LOGS_KEY = 'execution-logs';
 const STORAGE_SCHEDULE_KEY = 'abastecimentos-schedule';
 const MAX_LOG_ENTRIES = 50;
-const OFFSCREEN_DOCUMENT_PATH = '/offscreen.html';
 
 // --- ESTADO E CONFIGURAÇÕES ---
 let extractionData = { prime: null, sgta: null, params: null };
@@ -296,15 +296,8 @@ const SGTA_AUTH_URL = "http://sgta.netfrota.com.br:9080/sgta-prod-backend/rest/l
 const SGTA_DATA_URL = "http://sgta.netfrota.com.br:9080/sgta-prod-backend/rest/movimentacoesabastecimentos";
 const SGTA_REPORT_URL = "http://sgta.netfrota.com.br:9080/sgta-prod-report/relatorios?relatorio=DownloadArquivo";
 
-async function setupOffscreenDocument() { if (await browser.offscreen.hasDocument?.()) return; await browser.offscreen.createDocument({ url: OFFSCREEN_DOCUMENT_PATH, reasons: ['DOM_PARSER'], justification: 'Parse de tokens HTML.' }); }
 async function getDOMValue(html, selector) { 
-    await setupOffscreenDocument(); 
-    return await browser.runtime.sendMessage({ 
-        target: 'offscreen',
-        action: 'parseDOM', 
-        html, 
-        selector 
-    }); 
+    return await sendMessageToOffscreen('parseDOM', { html, selector }); 
 }
 async function testarLoginPrime(credentials) {
     try {
