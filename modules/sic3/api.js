@@ -122,7 +122,9 @@ export async function executarApi(action, params = {}) {
             params[4] = idbase;
         } else if (action === "atualizarStatusEdicao" && params.length >= 6) {
             params[6] = idbase;
-        } else if (action === "gerenciarEnderecoMedidor" && params.length >= 1) {
+        } else if (action === "gerenciarEnderecoMedidor" && params.length >= 2) {
+            const dados = params[1];
+            params[0] = dados;
             params[1] = idBDEnderecos;
         } else if (action === "sincronizarConveniosLote" && params.length >= 2) {
             params[2] = idBDConvenios;
