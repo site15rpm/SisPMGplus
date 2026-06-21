@@ -38,18 +38,84 @@ export async function saveGasApiUrl(url) {
     }
 }
 
+// Mapeamento de ações para chaves de APIs específicas expostas via Google Apps Script
+const actionToApiMap = {
+    // Módulo de Convênios (GAS_Convenios.js)
+    "carregarConveniosMunicipio": "convenios",
+    "incluirConvenio": "convenios",
+    "alterarConvenio": "convenios",
+    "excluirConvenio": "convenios",
+    "sincronizarConveniosLote": "convenios",
+
+    // Módulo de Endereços (GAS_Enderecos.js)
+    "gerenciarEnderecoMedidor": "enderecos",
+
+    // Módulo de Estrutura (GAS_Estrutura.js)
+    "criarEstruturaRpmAno": "estrutura",
+
+    // Módulo de Lançamentos e Transações (GAS_Lancamentos.js)
+    "salvarDadosNaPlanilha": "lancamentos",
+    "obterDadosItens99": "lancamentos",
+    "excluirItem99Principal": "lancamentos",
+    "atualizarStatusItem99": "lancamentos",
+    "verificarStatusBloqueio": "lancamentos",
+    "atualizarStatusEdicao": "lancamentos",
+    "salvarItensPrimariosEmLote": "lancamentos"
+};
+
 /**
- * Executa uma requisição HTTP POST contra a API do Google Apps Script.
+ * Obtém o mapa de URLs de APIs específicas do local storage.
+ * @returns {Promise<object>}
+ */
+export async function getGasApiUrls() {
+    if (typeof browser !== 'undefined' && browser.storage && browser.storage.local) {
+        const result = await browser.storage.local.get('sic3_apis_urls');
+        return result.sic3_apis_urls || {};
+    } else if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        return new Promise((resolve) => {
+            chrome.storage.local.get('sic3_apis_urls', (result) => {
+                resolve(result.sic3_apis_urls || {});
+            });
+        });
+    }
+    return {};
+}
+
+/**
+ * Salva o mapa de URLs de APIs específicas no local storage.
+ * @param {object} urlsMap - Dicionário contendo as URLs mapeadas.
+ */
+export async function saveGasApiUrls(urlsMap) {
+    if (typeof browser !== 'undefined' && browser.storage && browser.storage.local) {
+        await browser.storage.local.set({ 'sic3_apis_urls': urlsMap });
+    } else if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        return new Promise((resolve) => {
+            chrome.storage.local.set({ 'sic3_apis_urls': urlsMap }, () => {
+                resolve();
+            });
+        });
+    }
+}
+
+/**
+ * Executa uma requisição HTTP POST contra a API do Google Apps Script correspondente à ação.
  * @param {string} action - O nome da ação/rota a ser chamada no servidor.
  * @param {object} params - Os parâmetros de entrada da função.
  * @returns {Promise<object>} O resultado da requisição retornado pelo GAS.
  */
 export async function executarApi(action, params = {}) {
-    const apiUrl = await getGasApiUrl();
+    const apiUrls = await getGasApiUrls();
+    const apiKey = actionToApiMap[action] || "lancamentos";
+    let apiUrl = apiUrls[apiKey];
+    
     if (!apiUrl) {
-        throw new Error("A URL da API do GAS não está configurada na extensão. Configure-a para utilizar o SIC3.");
+        apiUrl = await getGasApiUrl(); // Fallback global/manual
     }
 
+    if (!apiUrl) {
+        throw new Error(`A URL da API para a ação "${action}" não está configurada na extensão.`);
+    }
+ 
     const token = sessionStorage.getItem('authToken') || '';
     
     // Resolve o ano com prioridade máxima para sessionStorage para evitar colisões com DOM
@@ -76,7 +142,7 @@ export async function executarApi(action, params = {}) {
         }
     }
     
-    console.log(`[SIC3 v3.0 Log] [API Request] executando action: "${action}" para RPM: ${rpm}, Ano: ${ano} na URL: ${apiUrl}. Params:`, params);
+    console.log(`[SIC3 v3.0 Log] [API Request] executando action: "${action}" (API: ${apiKey}) para RPM: ${rpm}, Ano: ${ano} na URL: ${apiUrl}. Params:`, params);
     const startTime = Date.now();
 
     try {
