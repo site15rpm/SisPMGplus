@@ -47,16 +47,20 @@ function loadCSS(url) {
 
 async function loadCodeMirror() {
     try {
+        // Carrega o core do CodeMirror primeiro (necessário para os addons/modos estenderem o objeto global)
         await loadScript('https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.js');
-        await loadScript('https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/mode/javascript/javascript.min.js');
-        await loadScript('https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/addon/edit/closebrackets.min.js');
-        await loadScript('https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/addon/edit/matchbrackets.min.js');
-        await loadScript('https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/addon/comment/comment.min.js');
-         // Addons para busca e substituição
-        await loadScript('https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/addon/search/searchcursor.js');
-        await loadScript('https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/addon/search/search.js');
-        await loadScript('https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/addon/dialog/dialog.js');
-        await loadCSS('https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/addon/dialog/dialog.min.css');
+        
+        // Carrega os modos, addons e CSS em paralelo para otimizar round-trips de rede
+        await Promise.all([
+            loadScript('https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/mode/javascript/javascript.min.js'),
+            loadScript('https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/addon/edit/closebrackets.min.js'),
+            loadScript('https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/addon/edit/matchbrackets.min.js'),
+            loadScript('https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/addon/comment/comment.min.js'),
+            loadScript('https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/addon/search/searchcursor.js'),
+            loadScript('https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/addon/search/search.js'),
+            loadScript('https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/addon/dialog/dialog.js'),
+            loadCSS('https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/addon/dialog/dialog.min.css')
+        ]);
     } catch (error) {
         console.error('SisPMG+: Falha ao carregar scripts do CodeMirror.', error);
         // Se o CodeMirror não carregar, a funcionalidade do editor será degradada, mas o resto pode funcionar.
