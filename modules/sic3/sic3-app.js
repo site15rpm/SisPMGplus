@@ -351,7 +351,7 @@ window.resolverIdsPlanilhas = async function(forcarRecarregamento = false) {
         const linksRows = await window.carregarDadosPlanilha({
             sheetId: "1hP7wQgtsgUMuSNDC7Ac4gHKX0uWPVMTQV7Q5Xwpqwic",
             sheet: "links",
-            query: "SELECT A, B, C, D, E, F, G"
+            query: "SELECT A, B, C, D, E"
         });
 
         const rpmNorm = String(rpmAtiva).trim().replace(/\s+/g, '').toUpperCase();
@@ -370,9 +370,7 @@ window.resolverIdsPlanilhas = async function(forcarRecarregamento = false) {
                 spreadsheetId: String(row[2]).trim(),
                 arquivosCompartilhados: {
                     BDConvenios: String(row[3]).trim(),
-                    BDEnderecos: String(row[4]).trim(),
-                    TBPrimaria: String(row[5]).trim(),
-                    TBSecundaria: String(row[6]).trim()
+                    BDEnderecos: String(row[4]).trim()
                 }
             };
             console.log(`[SIC3 v3.0 Log] IDs resolvidos com sucesso da planilha central de links para ${rpmAtiva}/${anoAtivo}`);
@@ -426,13 +424,39 @@ window.resolverIdsPlanilhas = async function(forcarRecarregamento = false) {
         console.warn("[SIC3 v3.0 Log] Não foi possível carregar as URLs de APIs personalizadas da central:", apisErr);
     }
 
+    // Tenta obter também os IDs globais de tabelas da aba 'config' da planilha central
+    let configGlobais = { TBPrimaria: "", TBSecundaria: "" };
+    try {
+        console.log("[SIC3 v3.0 Log] Carregando IDs globais de tabelas da aba 'config'...");
+        const configRows = await window.carregarDadosPlanilha({
+            sheetId: "1hP7wQgtsgUMuSNDC7Ac4gHKX0uWPVMTQV7Q5Xwpqwic",
+            sheet: "config",
+            query: "SELECT A, B"
+        });
+
+        if (configRows && configRows.length > 0) {
+            configRows.forEach(r => {
+                const key = String(r[0] || "").trim();
+                const val = String(r[1] || "").trim();
+                if (key === "TBPrimaria" || key === "TBSecundaria") {
+                    configGlobais[key] = val;
+                }
+            });
+            console.log("[SIC3 v3.0 Log] IDs globais de TBPrimaria e TBSecundaria carregados com sucesso:", configGlobais);
+        }
+    } catch (configErr) {
+        console.warn("[SIC3 v3.0 Log] Não foi possível carregar as configurações globais da aba 'config':", configErr);
+    }
+
     if (linksResolvidos && linksResolvidos.success && linksResolvidos.spreadsheetId) {
         window.idbase = linksResolvidos.spreadsheetId;
         if (linksResolvidos.arquivosCompartilhados) {
             window.idBDConvenios = linksResolvidos.arquivosCompartilhados.BDConvenios;
             window.idBDEnderecos = linksResolvidos.arquivosCompartilhados.BDEnderecos;
-            window.idTBPrimaria = linksResolvidos.arquivosCompartilhados.TBPrimaria;
-            window.idTBSecundaria = linksResolvidos.arquivosCompartilhados.TBSecundaria;
+            
+            // Atribui os IDs globais preferencialmente a partir de configGlobais, com fallback para o retorno da API do GAS se necessário
+            window.idTBPrimaria = configGlobais.TBPrimaria || linksResolvidos.arquivosCompartilhados.TBPrimaria || "";
+            window.idTBSecundaria = configGlobais.TBSecundaria || linksResolvidos.arquivosCompartilhados.TBSecundaria || "";
 
             sessionStorage.setItem("sic3_idbase", window.idbase);
             sessionStorage.setItem("sic3_idBDConvenios", window.idBDConvenios);
@@ -443,7 +467,12 @@ window.resolverIdsPlanilhas = async function(forcarRecarregamento = false) {
             if (storage) {
                 const dataToCache = {
                     spreadsheetId: linksResolvidos.spreadsheetId,
-                    arquivosCompartilhados: linksResolvidos.arquivosCompartilhados
+                    arquivosCompartilhados: {
+                        BDConvenios: window.idBDConvenios,
+                        BDEnderecos: window.idBDEnderecos,
+                        TBPrimaria: window.idTBPrimaria,
+                        TBSecundaria: window.idTBSecundaria
+                    }
                 };
                 storage.set({ [cacheKey]: dataToCache }, () => {
                     console.log(`[SIC3 v3.0 Log] Cache permanente atualizado para ${cacheKey}`);
