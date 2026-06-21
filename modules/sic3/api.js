@@ -1,9 +1,6 @@
 // Arquivo: modules/sic3/api.js
 // Cliente de comunicação HTTP REST com a API do Google Apps Script (GAS) para o SIC3.
 
-// URL padrão de fallback (o usuário pode alterar nas configurações da extensão se necessário)
-const DEFAULT_GAS_URL = "https://script.google.com/macros/s/AKfycbwL6OjarZR0B41c0Ii0eQu5tz4u7_fU8jGzVpnzVDSGKt8FS_TvWd3FoFOgO7SMQdZV6g/exec"; 
-
 /**
  * Obtém a URL configurada do Web App do GAS a partir do armazenamento da extensão.
  * @returns {Promise<string>} A URL do Web App do GAS.
@@ -11,15 +8,15 @@ const DEFAULT_GAS_URL = "https://script.google.com/macros/s/AKfycbwL6OjarZR0B41c
 export async function getGasApiUrl() {
     if (typeof browser !== 'undefined' && browser.storage && browser.storage.local) {
         const result = await browser.storage.local.get('sic3GasApiUrl');
-        return result.sic3GasApiUrl || DEFAULT_GAS_URL;
+        return result.sic3GasApiUrl || "";
     } else if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
         return new Promise((resolve) => {
             chrome.storage.local.get('sic3GasApiUrl', (result) => {
-                resolve(result.sic3GasApiUrl || DEFAULT_GAS_URL);
+                resolve(result.sic3GasApiUrl || "");
             });
         });
     }
-    return DEFAULT_GAS_URL;
+    return "";
 }
 
 /**
@@ -142,14 +139,10 @@ export async function executarApi(action, params = {}) {
 
     const apiUrls = await getGasApiUrls();
     const apiKey = actionToApiMap[action] || "lancamentos";
-    let apiUrl = apiUrls[apiKey];
-    
-    if (!apiUrl) {
-        apiUrl = await getGasApiUrl(); // Fallback global/manual
-    }
+    const apiUrl = apiUrls[apiKey];
 
     if (!apiUrl) {
-        throw new Error(`A URL da API para a ação "${action}" não está configurada na extensão.`);
+        throw new Error(`A URL da API para a ação "${action}" (módulo "${apiKey}") não está configurada na extensão. Sincronize as URLs de APIs a partir da Planilha Central.`);
     }
  
     const token = sessionStorage.getItem('authToken') || '';
