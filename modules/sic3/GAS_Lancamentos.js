@@ -44,31 +44,37 @@ function handleApiAction(action, body) {
   switch (action) {
     case "salvarDadosNaPlanilha":
       // params[0] = authToken, params[1] = municipio, params[2] = convenio, params[3] = ano, params[4] = mes, params[5] = dados, params[6] = spreadsheetId
-      result = salvarDadosNaPlanilha(params[0], params[1], params[2], params[3], params[4], params[5], params[6]);
+      result = salvarDadosNaPlanilha(body.authToken || params[0], params[1], params[2], params[3], params[4], params[5], params[6]);
       break;
       
     case "obterDadosItens99":
-      result = obterDadosItens99(body.authToken, params[0], params[1]); // params[0] = filtros, params[1] = spreadsheetId
+      // params[0] = authToken, params[1] = filtros, params[2] = spreadsheetId
+      result = obterDadosItens99(body.authToken || params[0], params[1], params[2]);
       break;
       
     case "excluirItem99Principal":
-      result = excluirItem99Principal(body.authToken, params[0], params[1]); // params[0] = item99Codigo, params[1] = spreadsheetId
+      // params[0] = authToken, params[1] = item99Codigo, params[2] = spreadsheetId
+      result = excluirItem99Principal(body.authToken || params[0], params[1], params[2]);
       break;
       
     case "atualizarStatusItem99":
-      result = atualizarStatusItem99(body.authToken, params[0], params[1], params[2]); // params[0] = item99Codigo, params[1] = novoStatus, params[2] = spreadsheetId
+      // params[0] = authToken, params[1] = item99Codigo, params[2] = novoStatus, params[3] = spreadsheetId
+      result = atualizarStatusItem99(body.authToken || params[0], params[1], params[2], params[3]);
       break;
       
     case "verificarStatusBloqueio":
-      result = { success: true, status: verificarStatusBloqueio(params[0], params[1], params[2], params[3], params[4]) }; // params[4] = spreadsheetId
+      // params[0] = municipio, params[1] = convenio, params[2] = ano, params[3] = mes, params[4] = spreadsheetId
+      result = { success: true, status: verificarStatusBloqueio(params[0], params[1], params[2], params[3], params[4]) };
       break;
       
     case "atualizarStatusEdicao":
-      result = atualizarStatusEdicao(body.authToken, params[0], params[1], params[2], params[3], params[4], params[5]); // params[4] = status, params[5] = spreadsheetId
+      // params[0] = authToken, params[1] = municipio, params[2] = convenio, params[3] = ano, params[4] = mes, params[5] = status, params[6] = spreadsheetId
+      result = atualizarStatusEdicao(body.authToken || params[0], params[1], params[2], params[3], params[4], params[5], params[6]);
       break;
       
     case "salvarItensPrimariosEmLote":
-      result = salvarItensPrimariosEmLote(params[0], params[1]); // params[0] = itens, params[1] = TBPrimaria ID
+      // params[0] = itens, params[1] = TBPrimaria ID
+      result = salvarItensPrimariosEmLote(params[0], params[1]);
       break;
       
     default:
