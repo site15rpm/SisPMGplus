@@ -41,23 +41,28 @@ function handleApiAction(action, body) {
   
   switch (action) {
     case "carregarConveniosMunicipio":
-      result = carregarConveniosMunicipio(params[0], body.authToken);
+      // params[0] = municipio
+      result = carregarConveniosMunicipio(params[0], body.authToken || params[1]);
       break;
       
     case "incluirConvenio":
-      result = incluirConvenio(body.authToken, params[0], params[1], params[2], params[3], params[4], params[5], params[6], params[7]);
+      // params[0] = authToken, params[1] = municipio, params[2] = convenio, params[3] = preposto_n, params[4] = preposto_pg, params[5] = preposto, params[6] = unidade, params[7] = dataInicio, params[8] = dataFim
+      result = incluirConvenio(body.authToken || params[0], params[1], params[2], params[3], params[4], params[5], params[6], params[7], params[8]);
       break;
       
     case "alterarConvenio":
-      result = alterarConvenio(body.authToken, params[0], params[1], params[2], params[3], params[4], params[5], params[6], params[7]);
+      // params[0] = authToken, params[1] = municipio, params[2] = convenio, params[3] = preposto_n, params[4] = preposto_pg, params[5] = preposto, params[6] = unidade, params[7] = dataInicio, params[8] = dataFim
+      result = alterarConvenio(body.authToken || params[0], params[1], params[2], params[3], params[4], params[5], params[6], params[7], params[8]);
       break;
       
     case "excluirConvenio":
-      result = excluirConvenio(body.authToken, params[0], params[1]);
+      // params[0] = authToken, params[1] = municipio, params[2] = convenio
+      result = excluirConvenio(body.authToken || params[0], params[1], params[2]);
       break;
  
     case "sincronizarConveniosLote":
-      result = sincronizarConveniosLote(body.authToken, params[1], params[0]); // params[1] = convênios, params[0] = BDConvenios ID (opcional)
+      // params[0] = authToken, params[1] = convenios, params[2] = BDConvenios ID
+      result = sincronizarConveniosLote(body.authToken || params[0], params[1], params[2]);
       break;
       
     default:
