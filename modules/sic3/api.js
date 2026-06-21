@@ -139,10 +139,16 @@ export async function executarApi(action, params = {}) {
 
     const apiUrls = await getGasApiUrls();
     const apiKey = actionToApiMap[action] || "lancamentos";
-    const apiUrl = apiUrls[apiKey];
+    const scriptId = apiUrls[apiKey];
 
-    if (!apiUrl) {
-        throw new Error(`A URL da API para a ação "${action}" (módulo "${apiKey}") não está configurada na extensão. Sincronize as URLs de APIs a partir da Planilha Central.`);
+    if (!scriptId) {
+        throw new Error(`A URL/ID da API para a ação "${action}" (módulo "${apiKey}") não está configurada na extensão. Sincronize as URLs de APIs a partir da Planilha Central.`);
+    }
+
+    // Se for apenas o ID do script (não contém o protocolo http/https), monta a URL completa
+    let apiUrl = scriptId;
+    if (!scriptId.includes('http://') && !scriptId.includes('https://')) {
+        apiUrl = `https://script.google.com/macros/s/${scriptId}/exec`;
     }
  
     const token = sessionStorage.getItem('authToken') || '';
