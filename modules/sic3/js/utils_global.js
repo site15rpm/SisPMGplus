@@ -341,6 +341,12 @@ window.carregarDadosPlanilha = function(config) {
             throw new Error('Formato de resposta inválido da planilha.');
           }
           const responseJson = JSON.parse(match[1]);
+          if (responseJson && responseJson.status === 'error') {
+            const errorMsg = responseJson.errors && responseJson.errors[0]
+              ? responseJson.errors[0].detailed_message || responseJson.errors[0].message
+              : 'Erro desconhecido da API do Google Sheets';
+            throw new Error(`Erro do Google Sheets: ${errorMsg}`);
+          }
           if (!responseJson || !responseJson.table || !responseJson.table.rows) {
             throw new Error('Dados inválidos recebidos da planilha: ' + (config.sheet || config.sheetId));
           }
