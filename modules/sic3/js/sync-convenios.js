@@ -18,14 +18,16 @@ function normalizarSemAcento(str) {
 
 function normalizarNomeMunicipio(str) {
     if (!str) return "";
-    return str.normalize("NFD")
-              .replace(/[\u0300-\u036f]/g, "")
-              .replace(/Ç/g, "C")
-              .toUpperCase()
-              .replace(/\b(PREFEITURA MUNICIPAL DE|PREFEITURA DE|MUNICIPIO DE|PREFEITURA MUNICIPAL|PREFEITURA|MUNICIPIO)\b/g, "")
-              .replace(/\b(DE|DO|DA|DOS|DAS)\b/g, "")
-              .replace(/[^A-Z0-9]/g, "")
-              .trim();
+    let s = String(str).toUpperCase()
+                       .replace(/[\/\-]\s*[A-Z]{2}\s*$/, "") // Remove terminação de estado como /MG ou -BA no final da string
+                       .replace(/\b(PREFEITURA MUNICIPAL DE|PREFEITURA DE|MUNICIPIO DE|PREFEITURA MUNICIPAL|PREFEITURA|MUNICIPIO|PM)\b/g, ""); // Remove também PM, prefeitura, etc.
+                       
+    return s.normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/Ç/g, "C")
+            .replace(/\b(DE|DO|DA|DOS|DAS)\b/g, "")
+            .replace(/[^A-Z0-9]/g, "")
+            .trim();
 }
 
 function filtrarConcedentesPorMunicipios(concedentes, municipios) {
@@ -36,12 +38,19 @@ function filtrarConcedentesPorMunicipios(concedentes, municipios) {
     })).filter(item => item.norm.length > 0);
     
     concedentes.forEach(c => {
-        const nomeNorm = normalizarNomeMunicipio(c.nome);
-        if (!nomeNorm) return;
+        const rsNorm = normalizarNomeMunicipio(c.razaoSocial);
+        const nfNorm = normalizarNomeMunicipio(c.nomeFantasia);
+        const munNorm = normalizarNomeMunicipio(c.municipio);
         
-        const match = municipiosNorm.find(m => m.norm === nomeNorm);
+        // Verifica se o município da RPM normalizado dá match em qualquer uma das três colunas
+        const match = municipiosNorm.find(m => {
+            return (rsNorm && rsNorm === m.norm) || 
+                   (nfNorm && nfNorm === m.norm) || 
+                   (munNorm && munNorm === m.norm);
+        });
+        
         if (match) {
-            console.log(`[SIC3 Sync] [Match] Concedente "${c.nome}" (ID ${c.id}) associado ao município "${match.original}"`);
+            console.log(`[SIC3 Sync] [Match] Concedente ID ${c.id} associado ao município "${match.original}" (Razão: "${c.razaoSocial}", Fantasia: "${c.nomeFantasia}", Município: "${c.municipio}")`);
             listIds.push(c.id);
         }
     });
@@ -184,17 +193,48 @@ export async function executarSincronizacaoConvenios(isPrimeiraBusca) {
             const parser = new DOMParser();
             const docConcedentes = parser.parseFromString(htmlConcedentes, 'text/html');
             
-            const linksConcedentes = docConcedentes.querySelectorAll("a[href*='concedente/view?id=']");
-            console.log(`[SIC3 Sync] [Log] Total de links de concedentes encontrados no HTML: ${linksConcedentes.length}`);
+            const itensConcedentes = docConcedentes.querySelectorAll(".item.flex-linha");
+            console.log(`[SIC3 Sync] [Log] Total de itens de concedentes encontrados no HTML: ${itensConcedentes.length}`);
             
             const concedentesMapeados = [];
-            linksConcedentes.forEach(link => {
-                const href = link.getAttribute("href");
-                const m = href.match(/id=(\d+)/);
-                if (m) {
+            itensConcedentes.forEach(item => {
+                let id = "";
+                let razaoSocial = "";
+                let nomeFantasia = "";
+                let municipioConcedente = "";
+                
+                const colunas = item.querySelectorAll(".flex-coluna");
+                colunas.forEach(col => {
+                    const labelEl = col.querySelector(".tc.menor");
+                    const label = labelEl ? labelEl.textContent.trim().toUpperCase() : "";
+                    
+                    let valor = col.textContent;
+                    if (labelEl) {
+                        valor = valor.replace(labelEl.textContent, "");
+                    }
+                    valor = valor.trim();
+                    
+                    if (label.includes("RAZÃO SOCIAL") || label.includes("RAZAO SOCIAL") || label.includes("NOME")) {
+                        razaoSocial = valor;
+                        const link = col.querySelector("a[href*='concedente/view?id=']");
+                        if (link) {
+                            const m = link.getAttribute("href").match(/id=(\d+)/);
+                            if (m) id = m[1];
+                            if (!razaoSocial) razaoSocial = link.textContent.trim();
+                        }
+                    } else if (label.includes("FANTASIA") || label.includes("APELIDO")) {
+                        nomeFantasia = valor;
+                    } else if (label.includes("MUNICÍPIO") || label.includes("MUNICIPIO")) {
+                        municipioConcedente = valor;
+                    }
+                });
+                
+                if (id) {
                     concedentesMapeados.push({
-                        id: m[1],
-                        nome: link.textContent.trim()
+                        id: id,
+                        razaoSocial: razaoSocial,
+                        nomeFantasia: nomeFantasia,
+                        municipio: municipioConcedente
                     });
                 }
             });
@@ -204,9 +244,13 @@ export async function executarSincronizacaoConvenios(isPrimeiraBusca) {
             
             nomesMunicipiosRPM.forEach(m => {
                 const mNorm = normalizarNomeMunicipio(m);
-                const encontrou = concedentesMapeados.some(c => normalizarNomeMunicipio(c.nome) === mNorm);
+                const encontrou = concedentesMapeados.some(c => {
+                    return normalizarNomeMunicipio(c.razaoSocial) === mNorm || 
+                           normalizarNomeMunicipio(c.nomeFantasia) === mNorm || 
+                           normalizarNomeMunicipio(c.municipio) === mNorm;
+                });
                 if (!encontrou) {
-                    console.warn(`[SIC3 Sync] [Aviso] Não foi encontrado concedente municipal correspondente para: "${m}"`);
+                    console.warn(`[SIC3 Sync] [Aviso] Não foi encontrado concedente correspondente para o município: "${m}"`);
                 }
             });
             
