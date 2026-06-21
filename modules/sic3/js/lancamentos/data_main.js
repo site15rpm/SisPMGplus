@@ -78,11 +78,30 @@ async function buscarDadosRelatorio() {
     };
     const sheetId = idbase;
 
-    const principalData = await carregarDadosPlanilha({
-      sheetId: sheetId,
-      sheet: "principal",
-      query: `SELECT G,H,I,J,K,L,M,N,O WHERE B='${municipio}' AND C='${convenio}' AND D='${ano}' AND E='${mes}'`
-    });
+    const queries = [
+      carregarDadosPlanilha({
+        sheetId: sheetId,
+        sheet: "principal",
+        query: `SELECT G,H,I,J,K,L,M,N,O WHERE B='${municipio}' AND C='${convenio}' AND D='${ano}' AND E='${mes}'`
+      }),
+      carregarDadosPlanilha({
+        sheetId: sheetId,
+        sheet: "abastecimento",
+        query: `SELECT G,H,I,J,K,L,M,N,O,P,Q WHERE B='${municipio}' AND C='${convenio}' AND D='${ano}' AND E='${mes}'`
+      }),
+      carregarDadosPlanilha({
+        sheetId: sheetId,
+        sheet: "manutencao",
+        query: `SELECT G,H,I,J,K,L,M,N,O,P WHERE B='${municipio}' AND C='${convenio}' AND D='${ano}' AND E='${mes}'`
+      }),
+      carregarDadosPlanilha({
+        sheetId: sheetId,
+        sheet: "obsgeral",
+        query: `SELECT G WHERE B='${municipio}' AND C='${convenio}' AND D='${ano}' AND E='${mes}'`
+      })
+    ];
+
+    const [principalData, abastecimentoData, manutencaoData, obsgeralData] = await Promise.all(queries);
     
     resultado.principal = principalData.map((row) => ({
         codigo: row[0] || "",
@@ -96,11 +115,6 @@ async function buscarDadosRelatorio() {
         observacao: row[8] || ""
     }));
 
-    const abastecimentoData = await carregarDadosPlanilha({
-      sheetId: sheetId,
-      sheet: "abastecimento",
-      query: `SELECT G,H,I,J,K,L,M,N,O,P,Q WHERE B='${municipio}' AND C='${convenio}' AND D='${ano}' AND E='${mes}'`
-    });
     resultado.abastecimento = abastecimentoData.map((row) => ({
       data: row[0] || "",
       hora: row[1] || "",
@@ -114,12 +128,6 @@ async function buscarDadosRelatorio() {
       subtotal: row[9] || "",
       notaFiscal: row[10] || ""
     }));
-
-    const manutencaoData = await carregarDadosPlanilha({
-      sheetId: sheetId,
-      sheet: "manutencao",
-      query: `SELECT G,H,I,J,K,L,M,N,O,P WHERE B='${municipio}' AND C='${convenio}' AND D='${ano}' AND E='${mes}'`
-    });
 
     resultado.manutencao = manutencaoData.map((row) => ({
       tipo: "",
@@ -135,11 +143,6 @@ async function buscarDadosRelatorio() {
       notaFiscal: row[9] || ""
     }));
 
-    const obsgeralData = await carregarDadosPlanilha({
-      sheetId: sheetId,
-      sheet: "obsgeral",
-      query: `SELECT G WHERE B='${municipio}' AND C='${convenio}' AND D='${ano}' AND E='${mes}'`
-    });
     resultado.obsgeral = { texto: (obsgeralData[0] && obsgeralData[0][0]) || "" };
 
     return resultado;
