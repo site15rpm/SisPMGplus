@@ -439,6 +439,7 @@ window.resolverIdsPlanilhas = async function(forcarRecarregamento = false) {
             const resCriacao = await executarApi("criarEstruturaRpmAno", [rpmAtiva, anoAtivo]);
             if (resCriacao && resCriacao.success && resCriacao.spreadsheetId) {
                 linksResolvidos = resCriacao;
+                window.sic3_estrutura_criada_agora = true;
             } else {
                 throw new Error(resCriacao?.error || "Falha na criação de estrutura.");
             }
@@ -1037,7 +1038,28 @@ window.addEventListener('DOMContentLoaded', async () => {
         
         // --- EXTRAÇÃO AUTOMÁTICA DE CONVÊNIOS SEMANAL ---
         let precisaSincronizar = false;
-        if (window.userPM && !window.isAdmin) {
+        let primeiraBuscaObrigatoria = false;
+        
+        let bancoVazio = false;
+        try {
+            const conveniosSalvos = await window.carregarDadosPlanilha({
+                sheetId: window.idbase,
+                sheet: "convenios",
+                query: "SELECT A LIMIT 5"
+            });
+            if (!conveniosSalvos || conveniosSalvos.length <= 1) {
+                bancoVazio = true;
+            }
+        } catch (errVerificacao) {
+            console.warn("[SIC3 v3.0 Log] Erro ao verificar se a tabela 'convenios' está vazia. Assumindo que está vazia:", errVerificacao);
+            bancoVazio = true;
+        }
+
+        if (window.sic3_estrutura_criada_agora || bancoVazio) {
+            primeiraBuscaObrigatoria = true;
+            precisaSincronizar = true;
+            console.log(`[SIC3 v3.0 Log] Sincronização obrigatória de primeira busca ativada. Estrutura criada agora: ${!!window.sic3_estrutura_criada_agora}, Banco vazio: ${bancoVazio}`);
+        } else if (window.userPM && !window.isAdmin) {
             const lastRunKey = `sic3_last_auto_sync_${window.userPM}`;
             const lastRunResult = await new Promise(resolve => {
                 let storage = null;
@@ -1062,21 +1084,25 @@ window.addEventListener('DOMContentLoaded', async () => {
         }
         
         if (precisaSincronizar) {
-            window.mostrarCarregamentoGlobal("Iniciando sincronização automática de convênios semanal...");
+            window.mostrarCarregamentoGlobal(primeiraBuscaObrigatoria 
+                ? "Iniciando primeira busca e sincronização de convênios..." 
+                : "Iniciando sincronização automática de convênios semanal...");
             const { executarSincronizacaoConvenios } = await import('./js/sync-convenios.js');
-            await executarSincronizacaoConvenios();
+            await executarSincronizacaoConvenios(primeiraBuscaObrigatoria);
             
-            const lastRunKey = `sic3_last_auto_sync_${window.userPM}`;
-            let storage = null;
-            if (typeof browser !== 'undefined' && browser.storage && browser.storage.local) {
-                storage = browser.storage.local;
-            } else if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-                storage = chrome.storage.local;
-            }
-            if (storage) {
-                await new Promise(resolve => {
-                    storage.set({ [lastRunKey]: Date.now() }, resolve);
-                });
+            if (window.userPM && !primeiraBuscaObrigatoria) {
+                const lastRunKey = `sic3_last_auto_sync_${window.userPM}`;
+                let storage = null;
+                if (typeof browser !== 'undefined' && browser.storage && browser.storage.local) {
+                    storage = browser.storage.local;
+                } else if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+                    storage = chrome.storage.local;
+                }
+                if (storage) {
+                    await new Promise(resolve => {
+                        storage.set({ [lastRunKey]: Date.now() }, resolve);
+                    });
+                }
             }
         }
         

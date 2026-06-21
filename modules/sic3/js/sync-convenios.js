@@ -16,6 +16,39 @@ function normalizarSemAcento(str) {
               .trim();
 }
 
+function normalizarNomeMunicipio(str) {
+    if (!str) return "";
+    return str.normalize("NFD")
+              .replace(/[\u0300-\u036f]/g, "")
+              .replace(/Ç/g, "C")
+              .toUpperCase()
+              .replace(/\b(PREFEITURA MUNICIPAL DE|PREFEITURA DE|MUNICIPIO DE|PREFEITURA MUNICIPAL|PREFEITURA|MUNICIPIO)\b/g, "")
+              .replace(/\b(DE|DO|DA|DOS|DAS)\b/g, "")
+              .replace(/[^A-Z0-9]/g, "")
+              .trim();
+}
+
+function filtrarConcedentesPorMunicipios(concedentes, municipios) {
+    const listIds = [];
+    const municipiosNorm = municipios.map(m => ({
+        original: m,
+        norm: normalizarNomeMunicipio(m)
+    })).filter(item => item.norm.length > 0);
+    
+    concedentes.forEach(c => {
+        const nomeNorm = normalizarNomeMunicipio(c.nome);
+        if (!nomeNorm) return;
+        
+        const match = municipiosNorm.find(m => m.norm === nomeNorm);
+        if (match) {
+            console.log(`[SIC3 Sync] [Match] Concedente "${c.nome}" (ID ${c.id}) associado ao município "${match.original}"`);
+            listIds.push(c.id);
+        }
+    });
+    
+    return [...new Set(listIds)];
+}
+
 function normalizarParaCompararRPM(str) {
     if (!str) return "";
     return str.normalize("NFD")
@@ -52,11 +85,33 @@ function extrairMunicipioLimpo(nomeBruto) {
 /**
  * Executa a extração dos convênios do Portal PM e a gravação/atualização no banco do GAS.
  */
-export async function executarSincronizacaoConvenios() {
+export async function executarSincronizacaoConvenios(isPrimeiraBusca) {
     window.mostrarCarregamentoGlobal("Iniciando sincronização de convênios...");
     console.log("[SIC3 Sync] [Log] Iniciando o processo de sincronização de convênios semanal...");
     
     try {
+        if (isPrimeiraBusca === undefined || isPrimeiraBusca === null) {
+            let bancoVazio = false;
+            try {
+                const sheetId = window.idbase || sessionStorage.getItem("sic3_idbase");
+                if (sheetId) {
+                    const conveniosSalvos = await window.carregarDadosPlanilha({
+                        sheetId: sheetId,
+                        sheet: "convenios",
+                        query: "SELECT A LIMIT 5"
+                    });
+                    if (!conveniosSalvos || conveniosSalvos.length <= 1) {
+                        bancoVazio = true;
+                    }
+                }
+            } catch (err) {
+                console.warn("[SIC3 Sync] Erro ao checar se banco está vazio, assumindo false:", err);
+            }
+            isPrimeiraBusca = bancoVazio;
+        }
+        
+        console.log(`[SIC3 Sync] Tipo de busca de convênios: ${isPrimeiraBusca ? "Primeira busca (global por concedentes dos municípios)" : "Busca padrão (meus-convenios)"}`);
+
         // 1. Obter a RPM e matrícula do usuário extraídas diretamente do Tokiuz (browser storage)
         let codigoRpmTokiuz = "";
         let nomeRegiaoTokiuz = "";
@@ -102,21 +157,81 @@ export async function executarSincronizacaoConvenios() {
         });
         
         // 3. PASSO 1: Buscar convênios ativos no Portal PM para extrair os IDs dos concedentes
-        console.log("[SIC3 Sync] [Log] [Passo 1] Buscando id dos concedentes a partir de meus-convenios...");
-        window.mostrarCarregamentoGlobal("Buscando convênios ativos no Portal PM...");
-        const conveniosUsuario = await obterConveniosAtivosJSON();
-        console.log(`[SIC3 Sync] [Log] [Passo 1] Retornados ${conveniosUsuario.length} convênios associados ao usuário.`);
+        let concedenteIds = [];
+        let conveniosUsuario = [];
         
-        if (conveniosUsuario.length === 0) {
-            console.log("[SIC3 Sync] [Log] Nenhum convênio ativo encontrado para o usuário corrente.");
-            window.mostrarCarregamentoGlobal("Nenhum convênio ativo encontrado.");
-            await new Promise(r => setTimeout(r, 1000));
-            return;
+        if (isPrimeiraBusca) {
+            console.log("[SIC3 Sync] [Log] [Passo 1] Primeira busca: Identificando concedentes por municípios da RPM...");
+            window.mostrarCarregamentoGlobal("Buscando concedentes de municípios da RPM...");
+            
+            const nomesMunicipiosRPM = [...new Set(unidades.map(u => u.municipio).filter(Boolean))];
+            console.log("[SIC3 Sync] [Log] Municípios da RPM obtidos para cruzamento:", nomesMunicipiosRPM);
+            
+            if (nomesMunicipiosRPM.length === 0) {
+                console.warn("[SIC3 Sync] [Log] Nenhum município encontrado na busca de unidades da RPM.");
+                window.mostrarCarregamentoGlobal("Nenhum município na RPM.");
+                await new Promise(r => setTimeout(r, 1000));
+                return;
+            }
+            
+            console.log("[SIC3 Sync] [Log] Baixando a lista de concedentes de /lite/convenio/web/concedente...");
+            const resConcedentes = await fetch("https://intranet.policiamilitar.mg.gov.br/lite/convenio/web/concedente", { credentials: 'include' });
+            if (!resConcedentes.ok) {
+                throw new Error(`Falha ao acessar lista de concedentes da Intranet. Status HTTP: ${resConcedentes.status}`);
+            }
+            
+            const htmlConcedentes = await resConcedentes.text();
+            const parser = new DOMParser();
+            const docConcedentes = parser.parseFromString(htmlConcedentes, 'text/html');
+            
+            const linksConcedentes = docConcedentes.querySelectorAll("a[href*='concedente/view?id=']");
+            console.log(`[SIC3 Sync] [Log] Total de links de concedentes encontrados no HTML: ${linksConcedentes.length}`);
+            
+            const concedentesMapeados = [];
+            linksConcedentes.forEach(link => {
+                const href = link.getAttribute("href");
+                const m = href.match(/id=(\d+)/);
+                if (m) {
+                    concedentesMapeados.push({
+                        id: m[1],
+                        nome: link.textContent.trim()
+                    });
+                }
+            });
+            
+            concedenteIds = filtrarConcedentesPorMunicipios(concedentesMapeados, nomesMunicipiosRPM);
+            console.log(`[SIC3 Sync] [Log] IDs de concedentes identificados para a RPM:`, concedenteIds);
+            
+            nomesMunicipiosRPM.forEach(m => {
+                const mNorm = normalizarNomeMunicipio(m);
+                const encontrou = concedentesMapeados.some(c => normalizarNomeMunicipio(c.nome) === mNorm);
+                if (!encontrou) {
+                    console.warn(`[SIC3 Sync] [Aviso] Não foi encontrado concedente municipal correspondente para: "${m}"`);
+                }
+            });
+            
+            if (concedenteIds.length === 0) {
+                console.warn("[SIC3 Sync] [Log] Nenhum ID de concedente correspondente foi encontrado.");
+                window.mostrarCarregamentoGlobal("Nenhum concedente correspondente encontrado.");
+                await new Promise(r => setTimeout(r, 1000));
+                return;
+            }
+        } else {
+            console.log("[SIC3 Sync] [Log] [Passo 1] Buscando id dos concedentes a partir de meus-convenios...");
+            window.mostrarCarregamentoGlobal("Buscando convênios ativos no Portal PM...");
+            conveniosUsuario = await obterConveniosAtivosJSON();
+            console.log(`[SIC3 Sync] [Log] [Passo 1] Retornados ${conveniosUsuario.length} convênios associados ao usuário.`);
+            
+            if (conveniosUsuario.length === 0) {
+                console.log("[SIC3 Sync] [Log] Nenhum convênio ativo encontrado para o usuário corrente.");
+                window.mostrarCarregamentoGlobal("Nenhum convênio ativo encontrado.");
+                await new Promise(r => setTimeout(r, 1000));
+                return;
+            }
+            
+            concedenteIds = [...new Set(conveniosUsuario.map(conv => conv.CONCEDENTE_ID || conv.concedente_id).filter(Boolean))];
+            console.log(`[SIC3 Sync] [Log] [Passo 1] Identificados ${concedenteIds.length} IDs de concedentes únicos:`, concedenteIds);
         }
-        
-        // Extrai IDs únicos dos concedentes associados aos convênios do usuário
-        const concedenteIds = [...new Set(conveniosUsuario.map(conv => conv.CONCEDENTE_ID || conv.concedente_id).filter(Boolean))];
-        console.log(`[SIC3 Sync] [Log] [Passo 1] Identificados ${concedenteIds.length} IDs de concedentes únicos:`, concedenteIds);
         
         // 4. PASSO 2: Acessar a página de cada concedente e coletar convênios listados (coletando APENAS o CNPJ na página)
         const convsColetadosHTML = [];
@@ -140,14 +255,20 @@ export async function executarSincronizacaoConvenios() {
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(htmlText, 'text/html');
                 
-                // Coleta estritamente e apenas o CNPJ na página do Concedente
+                // Coleta o CNPJ e o Nome do Concedente na página
                 let cnpj = "";
+                let nomeConcedenteDaPagina = "";
                 const nReal = doc.querySelector('.barra.item h2')?.innerText.trim() || "";
                 if (nReal.includes('CNPJ')) {
                     const parts = nReal.split(/-\s*CNPJ\s*:\s*|CNPJ\s*:\s*/i);
+                    if (parts[0]) {
+                        nomeConcedenteDaPagina = parts[0].trim();
+                    }
                     if (parts[1]) {
                         cnpj = parts[1].trim();
                     }
+                } else {
+                    nomeConcedenteDaPagina = nReal;
                 }
                 
                 const infoConvenio = doc.querySelector('.barra.item.info-convenio');
@@ -229,7 +350,7 @@ export async function executarSincronizacaoConvenios() {
 
                         // Recupera a razão social original do JSON inicial de convênios para evitar capturar do HTML
                         const convOriginal = conveniosUsuario.find(c => String(c.ID || c.id) === String(idConvenio));
-                        const razaoSocialOriginal = convOriginal ? (convOriginal.CONCEDENTE || convOriginal.concedente || "") : "";
+                        const razaoSocialOriginal = convOriginal ? (convOriginal.CONCEDENTE || convOriginal.concedente || "") : nomeConcedenteDaPagina;
                         
                         convsColetadosHTML.push({
                             ID: idConvenio,
