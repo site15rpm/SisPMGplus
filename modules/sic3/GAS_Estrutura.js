@@ -208,7 +208,7 @@ function obterOuCriarPlanilhaAnual(folderRPM, rpm, ano) {
     "principal": ["timestamp", "municipio", "convenio", "ano", "mes", "item_id", "codigo", "descricao", "unidade", "quantidade", "valor_unitario", "subtotal", "observacao", "responsavel", "despesa"],
     "abastecimento": ["timestamp", "municipio", "convenio", "ano", "mes", "data", "hora", "placa", "prefixo", "odometro", "responsavel", "tipo", "quantidade", "valor_unitario", "subtotal", "nota_fiscal", "observacao"],
     "manutencao": ["timestamp", "municipio", "convenio", "ano", "mes", "data", "placa", "prefixo", "odometro", "responsavel", "tipo", "quantidade", "valor_unitario", "subtotal", "nota_fiscal", "observacao"],
-    "obsgeral": ["timestamp", "municipio", "convenio", "ano", "mes", "valor_total", "obs_geral", "bloqueado", "has_item99"],
+    "obsgeral": ["timestamp", "municipio", "convenio", "ano", "mes", "valor_total", "obs_geral", "bloqueado", "has_item99", "sirconvStatus", "siadStatus", "colL", "colM", "colN", "colO", "colP", "colQ", "colR", "colS"],
     "item99": ["timestamp", "municipio", "convenio", "ano", "mes", "item99_code", "descricao", "unidade_distribuicao", "elemento_despesa", "termos_busca", "status", "link_nota_fiscal"]
   };
 
