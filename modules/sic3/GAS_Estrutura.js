@@ -251,8 +251,6 @@ function criarEstruturaRpmAno(authToken, rpm, ano) {
     // 3. Obter ou Criar Arquivos Compartilhados da RPM
     const BDConvenios = obterIdArquivoCompartilhado("SIC3_BDConvenios", folderRPM);
     const BDEnderecos = obterIdArquivoCompartilhado("SIC3_BDEnderecos", folderRPM);
-    const TBPrimaria = obterIdArquivoCompartilhado("SIC3_TBPrimaria");
-    const TBSecundaria = obterIdArquivoCompartilhado("SIC3_TBSecundaria");
 
     // 4. Salvar na Planilha Central SIC3_BDLinks
     const ssCentral = SpreadsheetApp.openById(CENTRAL_BD_LINKS_ID);
@@ -273,9 +271,7 @@ function criarEstruturaRpmAno(authToken, rpm, ano) {
       anoNorm,
       spreadsheetId,
       BDConvenios,
-      BDEnderecos,
-      TBPrimaria,
-      TBSecundaria
+      BDEnderecos
     ];
 
     if (rowIndex !== -1) {
@@ -287,6 +283,26 @@ function criarEstruturaRpmAno(authToken, rpm, ano) {
       sheetLinks.getRange(sheetLinks.getLastRow(), 1, 1, rowData.length).setNumberFormat("@STRING@");
     }
 
+    // 5. Obter IDs globais de TBPrimaria e TBSecundaria da aba 'config' da Planilha Central
+    let globalTBPrimaria = "";
+    let globalTBSecundaria = "";
+    try {
+      const sheetConfig = ssCentral.getSheetByName("config");
+      if (sheetConfig) {
+        const configValues = sheetConfig.getDataRange().getValues();
+        for (let i = 0; i < configValues.length; i++) {
+          const key = String(configValues[i][0]).trim();
+          const val = String(configValues[i][1]).trim();
+          if (key === "TBPrimaria") globalTBPrimaria = val;
+          if (key === "TBSecundaria") globalTBSecundaria = val;
+        }
+      }
+    } catch(configErr) {
+      // Fallback legado caso a aba 'config' não exista
+      globalTBPrimaria = obterIdArquivoCompartilhado("SIC3_TBPrimaria");
+      globalTBSecundaria = obterIdArquivoCompartilhado("SIC3_TBSecundaria");
+    }
+
     return {
       success: true,
       rpm: rpmNorm,
@@ -295,8 +311,8 @@ function criarEstruturaRpmAno(authToken, rpm, ano) {
       arquivosCompartilhados: {
         BDConvenios: BDConvenios,
         BDEnderecos: BDEnderecos,
-        TBPrimaria: TBPrimaria,
-        TBSecundaria: TBSecundaria
+        TBPrimaria: globalTBPrimaria,
+        TBSecundaria: globalTBSecundaria
       }
     };
 
