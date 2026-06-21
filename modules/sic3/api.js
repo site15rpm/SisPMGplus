@@ -104,6 +104,34 @@ export async function saveGasApiUrls(urlsMap) {
  * @returns {Promise<object>} O resultado da requisição retornado pelo GAS.
  */
 export async function executarApi(action, params = {}) {
+    // Injeta de forma transparente os IDs de planilhas com base na action executada para evitar que o GAS faça buscas no Drive
+    if (typeof window !== 'undefined' && Array.isArray(params)) {
+        const idbase = window.idbase || sessionStorage.getItem("sic3_idbase");
+        const idBDConvenios = window.idBDConvenios || sessionStorage.getItem("sic3_idBDConvenios");
+        const idBDEnderecos = window.idBDEnderecos || sessionStorage.getItem("sic3_idBDEnderecos");
+        const idTBPrimaria = window.idTBPrimaria || sessionStorage.getItem("sic3_idTBPrimaria");
+
+        if (action === "salvarDadosNaPlanilha" && params.length >= 6) {
+            params[6] = idbase;
+        } else if (action === "salvarItensPrimariosEmLote" && params.length >= 1) {
+            params[1] = idTBPrimaria;
+        } else if (action === "obterDadosItens99" && params.length >= 2) {
+            params[2] = idbase;
+        } else if (action === "excluirItem99Principal" && params.length >= 2) {
+            params[2] = idbase;
+        } else if (action === "atualizarStatusItem99" && params.length >= 3) {
+            params[3] = idbase;
+        } else if (action === "verificarStatusBloqueio" && params.length >= 4) {
+            params[4] = idbase;
+        } else if (action === "atualizarStatusEdicao" && params.length >= 6) {
+            params[6] = idbase;
+        } else if (action === "gerenciarEnderecoMedidor" && params.length >= 1) {
+            params[1] = idBDEnderecos;
+        } else if (action === "sincronizarConveniosLote" && params.length >= 2) {
+            params[2] = idBDConvenios;
+        }
+    }
+
     const apiUrls = await getGasApiUrls();
     const apiKey = actionToApiMap[action] || "lancamentos";
     let apiUrl = apiUrls[apiKey];
