@@ -840,3 +840,30 @@ function salvarItensPrimariosEmLote(itens, tbPrimariaId) {
       lock.releaseLock();
     }
 }
+
+/**
+ * Configura o trigger do Google Apps Script para executar a função 'processarRebloqueiosCron'
+ * diariamente às 3 horas da manhã (Horário de Brasília).
+ */
+function configurarTriggerCron() {
+  const functionName = "processarRebloqueiosCron";
+  
+  // Remove triggers duplicados que executam a mesma função
+  const triggers = ScriptApp.getProjectTriggers();
+  for (let i = 0; i < triggers.length; i++) {
+    if (triggers[i].getHandlerFunction() === functionName) {
+      ScriptApp.deleteTrigger(triggers[i]);
+    }
+  }
+  
+  // Cria o novo trigger baseado em tempo (Diário, às 3 horas da manhã)
+  ScriptApp.newTrigger(functionName)
+    .timeBased()
+    .everyDays(1)
+    .atHour(3)
+    .nearMinute(0)
+    .create();
+  
+  console.log("Trigger Cron configurado com sucesso! Execução diária agendada para às 3h da manhã.");
+}
+
