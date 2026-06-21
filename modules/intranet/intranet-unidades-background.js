@@ -217,7 +217,7 @@ export async function handleUnidadesMessages(request, sender) {
 
         case 'unidades-extract-now': {
             // Para execução manual, podemos pegar o usuário de um contexto recente se disponível
-            const { userPM } = (await browser.storage.local.get('lastUserContext'))?.lastUserContext || {};
+            const { userPM } = (await browser.storage.local.get('intranetUser'))?.intranetUser || {};
             const result = await executeExtraction(userPM || 'manual', payload?.settings);
             return result;
         }
@@ -234,8 +234,7 @@ export async function handleUnidadesMessages(request, sender) {
         }
 
         case 'intranet-user-identified':
-            // Salva o contexto do usuário para uso na extração manual e aciona o gatilho
-            await browser.storage.local.set({ 'lastUserContext': payload });
+            // Aciona o gatilho da identificação do usuário
             await checkTrigger(payload);
             return { success: true };
             
