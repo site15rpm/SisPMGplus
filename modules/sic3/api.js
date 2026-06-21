@@ -129,6 +129,14 @@ export async function executarApi(action, params = {}) {
             params[1] = idBDEnderecos;
         } else if (action === "sincronizarConveniosLote" && params.length >= 2) {
             params[2] = idBDConvenios;
+        } else if (action === "carregarConveniosMunicipio" && params.length >= 1) {
+            params[2] = idBDConvenios;
+        } else if (action === "incluirConvenio" && params.length >= 8) {
+            params[9] = idBDConvenios;
+        } else if (action === "alterarConvenio" && params.length >= 8) {
+            params[9] = idBDConvenios;
+        } else if (action === "excluirConvenio" && params.length >= 2) {
+            params[3] = idBDConvenios;
         }
     }
 
