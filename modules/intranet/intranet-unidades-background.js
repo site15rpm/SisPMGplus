@@ -1,6 +1,7 @@
 // Arquivo: modules/intranet/intranet-unidades-background.js
 // Lógica de background específica para o módulo de Extração de Unidades.
 import { obterUnidades } from '../../common/busca-unidades.js';
+import { fetchWithKeepAlive } from '../../common/keep-alive.js';
 
 // --- Constantes ---
 const STORAGE_SETTINGS_KEY = 'unidadesSettings';
@@ -123,7 +124,8 @@ async function executeExtraction(userId, settingsOverride = null) {
         }
 
         const today = new Date().toLocaleDateString('pt-BR');
-        await browser.storage.local.set({ [STORAGE_LAST_RUN_KEY]: { [userId]: today } });
+        const { [STORAGE_LAST_RUN_KEY]: currentLastRunData = {} } = await browser.storage.local.get(STORAGE_LAST_RUN_KEY);
+        await browser.storage.local.set({ [STORAGE_LAST_RUN_KEY]: { ...currentLastRunData, [userId]: today } });
 
         console.log("SisPMG+ [Unidades Extraídas]: Dados resultantes da extração:", parsedData);
         await addUnidadesLog('Extração concluída com sucesso!', 'SISTEMA', 'success');

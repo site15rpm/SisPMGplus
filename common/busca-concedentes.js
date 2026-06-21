@@ -2,7 +2,7 @@
 // Funções centralizadas e reutilizáveis para listagem e busca de concedentes do SIRCONV de forma independente.
 
 import { fetchWithKeepAlive } from './keep-alive.js';
-import { sendMessageToOffscreen, closeOffscreenDocument } from '../modules/intranet/intranet-agenda-offscreen.js';
+import { sendMessageToOffscreen, closeOffscreenDocument } from '../modules/intranet/intranet-offscreen.js';
 import { getCookie, decodeJwt } from './utils.js';
 import { obterUnidades } from './busca-unidades.js';
 import { getMunicipioClean } from './busca-convenios.js';

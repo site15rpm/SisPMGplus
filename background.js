@@ -1,5 +1,4 @@
-import './common/browser-polyfill.js';
-// Arquivo: background.js (Service Worker Principal) - VERSÃO ATUALIZADA
+// Arquivo: background.js (Service Worker Principal)
 // Este script atua como o ponto de entrada principal e delega a lógica para os módulos.
 
 import './common/browser-polyfill.js';

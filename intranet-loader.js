@@ -4,14 +4,14 @@
 let padmModuleInstance = null;
 let uiModuleInstance = null;
 let aniverModuleInstance = null;
-let agendaModuleInstance = null; // Módulo da Agenda
+let agendaModuleInstance = null;
 let sirconvModuleInstance = null;
-// sirconvConveniosModuleInstance desativado (sincronização movida para o SIC3)
 let sirconvDashboardModuleInstance = null;
 let sicorModuleInstance = null;
 let praticasModuleInstance = null;
-let unidadesModuleInstance = null; // <-- ADICIONADO
-let notasModuleInstance = null; // <-- ADICIONADO
+let unidadesModuleInstance = null;
+let notasModuleInstance = null;
+let moduleCheckInterval = null; // Controle do intervalo de verificação de módulos
 let userTokiuzE = null; // Armazena a chave 'e' do token tokiuz
 let globalConfig = null;
 let moduleSettings = {};
@@ -76,12 +76,14 @@ async function main(config) {
         // Carrega o restante das configurações dos módulos.
         const otherSettings = (await getSettingsFromStorage([
             'padmModuleEnabled', 'aniverModuleEnabled', 'agendaModuleEnabled', 'sirconvModuleEnabled',
-            'sirconvConveniosModuleEnabled', 'sirconvDashboardModuleEnabled', 'sicorModuleEnabled', 'praticasModuleEnabled', 'unidadesModuleEnabled'
+            'sirconvDashboardModuleEnabled', 'sicorModuleEnabled', 'praticasModuleEnabled',
+            'unidadesModuleEnabled', 'notasModuleEnabled'
         ])) || {};
         Object.assign(moduleSettings, otherSettings);
 
         // Inicia o loop que verifica e carrega os módulos dinamicamente.
-        setInterval(checkAllModules, 1000);
+        if (moduleCheckInterval) clearInterval(moduleCheckInterval);
+        moduleCheckInterval = setInterval(checkAllModules, 1000);
     };
 
     // 4. Configura os gatilhos para a inicialização dos módulos dependentes.
@@ -184,12 +186,12 @@ function checkAllModules() {
         destroySirconvModule();
     }
 
-    // O módulo de SIRCONV Convenios gráfica/sincronização local na intranet foi desativado e integrado ao SIC3.
-    const isSirconvConveniosPage = window.location.href.includes('/lite/convenio/');
+    // Verifica o módulo do SIRCONV Dashboard
+    const isSirconvDashboardPage = window.location.href.includes('/lite/convenio/');
     if (moduleSettings.sirconvDashboardModuleEnabled !== false) {
-        if (isSirconvConveniosPage && !sirconvDashboardModuleInstance) {
+        if (isSirconvDashboardPage && !sirconvDashboardModuleInstance) {
             loadSirconvDashboardModule();
-        } else if (!isSirconvConveniosPage && sirconvDashboardModuleInstance) {
+        } else if (!isSirconvDashboardPage && sirconvDashboardModuleInstance) {
             destroySirconvDashboardModule();
         }
     }
@@ -267,18 +269,10 @@ function destroyNotasModule() {
 async function loadAgendaModule(loadUI = true) {
     try {
         console.log("SisPMG+: Página principal detectada. Carregando módulo de Agenda...");
-        
-        // Constrói a URL do CSS dinamicamente
-        const baseUrl = globalConfig.uiModuleUrl ? globalConfig.uiModuleUrl.split('/modules/')[0] : '';
-        if (baseUrl) {
-            loadCSS(`${baseUrl}/modules/intranet/intranet-agenda-styles.css`);
-        }
-        
+        loadCSS(globalConfig.agendaCssUrl);
         const { IntranetAgendaModule } = await import(globalConfig.agendaModuleUrl);
-        
         agendaModuleInstance = new IntranetAgendaModule();
         agendaModuleInstance.init(loadUI);
-        
         if (loadUI) {
             uiModuleInstance.registerModule({ name: 'Agenda', instance: agendaModuleInstance });
         }
@@ -289,10 +283,10 @@ async function loadAgendaModule(loadUI = true) {
 
 /** Descarrega o módulo de Agenda. */
 function destroyAgendaModule() {
-    console.log("SisPMG+: Saindo da página principal. Descarregando módulo de Agenda.");
-    // if (agendaModuleInstance && typeof agendaModuleInstance.destroy === 'function') {
-    //     agendaModuleInstance.destroy();
-    // }
+    console.log("SisPMG+: Saíndo da página principal. Descarregando módulo de Agenda.");
+    if (agendaModuleInstance && typeof agendaModuleInstance.destroy === 'function') {
+        agendaModuleInstance.destroy();
+    }
     agendaModuleInstance = null;
     uiModuleInstance.unregisterModule('Agenda');
 }
@@ -345,27 +339,9 @@ function destroyUnidadesModule() {
 async function loadPraticasModule() {
     try {
         console.log("SisPMG+: Página Práticas Supervisionadas detectada. Carregando módulo...");
-        
-        // CORREÇÃO: Usamos a URL base vinda do globalConfig, pois browser.runtime não existe no contexto da página.
-        const baseUrl = globalConfig.uiModuleUrl 
-            ? globalConfig.uiModuleUrl.split('/modules/')[0] 
-            : '';
-
-        if (!baseUrl) {
-             console.error("SisPMG+: Não foi possível determinar a URL base da extensão para carregar Práticas.");
-             return;
-        }
-
-        const cssUrl = `${baseUrl}/modules/intranet/intranet-praticas-styles.css`;
-        const jsUrl = `${baseUrl}/modules/intranet/intranet-praticas.js`;
-        
-        loadCSS(cssUrl);
-        
-        // Importa e executa o módulo
-        const praticas = await import(jsUrl);
-        praticasModuleInstance = praticas; 
-        
-        // Se o módulo exportar um init, executamos.
+        loadCSS(globalConfig.praticasCssUrl);
+        const praticas = await import(globalConfig.praticasModuleUrl);
+        praticasModuleInstance = praticas;
         if (praticas && typeof praticas.init === 'function') {
             praticas.init();
         }
@@ -412,7 +388,6 @@ function destroySirconvModule() {
     sirconvModuleInstance = null;
 }
 
-// As funções loadSirconvConveniosModule e destroySirconvConveniosModule foram desativadas e removidas.
 
 /** Carrega o módulo SIRCONV Dashboard de forma segura. */
 async function loadSirconvDashboardModule() {

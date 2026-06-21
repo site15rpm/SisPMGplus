@@ -25,19 +25,6 @@ function sendMessageToBackground(action, payload) {
     return browser.runtime.sendMessage({ action, payload });
 }
 
-/**
- * Envia uma mensagem para a aba ativa.
- */
-async function sendMessageToActiveTab(action, payload) {
-    try {
-        const tabs = await browser.tabs.query({ active: true, currentWindow: true });
-        if (tabs[0]) {
-            return await browser.tabs.sendMessage(tabs[0].id, { action, payload });
-        }
-    } catch (e) {
-        console.error("Erro ao enviar mensagem para aba ativa:", e);
-    }
-}
 
 /**
  * Exibe um modal customizado para confirmações e alertas.
@@ -104,27 +91,6 @@ async function initializePopup() {
             reloadRelevantTabs();
         }
     });
-
-    // Botão de Snapshot
-    const snapshotBtn = document.getElementById('snapshot-btn');
-    if (snapshotBtn) {
-        snapshotBtn.addEventListener('click', async () => {
-            snapshotBtn.textContent = '📸 Capturando...';
-            snapshotBtn.disabled = true;
-            
-            await sendMessageToActiveTab('triggerSnapshot', { label: 'popup-manual' });
-            
-            setTimeout(() => {
-                snapshotBtn.textContent = '📸 Snapshot OK';
-                snapshotBtn.style.backgroundColor = '#27ae60';
-                setTimeout(() => {
-                    snapshotBtn.textContent = '📸 Snapshot (Capturar Estado)';
-                    snapshotBtn.style.backgroundColor = '#2c3e50';
-                    snapshotBtn.disabled = false;
-                }, 2000);
-            }, 1000);
-        });
-    }
 }
 
 document.addEventListener('DOMContentLoaded', initializePopup);

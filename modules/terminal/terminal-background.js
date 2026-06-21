@@ -231,9 +231,6 @@ export async function handleTerminalMessages(request, sender) {
             return { success: true, alias, autoLoginSystem };
         }
 
-        case 'refreshRotinas':
-            return fetchAndCacheRotinas(payload);
-
         case 'executeInTab': {
             const { targetAlias, sourceAlias, routineName, customCode, messageId, targetSystem, parametros } = payload;
             const state = await getSessionState();
@@ -276,7 +273,6 @@ export async function handleTerminalMessages(request, sender) {
                 await saveSessionState(state);
                 return { success: true, status: 'queued_and_tab_created' };
             }
-            break;
         }
 
         case 'relayExecutionResult': {

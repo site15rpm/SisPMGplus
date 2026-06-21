@@ -267,7 +267,7 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
                     try {
                         const { concedenteId, concedenteNome, includeCPE } = request;
                         const resultados = [];
-                        const nReal = doc.querySelector('.barra.item h2')?.innerText.trim() || concedenteNome;
+                        const nReal = doc.querySelector('.barra.item h2')?.textContent.trim() || concedenteNome;
                         
                         // Extrai Razão Social e CNPJ de nReal de forma robusta
                         let cnpj = '';
@@ -334,14 +334,14 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
                                 if (!lIdM) continue;
                                 
                                 let cod = lIdM[1], face = '', val = '0', uni = '-', vigFim = '-', st = 'S', dtIni = '-', prep = '-';
-                                const statusTexto = item.querySelector('.flex-coluna.tam-g .ne')?.innerText.trim() || '';
+                                const statusTexto = item.querySelector('.flex-coluna.tam-g .ne')?.textContent.trim() || '';
                                 const isInactive = statusTexto.toLowerCase().includes('cancelado') || statusTexto.toLowerCase().includes('finalizado');
                                 if (isInactive) st = 'N';
                                 
                                 item.querySelectorAll('.flex-coluna').forEach(col => {
                                     const lblEl = col.querySelector('.tc.menor');
-                                    const lbl = lblEl?.innerText.trim() || '';
-                                    const v = col.innerText.replace(lbl, '').trim();
+                                    const lbl = lblEl?.textContent.trim() || '';
+                                    const v = col.textContent.replace(lbl, '').trim();
                                     
                                     if (lbl.includes('Código') && !cod) {
                                         cod = v;
@@ -409,7 +409,7 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
                         links.forEach(l => {
                             const m = l.href.match(/id=(\d+)/);
                             if (m) {
-                                concedentes.push({ id: m[1], nome: l.innerText.trim() });
+                                concedentes.push({ id: m[1], nome: l.textContent.trim() });
                             }
                         });
                         sendResponse({ data: concedentes });

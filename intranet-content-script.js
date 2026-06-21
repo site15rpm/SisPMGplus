@@ -155,8 +155,8 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
             a.download = filename; // This attribute handles the filename, including subdirectories.
             document.body.appendChild(a);
             a.click();
-            // Cleanup after click initiated download
-            window.URL.revokeObjectURL(url); // Revoke Data URL if it was created with createObjectURL
+            // Revoga o Blob URL após um delay para garantir que o download foi iniciado
+            setTimeout(() => window.URL.revokeObjectURL(url), 1000);
             document.body.removeChild(a);
             console.log(`SisPMG+ [Downloader]: Link de download clicado para '${filename}'.`); // Log added
             sendResponse({ success: true });
@@ -187,8 +187,6 @@ try {
         praticasCssUrl: browser.runtime.getURL('modules/intranet/intranet-praticas-styles.css'),
         sirconvModuleUrl: browser.runtime.getURL('modules/intranet/intranet-sirconv.js'),
         sirconvCssUrl: browser.runtime.getURL('modules/intranet/intranet-sirconv-styles.css'),
-        sirconvConveniosModuleUrl: browser.runtime.getURL('modules/intranet/intranet-sirconv-convenios.js'),
-        sirconvConveniosCssUrl: browser.runtime.getURL('modules/intranet/intranet-sirconv-convenios-styles.css'),
         sirconvDashboardModuleUrl: browser.runtime.getURL('modules/intranet/intranet-sirconv-dashboard.js'),
         sirconvDashboardCssUrl: browser.runtime.getURL('modules/intranet/intranet-sirconv-dashboard-styles.css'),
         sicorModuleUrl: browser.runtime.getURL('modules/intranet/intranet-sicor.js'),
@@ -197,8 +195,6 @@ try {
         unidadesCssUrl: browser.runtime.getURL('modules/intranet/intranet-unidades-styles.css'),
         notasModuleUrl: browser.runtime.getURL('modules/intranet/intranet-notas.js'),
         sic3Url: browser.runtime.getURL('modules/sic3/sic3.html'),
-        cdocUrl: browser.runtime.getURL('modules/cdoc.html'),
-        mcmtsUrl: browser.runtime.getURL('modules/mcmts.html'),
         iconUrl: browser.runtime.getURL('common/icon.js'),
         utilsUrl: browser.runtime.getURL('common/utils.js')
     };

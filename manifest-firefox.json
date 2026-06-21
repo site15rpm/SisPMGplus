@@ -20,6 +20,7 @@
   "host_permissions": [
     "*://*.policiamilitar.mg.gov.br/*",
     "https://script.google.com/*",
+    "https://script.googleusercontent.com/*",
     "https://docs.google.com/*",
     "https://primebeneficios.com.br/*",
     "https://sistema-customizado.primebeneficios.com.br/*",
@@ -38,13 +39,13 @@
   "content_scripts": [
     {
       "matches": ["*://terminal.policiamilitar.mg.gov.br/*"],
-      "js": ["common/browser-polyfill.js", "common/debug-client.js", "terminal-content-script.js"],
+      "js": ["common/browser-polyfill.js", "terminal-content-script.js"],
       "run_at": "document_start"
     },
     {
       "matches": ["*://*.policiamilitar.mg.gov.br/*"],
       "exclude_matches": ["*://terminal.policiamilitar.mg.gov.br/*"],
-      "js": ["common/browser-polyfill.js", "common/debug-client.js", "intranet-content-script.js"],
+      "js": ["common/browser-polyfill.js", "intranet-content-script.js"],
       "run_at": "document_start"
     }
   ],

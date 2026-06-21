@@ -2,7 +2,7 @@
 // Funções centralizadas e reutilizáveis para extração e parsing de convênios do SIRCONV.
 
 import { fetchWithKeepAlive } from './keep-alive.js';
-import { sendMessageToOffscreen, closeOffscreenDocument } from '../modules/intranet/intranet-agenda-offscreen.js';
+import { sendMessageToOffscreen, closeOffscreenDocument } from '../modules/intranet/intranet-offscreen.js';
 
 /**
  * Converte uma string de data (DD/MM/AAAA ou AAAA-MM-DD) para um objeto Date.

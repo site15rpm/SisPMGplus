@@ -59,7 +59,12 @@ export async function handleAgendaMessages(request, sender) {
                 });
                 
                 const resultText = await response.text();
-                const result = JSON.parse(resultText);
+                let result;
+                try {
+                    result = JSON.parse(resultText);
+                } catch (parseError) {
+                    throw new Error(`O servidor retornou uma resposta inválida (não-JSON). Status: ${response.status}. Início da resposta: ${resultText.substring(0, 200)}`);
+                }
 
                 if (result.success === false) { // O GAS pode retornar success:false
                     throw new Error(result.error || 'Erro desconhecido no GAS.');

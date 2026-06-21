@@ -2,7 +2,7 @@
 // Funções centrais e reutilizáveis para busca e parse de unidades da intranet.
 
 import { fetchWithKeepAlive } from './keep-alive.js';
-import { sendMessageToOffscreen, closeOffscreenDocument } from '../modules/intranet/intranet-agenda-offscreen.js';
+import { sendMessageToOffscreen, closeOffscreenDocument } from '../modules/intranet/intranet-offscreen.js';
 
 /**
  * Busca o HTML bruto de unidades da intranet.

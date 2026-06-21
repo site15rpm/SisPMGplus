@@ -1,5 +1,7 @@
-// Arquivo: modules/intranet/intranet-agenda-offscreen.js
-// Funções auxiliares para interagir com o documento offscreen para o módulo de Agenda.
+// Arquivo: modules/intranet/intranet-offscreen.js
+// Funções auxiliares centralizadas para interagir com o documento offscreen.
+// Utilizado por: intranet-background.js, intranet-sicor-background.js,
+//               busca-unidades.js, busca-concedentes.js, busca-convenios.js
 
 const OFFSCREEN_DOCUMENT_PATH = '/offscreen.html';
 
@@ -26,7 +28,7 @@ async function setupOffscreenDocument() {
             await browser.offscreen.createDocument({
                 url: OFFSCREEN_DOCUMENT_PATH,
                 reasons: [browser.offscreen.Reason.DOM_PARSER],
-                justification: 'Parsear HTML para extração de dados da agenda e unidades.',
+                justification: 'Parsear HTML para extração de dados (unidades, concedentes, convênios).',
             });
         } else {
             // 2. Fallback para Firefox (Iframe Oculto no Background Page)
@@ -46,7 +48,7 @@ async function setupOffscreenDocument() {
     } catch (e) {
         // Ignora o erro se o documento já foi criado por outra operação.
         if (e.message && !e.message.includes('Only a single offscreen document may be created.')) {
-            console.error("SisPMG+ [Agenda Offscreen]: Erro ao configurar documento offscreen.", e);
+            console.error("SisPMG+ [Offscreen]: Erro ao configurar documento offscreen.", e);
             throw e;
         }
     }
@@ -54,6 +56,7 @@ async function setupOffscreenDocument() {
 
 /**
  * Envia uma mensagem para o documento offscreen e aguarda a resposta.
+ * Inclui timeout de 10s para evitar travamentos em caso de falha no offscreen.
  * @param {string} action - A ação a ser executada pelo offscreen.
  * @param {object} data - Os dados a serem enviados.
  * @returns {Promise<any>} A resposta do documento offscreen.
@@ -61,15 +64,22 @@ async function setupOffscreenDocument() {
 export async function sendMessageToOffscreen(action, data) {
     try {
         await setupOffscreenDocument();
-        const response = await browser.runtime.sendMessage({
-            target: 'offscreen',
-            action: action,
-            ...data
-        });
+        const response = await Promise.race([
+            browser.runtime.sendMessage({
+                target: 'offscreen',
+                action: action,
+                ...data
+            }),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout esperando resposta do offscreen')), 10000))
+        ]);
+
+        if (response && response.error) {
+            console.error(`SisPMG+ [Offscreen]: Erro retornado pelo offscreen (${action}): ${response.error}`);
+        }
         return response;
     } catch (error) {
-        console.error(`SisPMG+ [Agenda Offscreen]: Erro ao enviar/receber mensagem para offscreen (${action}):`, error);
-        return { error: `Falha na comunicação com offscreen (${action})` };
+        console.error(`SisPMG+ [Offscreen]: Erro ao enviar/receber mensagem para offscreen (${action}):`, error);
+        return { error: `Falha na comunicação com offscreen (${action}): ${error.message}` };
     }
 }
 
@@ -89,6 +99,8 @@ export async function closeOffscreenDocument() {
             document.getElementById('sispmg-offscreen-iframe')?.remove();
         }
     } catch (closeError) {
-        // Ignora erros se o documento já foi fechado por outra operação.
+        if (closeError.message && !closeError.message.includes("No current offscreen document")) {
+            console.warn("SisPMG+ [Offscreen]: Erro ao fechar o documento offscreen.", closeError);
+        }
     }
 }

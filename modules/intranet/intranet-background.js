@@ -2,7 +2,7 @@
 // Lógica de background específica para o módulo IntranetPMG+
 import { fetchWithKeepAlive } from '../../common/keep-alive.js';
 import { parseGoogleSheetResponse } from '../../common/google-sheets.js';
-import { sendMessageToOffscreen, closeOffscreenDocument } from './intranet-agenda-offscreen.js';
+import { sendMessageToOffscreen, closeOffscreenDocument } from './intranet-offscreen.js';
 import { fetchUnidadesHTML, parseUnidades } from '../../common/busca-unidades.js';
 
 async function fetchApiData(url, token, options = {}) {
@@ -269,7 +269,7 @@ export async function handleIntranetMessages(request, sender) {
                 
                 logBg(`[BG-Identificação] Processo finalizado com sucesso no background. Detalhe das chaves obtidas:
                 - codigoSecao: "${resData.codigoSecao}" (Chave 'c' do Tokiuz do usuário, correspondente ao ID na árvore)
-                - nomeSecao: "${resData.nomeSecao}" (Nome limpo da seção funcional extraído da árvore)
+                - secao: "${resData.secao}" (Nome limpo da seção funcional extraído da árvore)
                 - municipio: "${resData.municipio}" (Nome do município extraído entre parênteses ou herdado do nível superior se ausente)
                 - codigoMunicipio: "${resData.codigoMunicipio}" (Código numérico associado ao município ou herdado do nível superior se ausente)
                 - hierarchyPath: "${resData.hierarchyPath}" (Caminho completo da estrutura de divisões até o nó atual)`);

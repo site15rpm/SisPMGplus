@@ -1,8 +1,9 @@
 // Arquivo: modules/intranet/intranet-sicor-background.js
 // Lógica de background específica para o módulo SICOR.
 
-import * as XLSX from '../../modules/lib/sheetjs/xlsx.mjs';
+import * as XLSX from '../lib/sheetjs/xlsx.mjs';
 import { fetchWithKeepAlive } from '../../common/keep-alive.js';
+import { sendMessageToOffscreen, closeOffscreenDocument } from './intranet-offscreen.js';
 
 // --- Constantes ---
 const SICOR_ALARM_SCHEDULER_CHECK = 'sicor-scheduler-check'; // Nome do alarme periódico
@@ -11,7 +12,6 @@ const STORAGE_LOGS_KEY = 'sicorLogs';
 const SICOR_STORAGE_SCHEDULE_KEY = 'sicorSchedule'; // Chave para guardar a próxima execução
 const STORAGE_LAST_RUN_KEY = 'sicorLastSuccessfulRunDate'; // Chave para evitar re-execução
 const MAX_LOG_ENTRIES = 50;
-const OFFSCREEN_DOCUMENT_PATH = '/offscreen.html'; // Usando o offscreen global
 
 // --- VARIÁVEIS DE ESTADO ---
 let isProcessingData = false; // Flag para evitar processamento concorrente
@@ -40,7 +40,7 @@ const addSicorLog = async (message, system = 'SICOR', type = 'info') => {
                      logs: trimmedLogs
                  }).catch(() => {}); // Ignora erro se a aba não estiver ouvindo
              }
-         } catch(e){ console.warn("SisPMG+ [SICOR Log]: Não foi possível consultar abbas para enviar log.", e); }
+         } catch(e){ console.warn("SisPMG+ [SICOR Log]: Não foi possível consultar abas para enviar log.", e); }
 
     } catch (e) {
         console.error("SisPMG+ [SICOR]: Falha ao adicionar log.", e);
@@ -85,89 +85,6 @@ function _getScheduledDateRange(settings) {
 // --- REMOVIDA A FUNÇÃO checkSicorLoginStatus() ---
 
 
-// --- FUNÇÕES OFFSCREEN ---
-async function setupOffscreenDocument(path) {
-    try {
-        if (typeof browser.offscreen !== 'undefined') {
-            let existingContexts = [];
-            try {
-                if (typeof browser.runtime.getContexts === 'function') {
-                    existingContexts = await browser.runtime.getContexts({
-                        contextTypes: ['OFFSCREEN_DOCUMENT'],
-                        documentUrls: [browser.runtime.getURL(path)]
-                    });
-                }
-            } catch (e) { /* ignore */ }
-
-            if (existingContexts.length > 0) return;
-
-            await browser.offscreen.createDocument({
-                url: path,
-                reasons: [browser.offscreen.Reason.DOM_PARSER],
-                justification: 'Parse HTML content',
-            });
-        } else {
-            // Fallback Firefox
-            if (document.getElementById('sispmg-offscreen-iframe')) return;
-            const iframe = document.createElement('iframe');
-            iframe.id = 'sispmg-offscreen-iframe';
-            iframe.src = browser.runtime.getURL(path);
-            iframe.style.display = 'none';
-            document.body.appendChild(iframe);
-            await new Promise(resolve => { iframe.onload = () => setTimeout(resolve, 300); });
-        }
-    } catch (e) {
-        if (e.message && !e.message.includes('Only a single offscreen document may be created.')) {
-            console.error("SisPMG+ [Offscreen]: Erro ao configurar documento offscreen.", e);
-            throw e;
-        }
-    }
-}
-async function sendMsgToOffscreen(action, data) {
-    try {
-        await setupOffscreenDocument(OFFSCREEN_DOCUMENT_PATH);
-        const response = await Promise.race([
-            browser.runtime.sendMessage({
-                target: 'offscreen',
-                action: action,
-                ...data
-            }),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout esperando resposta do offscreen')), 10000))
-        ]);
-
-        if (response && response.error) {
-             console.error(`SisPMG+ [Offscreen]: Erro retornado pelo offscreen (${action}): ${response.error}`);
-        }
-        return response;
-    } catch (error) {
-        console.error(`SisPMG+ [Offscreen]: Erro ao enviar/receber mensagem para offscreen (${action}):`, error);
-        return { error: `Falha na comunicação com offscreen (${action}): ${error.message}` };
-    }
-}
-function blobToDataURL(blob) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = () => reject(reader.error);
-        reader.readAsDataURL(blob);
-    });
-}
-async function closeOffscreenDocument() {
-    try {
-        if (typeof browser.offscreen !== 'undefined') {
-            const contexts = await browser.runtime.getContexts({ contextTypes: ['OFFSCREEN_DOCUMENT'] });
-            if (contexts.length > 0) {
-                await browser.offscreen.closeDocument();
-            }
-        } else {
-            document.getElementById('sispmg-offscreen-iframe')?.remove();
-        }
-    } catch (closeError) {
-         if (closeError.message && !closeError.message.includes("No current offscreen document")) {
-            console.warn("SisPMG+ [Offscreen]: Erro ao fechar o documento offscreen.", closeError);
-         }
-    }
-}
 
 // --- MANIPULADOR DE MENSAGENS ---
 export async function handleSicorMessages(request, sender) {
@@ -578,7 +495,7 @@ async function executeSicorDownload(payload) {
         const initialResponse = await fetchWithKeepAlive(url, { credentials: 'include' });
         if (!initialResponse.ok) throw new Error(`Status ${initialResponse.status}`);
         const htmlText = await initialResponse.text();
-        const vsResponse = await sendMsgToOffscreen('parseDOM', { html: htmlText, selector: 'input[name="javax.faces.ViewState"]'});
+        const vsResponse = await sendMessageToOffscreen('parseDOM', { html: htmlText, selector: 'input[name="javax.faces.ViewState"]'});
         if (vsResponse?.error) throw new Error(`Parse VS inicial: ${vsResponse.error}`);
         currentViewState = vsResponse?.value;
         if (!currentViewState) throw new Error('VS inicial não encontrado.');
@@ -607,19 +524,19 @@ async function executeSicorDownload(payload) {
         if (!searchResponse.ok) throw new Error(`Pesquisa AJAX: Status ${searchResponse.status}`);
         const searchResponseXml = await searchResponse.text();
 
-        const infoMsgResponse = await sendMsgToOffscreen('parseDOMForInfoMessage', { html: searchResponseXml, parserType: 'application/xml' });
+        const infoMsgResponse = await sendMessageToOffscreen('parseDOMForInfoMessage', { html: searchResponseXml, parserType: 'application/xml' });
         if (infoMsgResponse?.infoMessage?.includes("Nenhum registro foi encontrado")) {
             await addSicorLog(`[${logPrefix}${yearSuffix}] Nenhum registro.`, 'DOWNLOAD', 'info');
             return { success: true, blobData: null };
         }
 
-        const updatedVsResponse = await sendMsgToOffscreen('parseDOM', { html: searchResponseXml, selector: 'update[id="javax.faces.ViewState"]', parserType: 'application/xml' });
+        const updatedVsResponse = await sendMessageToOffscreen('parseDOM', { html: searchResponseXml, selector: 'update[id="javax.faces.ViewState"]', parserType: 'application/xml' });
         const updatedViewStateCDATA = updatedVsResponse?.value;
         const viewStateMatch = updatedViewStateCDATA ? updatedViewStateCDATA.match(/<!\[CDATA\[(.*?)\]\]>/) : null;
         const updatedViewState = viewStateMatch ? viewStateMatch[1] : null;
         if (updatedViewState) { currentViewState = updatedViewState; await addSicorLog(`[${logPrefix}${yearSuffix}] VS atualizado via AJAX.`, 'DOWNLOAD'); }
         else {
-             const formUpdateVsResponse = await sendMsgToOffscreen('parseDOM', { html: searchResponseXml, selector: 'update[id="form"] input[name="javax.faces.ViewState"]', parserType: 'application/xml' });
+             const formUpdateVsResponse = await sendMessageToOffscreen('parseDOM', { html: searchResponseXml, selector: 'update[id="form"] input[name="javax.faces.ViewState"]', parserType: 'application/xml' });
               if (formUpdateVsResponse?.value) { currentViewState = formUpdateVsResponse.value; await addSicorLog(`[${logPrefix}${yearSuffix}] VS atualizado via form update.`, 'DOWNLOAD'); }
               else { console.warn("SisPMG+ [SICOR]: Não foi possível obter VS atualizado. Usando anterior."); }
         }
@@ -637,7 +554,7 @@ async function executeSicorDownload(payload) {
 
         if (contentType?.includes('text/html')) {
              const errorHtml = await downloadResponse.text();
-             const offscreenErrorResponse = await sendMsgToOffscreen('parseDOMErrorMessages', { html: errorHtml });
+             const offscreenErrorResponse = await sendMessageToOffscreen('parseDOMErrorMessages', { html: errorHtml });
              if (offscreenErrorResponse?.errorMessage?.includes("Nenhum registro foi encontrado")) {
                  await addSicorLog(`[${logPrefix}${yearSuffix}] Nenhum registro (detectado no download).`, 'DOWNLOAD', 'info');
                  return { success: true, blobData: null };

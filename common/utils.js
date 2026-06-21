@@ -8,9 +8,16 @@
  * @returns {Promise<any>} A resposta do script de background.
  */
 export function sendMessageToBackground(action, payload) {
-    return new Promise(resolve => {
+    return new Promise((resolve, reject) => {
         const messageId = Date.now() + Math.random();
         
+        // Timeout de segurança: resolve com null se o background não responder em 30s
+        const timeoutId = setTimeout(() => {
+            document.removeEventListener('SisPMG+:Response', responseListener);
+            console.warn(`SisPMG+ [utils]: Timeout aguardando resposta do background para a ação '${action}'.`);
+            resolve(null);
+        }, 30000);
+
         const responseListener = (event) => {
             // event.detail é uma string JSON vinda do content-script,
             // que é a forma segura de passar dados no Firefox.
@@ -19,6 +26,7 @@ export function sendMessageToBackground(action, payload) {
             try {
                 const detail = JSON.parse(event.detail);
                 if (detail.messageId === messageId) {
+                    clearTimeout(timeoutId);
                     document.removeEventListener('SisPMG+:Response', responseListener);
                     resolve(detail.response);
                 }
@@ -62,6 +70,7 @@ export function getCookie(name) {
 }
 
 
+const JWT_CACHE_MAX_SIZE = 10;
 const jwtCache = new Map();
 
 /**
@@ -93,6 +102,10 @@ export function decodeJwt(token) {
         }
         
         const decoded = JSON.parse(atob(payload)); 
+        // Limita o tamanho do cache (LRU simplificado: remove o mais antigo quando cheio)
+        if (jwtCache.size >= JWT_CACHE_MAX_SIZE) {
+            jwtCache.delete(jwtCache.keys().next().value);
+        }
         jwtCache.set(token, decoded);
         return decoded;
     } catch (e) { 
