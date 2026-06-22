@@ -30,7 +30,7 @@ export function obterUserData() {
                 f: Array.isArray(decoded.f) ? decoded.f.map(String) : []
             };
         }
-    } catch (e) {}
+    } catch (e) { }
 
     try {
         const token = getCookie('tokiuz');
@@ -50,7 +50,7 @@ export function obterUserData() {
                 };
             }
         }
-    } catch (e) {}
+    } catch (e) { }
 
     return null;
 }
@@ -61,7 +61,7 @@ export function obterUserData() {
  */
 export async function iniciarComunicacao(sistema) {
     console.log(`SisPMG+ [Comunicação]: Inicializando canal de comunicação e erros para ${sistema}...`);
-    
+
     // 1. Configura a captura global de erros na aba
     setupGlobalErrorHandler(sistema);
 
@@ -85,10 +85,10 @@ export async function iniciarComunicacao(sistema) {
 export function setupGlobalErrorHandler(sistema) {
     window.addEventListener('error', (event) => {
         if (estaReportandoErro) return;
-        
+
         const filename = event.filename || '';
         const error = event.error;
-        
+
         if (isExtensionError(error, filename)) {
             estaReportandoErro = true;
             reportarErro(error || new Error(event.message || 'Erro de execução desconhecido'), sistema)
@@ -98,11 +98,11 @@ export function setupGlobalErrorHandler(sistema) {
 
     window.addEventListener('unhandledrejection', (event) => {
         if (estaReportandoErro) return;
-        
+
         const reason = event.reason;
         let stack = '';
         if (reason && reason.stack) stack = reason.stack;
-        
+
         if (isExtensionError(reason, stack)) {
             estaReportandoErro = true;
             const err = (reason instanceof Error) ? reason : new Error(String(reason || 'Promessa rejeitada sem motivo'));
@@ -128,11 +128,11 @@ function isExtensionError(error, contextString) {
         /common\/utils/i,
         /common\/comunicacao/i
     ];
-    
+
     if (contextString && extensionPatterns.some(p => p.test(contextString))) {
         return true;
     }
-    
+
     if (error) {
         if (error.stack && extensionPatterns.some(p => p.test(error.stack))) {
             return true;
@@ -141,7 +141,7 @@ function isExtensionError(error, contextString) {
             return true;
         }
     }
-    
+
     return false;
 }
 
@@ -157,7 +157,7 @@ export async function reportarErro(error, sistema) {
 
     const erroMsg = error ? (error.stack || error.message || String(error)) : 'Erro indefinido';
     const pm = userData ? userData.g : 'Desconhecido';
-    
+
     const infoUsuario = userData ? JSON.stringify({
         numeroPM: userData.g,
         postoGraduacao: userData.t,
@@ -347,34 +347,32 @@ function garantirModalContainer() {
         #sispmg-comunicacao-modal-container.active .modal-box {
             transform: scale(1) !important;
         }
-        #sispmg-comunicacao-modal-container .modal-icon {
-            width: 64px !important;
-            height: 64px !important;
-            margin: 0 auto 20px auto !important;
-            border-radius: 50% !important;
+        #sispmg-comunicacao-modal-container .modal-header {
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
-            box-shadow: 0 4px 10px rgba(87, 78, 45, 0.15) !important;
-            background: #ffffff !important;
-            border: 2px solid #b3a368 !important;
-            transition: all 0.3s ease !important;
+            gap: 12px !important;
+            margin-bottom: 20px !important;
+            width: 100% !important;
         }
-        #sispmg-comunicacao-modal-container .modal-icon.error {
-            border-color: #ef4444 !important;
-            box-shadow: 0 4px 10px rgba(239, 68, 68, 0.2) !important;
+        #sispmg-comunicacao-modal-container .modal-icon {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            flex-shrink: 0 !important;
         }
         #sispmg-comunicacao-modal-container .modal-icon svg {
-            width: 44px !important;
-            height: 44px !important;
+            width: 36px !important;
+            height: 36px !important;
         }
         #sispmg-comunicacao-modal-container .modal-title {
             font-size: 20px !important;
             font-weight: 700 !important;
-            margin: 0 0 12px 0 !important;
+            margin: 0 !important;
             color: #574e2d !important;
             letter-spacing: -0.5px !important;
             line-height: 1.3 !important;
+            text-align: left !important;
         }
         #sispmg-comunicacao-modal-container .modal-text {
             font-size: 14px !important;
@@ -382,10 +380,7 @@ function garantirModalContainer() {
             color: #574e2d !important;
             margin: 0 0 24px 0 !important;
             text-align: left !important;
-            background: rgba(255, 255, 255, 0.6) !important;
-            padding: 15px !important;
-            border-radius: 8px !important;
-            border: 1px solid #dcd3c5 !important;
+            padding: 0 !important;
             max-height: 200px !important;
             overflow-y: auto !important;
             word-break: break-word !important;
@@ -430,7 +425,7 @@ function garantirModalContainer() {
             background: rgba(239, 68, 68, 0.08) !important;
             padding: 6px 10px !important;
             border-radius: 6px !important;
-            display: inline-block !important;
+            display: inline-block;
             margin-top: 15px !important;
             width: 100% !important;
             box-sizing: border-box !important;
@@ -439,8 +434,10 @@ function garantirModalContainer() {
         }
       </style>
       <div class="modal-box">
-        <div class="modal-icon" id="sispmg-modal-icon-container"></div>
-        <h3 class="modal-title" id="sispmg-modal-title"></h3>
+        <div class="modal-header">
+          <div class="modal-icon" id="sispmg-modal-icon-container"></div>
+          <h3 class="modal-title" id="sispmg-modal-title"></h3>
+        </div>
         <div class="modal-text" id="sispmg-modal-message-text"></div>
         <button class="modal-btn" id="sispmg-modal-confirm-btn"></button>
         <div id="sispmg-modal-error-info" class="modal-error-badge" style="display: none;"></div>
@@ -466,7 +463,7 @@ function exibirModalMensagemElement(mensagem, onConfirm) {
     iconContainer.className = 'modal-icon info';
     iconContainer.innerHTML = iconSVG;
 
-    titleEl.innerText = 'Comunicado Administrativo';
+    titleEl.innerText = 'Comunicado do SisPMG+';
     messageEl.innerHTML = mensagem.replace(/\n/g, '<br>');
     confirmBtn.className = 'modal-btn info';
     confirmBtn.innerText = 'Confirmar Leitura';
@@ -506,7 +503,7 @@ function exibirModalErro(detalhesErro) {
             Detalhes: ${detalhesErro}
         </span>
     `;
-    
+
     confirmBtn.className = 'modal-btn error';
     confirmBtn.innerText = 'Fechar';
     confirmBtn.disabled = false;
