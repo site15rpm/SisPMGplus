@@ -732,7 +732,6 @@ function exibirModalErro(detalhesErro, sistema) {
 function fecharModalGeral() {
     if (!modalContainer) return;
     modalContainer.classList.remove('active');
-    modalContainer.classList.remove('no-overlay');
     
     // Remove listener de clique fora se houver
     if (activeCliqueForaListener) {
@@ -748,6 +747,7 @@ function fecharModalGeral() {
     
     setTimeout(() => {
         modalContainer.style.setProperty('display', 'none', 'important');
+        modalContainer.classList.remove('no-overlay');
         // Limpa listeners da modalBox de erro para evitar vazamento de memória
         const modalBox = modalContainer.querySelector('.modal-box');
         if (modalBox) {
