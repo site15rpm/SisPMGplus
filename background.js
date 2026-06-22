@@ -125,6 +125,24 @@ browser.runtime.onMessage.addListener((request, sender) => {
                         return { success: false, error: err.message };
                     }
                 }
+                case 'obterPlanilhaGviz': {
+                    try {
+                        const { sheetId, sheetName } = payload;
+                        if (!sheetId || !sheetName) {
+                            throw new Error('Parâmetros sheetId ou sheetName inválidos.');
+                        }
+                        const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&sheet=${sheetName}&_=${Date.now()}`;
+                        const response = await fetch(url);
+                        if (!response.ok) {
+                            throw new Error(`Erro na resposta da planilha: HTTP ${response.status}`);
+                        }
+                        const text = await response.text();
+                        return { success: true, text };
+                    } catch (err) {
+                        console.error('SisPMG+ [Background]: Falha ao buscar planilha gviz:', err);
+                        return { success: false, error: err.message };
+                    }
+                }
                 case 'confirmarLeituraMensagem': {
                     try {
                         const gasUrl = GAS_URL;
