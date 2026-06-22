@@ -60,13 +60,13 @@ browser.runtime.onMessage.addListener((request, sender) => {
                 case 'getSettings': // Adicionado alias para getStorage
                 case 'getStorage': {
                     const storageArea = payload?.storageType === 'sync' ? browser.storage.sync : browser.storage.local;
-                    
+
                     // Normaliza as chaves para um array, aceitando 'key' ou 'keys' (string ou array)
                     let requestedKeys = payload?.keys || payload?.key;
                     if (requestedKeys && !Array.isArray(requestedKeys)) {
                         requestedKeys = [requestedKeys];
                     }
-                    
+
                     let items = await storageArea.get(requestedKeys || null);
 
                     // Migração automática de 'sync' para 'local' se necessário
@@ -128,7 +128,7 @@ browser.runtime.onMessage.addListener((request, sender) => {
                 case 'confirmarLeituraMensagem': {
                     try {
                         const gasUrl = GAS_URL;
-                        
+
                         const response = await fetch(gasUrl, {
                             method: 'POST',
                             mode: 'cors',
@@ -143,11 +143,11 @@ browser.runtime.onMessage.addListener((request, sender) => {
                                 mensagem: payload.mensagem
                             })
                         });
-                        
+
                         if (!response.ok) {
                             throw new Error(`Erro HTTP ${response.status} ao confirmar leitura.`);
                         }
-                        
+
                         const text = await response.text();
                         let data;
                         try {
@@ -164,7 +164,7 @@ browser.runtime.onMessage.addListener((request, sender) => {
                 case 'registrarErroPlanilha': {
                     try {
                         const gasUrl = GAS_URL;
-                        
+
                         const response = await fetch(gasUrl, {
                             method: 'POST',
                             mode: 'cors',
@@ -182,11 +182,11 @@ browser.runtime.onMessage.addListener((request, sender) => {
                                 infoSistema: payload.infoSistema
                             })
                         });
-                        
+
                         if (!response.ok) {
                             throw new Error(`Erro HTTP ${response.status} ao registrar erro.`);
                         }
-                        
+
                         const text = await response.text();
                         let data;
                         try {
@@ -210,7 +210,7 @@ browser.runtime.onMessage.addListener((request, sender) => {
             // Se qualquer parte do código acima (incluindo os handlers dos módulos) lançar um erro,
             // ele será capturado aqui. Isso garante que sempre enviaremos uma resposta estruturada.
             console.error(`SisPMG+ [Background]: Erro não tratado ao processar a ação '${action}'.`, { error, request });
-            return { success: false, error: error.message || 'Ocorreu um erro inesperado no service worker.' };
+            return { success: false, error: error.message || 'Comunicado do SisPMG+ no service worker.' };
         }
     })(); // A IIFE retorna a promessa, mantendo o canal de resposta aberto.
 });

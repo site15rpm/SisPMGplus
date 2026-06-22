@@ -5,7 +5,7 @@ window.contadorCarregamento = window.contadorCarregamento || 0;
 window.timerCarregamento = window.timerCarregamento || null;
 window.tempoMinimoCarregamento = window.tempoMinimoCarregamento || 500;
 
-window.mostrarCarregamento = function(message = null, color = null) {
+window.mostrarCarregamento = function (message = null, color = null) {
   if (window.timerCarregamento) {
     clearTimeout(window.timerCarregamento);
     window.timerCarregamento = null;
@@ -17,12 +17,12 @@ window.mostrarCarregamento = function(message = null, color = null) {
   const messageDiv = overlay.find(".loading-message");
 
   if (window.contadorCarregamento === 1) {
-    messageDiv.text("Aguarde...").css("color", ""); 
+    messageDiv.text("Aguarde...").css("color", "");
     overlay.css("display", "flex");
   }
 
   if (message) {
-    messageDiv.html(message.replace(/\n/g, '<br>')); 
+    messageDiv.html(message.replace(/\n/g, '<br>'));
   }
 
   if (color) {
@@ -30,7 +30,7 @@ window.mostrarCarregamento = function(message = null, color = null) {
   }
 }
 
-window.ocultarCarregamento = function() {
+window.ocultarCarregamento = function () {
   window.contadorCarregamento--;
 
   if (window.contadorCarregamento < 0) {
@@ -49,7 +49,7 @@ window.ocultarCarregamento = function() {
   }
 }
 
-window.resetarCarregamento = function() {
+window.resetarCarregamento = function () {
   window.contadorCarregamento = 0;
   if (window.timerCarregamento) {
     clearTimeout(window.timerCarregamento);
@@ -58,7 +58,7 @@ window.resetarCarregamento = function() {
   $(".loading-overlay").css("display", "none");
 }
 
-window.executarComCarregamento = async function(fn) {
+window.executarComCarregamento = async function (fn) {
   try {
     window.mostrarCarregamento();
     await fn();
@@ -67,7 +67,7 @@ window.executarComCarregamento = async function(fn) {
   }
 }
 
-window.mostrarDialogo = function(title, message, callback) {
+window.mostrarDialogo = function (title, message, callback) {
   const dialog = $("#dialog-message");
   dialog
     .empty()
@@ -77,11 +77,11 @@ window.mostrarDialogo = function(title, message, callback) {
       width: 350,
       title: title,
       buttons: {
-        Ok: function() {
+        Ok: function () {
           $(this).dialog("close");
         }
       },
-      close: function() {
+      close: function () {
         if (typeof callback === 'function') {
           callback();
         }
@@ -92,7 +92,7 @@ window.mostrarDialogo = function(title, message, callback) {
     .dialog("open");
 }
 
-window.confirmarAcao = async function(title, message) {
+window.confirmarAcao = async function (title, message) {
   return new Promise((resolve) => {
     $("#dialog-message")
       .empty()
@@ -102,31 +102,31 @@ window.confirmarAcao = async function(title, message) {
         width: 350,
         title: title,
         buttons: {
-          Confirmar: function() {
+          Confirmar: function () {
             $(this).data('resolved', true).dialog("close");
             resolve(true);
           },
-          Cancelar: function() {
+          Cancelar: function () {
             $(this).data('resolved', true).dialog("close");
             resolve(false);
           }
         },
-        close: function() {
-            if (!$(this).data('resolved')) {
-                resolve(false);
-            }
-            $(this).dialog('destroy');
-            $(this).empty();
+        close: function () {
+          if (!$(this).data('resolved')) {
+            resolve(false);
+          }
+          $(this).dialog('destroy');
+          $(this).empty();
         },
-        open: function() {
-            $(this).data('resolved', false);
+        open: function () {
+          $(this).data('resolved', false);
         }
       })
       .dialog("open");
   });
 }
 
-window.confirmarExclusao = async function(mensagem) {
+window.confirmarExclusao = async function (mensagem) {
   return new Promise((resolve) => {
     $("#dialog-message")
       .empty()
@@ -136,36 +136,36 @@ window.confirmarExclusao = async function(mensagem) {
         title: "Confirmar Exclusão",
         width: 400,
         buttons: {
-          EXCLUIR: function() {
+          EXCLUIR: function () {
             $(this).data('resolved', true).dialog("close");
             resolve(true);
           },
-          CANCELAR: function() {
+          CANCELAR: function () {
             $(this).data('resolved', true).dialog("close");
             resolve(false);
           }
         },
-        close: function() {
-            if (!$(this).data('resolved')) {
-                resolve(false);
-            }
-            $(this).dialog('destroy');
-            $(this).empty();
+        close: function () {
+          if (!$(this).data('resolved')) {
+            resolve(false);
+          }
+          $(this).dialog('destroy');
+          $(this).empty();
         },
-        open: function() {
-            $(this).data('resolved', false);
+        open: function () {
+          $(this).data('resolved', false);
         }
       })
       .dialog("open");
   });
 }
 
-window.manipularErro = function(error, context = "", silencioso = false) {
+window.manipularErro = function (error, context = "", silencioso = false) {
   console.error(`Erro em ${context}:`, error.message, error.stack);
   if (window.errorInProgress && !silencioso) return;
 
   try {
-    let message = "Ocorreu um erro inesperado";
+    let message = "Comunicado do SisPMG+";
     let isCritico = false;
 
     if (error instanceof TypeError) message = "Erro de tipo - operação inválida";
@@ -174,7 +174,7 @@ window.manipularErro = function(error, context = "", silencioso = false) {
     else if (error instanceof RangeError) message = "Erro de intervalo - valor fora dos limites permitidos";
     else if (error.message?.toLowerCase().includes('network') || error.message?.toLowerCase().includes('failed to fetch')) message = "Erro de rede - verifique sua conexão com a internet";
     else if (error.message?.toLowerCase().includes('timeout') || error.message?.toLowerCase().includes('tempo esgotado')) message = "Tempo limite excedido - a operação demorou muito para responder";
-    
+
     if (context) message += ` durante ${context}`;
     if (error.message && !message.includes(error.message)) message += `. Detalhes: ${error.message}`;
 
@@ -194,7 +194,7 @@ window.manipularErro = function(error, context = "", silencioso = false) {
   }
 }
 
-window.converterMes = function(valor, formato = 'texto') {
+window.converterMes = function (valor, formato = 'texto') {
   const meses = {
     'JANEIRO': { texto: '01', numero: 1, nome: 'janeiro' }, 'FEVEREIRO': { texto: '02', numero: 2, nome: 'fevereiro' },
     'MARÇO': { texto: '03', numero: 3, nome: 'março' }, 'MARCO': { texto: '03', numero: 3, nome: 'março' },
@@ -217,13 +217,13 @@ window.converterMes = function(valor, formato = 'texto') {
   return meses[mesFormatado][formato];
 }
 
-window.mNumerico = function(texto, retorno = 'texto') { return window.converterMes(texto, retorno); }
+window.mNumerico = function (texto, retorno = 'texto') { return window.converterMes(texto, retorno); }
 
-window.obterNomeMes = function(mes) { return window.converterMes(mes, 'nome'); }
+window.obterNomeMes = function (mes) { return window.converterMes(mes, 'nome'); }
 
-window.converteMesParaNumero = function(mes) { return window.converterMes(mes, 'numero'); }
+window.converteMesParaNumero = function (mes) { return window.converterMes(mes, 'numero'); }
 
-window.obterDataMaisRecente = function(datas) {
+window.obterDataMaisRecente = function (datas) {
   if (!datas || datas.length === 0) return new Date().toISOString().split("T")[0];
   return datas
     .map(d => new Date(d))
@@ -233,20 +233,20 @@ window.obterDataMaisRecente = function(datas) {
     .split("T")[0];
 }
 
-window.formatarNumero = function(valor, tipo = "decimal", maxDecimais = 4) {
+window.formatarNumero = function (valor, tipo = "decimal", maxDecimais = 4) {
   let numStr = String(valor);
   if (typeof valor === "string") {
     if (tipo === "moeda" && numStr.includes("R$")) {
-        numStr = numStr.replace("R$", "").trim();
+      numStr = numStr.replace("R$", "").trim();
     }
     numStr = numStr.replace(/[^\d,.]/g, "");
     if (numStr.includes(',')) {
-        const parts = numStr.split(',');
-        if (parts.length === 2) {
-            numStr = parts[0].replace(/\./g, '') + '.' + parts[1];
-        } else {
-            numStr = numStr.replace(/,/g, '');
-        }
+      const parts = numStr.split(',');
+      if (parts.length === 2) {
+        numStr = parts[0].replace(/\./g, '') + '.' + parts[1];
+      } else {
+        numStr = numStr.replace(/,/g, '');
+      }
     }
   }
   const numero = parseFloat(numStr) || 0;
@@ -263,7 +263,7 @@ window.formatarNumero = function(valor, tipo = "decimal", maxDecimais = 4) {
   }
 }
 
-window.verificarDigitoVerificador = function(numero) {
+window.verificarDigitoVerificador = function (numero) {
   numero = String(numero).replace(/\D/g, "");
   if (numero.length < 2 || /^0+$/.test(numero)) return false;
 
@@ -279,7 +279,7 @@ window.verificarDigitoVerificador = function(numero) {
   return resultado === digitoVerificador;
 }
 
-window.carregarDadosPlanilha = function(config) {
+window.carregarDadosPlanilha = function (config) {
   return new Promise((resolve, reject) => {
     try {
       const baseUrl = "https://docs.google.com/spreadsheets/d/";
@@ -316,7 +316,7 @@ window.carregarDadosPlanilha = function(config) {
         - Target Sheet ID: ${targetSheetId}
         - Query: ${config.query || 'SELECT *'}
         - URL gviz: ${url}`);
-      
+
       const startTime = Date.now();
       const tempoLimite = 30000;
       const controller = new AbortController();
@@ -324,7 +324,7 @@ window.carregarDadosPlanilha = function(config) {
         controller.abort();
       }, tempoLimite);
 
-      fetch(url, { 
+      fetch(url, {
         signal: controller.signal,
         credentials: 'include'
       })
@@ -352,17 +352,17 @@ window.carregarDadosPlanilha = function(config) {
           }
           const rows = responseJson.table.rows;
           console.log(`[SIC3 v3.0 Log] [Planilha Response Raw] Recebido em ${Date.now() - startTime}ms para a aba "${config.sheet || 'idbase'}". Quantidade de linhas brutas: ${rows.length}`);
-          
+
           let processedData = config.processData ? config.processData(rows)
             : rows.map(row => row.c ? row.c.map(cell => (cell ? cell.v : '')) : []);
-          
+
           console.log(`[SIC3 v3.0 Log] [Planilha Processed] Sucesso para a aba "${config.sheet || 'idbase'}". Linhas processadas: ${processedData.length}`);
           resolve(processedData);
         })
         .catch(async error => {
           clearTimeout(timeoutId);
           console.error(`[SIC3 v3.0 Log] [Planilha Error] Erro ao carregar gviz para a aba "${config.sheet || 'idbase'}":`, error);
-          
+
           // Se falhar o acesso ao banco de dados (Gviz), invalida o cache permanente e consulta novamente o servidor
           if (typeof window.resolverIdsPlanilhas === 'function' && !config._isRetry) {
             console.warn("[SIC3 v3.0 Log] Tentativa de acesso falhou. Invalidando cache de IDs e consultando servidor...");
@@ -390,13 +390,13 @@ window.carregarDadosPlanilha = function(config) {
 }
 
 // O includeHtmlBody nativo do roteador SPA cuida da interceptação
-window.includeHtmlBody = window.includeHtmlBody || function(html) {
+window.includeHtmlBody = window.includeHtmlBody || function (html) {
   if (typeof window.includeHtmlBody === 'function') {
-      window.includeHtmlBody(html);
+    window.includeHtmlBody(html);
   }
 }
 
-window.limparRecursosAtivos = function() {
+window.limparRecursosAtivos = function () {
   $(document).off();
 
   if ($.fn.DataTable && $.fn.DataTable.isDataTable) {
@@ -406,13 +406,13 @@ window.limparRecursosAtivos = function() {
   }
 
   if ($.ui && $('.ui-dialog-content').length) {
-      $('.ui-dialog-content').each(function() {
-          try {
-              $(this).dialog('destroy');
-          } catch (e) {}
-      });
+    $('.ui-dialog-content').each(function () {
+      try {
+        $(this).dialog('destroy');
+      } catch (e) { }
+    });
   }
-  
+
   if (typeof window.timerCarregamento != 'undefined' && window.timerCarregamento) {
     clearTimeout(window.timerCarregamento);
     window.timerCarregamento = null;
@@ -427,14 +427,14 @@ window.limparRecursosAtivos = function() {
   window.resetarCarregamento();
 }
 
-window.navegarParaLancamentos = async function(municipio, convenio, ano, mes, acao) {
+window.navegarParaLancamentos = async function (municipio, convenio, ano, mes, acao) {
   try {
     window.mostrarCarregamento();
     if (typeof window.salvarSelecaoUsuario === 'function') {
-        window.salvarSelecaoUsuario();
+      window.salvarSelecaoUsuario();
     }
     const authToken = sessionStorage.getItem('authToken') || '';
-    
+
     const response = await Promise.race([
       new Promise(resolve => google.script.run
         .withSuccessHandler(res => { resolve(res); })
@@ -453,33 +453,33 @@ window.navegarParaLancamentos = async function(municipio, convenio, ano, mes, ac
   }
 }
 
-window.navegarPara = async function(action) {
+window.navegarPara = async function (action) {
   if (action !== "voltar") {
     window.mostrarCarregamento();
   }
   try {
     if (action === "voltar" && typeof window.salvarSelecaoUsuario === 'function') {
-        window.salvarSelecaoUsuario();
+      window.salvarSelecaoUsuario();
     }
-    
+
     if (action === "voltar") {
       if (window.timerCarregamento) {
         clearTimeout(window.timerCarregamento);
         window.timerCarregamento = null;
       }
       if (typeof window.navegarParaSic3 === 'function') {
-          // Recupera os convênios da memória se disponíveis, senão passa vazio para que sejam recarregados.
-          // Passa também o contexto completo para evitar a limpeza das variáveis essenciais.
-          window.navegarParaSic3('admin', {
-              convenios: window.dadosConveniosPrepostos || [],
-              idbase: window.idbase || "",
-              rpm: window.rpm || "",
-              ano: window.ano || "",
-              authToken: window.authToken || "",
-              mLog: window.mLog || "",
-              nUser: window.nUser || ""
-          });
-          return true;
+        // Recupera os convênios da memória se disponíveis, senão passa vazio para que sejam recarregados.
+        // Passa também o contexto completo para evitar a limpeza das variáveis essenciais.
+        window.navegarParaSic3('admin', {
+          convenios: window.dadosConveniosPrepostos || [],
+          idbase: window.idbase || "",
+          rpm: window.rpm || "",
+          ano: window.ano || "",
+          authToken: window.authToken || "",
+          mLog: window.mLog || "",
+          nUser: window.nUser || ""
+        });
+        return true;
       }
     } else if (action === "sair") {
       window.ocultarCarregamento();
@@ -487,7 +487,7 @@ window.navegarPara = async function(action) {
       return true;
     } else {
       window.ocultarCarregamento();
-      return false; 
+      return false;
     }
 
     const response = await Promise.race([
@@ -506,13 +506,13 @@ window.navegarPara = async function(action) {
   }
 }
 
-window.fecharModal = function() {
+window.fecharModal = function () {
   try {
     const modal = $("#modal-base");
     if (!modal.length) return;
     modal.hide().find("form")[0]?.reset();
     if (typeof window.limparValidacoes === 'function') {
-        window.limparValidacoes(modal.find("form")[0]);
+      window.limparValidacoes(modal.find("form")[0]);
     }
     modal.find(".modal-body").html("");
     modal.find(".modal-header h2").text("");

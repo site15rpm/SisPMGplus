@@ -45,7 +45,7 @@ export class SirconvModule {
                 e.stopPropagation();
                 this.startProcess(addButton); // Passa o botão original para obter o ID
             });
-            
+
             parentSpan.insertBefore(iconButton, addButton);
             addButton.style.display = 'none'; // Oculta o botão original de incluir
         });
@@ -64,7 +64,7 @@ export class SirconvModule {
                 e.stopPropagation();
                 this.startComparisonProcess(button);
             });
-            
+
             parentSpan.insertBefore(iconButton, button);
             button.style.display = 'none';
         });
@@ -103,15 +103,15 @@ export class SirconvModule {
 
         this.showOverlay('Analisando dados...');
         const token = getCookie('tokiuz');
-        
+
         const planoResponse = await sendMessageToBackground('fetchConvenioPlano', { convenioId, token });
-        
+
         if (!planoResponse.success) {
             this.hideOverlay();
             this.isProcessing = false;
             return this.showModal({ title: 'Erro de Permissão ou API', message: 'Não foi possível carregar o plano do convênio. Verifique suas permissões no SIRCONV. Erro: ' + planoResponse.error });
         }
-        
+
         const planoValido = planoResponse.data.planos.map(p => p.ITEM);
 
         const query = `SELECT C, D, E, G, H, I, K, L, N WHERE C='${convenioId}' AND D='${ano}' AND E='${mesCompleto.toUpperCase()}'`;
@@ -122,13 +122,13 @@ export class SirconvModule {
             this.isProcessing = false;
             return this.showModal({ title: 'Erro de Comunicação com o SIC3', message: `Não foi possível buscar os dados no SIC3. Ocorreu um erro: ${dbDataResponse.error}` });
         }
-        
+
         if (!dbDataResponse.data || dbDataResponse.data.length === 0) {
             this.hideOverlay();
             this.isProcessing = false;
             return this.showModal({ title: 'Nenhum Dado Encontrado', message: `Nenhum dado encontrado no SIC3 para o convênio ${convenioId} em ${mesCompleto} de ${ano}.` });
         }
-        
+
         const { itemsParaEnviar, itemsNaoInseridos } = this.transformAndValidateData(dbDataResponse.data, planoValido);
         const sirconvItemsNaPagina = this.getSirconvPageData(detalheDiv);
         const comparisonResult = this.compareData(itemsParaEnviar, sirconvItemsNaPagina);
@@ -140,7 +140,7 @@ export class SirconvModule {
         }
 
         this.hideOverlay();
-        
+
         const preReportMessage = this.createPreReportMessage(itemsParaEnviar, itemsNaoInseridos, sirconvItemsNaPagina, comparisonResult);
         const proceed = await this.showModal({ title: 'Relatório de Pré-Execução', message: preReportMessage, type: 'confirm' });
 
@@ -148,20 +148,20 @@ export class SirconvModule {
             this.isProcessing = false;
             return;
         }
-        
+
         try {
             if (sirconvItemsNaPagina.length > 0) {
                 const deleteLinks = Array.from(detalheDiv.querySelectorAll('table.t1 a[href*="/execucao/delete"]'));
                 const success = await this.deleteExistingItems(deleteLinks);
                 if (!success) {
-                   this.isProcessing = false;
-                   return this.showModal({ title: 'Erro', message: 'Falha ao excluir os itens existentes. A operação foi cancelada.' });
+                    this.isProcessing = false;
+                    return this.showModal({ title: 'Erro', message: 'Falha ao excluir os itens existentes. A operação foi cancelada.' });
                 }
             }
-            
+
             const sessionReport = {
-                itemsParaEnviar, 
-                itemsNaoInseridos, 
+                itemsParaEnviar,
+                itemsNaoInseridos,
                 totalDb: dbDataResponse.data.length,
                 isDeleteOnly: itemsParaEnviar.length === 0 && sirconvItemsNaPagina.length > 0,
                 deletedCount: sirconvItemsNaPagina.length
@@ -177,10 +177,10 @@ export class SirconvModule {
                 }
                 return;
             }
-    
+
             this.sendDataToServer(itemsParaEnviar, cronogramaId);
         } catch (error) {
-            this.showModal({ title: 'Erro Inesperado', message: 'Ocorreu um erro inesperado. Verifique o console para mais detalhes.' });
+            this.showModal({ title: 'Erro Inesperado', message: 'Comunicado do SisPMG+. Verifique o console para mais detalhes.' });
             this.isProcessing = false;
         }
     }
@@ -192,10 +192,10 @@ export class SirconvModule {
 
         const detalheDiv = targetButton.closest('div[id^="detalheCronograma-"]');
         if (!detalheDiv) {
-             this.isProcessing = false;
-             return this.showModal({ title: 'Erro', message: 'Não foi possível encontrar o container do cronograma.' });
+            this.isProcessing = false;
+            return this.showModal({ title: 'Erro', message: 'Não foi possível encontrar o container do cronograma.' });
         }
-        
+
         const convInput = detalheDiv.querySelector('input[name="conv"]');
         const convenioId = convInput?.value;
         const h1 = detalheDiv.querySelector('h1');
@@ -208,7 +208,7 @@ export class SirconvModule {
 
         const [, mesAbreviado, ano] = match;
         const mesCompleto = this.mapMonth(mesAbreviado);
-        
+
         this.showOverlay('Comparando dados...');
 
         const planoResponse = await sendMessageToBackground('fetchConvenioPlano', { convenioId, token: getCookie('tokiuz') });
@@ -234,14 +234,14 @@ export class SirconvModule {
         const { itemsParaEnviar: sic3Validos, itemsNaoInseridos: sic3Invalidos } = this.transformAndValidateData(dbDataResponse.data, planoValido);
         const sirconvItemsNaPagina = this.getSirconvPageData(detalheDiv);
         const comparisonResult = this.compareData(sic3Validos, sirconvItemsNaPagina);
-        
+
         this.hideOverlay();
         this.isProcessing = false;
-        
+
         const reportMessage = this.createComparisonReportMessage(sic3Validos, sic3Invalidos, sirconvItemsNaPagina, comparisonResult);
         this.showModal({ title: 'Relatório de Verificação', message: reportMessage });
     }
-    
+
     async deleteExistingItems(deleteLinks) {
         this.showOverlay(`Excluindo 0 de ${deleteLinks.length} item(ns)...`);
         const statusSpan = document.getElementById('sispmg-overlay-status');
@@ -250,7 +250,7 @@ export class SirconvModule {
         const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
 
         for (const [index, link] of deleteLinks.entries()) {
-             if (statusSpan) {
+            if (statusSpan) {
                 statusSpan.textContent = `Excluindo ${index + 1} de ${deleteLinks.length}...`;
             }
             const deleteUrl = new URL(link.href, window.location.origin).toString();
@@ -275,7 +275,7 @@ export class SirconvModule {
             };
         });
     }
-    
+
     compareData(sic3Items, sirconvItems) {
         const differences = [];
         let compliantCount = 0;
@@ -307,8 +307,8 @@ export class SirconvModule {
                 const sirconvValor = parseFloat(sirconvItem.valorTotal);
 
                 return normalizedSirconvDesc === normalizedSic3Desc &&
-                       sirconvQtd.toFixed(4) === sic3Qtd.toFixed(4) &&
-                       sirconvValor.toFixed(2) === sic3Valor.toFixed(2);
+                    sirconvQtd.toFixed(4) === sic3Qtd.toFixed(4) &&
+                    sirconvValor.toFixed(2) === sic3Valor.toFixed(2);
             });
 
             if (matchIndex !== -1) {
@@ -371,9 +371,9 @@ export class SirconvModule {
                 differences.push(`<li><strong>Item do SIRCONV não encontrado no SIC3:</strong> ${this.escapeHtml(sirconvItem.descricao)} (Qtd: ${formatQuantity(sirconvItem.quantidade)}, Valor: R$ ${formatCurrency(sirconvItem.valorTotal)})</li>`);
             }
         }
-        
+
         if (sic3Items.length !== sirconvItems.length && differences.length === 0) {
-             differences.push(`<li><strong>Contagem de itens diverge:</strong> SIC3 (${sic3Items.length}) vs SIRCONV (${sirconvItems.length})</li>`);
+            differences.push(`<li><strong>Contagem de itens diverge:</strong> SIC3 (${sic3Items.length}) vs SIRCONV (${sirconvItems.length})</li>`);
         }
 
         return {
@@ -393,7 +393,7 @@ export class SirconvModule {
                 const descricao = cells[1]?.innerText.trim() || '';
                 const quantidade = parseFloat(cells[4]?.innerText.trim().replace(',', '.') || '0');
                 const valorTotal = parseFloat(cells[5]?.innerText.trim().replace('R$', '').replace(/\./g, '').replace(',', '.') || '0');
-                
+
                 if (descricao) {
                     items.push({
                         descricao,
@@ -414,7 +414,7 @@ export class SirconvModule {
             const [convenio, ano, mes, codigo, descricao, despesa, data, quantidadeL, subtotal] = row.map(cell => cell || "");
             const itemOriginal = { descricao, valor: subtotal };
             let naturezaItemId = '';
-    
+
             if (String(codigo).toUpperCase().startsWith('O')) {
                 naturezaItemId = String(codigo).substring(1).trim();
             } else {
@@ -423,17 +423,17 @@ export class SirconvModule {
                     naturezaItemId = '3390' + despesaMatch[1];
                 }
             }
-            
+
             if (!naturezaItemId) {
                 itemsNaoInseridos.push({ ...itemOriginal, motivo: `Natureza da despesa inválida ou não reconhecida (${despesa}).` });
                 return;
             }
-    
+
             if (!planoValido.includes(naturezaItemId)) {
                 itemsNaoInseridos.push({ ...itemOriginal, motivo: `Natureza da despesa (${naturezaItemId}) não está no plano do convênio.` });
                 return;
             }
-            
+
             itemsParaEnviar.push({
                 naturezaItemId,
                 quantidade: String(quantidadeL).replace(',', '.'),
@@ -464,7 +464,7 @@ export class SirconvModule {
             return dateString;
         }
     }
-    
+
     async sendDataToServer(items, cronogramaId) {
         this.showOverlay(`Enviando 0 de ${items.length}...`, true);
         const statusSpan = document.getElementById('sispmg-overlay-status');
@@ -482,7 +482,7 @@ export class SirconvModule {
                 'VALOR_EXECUCAO': item.valorTotal.replace('.', ','),
                 'DIA': item.dia, 'DESCRICAO': item.descricao
             };
-            
+
             const response = await sendMessageToBackground('sendSirconvData', { payload, token });
 
             await new Promise(resolve => setTimeout(resolve, 250));
@@ -496,11 +496,11 @@ export class SirconvModule {
         }
         this.isCancelled = false;
     }
-    
+
     checkForPostActionReport() {
         const reportDataJSON = sessionStorage.getItem('sispmgSirconvReport');
         if (!reportDataJSON) return;
-        
+
         sessionStorage.removeItem('sispmgSirconvReport');
         const reportData = JSON.parse(reportDataJSON);
 
@@ -513,9 +513,9 @@ export class SirconvModule {
         const insertedItemsOnPage = this.getSirconvPageData(document.body);
         let successfullyInserted = [];
         let failedToInsert = [];
-        
+
         reportData.itemsParaEnviar.forEach(sentItem => {
-            const found = insertedItemsOnPage.some(pageItem => 
+            const found = insertedItemsOnPage.some(pageItem =>
                 this.compareData([sentItem], [pageItem]).areIdentical
             );
             if (found) {
@@ -527,7 +527,7 @@ export class SirconvModule {
 
         this.showFinalReport(reportData, successfullyInserted, reportData.itemsNaoInseridos.concat(failedToInsert));
     }
-    
+
     createPreReportMessage(validItems, invalidItems, sirconvItems, comparisonResult) {
         const parseValue = (item) => parseFloat((item.valorTotal || String(item.valor || '0').replace('R$', '').trim().replace(/\./g, '').replace(',', '.')) || '0');
         const formatCurrency = (value) => value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -687,7 +687,7 @@ export class SirconvModule {
         const totalDb = reportData.totalDb;
         const formatCurrency = (value) => parseFloat(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
         const parseValue = (item) => parseFloat(item.valorTotal || String(item.valor).replace('R$', '').trim().replace(/\./g, '').replace(',', '.'));
-        
+
         const totalValueDb = successItems.concat(failedItems).reduce((sum, item) => sum + parseValue(item), 0);
         const successValue = successItems.reduce((sum, item) => sum + parseValue(item), 0);
         const failedValue = failedItems.reduce((sum, item) => sum + parseValue(item), 0);
@@ -703,7 +703,7 @@ export class SirconvModule {
         if (successItems.length !== expectedToInsertCount) {
             verificationHTML = `<div style="color: var(--theme-danger); font-weight: bold; margin-bottom: 10px;">Atenção: A contagem de itens inseridos (${successItems.length}) é diferente da esperada (${expectedToInsertCount}). Verifique os itens com falha.</div>`;
         } else {
-             verificationHTML = `<div style="color: green; font-weight: bold; margin-bottom: 10px;">Verificação concluída: O número de itens inseridos corresponde ao esperado.</div>`;
+            verificationHTML = `<div style="color: green; font-weight: bold; margin-bottom: 10px;">Verificação concluída: O número de itens inseridos corresponde ao esperado.</div>`;
         }
 
         const reportHTML = `
@@ -715,7 +715,7 @@ export class SirconvModule {
                 <div><span>Falharam ou não inseridos:</span><strong style="color: red;">${failedItems.length} (${formatCurrency(failedValue)})</strong></div>
             </div>
             ${failedItemsHTML}`;
-        
+
         this.showModal({ title: 'Relatório Final de Inserção', message: reportHTML, type: 'alert' });
     }
 
@@ -723,7 +723,7 @@ export class SirconvModule {
         const map = { 'Jan': 'Janeiro', 'Fev': 'Fevereiro', 'Mar': 'Março', 'Abr': 'Abril', 'Mai': 'Maio', 'Jun': 'Junho', 'Jul': 'Julho', 'Ago': 'Agosto', 'Set': 'Setembro', 'Out': 'Outubro', 'Nov': 'Novembro', 'Dez': 'Dezembro' };
         return map[abbr.charAt(0).toUpperCase() + abbr.slice(1).toLowerCase()];
     }
-    
+
     showModal({ title, message, type = 'alert' }) {
         return new Promise(resolve => {
             this.removeOverlay();
@@ -775,9 +775,9 @@ export class SirconvModule {
 
     hideOverlay() { this.removeOverlay(); }
     removeOverlay() { document.getElementById('sispmg-sirconv-overlay')?.remove(); }
-    
+
     escapeHtml(text) {
-        if(typeof text !== 'string') return '';
+        if (typeof text !== 'string') return '';
         const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
         return text.replace(/[&<>"']/g, m => map[m]);
     }
