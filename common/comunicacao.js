@@ -256,42 +256,26 @@ function exibirProximaMensagem() {
     }
 
     const msgObj = mensagensPendentes[mensagemAtualIndex];
-    exibirModalMensagemElement(msgObj.mensagem, async () => {
-        // Callback executado ao clicar no botão de confirmação
-        try {
-            const confirmBtn = document.getElementById('sispmg-modal-confirm-btn');
-            if (confirmBtn) {
-                confirmBtn.disabled = true;
-                confirmBtn.innerText = 'Gravando...';
-            }
-
-            const response = await sendMessageToBackground('confirmarLeituraMensagem', {
-                userPM: msgObj.userPM,
-                rowIndex: msgObj.rowIndex,
-                abrangencia: msgObj.abrangencia,
-                mensagem: msgObj.mensagem
-            });
-
+    exibirModalMensagemElement(msgObj.mensagem, () => {
+        // Gravação da confirmação de leitura em segundo plano
+        sendMessageToBackground('confirmarLeituraMensagem', {
+            userPM: msgObj.userPM,
+            rowIndex: msgObj.rowIndex,
+            abrangencia: msgObj.abrangencia,
+            mensagem: msgObj.mensagem
+        }).then(response => {
             if (response && response.success) {
                 console.log(`SisPMG+ [Comunicação]: Confirmação de leitura gravada para a linha ${msgObj.rowIndex}.`);
-                mensagemAtualIndex++;
-                exibirProximaMensagem();
             } else {
-                throw new Error(response?.error || 'Erro na gravação.');
+                console.error(`SisPMG+ [Comunicação]: Falha na gravação em background da linha ${msgObj.rowIndex}:`, response?.error);
             }
-        } catch (err) {
-            console.error('SisPMG+ [Comunicação]: Erro ao gravar confirmação de leitura:', err);
-            const errorBadge = document.getElementById('sispmg-modal-error-info');
-            if (errorBadge) {
-                errorBadge.innerText = 'Falha ao gravar confirmação. Tente novamente.';
-                errorBadge.style.display = 'block';
-            }
-            const confirmBtn = document.getElementById('sispmg-modal-confirm-btn');
-            if (confirmBtn) {
-                confirmBtn.disabled = false;
-                confirmBtn.innerText = 'Confirmar Leitura';
-            }
-        }
+        }).catch(err => {
+            console.error(`SisPMG+ [Comunicação]: Erro no envio da confirmação para a linha ${msgObj.rowIndex}:`, err);
+        });
+
+        // Fecha imediatamente ou passa para a próxima mensagem na interface
+        mensagemAtualIndex++;
+        exibirProximaMensagem();
     });
 }
 
