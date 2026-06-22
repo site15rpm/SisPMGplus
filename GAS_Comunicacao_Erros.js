@@ -91,15 +91,15 @@ function doPost(e) {
       }
       
       // Insere os logs de erro
-      // Colunas: Erro (Stack/Msg), Sistema, PM, Timestamp, Navegador, Informações do Usuário, Informações do Sistema
+      // Colunas: Erro (A), URL (B), Timestamp (C), Navegador (D), Informações do Usuário (E), Versão da Extensão (F), Informações de Depuração (G)
       sheet.appendRow([
         request.erro || "",
-        request.sistema || "",
-        request.pm || "",
+        request.url || "",
         request.timestamp || new Date().toISOString(),
         request.navegador || "",
         request.infoUsuario || "",
-        request.infoSistema || ""
+        request.versao || "",
+        request.infoDepuracao || ""
       ]);
       
       return criarRespostaJson({ success: true });
