@@ -14,6 +14,15 @@ let notasModuleInstance = null;
 let moduleCheckInterval = null; // Controle do intervalo de verificação de módulos
 
 let globalConfig = null;
+let reportarErroGlobal = null;
+
+function logarErro(error) {
+    if (reportarErroGlobal) {
+        reportarErroGlobal(error, 'INTRANET');
+    } else {
+        console.error('SisPMG+ [Loader]: reportarErroGlobal não inicializado para o erro:', error);
+    }
+}
 
 /**
  * Set de módulos permitidos para o usuário atual.
@@ -52,7 +61,8 @@ async function main(config) {
     // Inicializa o sistema de comunicação e logs de erros global
     try {
         const comunicacaoUrl = globalConfig.utilsUrl.replace('utils.js', 'comunicacao.js');
-        const { iniciarComunicacao } = await import(comunicacaoUrl);
+        const { iniciarComunicacao, reportarErro } = await import(comunicacaoUrl);
+        reportarErroGlobal = reportarErro;
         await iniciarComunicacao('INTRANET');
     } catch (err) {
         console.error('SisPMG+ [Loader]: Falha ao inicializar o canal de comunicação/erros.', err);
@@ -67,6 +77,7 @@ async function main(config) {
         uiModuleInstance.init();
     } catch (error) {
         console.error("SisPMG+: Falha ao carregar o módulo de UI principal.", error);
+        logarErro(error);
         return; // Interrompe se o módulo base falhar.
     }
 
@@ -429,6 +440,7 @@ async function loadNotasModule() {
         notasModuleInstance.init();
     } catch(e) {
          console.error("SisPMG+: Falha ao carregar o módulo de Notas.", e);
+         logarErro(e);
     }
 }
 
@@ -454,6 +466,7 @@ async function loadAgendaModule(loadUI = true) {
         }
     } catch(e) {
          console.error("SisPMG+: Falha ao carregar o módulo de Agenda.", e);
+         logarErro(e);
     }
 }
 
@@ -477,6 +490,7 @@ async function loadSicorModule() {
         sicorModuleInstance = sicor;
     } catch(e) {
          console.error("SisPMG+: Falha ao carregar o módulo SICOR.", e);
+         logarErro(e);
     }
 }
 
@@ -499,6 +513,7 @@ async function loadUnidadesModule() {
         unidadesModuleInstance = unidades;
     } catch(e) {
          console.error("SisPMG+: Falha ao carregar o módulo UNIDADES.", e);
+         logarErro(e);
     }
 }
 
@@ -523,6 +538,7 @@ async function loadPraticasModule() {
         }
     } catch(e) {
          console.error("SisPMG+: Falha ao carregar o módulo Práticas.", e);
+         logarErro(e);
     }
 }
 
@@ -545,6 +561,7 @@ async function loadSirconvModule() {
             sirconvModuleInstance.init();
         } catch(e) {
              console.error("SisPMG+: Falha ao carregar o módulo SIRCONV.", e);
+             logarErro(e);
         }
     };
 
@@ -581,6 +598,7 @@ async function loadSirconvDashboardModule() {
         });
     } catch(e) {
          console.error("SisPMG+: Falha ao carregar o módulo SIRCONV Dashboard.", e);
+         logarErro(e);
     }
 }
 
@@ -605,6 +623,7 @@ async function loadAniverModule() {
         uiModuleInstance.registerModule({ name: 'Aniversariantes', instance: aniverModuleInstance });
     } catch(e) {
          console.error("SisPMG+: Falha ao carregar o módulo de Aniversariantes.", e);
+         logarErro(e);
     }
 }
 
@@ -627,6 +646,7 @@ async function loadPAdmModule() {
         uiModuleInstance.registerModule({ name: 'PAdm+', instance: padmModuleInstance });
     } catch (error) {
         console.error("SisPMG+: Falha ao carregar ou inicializar o módulo do PAdm.", error);
+        logarErro(error);
     }
 }
 
