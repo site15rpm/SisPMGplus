@@ -15,6 +15,7 @@ let moduleCheckInterval = null; // Controle do intervalo de verificação de mó
 
 let globalConfig = null;
 let reportarErroGlobal = null;
+const failedModules = new Set();
 
 function logarErro(error) {
     if (reportarErroGlobal) {
@@ -325,7 +326,7 @@ function checkAllModules() {
 
     // Verifica o módulo de Aniversariantes
     if (isModuloPermitido('aniver')) {
-        if (isPrincipalPage && !aniverModuleInstance) {
+        if (isPrincipalPage && !aniverModuleInstance && !failedModules.has('aniver')) {
             loadAniverModule();
         } else if (!isPrincipalPage && aniverModuleInstance) {
             destroyAniverModule();
@@ -336,7 +337,7 @@ function checkAllModules() {
 
     // Verifica o módulo da Agenda
     if (isModuloPermitido('agenda')) {
-        if ((isPrincipalPage || isPAdmPage) && !agendaModuleInstance) {
+        if ((isPrincipalPage || isPAdmPage) && !agendaModuleInstance && !failedModules.has('agenda')) {
             const loadUI = isPrincipalPage;
             loadAgendaModule(loadUI);
         } else if (!isPrincipalPage && !isPAdmPage && agendaModuleInstance) {
@@ -348,7 +349,7 @@ function checkAllModules() {
 
     // Verifica o módulo do PAdm
     if (isModuloPermitido('padm')) {
-        if (isPAdmPage && !padmModuleInstance) {
+        if (isPAdmPage && !padmModuleInstance && !failedModules.has('padm')) {
             loadPAdmModule();
         } else if (!isPAdmPage && padmModuleInstance) {
             destroyPAdmModule();
@@ -360,7 +361,7 @@ function checkAllModules() {
     // Verifica o módulo do SIRCONV
     const isSirconvPage = window.location.href.includes('/lite/convenio/web/convenio/view');
     if (isModuloPermitido('sirconv')) {
-        if (isSirconvPage && !sirconvModuleInstance) {
+        if (isSirconvPage && !sirconvModuleInstance && !failedModules.has('sirconv')) {
             loadSirconvModule();
         } else if (!isSirconvPage && sirconvModuleInstance) {
             destroySirconvModule();
@@ -372,7 +373,7 @@ function checkAllModules() {
     // Verifica o módulo do SIRCONV Dashboard
     const isSirconvDashboardPage = window.location.href.includes('/lite/convenio/');
     if (isModuloPermitido('sirconvDashboard')) {
-        if (isSirconvDashboardPage && !sirconvDashboardModuleInstance) {
+        if (isSirconvDashboardPage && !sirconvDashboardModuleInstance && !failedModules.has('sirconvDashboard')) {
             loadSirconvDashboardModule();
         } else if (!isSirconvDashboardPage && sirconvDashboardModuleInstance) {
             destroySirconvDashboardModule();
@@ -384,7 +385,7 @@ function checkAllModules() {
     // Verifica o módulo do SICOR
     const isSicorPage = window.location.href.includes('/SICOR/');
     if (isModuloPermitido('sicor')) {
-        if (isSicorPage && !sicorModuleInstance) {
+        if (isSicorPage && !sicorModuleInstance && !failedModules.has('sicor')) {
             loadSicorModule();
         } else if (!isSicorPage && sicorModuleInstance) {
             destroySicorModule();
@@ -396,7 +397,7 @@ function checkAllModules() {
     // Verifica o módulo de Unidades
     const isIntranetPage = window.location.hostname.includes('policiamilitar.mg.gov.br');
     if (isModuloPermitido('unidades')) {
-        if (isIntranetPage && !unidadesModuleInstance) {
+        if (isIntranetPage && !unidadesModuleInstance && !failedModules.has('unidades')) {
             loadUnidadesModule();
         } else if (!isIntranetPage && unidadesModuleInstance) {
             destroyUnidadesModule();
@@ -408,7 +409,7 @@ function checkAllModules() {
     // Verifica o módulo de Práticas Supervisionadas
     const isPraticasPage = window.location.href.includes('/sige/paginas/perfil/avaliador/praticas.jsf');
     if (isModuloPermitido('praticas')) {
-        if (isPraticasPage && !praticasModuleInstance) {
+        if (isPraticasPage && !praticasModuleInstance && !failedModules.has('praticas')) {
             loadPraticasModule();
         } else if (!isPraticasPage && praticasModuleInstance) {
             destroyPraticasModule();
@@ -420,7 +421,8 @@ function checkAllModules() {
     // Verifica o módulo de Notas (Integração com Terminal)
     const isNotasPage = window.location.href.includes('manterNota.jsf');
     if (isModuloPermitido('notas')) {
-        if (isNotasPage && !notasModuleInstance) {
+        if (isNotasPage && !notasModuleInstance && !failedModules.has('notas')) {
+            // Nota: o código original usa notasModuleInstance, vamos corrigir uma possível inconsistência se houver
             loadNotasModule();
         } else if (!isNotasPage && notasModuleInstance) {
             destroyNotasModule();
@@ -440,6 +442,7 @@ async function loadNotasModule() {
         notasModuleInstance.init();
     } catch(e) {
          console.error("SisPMG+: Falha ao carregar o módulo de Notas.", e);
+         failedModules.add('notas');
          logarErro(e);
     }
 }
@@ -451,6 +454,7 @@ function destroyNotasModule() {
         notasModuleInstance.destroy();
     }
     notasModuleInstance = null;
+    failedModules.delete('notas');
 }
 
 /** Carrega o módulo de Agenda. */
@@ -466,6 +470,7 @@ async function loadAgendaModule(loadUI = true) {
         }
     } catch(e) {
          console.error("SisPMG+: Falha ao carregar o módulo de Agenda.", e);
+         failedModules.add('agenda');
          logarErro(e);
     }
 }
@@ -478,6 +483,7 @@ function destroyAgendaModule() {
     }
     agendaModuleInstance = null;
     uiModuleInstance.unregisterModule('Agenda');
+    failedModules.delete('agenda');
 }
 
 /** Carrega o módulo SICOR de forma segura. */
@@ -490,6 +496,7 @@ async function loadSicorModule() {
         sicorModuleInstance = sicor;
     } catch(e) {
          console.error("SisPMG+: Falha ao carregar o módulo SICOR.", e);
+         failedModules.add('sicor');
          logarErro(e);
     }
 }
@@ -501,6 +508,7 @@ function destroySicorModule() {
         sicorModuleInstance.destroySicorModule();
     }
     sicorModuleInstance = null;
+    failedModules.delete('sicor');
 }
 
 /** Carrega o módulo UNIDADES de forma segura. */
@@ -513,6 +521,7 @@ async function loadUnidadesModule() {
         unidadesModuleInstance = unidades;
     } catch(e) {
          console.error("SisPMG+: Falha ao carregar o módulo UNIDADES.", e);
+         failedModules.add('unidades');
          logarErro(e);
     }
 }
@@ -524,6 +533,7 @@ function destroyUnidadesModule() {
         unidadesModuleInstance.destroyUnidadesModule();
     }
     unidadesModuleInstance = null;
+    failedModules.delete('unidades');
 }
 
 /** Carrega o módulo Práticas Supervisionadas. */
@@ -538,6 +548,7 @@ async function loadPraticasModule() {
         }
     } catch(e) {
          console.error("SisPMG+: Falha ao carregar o módulo Práticas.", e);
+         failedModules.add('praticas');
          logarErro(e);
     }
 }
@@ -546,6 +557,7 @@ async function loadPraticasModule() {
 function destroyPraticasModule() {
     console.log("SisPMG+: Saindo da página Práticas. Resetando instância.");
     praticasModuleInstance = null;
+    failedModules.delete('praticas');
 }
 
 
@@ -561,6 +573,7 @@ async function loadSirconvModule() {
             sirconvModuleInstance.init();
         } catch(e) {
              console.error("SisPMG+: Falha ao carregar o módulo SIRCONV.", e);
+             failedModules.add('sirconv');
              logarErro(e);
         }
     };
@@ -579,6 +592,7 @@ function destroySirconvModule() {
         sirconvModuleInstance.stopObserver();
     }
     sirconvModuleInstance = null;
+    failedModules.delete('sirconv');
 }
 
 
@@ -598,6 +612,7 @@ async function loadSirconvDashboardModule() {
         });
     } catch(e) {
          console.error("SisPMG+: Falha ao carregar o módulo SIRCONV Dashboard.", e);
+         failedModules.add('sirconvDashboard');
          logarErro(e);
     }
 }
@@ -609,6 +624,7 @@ function destroySirconvDashboardModule() {
         sirconvDashboardModuleInstance.destroy();
     }
     sirconvDashboardModuleInstance = null;
+    failedModules.delete('sirconvDashboard');
 }
 
 /** Carrega o módulo de Aniversariantes. */
@@ -623,6 +639,7 @@ async function loadAniverModule() {
         uiModuleInstance.registerModule({ name: 'Aniversariantes', instance: aniverModuleInstance });
     } catch(e) {
          console.error("SisPMG+: Falha ao carregar o módulo de Aniversariantes.", e);
+         failedModules.add('aniver');
          logarErro(e);
     }
 }
@@ -632,6 +649,7 @@ function destroyAniverModule() {
     console.log("SisPMG+: Saindo da página principal. Descarregando módulo de Aniversariantes.");
     aniverModuleInstance = null;
     uiModuleInstance.unregisterModule('Aniversariantes');
+    failedModules.delete('aniver');
 }
 
 /** Carrega o módulo do PAdm. */
@@ -646,6 +664,7 @@ async function loadPAdmModule() {
         uiModuleInstance.registerModule({ name: 'PAdm+', instance: padmModuleInstance });
     } catch (error) {
         console.error("SisPMG+: Falha ao carregar ou inicializar o módulo do PAdm.", error);
+        failedModules.add('padm');
         logarErro(error);
     }
 }
@@ -658,6 +677,7 @@ function destroyPAdmModule() {
     }
     padmModuleInstance = null;
     uiModuleInstance.unregisterModule('PAdm+');
+    failedModules.delete('padm');
 }
 
 // --- FUNÇÕES AUXILIARES ---
