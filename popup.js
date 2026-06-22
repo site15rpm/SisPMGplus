@@ -61,31 +61,9 @@ function showModal(message, type = 'alert') {
  * Inicializa o popup.
  */
 async function initializePopup() {
-    // Configurações de Comunicação e Erros
-    const resultUrl = await sendMessageToBackground('getStorage', { keys: ['comunicacaoGasUrl'] });
-    if (resultUrl && resultUrl.success && resultUrl.value.comunicacaoGasUrl) {
-        document.getElementById('comunicacao-gas-url-input').value = resultUrl.value.comunicacaoGasUrl;
-    }
-
-    document.getElementById('save-comunicacao-url-btn').addEventListener('click', async () => {
-        const urlValue = document.getElementById('comunicacao-gas-url-input').value.trim();
-        if (urlValue && !urlValue.startsWith('https://script.google.com/')) {
-            await showModal('A URL deve iniciar com "https://script.google.com/"');
-            return;
-        }
-        await sendMessageToBackground('setStorage', { comunicacaoGasUrl: urlValue });
-        await showModal('URL do Apps Script de Comunicação salva com sucesso!');
-        reloadRelevantTabs();
-    });
-
     // Configurações de Abastecimentos
     document.getElementById('abastecimentos-settings-btn').addEventListener('click', () => {
         sendMessageToBackground('openSettingsPage', { page: 'modules/abastecimentos/settings.html' });
-    });
-
-    // Módulo SIC3
-    document.getElementById('sic3-open-btn').addEventListener('click', () => {
-        sendMessageToBackground('openSettingsPage', { page: 'modules/sic3/sic3.html' });
     });
 
     // Reset de Dados
