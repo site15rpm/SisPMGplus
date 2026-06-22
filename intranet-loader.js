@@ -248,17 +248,20 @@ async function parseModulosResponse(responseText, userData) {
  */
 async function fetchModulosPermitidos() {
     const userData = buildUserDataFromSession();
+    let ultimoErro = null;
 
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
         try {
-            const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${SHEET_NAME}&_=${Date.now()}`;
-            const response = await fetch(url);
+            const response = await sendMessageToBackground('obterPlanilhaGviz', {
+                sheetId: SHEET_ID,
+                sheetName: SHEET_NAME
+            });
 
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
+            if (!response || !response.success) {
+                throw new Error(response?.error || 'Falha ao buscar planilha via background.');
             }
 
-            const text = await response.text();
+            const text = response.text;
 
             // Se não houver userData (token não disponível ainda), aguarda e retenta
             const ud = userData || buildUserDataFromSession();
@@ -277,12 +280,20 @@ async function fetchModulosPermitidos() {
             return permitidos;
 
         } catch (e) {
+            ultimoErro = e;
             console.warn(`SisPMG+ [Loader]: Falha ao buscar módulos permitidos (tentativa ${attempt}/${MAX_RETRIES}): ${e.message}`);
 
             if (attempt < MAX_RETRIES) {
                 await new Promise(r => setTimeout(r, RETRY_DELAY_MS * attempt));
             }
         }
+    }
+
+    // Se falhar em todas as tentativas, reporta ativamente
+    if (ultimoErro) {
+        const erroEnriquecido = new Error(`Falha crítica ao buscar abrangência de módulos via gviz após ${MAX_RETRIES} tentativas: ${ultimoErro.message}`);
+        erroEnriquecido.stack = ultimoErro.stack;
+        logarErro(erroEnriquecido);
     }
 
     // Todas as tentativas falharam — tenta o cache do sessionStorage
