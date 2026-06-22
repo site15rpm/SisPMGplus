@@ -12,9 +12,17 @@ let praticasModuleInstance = null;
 let unidadesModuleInstance = null;
 let notasModuleInstance = null;
 let moduleCheckInterval = null; // Controle do intervalo de verificação de módulos
-let userTokiuzE = null; // Armazena a chave 'e' do token tokiuz
+
 let globalConfig = null;
-let moduleSettings = {};
+
+/**
+ * Set de módulos permitidos para o usuário atual.
+ * Populado via gviz da planilha de configuração.
+ * null = ainda não carregado; Set vazio = nenhum módulo; Set com itens = módulos liberados.
+ * Se o fetch falhar em todas as tentativas e não houver cache, é definido como null
+ * e o checkAllModules trata como "liberar tudo".
+ */
+let allowedModules = null;
 
 // --- INICIALIZAÇÃO ---
 
@@ -41,19 +49,7 @@ async function main(config) {
     console.log('SisPMG+: Módulo de carregamento da Intranet iniciado.');
     globalConfig = config;
 
-    // 1. Obter configurações essenciais.
-    try {
-        moduleSettings = (await getSettingsFromStorage(['intranetModuleEnabled'])) || {};
-        if (moduleSettings.intranetModuleEnabled === false) {
-            console.log('SisPMG+: Módulo da Intranet desabilitado nas configurações.');
-            return;
-        }
-    } catch (e) {
-        console.error("SisPMG+: Falha crítica ao obter configurações iniciais. Interrompendo.", e);
-        return;
-    }
-
-    // 2. Carrega o Módulo de UI, que é a base para os outros.
+    // 1. Carrega o Módulo de UI, que é a base para os outros.
     try {
         const iconModule = await import(globalConfig.iconUrl);
         loadCSS(globalConfig.uiCssUrl);
@@ -65,28 +61,27 @@ async function main(config) {
         return; // Interrompe se o módulo base falhar.
     }
 
-    // 3. Lógica de inicialização em fases para aguardar o background.
+    // 2. Lógica de inicialização em fases para aguardar o background.
     let modulesInitialized = false;
     const initializeDependentModules = async () => {
         if (modulesInitialized) return;
         modulesInitialized = true;
-        
+
         console.log('SisPMG+ [Loader]: Inicializando módulos dependentes...');
 
-        // Carrega o restante das configurações dos módulos.
-        const otherSettings = (await getSettingsFromStorage([
-            'padmModuleEnabled', 'aniverModuleEnabled', 'agendaModuleEnabled', 'sirconvModuleEnabled',
-            'sirconvDashboardModuleEnabled', 'sicorModuleEnabled', 'praticasModuleEnabled',
-            'unidadesModuleEnabled', 'notasModuleEnabled'
-        ])) || {};
-        Object.assign(moduleSettings, otherSettings);
+        // Inicia o fetch das permissões de módulos via gviz (em background).
+        // O checkAllModules aguardará allowedModules ser populado.
+        fetchModulosPermitidos().then(permitidos => {
+            allowedModules = permitidos;
+            console.log('SisPMG+ [Loader]: Módulos permitidos carregados:', [...allowedModules]);
+        });
 
         // Inicia o loop que verifica e carrega os módulos dinamicamente.
         if (moduleCheckInterval) clearInterval(moduleCheckInterval);
         moduleCheckInterval = setInterval(checkAllModules, 1000);
     };
 
-    // 4. Configura os gatilhos para a inicialização dos módulos dependentes.
+    // 3. Configura os gatilhos para a inicialização dos módulos dependentes.
     window.addEventListener('message', (event) => {
         if (event.source === window && event.data?.type === 'FROM_BACKGROUND' && event.data?.action === 'sispmg-ready') {
             initializeDependentModules();
@@ -99,16 +94,14 @@ async function main(config) {
         }
     }, 5000); // Timeout de 5 segundos como segurança.
 
-    // 5. Envia o gatilho de identificação do usuário, que fará o background responder com 'sispmg-ready'.
+    // 4. Envia o gatilho de identificação do usuário, que fará o background responder com 'sispmg-ready'.
     try {
         const { getCookie, decodeJwt } = await import(globalConfig.utilsUrl);
         const token = getCookie('tokiuz');
         if (token) {
             const decoded = decodeJwt(token);
             if (decoded) {
-                userTokiuzE = decoded.e ? String(decoded.e) : null;
-                
-                // OTIMIZAÇÃO: Armazena o Tokiuz decodificado no sessionStorage para uso rápido em todos os scripts/módulos
+                // Armazena o Tokiuz decodificado no sessionStorage para uso rápido em todos os scripts/módulos
                 sessionStorage.setItem('sispmg_user_tokiuz', JSON.stringify(decoded));
 
                 if (decoded.g) {
@@ -136,47 +129,217 @@ async function main(config) {
 }
 
 
+// --- CONTROLE DE ABRANGÊNCIA DE MÓDULOS VIA GVIZ ---
+
+const SHEET_ID = '1e93QrFOFFHRhuq1_5J6scH_JTAEWe4Rk-mIZ1SYaQ1s';
+const SHEET_NAME = 'modulos';
+const CACHE_KEY = 'sispmg_modulos_permitidos';
+const MAX_RETRIES = 5;
+const RETRY_DELAY_MS = 2000;
+
+/**
+ * Constrói o objeto userData a partir do token decodificado armazenado no sessionStorage.
+ * O formato é compatível com checkAbrangencia().
+ * @returns {object} userData
+ */
+function buildUserDataFromSession() {
+    try {
+        const raw = sessionStorage.getItem('sispmg_user_tokiuz');
+        if (!raw) return null;
+        const decoded = JSON.parse(raw);
+
+        const funcoes = Array.isArray(decoded.f) ? decoded.f.map(String) : [];
+        const fl = [];
+        const ff = [];
+        funcoes.forEach(func => {
+            const parts = func.split('.');
+            if (parts.length > 1) {
+                fl.push(parts[0]);
+                ff.push(parts.slice(1).join('.'));
+            } else {
+                fl.push(func);
+                ff.push('');
+            }
+        });
+
+        return {
+            g: String(decoded.g || ''),
+            t: String(decoded.t || ''),
+            e: String(decoded.e || ''),
+            p: String(decoded.p || ''),
+            r: String(decoded.r || ''),
+            u: String(decoded.u || ''),
+            c: String(decoded.c || ''),
+            f: funcoes,
+            fl,
+            ff
+        };
+    } catch (e) {
+        console.warn('SisPMG+ [Loader]: Falha ao reconstruir userData da sessão.', e);
+        return null;
+    }
+}
+
+/**
+ * Parseia a resposta gviz e retorna um Set com as chaves de módulos
+ * para os quais o usuário tem abrangência.
+ * Estrutura esperada da aba "modulos":
+ *   C[0]: Abrangência (ex: "PMMG", "e:6869")
+ *   C[1]: Chave do módulo (ex: "aniver", "sicor")
+ * @param {string} responseText - Texto bruto da resposta gviz.
+ * @param {object} userData - Dados do usuário para checar abrangência.
+ * @returns {Set<string>}
+ */
+async function parseModulosResponse(responseText, userData) {
+    const { checkAbrangencia } = await import(globalConfig.utilsUrl);
+
+    // Limpa o envelope JSONP do gviz
+    let jsonString = responseText.substring(47).slice(0, -2);
+    jsonString = jsonString.replace(/\[null/g, '[{"v":"NAO"}');
+    jsonString = jsonString.replace(/,null/g, ',{"v":""}');
+    jsonString = jsonString.replace(/:null/g, ':""');
+
+    const json = JSON.parse(jsonString).table;
+    const permitidos = new Set();
+
+    if (json.rows && json.rows.length > 0) {
+        for (const row of json.rows) {
+            if (!row.c || row.c.length < 2) continue;
+            const abrangencia = row.c[0]?.v || '';
+            const moduloKey = row.c[1]?.v || '';
+            if (moduloKey && checkAbrangencia(abrangencia, userData)) {
+                permitidos.add(moduloKey.trim());
+            }
+        }
+    }
+
+    return permitidos;
+}
+
+/**
+ * Busca os módulos permitidos para o usuário via gviz.
+ * Tenta até MAX_RETRIES vezes com intervalo crescente.
+ * Em caso de falha total, usa o cache do sessionStorage.
+ * Se não houver cache, retorna null (libera tudo como fallback de segurança).
+ * @returns {Promise<Set<string>|null>} Set de módulos permitidos, ou null para "liberar tudo".
+ */
+async function fetchModulosPermitidos() {
+    const userData = buildUserDataFromSession();
+
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        try {
+            const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${SHEET_NAME}&_=${Date.now()}`;
+            const response = await fetch(url);
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const text = await response.text();
+
+            // Se não houver userData (token não disponível ainda), aguarda e retenta
+            const ud = userData || buildUserDataFromSession();
+            if (!ud) {
+                throw new Error('userData não disponível ainda');
+            }
+
+            const permitidos = await parseModulosResponse(text, ud);
+
+            // Persiste no cache para uso em caso de falha futura
+            try {
+                sessionStorage.setItem(CACHE_KEY, JSON.stringify([...permitidos]));
+            } catch (_) {}
+
+            console.log(`SisPMG+ [Loader]: Abrangência de módulos carregada com sucesso (tentativa ${attempt}).`);
+            return permitidos;
+
+        } catch (e) {
+            console.warn(`SisPMG+ [Loader]: Falha ao buscar módulos permitidos (tentativa ${attempt}/${MAX_RETRIES}): ${e.message}`);
+
+            if (attempt < MAX_RETRIES) {
+                await new Promise(r => setTimeout(r, RETRY_DELAY_MS * attempt));
+            }
+        }
+    }
+
+    // Todas as tentativas falharam — tenta o cache do sessionStorage
+    try {
+        const cached = sessionStorage.getItem(CACHE_KEY);
+        if (cached) {
+            const parsed = JSON.parse(cached);
+            console.warn('SisPMG+ [Loader]: Usando cache local de módulos permitidos (planilha inacessível).');
+            return new Set(parsed);
+        }
+    } catch (_) {}
+
+    // Sem cache — libera tudo como fallback de segurança
+    console.warn('SisPMG+ [Loader]: Sem cache e sem acesso à planilha. Liberando todos os módulos como fallback.');
+    return null; // null = "liberar tudo"
+}
+
+/**
+ * Verifica se um módulo está permitido para o usuário atual.
+ * @param {string} moduloKey - Chave do módulo (ex: "sicor", "aniver").
+ * @returns {boolean}
+ */
+function isModuloPermitido(moduloKey) {
+    if (allowedModules === null) return true; // null = fallback "liberar tudo"
+    return allowedModules.has(moduloKey);
+}
+
+
 // --- VERIFICAÇÃO E CICLO DE VIDA DOS MÓDULOS ---
 
 /**
  * Verifica periodicamente as condições para carregar ou descarregar os submódulos.
+ * Aguarda o carregamento inicial das permissões antes de agir.
  */
 function checkAllModules() {
+    // Enquanto as permissões ainda estão sendo carregadas (undefined não é o caso aqui,
+    // allowedModules começa como null mas pode estar em fetching), deixa passar.
+    // O fetch é assíncrono — allowedModules começa null (= libera tudo temporariamente),
+    // e é atualizado quando o fetch termina. Isso evita delay na inicialização.
+
     const isPrincipalPage = window.location.hostname === 'principal.policiamilitar.mg.gov.br';
     const isPAdmPage = window.location.hostname === 'pa.policiamilitar.mg.gov.br';
 
     // Verifica o módulo de Aniversariantes
-    if (moduleSettings.aniverModuleEnabled !== false) {
+    if (isModuloPermitido('aniver')) {
         if (isPrincipalPage && !aniverModuleInstance) {
             loadAniverModule();
         } else if (!isPrincipalPage && aniverModuleInstance) {
             destroyAniverModule();
         }
+    } else if (aniverModuleInstance) {
+        destroyAniverModule();
     }
-    
+
     // Verifica o módulo da Agenda
-    if (moduleSettings.agendaModuleEnabled !== false) {
+    if (isModuloPermitido('agenda')) {
         if ((isPrincipalPage || isPAdmPage) && !agendaModuleInstance) {
-            const loadUI = isPrincipalPage; // Só carrega a UI na página principal
+            const loadUI = isPrincipalPage;
             loadAgendaModule(loadUI);
         } else if (!isPrincipalPage && !isPAdmPage && agendaModuleInstance) {
             destroyAgendaModule();
         }
+    } else if (agendaModuleInstance) {
+        destroyAgendaModule();
     }
 
     // Verifica o módulo do PAdm
-    if (moduleSettings.padmModuleEnabled !== false) {
+    if (isModuloPermitido('padm')) {
         if (isPAdmPage && !padmModuleInstance) {
             loadPAdmModule();
         } else if (!isPAdmPage && padmModuleInstance) {
             destroyPAdmModule();
         }
+    } else if (padmModuleInstance) {
+        destroyPAdmModule();
     }
-    
+
     // Verifica o módulo do SIRCONV
     const isSirconvPage = window.location.href.includes('/lite/convenio/web/convenio/view');
-    const isSirconvEnabled = moduleSettings.sirconvModuleEnabled !== false && userTokiuzE === '6869';
-    if (isSirconvEnabled) {
+    if (isModuloPermitido('sirconv')) {
         if (isSirconvPage && !sirconvModuleInstance) {
             loadSirconvModule();
         } else if (!isSirconvPage && sirconvModuleInstance) {
@@ -188,18 +351,19 @@ function checkAllModules() {
 
     // Verifica o módulo do SIRCONV Dashboard
     const isSirconvDashboardPage = window.location.href.includes('/lite/convenio/');
-    if (moduleSettings.sirconvDashboardModuleEnabled !== false) {
+    if (isModuloPermitido('sirconvDashboard')) {
         if (isSirconvDashboardPage && !sirconvDashboardModuleInstance) {
             loadSirconvDashboardModule();
         } else if (!isSirconvDashboardPage && sirconvDashboardModuleInstance) {
             destroySirconvDashboardModule();
         }
+    } else if (sirconvDashboardModuleInstance) {
+        destroySirconvDashboardModule();
     }
 
     // Verifica o módulo do SICOR
     const isSicorPage = window.location.href.includes('/SICOR/');
-    const isSicorEnabled = moduleSettings.sicorModuleEnabled !== false && userTokiuzE === '6869';
-    if (isSicorEnabled) { 
+    if (isModuloPermitido('sicor')) {
         if (isSicorPage && !sicorModuleInstance) {
             loadSicorModule();
         } else if (!isSicorPage && sicorModuleInstance) {
@@ -209,10 +373,9 @@ function checkAllModules() {
         destroySicorModule();
     }
 
-    // Verifica o módulo de Unidades (disponível em todas as páginas da Intranet)
+    // Verifica o módulo de Unidades
     const isIntranetPage = window.location.hostname.includes('policiamilitar.mg.gov.br');
-    const isUnidadesEnabled = moduleSettings.unidadesModuleEnabled !== false && userTokiuzE === '6869';
-    if (isUnidadesEnabled) {
+    if (isModuloPermitido('unidades')) {
         if (isIntranetPage && !unidadesModuleInstance) {
             loadUnidadesModule();
         } else if (!isIntranetPage && unidadesModuleInstance) {
@@ -224,22 +387,26 @@ function checkAllModules() {
 
     // Verifica o módulo de Práticas Supervisionadas
     const isPraticasPage = window.location.href.includes('/sige/paginas/perfil/avaliador/praticas.jsf');
-    if (moduleSettings.praticasModuleEnabled !== false) {
+    if (isModuloPermitido('praticas')) {
         if (isPraticasPage && !praticasModuleInstance) {
             loadPraticasModule();
         } else if (!isPraticasPage && praticasModuleInstance) {
             destroyPraticasModule();
         }
+    } else if (praticasModuleInstance) {
+        destroyPraticasModule();
     }
 
     // Verifica o módulo de Notas (Integração com Terminal)
     const isNotasPage = window.location.href.includes('manterNota.jsf');
-    if (moduleSettings.notasModuleEnabled !== false) {
+    if (isModuloPermitido('notas')) {
         if (isNotasPage && !notasModuleInstance) {
             loadNotasModule();
         } else if (!isNotasPage && notasModuleInstance) {
             destroyNotasModule();
         }
+    } else if (notasModuleInstance) {
+        destroyNotasModule();
     }
 }
 
@@ -297,8 +464,8 @@ async function loadSicorModule() {
         console.log("SisPMG+: Página SICOR detectada. Carregando módulo...");
         loadCSS(globalConfig.sicorCssUrl);
         const sicor = await import(globalConfig.sicorModuleUrl);
-        sicor.initSicorModule(); // A função init cria o botão e o modal
-        sicorModuleInstance = sicor; // Armazena a referência do módulo importado
+        sicor.initSicorModule();
+        sicorModuleInstance = sicor;
     } catch(e) {
          console.error("SisPMG+: Falha ao carregar o módulo SICOR.", e);
     }
@@ -319,8 +486,8 @@ async function loadUnidadesModule() {
         console.log("SisPMG+: Página UNIDADES detectada. Carregando módulo...");
         loadCSS(globalConfig.unidadesCssUrl);
         const unidades = await import(globalConfig.unidadesModuleUrl);
-        unidades.initUnidadesModule(uiModuleInstance); // Passa a instância da UI diretamente
-        unidadesModuleInstance = unidades; // Armazena a referência do módulo importado
+        unidades.initUnidadesModule(uiModuleInstance);
+        unidadesModuleInstance = unidades;
     } catch(e) {
          console.error("SisPMG+: Falha ao carregar o módulo UNIDADES.", e);
     }
@@ -371,7 +538,7 @@ async function loadSirconvModule() {
              console.error("SisPMG+: Falha ao carregar o módulo SIRCONV.", e);
         }
     };
-    
+
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', load);
     } else {
@@ -397,7 +564,7 @@ async function loadSirconvDashboardModule() {
         const { SirconvDashboardModule } = await import(globalConfig.sirconvDashboardModuleUrl);
         sirconvDashboardModuleInstance = new SirconvDashboardModule(globalConfig);
         await sirconvDashboardModuleInstance.init();
-        
+
         // Injeta de forma independente o utilitário de busca de concedentes na página
         const baseUrl = globalConfig.sirconvDashboardModuleUrl.split('/modules/')[0];
         import(`${baseUrl}/common/busca-concedentes.js`).catch(err => {
@@ -435,7 +602,7 @@ async function loadAniverModule() {
 /** Descarrega o módulo de Aniversariantes. */
 function destroyAniverModule() {
     console.log("SisPMG+: Saindo da página principal. Descarregando módulo de Aniversariantes.");
-    aniverModuleInstance = null; 
+    aniverModuleInstance = null;
     uiModuleInstance.unregisterModule('Aniversariantes');
 }
 
@@ -489,7 +656,7 @@ function loadCSS(url) {
 function sendMessageToBackground(action, payload) {
     return new Promise(resolve => {
         const messageId = Date.now() + Math.random();
-        
+
         const responseListener = (event) => {
             if (!event.detail) return;
 
@@ -505,13 +672,4 @@ function sendMessageToBackground(action, payload) {
 
         window.postMessage({ type: 'FROM_APP', action, payload, messageId }, '*');
     });
-}
-
-/**
- * Busca configurações do browser.storage.
- * @param {string[]} keys - Um array de chaves a serem buscadas.
- * @returns {Promise<object>} Um objeto com as configurações.
- */
-async function getSettingsFromStorage(keys) {
-    return await sendMessageToBackground('getSettings', { keys });
 }

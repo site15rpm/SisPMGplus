@@ -162,3 +162,65 @@ export function parseTokiuzPayload(decoded) {
     };
 }
 
+/**
+ * Verifica se o usuário atende aos critérios de abrangência.
+ * A lógica é OR: o usuário precisa satisfazer pelo menos UM dos critérios definidos.
+ * Dentro de um critério (ex: g:123|456), a lógica é OR (bater com 123 OU 456).
+ * Suporta critérios: g (matrícula), t (posto), e (entidade/RPM), p (unidade),
+ * r (região), u (unidade contábil), c (seção), f (funções completo),
+ * fl (local da função), ff (código da função).
+ * Valores especiais: "PMMG" ou "1" concedem acesso universal.
+ * @param {string} abrangenciaString - A string de regras (ex: "g:123|456, t:SGT, e:6869").
+ * @param {object} userData - O objeto com os dados do usuário do token.
+ * @returns {boolean} - True se o usuário tiver acesso, false caso contrário.
+ */
+export function checkAbrangencia(abrangenciaString, userData) {
+    if (!abrangenciaString) return false;
+    const upperString = abrangenciaString.toUpperCase();
+
+    // "PMMG" ou "1" concedem acesso universal
+    if (upperString === 'PMMG' || upperString === '1') return true;
+
+    const allCriteria = abrangenciaString.split(',');
+    if (allCriteria.length === 0) return false;
+
+    // Lógica OR: o usuário precisa corresponder a pelo menos UM critério
+    for (const criterion of allCriteria) {
+        const parts = criterion.split(':');
+        if (parts.length < 2) continue;
+
+        const key = parts[0].trim().toLowerCase();
+        const rules = parts.slice(1).join(':').trim();
+        const ruleList = rules.split('|').map(r => r.trim()).filter(r => r);
+
+        if (!Object.prototype.hasOwnProperty.call(userData, key) || ruleList.length === 0) continue;
+
+        const userValue = userData[key];
+        let criteriaMet = false;
+
+        if ((key === 'f' || key === 'fl' || key === 'ff') && Array.isArray(userValue)) {
+            for (const userItem of userValue) {
+                for (const rule of ruleList) {
+                    try {
+                        if (new RegExp('^' + rule + '$', 'i').test(userItem)) { criteriaMet = true; break; }
+                    } catch (e) {
+                        if (userItem === rule) criteriaMet = true;
+                    }
+                }
+                if (criteriaMet) break;
+            }
+        } else if (typeof userValue === 'string') {
+            for (const rule of ruleList) {
+                try {
+                    if (new RegExp('^' + rule + '$', 'i').test(userValue)) { criteriaMet = true; break; }
+                } catch (e) {
+                    if (userValue === rule) criteriaMet = true;
+                }
+            }
+        }
+
+        if (criteriaMet) return true;
+    }
+
+    return false;
+}

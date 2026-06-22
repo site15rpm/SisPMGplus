@@ -90,7 +90,6 @@ export class UIModule {
         this.menuVisible = false;
         this.iconContainer = null;
         this.menuCloseTimer = null; // Temporizador para o fechamento do menu
-        this.intranetModuleEnabled = true;
         this.preloadedMenuContent = null; // Conteúdo pré-carregado do menu
         this.isMenuContentLoading = false; // Flag para evitar carregamentos múltiplos
         this.preloadDebounceTimer = null; // Timer para debouncing do pré-carregamento
@@ -98,13 +97,10 @@ export class UIModule {
 
     async init() {
         window.SisPMG_UI = this; // Torna a instância da UI globalmente acessível
-        await this.loadState();
         this.injectGlobalContainer();
-        if (this.intranetModuleEnabled) {
-            this.hideHelpIcon();
-            this.injectHeaderIcon();
-            this.preloadHeaderMenuContent(); // Pré-carrega o conteúdo do menu
-        }
+        this.hideHelpIcon();
+        this.injectHeaderIcon();
+        this.preloadHeaderMenuContent(); // Pré-carrega o conteúdo do menu
     }
 
     async preloadHeaderMenuContent(force = false) {
@@ -148,16 +144,7 @@ export class UIModule {
             createContainer();
         }
     }
-    
-    async loadState() {
-        const result = await sendMessageToBackground('getStorage', { keys: ['intranetModuleEnabled'] });
-        if (result.success && typeof result.value.intranetModuleEnabled !== 'undefined') {
-            this.intranetModuleEnabled = result.value.intranetModuleEnabled;
-        } else {
-            this.intranetModuleEnabled = true; // Padrão
-        }
-    }
-    
+
     hideHelpIcon() {
         const headerAjuda = document.getElementById('headerAjuda');
         if (headerAjuda) {
@@ -389,11 +376,7 @@ export class UIModule {
         const isPrincipalPage = window.location.hostname === 'principal.policiamilitar.mg.gov.br';
         const isSicorPage = window.location.pathname.startsWith('/SICOR/');
 
-        const settingsResult = await sendMessageToBackground('getStorage', { keys: ['aniverModuleEnabled', 'agendaModuleEnabled'] });
-        const aniverModuleEnabled = settingsResult.success ? (settingsResult.value.aniverModuleEnabled !== false) : true;
-        const agendaModuleEnabled = settingsResult.success ? (settingsResult.value.agendaModuleEnabled !== false) : true;
-        
-        if (aniverModuleEnabled && isPrincipalPage) {
+        if (isPrincipalPage) {
              moduleItems += `
                  <div id="config-birthdays-btn" class="sispmg-menu-item">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2a5 5 0 0 0-5 5c0 1.84.97 3.47 2.43 4.39A8.002 8.002 0 0 0 4 20a1 1 0 1 0 2 0a6 6 0 0 1 12 0a1 1 0 1 0 2 0a8.002 8.002 0 0 0-5.43-6.61A4.992 4.992 0 0 0 17 7a5 5 0 0 0-5-5zm0 2a3 3 0 1 1 0 6a3 3 0 0 1 0-6z" fill="currentColor"/></svg>
