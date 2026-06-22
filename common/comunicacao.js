@@ -329,17 +329,34 @@ async function verificarMensagens(userData, sistema) {
         // A primeira linha de dados no parsedData é rows[0], que corresponde à linha física 2.
         for (let i = 0; i < parsedData.length; i++) {
             const row = parsedData[i];
-            if (!row || row.length < 2) continue;
+            if (!row || row.length < 3) continue; // Pelo menos abrangencia, urlFiltro e mensagem
 
             const abrangencia = String(row[0] || '').trim();
-            const mensagem = String(row[1] || '').trim();
-            const confirmacoes = String(row[2] || '').trim();
+            const urlFiltro = String(row[1] || '').trim();
+            const mensagem = String(row[2] || '').trim();
+            const confirmacoes = String(row[3] || '').trim();
             const rowIndexFisico = i + 2; // Linha física correspondente (1-based + 1 cabeçalho)
 
             if (!mensagem) continue;
 
             // Verifica se o usuário atende à abrangência
             if (checkAbrangencia(abrangencia, userData)) {
+                // Filtro por URL da página atual
+                let urlMatch = true;
+                if (urlFiltro) {
+                    const currentUrl = window.location.href;
+                    try {
+                        // Tenta validar como regex
+                        const regex = new RegExp(urlFiltro, 'i');
+                        urlMatch = regex.test(currentUrl);
+                    } catch (e) {
+                        // Fallback para inclusão simples de texto se a regex for inválida
+                        urlMatch = currentUrl.toLowerCase().includes(urlFiltro.toLowerCase());
+                    }
+                }
+
+                if (!urlMatch) continue; // Pula essa mensagem se não for a URL correspondente
+
                 const listaConfirmados = confirmacoes.split('|').map(pm => pm.trim());
                 const jaConfirmouLocal = confirmadosLocais[`confirmado_local_${rowIndexFisico}`] === true;
 
