@@ -78,7 +78,9 @@ async function main(config) {
         uiModuleInstance.init();
     } catch (error) {
         console.error("SisPMG+: Falha ao carregar o módulo de UI principal.", error);
-        logarErro(error);
+        const erroEnriquecido = new Error(`Falha no submódulo UI Principal: ${error.message}`);
+        erroEnriquecido.stack = error.stack;
+        logarErro(erroEnriquecido);
         return; // Interrompe se o módulo base falhar.
     }
 
@@ -443,7 +445,9 @@ async function loadNotasModule() {
     } catch(e) {
          console.error("SisPMG+: Falha ao carregar o módulo de Notas.", e);
          failedModules.add('notas');
-         logarErro(e);
+         const erroEnriquecido = new Error(`Falha no submódulo Notas: ${e.message}`);
+         erroEnriquecido.stack = e.stack;
+         logarErro(erroEnriquecido);
     }
 }
 
@@ -471,7 +475,9 @@ async function loadAgendaModule(loadUI = true) {
     } catch(e) {
          console.error("SisPMG+: Falha ao carregar o módulo de Agenda.", e);
          failedModules.add('agenda');
-         logarErro(e);
+         const erroEnriquecido = new Error(`Falha no submódulo Agenda: ${e.message}`);
+         erroEnriquecido.stack = e.stack;
+         logarErro(erroEnriquecido);
     }
 }
 
@@ -497,7 +503,9 @@ async function loadSicorModule() {
     } catch(e) {
          console.error("SisPMG+: Falha ao carregar o módulo SICOR.", e);
          failedModules.add('sicor');
-         logarErro(e);
+         const erroEnriquecido = new Error(`Falha no submódulo SICOR: ${e.message}`);
+         erroEnriquecido.stack = e.stack;
+         logarErro(erroEnriquecido);
     }
 }
 
@@ -522,7 +530,9 @@ async function loadUnidadesModule() {
     } catch(e) {
          console.error("SisPMG+: Falha ao carregar o módulo UNIDADES.", e);
          failedModules.add('unidades');
-         logarErro(e);
+         const erroEnriquecido = new Error(`Falha no submódulo Unidades: ${e.message}`);
+         erroEnriquecido.stack = e.stack;
+         logarErro(erroEnriquecido);
     }
 }
 
@@ -549,7 +559,9 @@ async function loadPraticasModule() {
     } catch(e) {
          console.error("SisPMG+: Falha ao carregar o módulo Práticas.", e);
          failedModules.add('praticas');
-         logarErro(e);
+         const erroEnriquecido = new Error(`Falha no submódulo Práticas: ${e.message}`);
+         erroEnriquecido.stack = e.stack;
+         logarErro(erroEnriquecido);
     }
 }
 
@@ -574,7 +586,9 @@ async function loadSirconvModule() {
         } catch(e) {
              console.error("SisPMG+: Falha ao carregar o módulo SIRCONV.", e);
              failedModules.add('sirconv');
-             logarErro(e);
+             const erroEnriquecido = new Error(`Falha no submódulo SIRCONV: ${e.message}`);
+             erroEnriquecido.stack = e.stack;
+             logarErro(erroEnriquecido);
         }
     };
 
@@ -613,7 +627,9 @@ async function loadSirconvDashboardModule() {
     } catch(e) {
          console.error("SisPMG+: Falha ao carregar o módulo SIRCONV Dashboard.", e);
          failedModules.add('sirconvDashboard');
-         logarErro(e);
+         const erroEnriquecido = new Error(`Falha no submódulo SIRCONV Dashboard: ${e.message}`);
+         erroEnriquecido.stack = e.stack;
+         logarErro(erroEnriquecido);
     }
 }
 
@@ -640,7 +656,9 @@ async function loadAniverModule() {
     } catch(e) {
          console.error("SisPMG+: Falha ao carregar o módulo de Aniversariantes.", e);
          failedModules.add('aniver');
-         logarErro(e);
+         const erroEnriquecido = new Error(`Falha no submódulo Aniversariantes: ${e.message}`);
+         erroEnriquecido.stack = e.stack;
+         logarErro(erroEnriquecido);
     }
 }
 
@@ -665,7 +683,9 @@ async function loadPAdmModule() {
     } catch (error) {
         console.error("SisPMG+: Falha ao carregar ou inicializar o módulo do PAdm.", error);
         failedModules.add('padm');
-        logarErro(error);
+        const erroEnriquecido = new Error(`Falha no submódulo PAdm+: ${error.message}`);
+        erroEnriquecido.stack = error.stack;
+        logarErro(erroEnriquecido);
     }
 }
 
