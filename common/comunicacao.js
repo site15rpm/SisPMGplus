@@ -156,22 +156,111 @@ function isExtensionError(error, contextString) {
 }
 
 /**
+ * Retorna o timestamp para as próximas 3 horas da manhã (horário local).
+ * Se a hora atual já passou de 3h, retorna 3h de amanhã.
+ */
+function obterProximoReset3AM() {
+    const agora = new Date();
+    const reset = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate(), 3, 0, 0, 0);
+    if (agora.getTime() >= reset.getTime()) {
+        reset.setDate(reset.getDate() + 1);
+    }
+    return reset.getTime();
+}
+
+/**
+ * Simplifica a string de User Agent para um formato mais legível.
+ */
+function obterNavegadorSimplificado(ua) {
+    if (!ua) return 'Navegador Desconhecido';
+    if (ua.includes('Edg/')) {
+        const match = ua.match(/Edg\/([0-9.]+)/);
+        return `Microsoft Edge ${match ? match[1] : ''}`.trim();
+    }
+    if (ua.includes('Firefox/')) {
+        const match = ua.match(/Firefox\/([0-9.]+)/);
+        return `Mozilla Firefox ${match ? match[1] : ''}`.trim();
+    }
+    if (ua.includes('Chrome/')) {
+        const match = ua.match(/Chrome\/([0-9.]+)/);
+        return `Google Chrome ${match ? match[1] : ''}`.trim();
+    }
+    if (ua.includes('Safari/') && !ua.includes('Chrome')) {
+        const match = ua.match(/Version\/([0-9.]+)/);
+        return `Apple Safari ${match ? match[1] : ''}`.trim();
+    }
+    return ua;
+}
+
+/**
+ * Retorna o timestamp formatado no padrão DD/MM/AAAA HH:MM:SS (Horário de Brasília).
+ */
+function obterTimestampBrasil() {
+    const agora = new Date();
+    try {
+        const formato = new Intl.DateTimeFormat('pt-BR', {
+            timeZone: 'America/Sao_Paulo',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+        });
+        return formato.format(agora).replace(',', '');
+    } catch (e) {
+        return agora.toLocaleString('pt-BR');
+    }
+}
+
+/**
  * Reporta o erro para a planilha e exibe o modal informativo para o usuário.
  */
 export async function reportarErro(error, sistema) {
     const erroMsg = error ? (error.stack || error.message || String(error)) : 'Erro indefinido';
     const chaveErro = `${sistema}:${erroMsg}`;
 
+    // 1. Verificação de deduplicação na mesma sessão (memória) para evitar logs simultâneos
     if (errosReportados.has(chaveErro)) {
-        console.warn(`SisPMG+ [Comunicação]: Erro já reportado nesta sessão: ${chaveErro}`);
+        console.warn(`SisPMG+ [Comunicação]: Erro já reportado nesta sessão de página: ${chaveErro}`);
         return;
     }
     errosReportados.add(chaveErro);
 
+    // 2. Verificação de deduplicação diária por usuário (storage local)
+    try {
+        const result = await sendMessageToBackground('getStorage', { keys: ['sispmg_erros_reportados_dia'] });
+        const agora = Date.now();
+        let logErrosDia = result?.value?.sispmg_erros_reportados_dia;
+
+        // Se não existir ou se a validade expirou (passou das 3h da manhã), zera a gravação
+        if (!logErrosDia || !logErrosDia.expiraEm || agora >= logErrosDia.expiraEm) {
+            logErrosDia = {
+                expiraEm: obterProximoReset3AM(),
+                erros: []
+            };
+        }
+
+        // Se o erro já foi reportado no dia de hoje, aborta o envio e o modal
+        if (logErrosDia.erros.includes(chaveErro)) {
+            console.log(`SisPMG+ [Comunicação]: Erro já reportado para o usuário no dia de hoje: ${chaveErro}`);
+            return;
+        }
+
+        // Caso contrário, adiciona o erro à lista do dia e salva no storage
+        logErrosDia.erros.push(chaveErro);
+        await sendMessageToBackground('setStorage', { sispmg_erros_reportados_dia: logErrosDia });
+
+    } catch (storageErr) {
+        console.warn('SisPMG+ [Comunicação]: Falha ao gerenciar deduplicação de erros no storage local.', storageErr);
+    }
+
     console.error(`SisPMG+ [Comunicação] Capturado erro no sistema ${sistema}:`, error);
 
-    const timestamp = new Date().toISOString();
+    const timestamp = obterTimestampBrasil();
     const userAgent = navigator.userAgent;
+    const navegadorAmigavel = obterNavegadorSimplificado(userAgent);
     const userData = obterUserData();
 
     const pm = userData ? userData.g : 'Desconhecido';
@@ -200,7 +289,7 @@ export async function reportarErro(error, sistema) {
         sistema: sistema,
         pm: pm,
         timestamp: timestamp,
-        navegador: userAgent,
+        navegador: navegadorAmigavel,
         infoUsuario: infoUsuario,
         infoSistema: infoSistema
     }).catch(err => {
@@ -519,7 +608,7 @@ function exibirModalErro(detalhesErro, sistema) {
     iconContainer.className = 'modal-icon error';
     iconContainer.innerHTML = iconSVG;
 
-    titleEl.innerText = 'Ocorreu um Erro Inesperado';
+    titleEl.innerText = 'Comunicado do SisPMG+';
     messageEl.innerHTML = `
         <strong style="color: #ef4444;">Um erro ocorreu durante a execução da extensão.</strong><br><br>
         O erro já foi enviado automaticamente ao administrador e será analisado para correção.<br><br>
