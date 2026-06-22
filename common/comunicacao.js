@@ -10,6 +10,7 @@ let modalContainer = null;
 let mensagensPendentes = [];
 let mensagemAtualIndex = 0;
 const errosReportados = new Set();
+let activeCliqueForaListener = null;
 
 /**
  * Obtém os dados estruturados do usuário a partir da sessão ou do cookie.
@@ -263,8 +264,6 @@ export async function reportarErro(error, sistema) {
     const navegadorAmigavel = obterNavegadorSimplificado(userAgent);
     const userData = obterUserData();
 
-    const pm = userData ? userData.g : 'Desconhecido';
-
     const infoUsuario = userData ? JSON.stringify({
         numeroPM: userData.g,
         postoGraduacao: userData.t,
@@ -276,22 +275,24 @@ export async function reportarErro(error, sistema) {
         codigoSecao: userData.c
     }) : 'Usuário não logado';
 
-    const infoSistema = JSON.stringify({
-        url: window.location.href,
+    const infoDepuracao = JSON.stringify({
+        sistema: sistema, // "INTRANET" ou "TERMINAL"
         screenResolution: `${window.screen.width}x${window.screen.height}`,
         windowSize: `${window.innerWidth}x${window.innerHeight}`,
-        devicePixelRatio: window.devicePixelRatio
+        devicePixelRatio: window.devicePixelRatio,
+        language: navigator.language,
+        cookieEnabled: navigator.cookieEnabled,
+        referrer: document.referrer
     });
 
     // Envia o log de erro para o background em segundo plano para registro na planilha
     sendMessageToBackground('registrarErroPlanilha', {
         erro: erroMsg,
-        sistema: sistema,
-        pm: pm,
+        url: window.location.href,
         timestamp: timestamp,
         navegador: navegadorAmigavel,
         infoUsuario: infoUsuario,
-        infoSistema: infoSistema
+        infoDepuracao: infoDepuracao
     }).catch(err => {
         console.error('SisPMG+ [Comunicação]: Falha no envio do erro para o background:', err);
     });
@@ -438,6 +439,15 @@ function garantirModalContainer() {
             font-family: system-ui, -apple-system, sans-serif !important;
             opacity: 0 !important;
             transition: opacity 0.2s ease-in-out !important;
+        }
+        #sispmg-comunicacao-modal-container.no-overlay {
+            background: transparent !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+            pointer-events: none !important;
+        }
+        #sispmg-comunicacao-modal-container.no-overlay .modal-box {
+            pointer-events: auto !important;
         }
         #sispmg-comunicacao-modal-container.active {
             opacity: 1 !important;
@@ -630,6 +640,22 @@ function exibirModalErro(detalhesErro, sistema) {
         }
     };
 
+    modalContainer.classList.add('no-overlay');
+
+    // Registra listener para fechar ao clicar fora
+    if (activeCliqueForaListener) {
+        document.removeEventListener('click', activeCliqueForaListener, true);
+    }
+    activeCliqueForaListener = (event) => {
+        const modalBox = modalContainer.querySelector('.modal-box');
+        if (modalBox && !modalBox.contains(event.target)) {
+            fecharModalGeral();
+        }
+    };
+    setTimeout(() => {
+        document.addEventListener('click', activeCliqueForaListener, true);
+    }, 50);
+
     // Efeito de fade-in com controle estrito do display
     modalContainer.style.setProperty('display', 'flex', 'important');
     setTimeout(() => {
@@ -643,6 +669,14 @@ function exibirModalErro(detalhesErro, sistema) {
 function fecharModalGeral() {
     if (!modalContainer) return;
     modalContainer.classList.remove('active');
+    modalContainer.classList.remove('no-overlay');
+    
+    // Remove listener de clique fora se houver
+    if (activeCliqueForaListener) {
+        document.removeEventListener('click', activeCliqueForaListener, true);
+        activeCliqueForaListener = null;
+    }
+    
     setTimeout(() => {
         modalContainer.style.setProperty('display', 'none', 'important');
     }, 200);
