@@ -10,6 +10,8 @@ import { handleSicorMessages, initializeSicorBackground } from './modules/intran
 import { handleUnidadesMessages, initializeUnidadesBackground } from './modules/intranet/intranet-unidades-background.js';
 import { handleAgendaMessages, initializeAgendaBackground } from './modules/intranet/intranet-agenda-background.js';
 
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbw92pNeR6NSgGjsdh5nhtGLUxLPFqe2fCegu1MY4F10Q6uC6YEmKzqFdY5ee-dLu1cNqQ/exec';
+
 // Inicializa os listeners de cada módulo que precisam de configuração inicial.
 initBackgroundListeners();
 initializeAbastecimentosBackground();
@@ -125,12 +127,7 @@ browser.runtime.onMessage.addListener((request, sender) => {
                 }
                 case 'confirmarLeituraMensagem': {
                     try {
-                        const storageData = await browser.storage.local.get('comunicacaoGasUrl');
-                        const gasUrl = storageData.comunicacaoGasUrl;
-                        if (!gasUrl) {
-                            console.warn('SisPMG+ [Background]: URL do Apps Script de Comunicação não configurada.');
-                            return { success: false, error: 'URL do Apps Script de Comunicação não configurada.' };
-                        }
+                        const gasUrl = GAS_URL;
                         
                         const response = await fetch(gasUrl, {
                             method: 'POST',
@@ -166,12 +163,7 @@ browser.runtime.onMessage.addListener((request, sender) => {
                 }
                 case 'registrarErroPlanilha': {
                     try {
-                        const storageData = await browser.storage.local.get('comunicacaoGasUrl');
-                        const gasUrl = storageData.comunicacaoGasUrl;
-                        if (!gasUrl) {
-                            console.warn('SisPMG+ [Background]: URL do Apps Script de Comunicação não configurada.');
-                            return { success: false, error: 'URL do Apps Script de Comunicação não configurada.' };
-                        }
+                        const gasUrl = GAS_URL;
                         
                         const response = await fetch(gasUrl, {
                             method: 'POST',
