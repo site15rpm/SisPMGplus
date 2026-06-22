@@ -41,7 +41,7 @@ function doPost(e) {
       // Validação rápida na linha física direta
       if (row && row <= sheet.getLastRow()) {
         const valAbrangencia = String(sheet.getRange(row, 1).getValue()).trim();
-        const valMensagem = String(sheet.getRange(row, 2).getValue()).trim();
+        const valMensagem = String(sheet.getRange(row, 3).getValue()).trim();
         if (valAbrangencia === abrangenciaRequest && valMensagem === mensagemRequest) {
           linhaParaAtualizar = row;
         }
@@ -52,7 +52,7 @@ function doPost(e) {
         const data = sheet.getDataRange().getValues();
         for (let r = 1; r < data.length; r++) { // Pula a primeira linha (cabeçalho)
           const valAbrangencia = String(data[r][0]).trim();
-          const valMensagem = String(data[r][1]).trim();
+          const valMensagem = String(data[r][2]).trim();
           if (valAbrangencia === abrangenciaRequest && valMensagem === mensagemRequest) {
             linhaParaAtualizar = r + 1;
             break;
@@ -61,7 +61,7 @@ function doPost(e) {
       }
       
       if (linhaParaAtualizar !== -1) {
-        const cell = sheet.getRange(linhaParaAtualizar, 3);
+        const cell = sheet.getRange(linhaParaAtualizar, 4);
         const currentVal = String(cell.getValue()).trim();
         
         let newVal = "";
