@@ -74,7 +74,9 @@ async function loadCodeMirror() {
         ]);
     } catch (error) {
         console.error('SisPMG+: Falha ao carregar scripts do CodeMirror.', error);
-        logarErro(error);
+        const erroEnriquecido = new Error(`Falha no CodeMirror: ${error.message}`);
+        erroEnriquecido.stack = error.stack;
+        logarErro(erroEnriquecido);
         // Se o CodeMirror não carregar, a funcionalidade do editor será degradada, mas o resto pode funcionar.
     }
 }
@@ -139,7 +141,9 @@ async function loadTerminalModule(config) {
     } catch (error) {
         console.error("SisPMG+: Falha ao carregar ou inicializar o módulo do terminal.", error);
         failedModules.add('terminal');
-        logarErro(error);
+        const erroEnriquecido = new Error(`Falha no submódulo Terminal: ${error.message}`);
+        erroEnriquecido.stack = error.stack;
+        logarErro(erroEnriquecido);
     }
 }
 
