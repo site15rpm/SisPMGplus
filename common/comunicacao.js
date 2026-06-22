@@ -62,19 +62,28 @@ export function obterUserData() {
 export async function iniciarComunicacao(sistema) {
     console.log(`SisPMG+ [Comunicação]: Inicializando canal de comunicação e erros para ${sistema}...`);
 
-    // 1. Configura a captura global de erros na aba
+    // 1. Configura a captura global de erros na aba imediatamente
     setupGlobalErrorHandler(sistema);
 
-    // 2. Busca e exibe mensagens da planilha
-    try {
-        const userData = obterUserData();
-        if (userData && userData.g) {
-            await verificarMensagens(userData);
-        } else {
-            console.log('SisPMG+ [Comunicação]: Usuário não identificado. Aguardando login para verificar mensagens.');
+    // 2. Busca e exibe mensagens da planilha após o carregamento do DOM
+    const runVerificacao = async () => {
+        try {
+            const userData = obterUserData();
+            if (userData && userData.g) {
+                await verificarMensagens(userData, sistema);
+            } else {
+                console.log('SisPMG+ [Comunicação]: Usuário não identificado. Aguardando login para verificar mensagens.');
+            }
+        } catch (error) {
+            console.error('SisPMG+ [Comunicação]: Erro na inicialização das mensagens:', error);
+            reportarErro(error, sistema);
         }
-    } catch (error) {
-        console.error('SisPMG+ [Comunicação]: Erro na inicialização das mensagens:', error);
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', runVerificacao);
+    } else {
+        runVerificacao();
     }
 }
 
@@ -190,13 +199,13 @@ export async function reportarErro(error, sistema) {
     });
 
     // Exibe o modal informativo de erro
-    exibirModalErro(error?.message || String(error));
+    exibirModalErro(error?.message || String(error), sistema);
 }
 
 /**
  * Verifica as mensagens da planilha via API GViz e exibe as pertinentes ao usuário atual.
  */
-async function verificarMensagens(userData) {
+async function verificarMensagens(userData, sistema) {
     try {
         const response = await sendMessageToBackground('obterMensagens');
         if (!response || !response.success || !response.text) {
@@ -248,17 +257,18 @@ async function verificarMensagens(userData) {
         }
 
         if (mensagensPendentes.length > 0) {
-            exibirProximaMensagem();
+            exibirProximaMensagem(sistema);
         }
     } catch (e) {
         console.error('SisPMG+ [Comunicação]: Falha ao processar mensagens:', e);
+        reportarErro(e, sistema);
     }
 }
 
 /**
  * Exibe a próxima mensagem pendente do vetor.
  */
-function exibirProximaMensagem() {
+function exibirProximaMensagem(sistema) {
     if (mensagemAtualIndex >= mensagensPendentes.length) {
         fecharModalGeral();
         return;
@@ -271,6 +281,7 @@ function exibirProximaMensagem() {
             [`confirmado_local_${msgObj.rowIndex}`]: true
         }).catch(err => {
             console.error(`SisPMG+ [Comunicação]: Falha ao registrar confirmação local para a linha ${msgObj.rowIndex}:`, err);
+            reportarErro(err, sistema);
         });
 
         // Gravação da confirmação de leitura em segundo plano
@@ -283,15 +294,18 @@ function exibirProximaMensagem() {
             if (response && response.success) {
                 console.log(`SisPMG+ [Comunicação]: Confirmação de leitura gravada para a linha ${msgObj.rowIndex}.`);
             } else {
-                console.error(`SisPMG+ [Comunicação]: Falha na gravação em background da linha ${msgObj.rowIndex}:`, response?.error);
+                const erroMsg = response?.error || 'Erro desconhecido na gravação do Sheets.';
+                console.error(`SisPMG+ [Comunicação]: Falha na gravação em background da linha ${msgObj.rowIndex}:`, erroMsg);
+                reportarErro(new Error(`Falha ao gravar confirmação: ${erroMsg}`), sistema);
             }
         }).catch(err => {
             console.error(`SisPMG+ [Comunicação]: Erro no envio da confirmação para a linha ${msgObj.rowIndex}:`, err);
+            reportarErro(err, sistema);
         });
 
         // Fecha imediatamente ou passa para a próxima mensagem na interface
         mensagemAtualIndex++;
-        exibirProximaMensagem();
+        exibirProximaMensagem(sistema);
     });
 }
 
@@ -444,7 +458,8 @@ function garantirModalContainer() {
       </div>
     `;
 
-    document.body.appendChild(modalContainer);
+    const targetElement = document.body || document.documentElement;
+    targetElement.appendChild(modalContainer);
 }
 
 /**
@@ -482,7 +497,7 @@ function exibirModalMensagemElement(mensagem, onConfirm) {
 /**
  * Exibe o modal formatado para aviso de erros.
  */
-function exibirModalErro(detalhesErro) {
+function exibirModalErro(detalhesErro, sistema) {
     garantirModalContainer();
 
     const iconContainer = document.getElementById('sispmg-modal-icon-container');
@@ -513,7 +528,7 @@ function exibirModalErro(detalhesErro) {
         fecharModalGeral();
         // Se houver mais mensagens pendentes de serem lidas, volta a exibi-las
         if (mensagemAtualIndex < mensagensPendentes.length) {
-            exibirProximaMensagem();
+            exibirProximaMensagem(sistema);
         }
     };
 
