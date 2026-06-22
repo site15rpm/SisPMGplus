@@ -174,7 +174,6 @@ export async function reportarErro(error, sistema) {
     const userAgent = navigator.userAgent;
     const userData = obterUserData();
 
-    const erroMsg = error ? (error.stack || error.message || String(error)) : 'Erro indefinido';
     const pm = userData ? userData.g : 'Desconhecido';
 
     const infoUsuario = userData ? JSON.stringify({
