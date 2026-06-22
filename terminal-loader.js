@@ -5,6 +5,7 @@ let terminalModuleInstance = null;
 let checkInterval = null; // Controle do intervalo de verificação
 let iconSVG; // Armazenará o SVG do ícone importado
 let reportarErroGlobal = null;
+const failedModules = new Set();
 
 function logarErro(error) {
     if (reportarErroGlobal) {
@@ -110,7 +111,7 @@ async function main(config) {
         // Busca a configuração do storage para saber se o módulo está ativo
         const isEnabled = await getConfigFromStorage('terminalModuleEnabled') !== false;
         
-        if (isEnabled && window.term && window.term.buffer && !terminalModuleInstance) {
+        if (isEnabled && window.term && window.term.buffer && !terminalModuleInstance && !failedModules.has('terminal')) {
             // Se a instância do terminal xterm.js for encontrada E o módulo estiver ativo, carrega o módulo.
             console.log("SisPMG+: Instância do terminal encontrada. Carregando módulo...");
             loadTerminalModule(config);
@@ -137,6 +138,7 @@ async function loadTerminalModule(config) {
         console.log("SisPMG+: Módulo TerminalPMG+ carregado com sucesso.");
     } catch (error) {
         console.error("SisPMG+: Falha ao carregar ou inicializar o módulo do terminal.", error);
+        failedModules.add('terminal');
         logarErro(error);
     }
 }
