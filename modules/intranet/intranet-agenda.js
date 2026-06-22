@@ -2,7 +2,7 @@
 // Responsável pela lógica do novo módulo de Agenda da Intranet
 
 import { sendMessageToBackground, getCookie, decodeJwt } from '../../common/utils.js';
-import { iconSVG_28 } from '../../common/icon.js';
+import { iconSVG_28 } from '../../common/icon--.js';
 
 /**
  * Verifica se o usuário atende aos critérios de abrangência.
@@ -60,12 +60,12 @@ function checkAbrangencia(abrangenciaString, userData) {
             }
             if (criteriaMet) break;
         }
-        
+
         if (criteriaMet) {
             return true;
         }
     }
-    
+
     return false;
 }
 
@@ -83,7 +83,7 @@ export class IntranetAgendaModule {
         console.log("SisPMG+ [Agenda]: Inicializando o módulo.");
         try {
             await this.loadSettings();
-            
+
             const token = getCookie('tokiuz');
             if (token) {
                 this.userData = decodeJwt(token);
@@ -101,7 +101,7 @@ export class IntranetAgendaModule {
                     this.toggleCollapse(this.panel, false);
                 }
             }
-            
+
             this.observeMessages();
         } catch (e) {
             console.error("SisPMG+ [Agenda]: Ocorreu um erro crítico durante a inicialização do módulo de Agenda.", e);
@@ -138,7 +138,7 @@ export class IntranetAgendaModule {
     injectAgendaButtonInMessageView() {
         setTimeout(() => {
             const allMessages = document.querySelectorAll('app-item-leitura-mensagem');
-            
+
             allMessages.forEach(message => {
                 const protocolElement = message.querySelector('p.tc span.de.direita');
                 if (!protocolElement) {
@@ -154,7 +154,7 @@ export class IntranetAgendaModule {
                 const agendaBtn = document.createElement('a');
                 agendaBtn.className = 'sispmg-agenda-from-message-btn';
                 agendaBtn.title = 'Agendar Tarefa a partir desta Mensagem';
-                
+
                 agendaBtn.style.display = 'inline-flex';
                 agendaBtn.style.alignItems = 'center';
                 agendaBtn.style.verticalAlign = 'middle';
@@ -166,7 +166,7 @@ export class IntranetAgendaModule {
                 svgNode.style.height = '20px';
                 svgNode.style.display = 'block';
                 agendaBtn.appendChild(svgNode);
-                
+
                 agendaBtn.addEventListener('click', (e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -179,10 +179,10 @@ export class IntranetAgendaModule {
                         if (marker) marker.remove();
                         subjectText = subjectClone.innerText.trim();
                     }
-                    
+
                     const messageBodyElement = message.querySelector('pre');
                     const messageBodyText = messageBodyElement ? messageBodyElement.innerText.trim() : 'Corpo da mensagem não encontrado.';
-                    
+
                     const dateElement = message.querySelector('.dataMensagem');
                     let messageDateTime = 'Data/Hora não encontrada';
                     if (dateElement) {
@@ -195,7 +195,7 @@ export class IntranetAgendaModule {
                     }
 
                     const description = `Referência: ${protocolText}\nData/Hora da Mensagem: ${messageDateTime}\n\n---\n\n${messageBodyText}`;
-                    
+
                     this.showTaskModal({
                         assunto: subjectText,
                         descricao: description
@@ -250,7 +250,7 @@ export class IntranetAgendaModule {
         const archivedTasks = this.tasks.filter(task => {
             const isConfirmedByUser = this.userNumber && (task.confirmacoes || '').split('|').includes(this.userNumber);
             const isAuthor = this.userNumber && task.autor && this.userNumber === String(task.autor);
-            
+
             // Aparece no arquivo se: Está concluída (para todos) OU foi confirmada por mim e não sou o autor
             return task.concluida || (isConfirmedByUser && !isAuthor);
         });
@@ -280,7 +280,7 @@ export class IntranetAgendaModule {
                         </button>
                     `;
                 } else if (checkAbrangencia(task.abrangencia, this.userData)) {
-                     actionButtonsHTML = `
+                    actionButtonsHTML = `
                         <button class="sispmg-task-user-confirm-btn ${isConfirmedByUser ? 'confirmed' : ''}"
                                  data-task-id="${task.id}"
                                  title="${isConfirmedByUser ? 'Tarefa confirmada' : 'Confirmar leitura'}"
@@ -296,9 +296,9 @@ export class IntranetAgendaModule {
                 });
 
                 const category = this.getTaskCategory(task);
-                let borderColor = this.settings.colors.far; 
-                if (category === 4) borderColor = '#007bff'; 
-                if (category === 5) borderColor = this.settings.colors.far; 
+                let borderColor = this.settings.colors.far;
+                if (category === 4) borderColor = '#007bff';
+                if (category === 5) borderColor = this.settings.colors.far;
 
                 html += `
                     <div class="sispmg-agenda-task archived-task" data-task-id="${task.id}" style="border-left-color: ${borderColor} !important; margin-bottom: 8px;">
@@ -352,13 +352,13 @@ export class IntranetAgendaModule {
                 </div>
             </div>
         `;
-        
+
         const modalBackdrop = this._showModal('Agenda - Informações e Histórico', legendHTML, [{ text: 'Fechar', className: 'sispmg-alert-btn-confirm' }]);
-        
+
         if (modalBackdrop) {
             modalBackdrop.classList.add('sispmg-info-modal-marker'); // Marker for re-rendering
             this.addTaskActionListeners(modalBackdrop, true);
-            
+
             modalBackdrop.querySelectorAll('.archived-task .sispmg-task-content').forEach(el => {
                 el.addEventListener('click', (e) => {
                     if (e.target.closest('button')) return;
@@ -381,7 +381,7 @@ export class IntranetAgendaModule {
         } else {
             isCollapsed = !isCollapsed;
         }
-        
+
         if (isCollapsed) {
             panel.classList.add('collapsed');
             icon.classList.remove('fa-chevron-down');
@@ -557,19 +557,19 @@ export class IntranetAgendaModule {
                 }
 
                 valuesContainer.innerHTML = ''; // Limpa o "Carregando..."
-                
+
                 const searchInput = document.createElement('input');
                 searchInput.type = 'text';
                 searchInput.placeholder = 'Pesquisar unidade...';
                 searchInput.className = 'sispmg-abrangencia-unit-search';
-                
+
                 const selectContainer = document.createElement('div');
                 selectContainer.className = 'sispmg-abrangencia-unit-select-container';
 
                 const renderOptions = (filter = '') => {
                     selectContainer.innerHTML = '';
                     const filteredUnits = unitsCache.filter(unit => unit.label.toLowerCase().includes(filter.toLowerCase()));
-                    
+
                     filteredUnits.forEach(unit => {
                         const optionDiv = document.createElement('div');
                         optionDiv.className = 'sispmg-abrangencia-unit-option';
@@ -582,7 +582,7 @@ export class IntranetAgendaModule {
                         const checkbox = document.createElement('input');
                         checkbox.type = 'checkbox';
                         checkbox.checked = values.includes(unit.value);
-                        
+
                         optionDiv.appendChild(checkbox);
                         optionDiv.append(` ${unit.label}`);
                         selectContainer.appendChild(optionDiv);
@@ -603,7 +603,7 @@ export class IntranetAgendaModule {
                 valuesContainer.appendChild(valueInput);
             }
         };
-        
+
         addRuleBtn.addEventListener('click', () => addRule());
 
         container.addEventListener('click', (e) => {
@@ -612,7 +612,7 @@ export class IntranetAgendaModule {
                 updateAutoConfirmState();
             }
         });
-        
+
         container.addEventListener('change', async (e) => {
             if (e.target.classList.contains('sispmg-abrangencia-type')) {
                 await updateValueInput(e.target, ['']);
@@ -661,7 +661,7 @@ export class IntranetAgendaModule {
             this._showAlert("Não foi possível identificar o usuário. Faça login novamente.");
             return false;
         }
-        
+
         const rulesContainer = document.getElementById('sispmg-abrangencia-rules-container');
         const ruleRows = rulesContainer.querySelectorAll('.sispmg-abrangencia-rule-row');
         const abrangenciaMap = new Map();
@@ -679,7 +679,7 @@ export class IntranetAgendaModule {
                     values = valueInput.value.split(/\||,|;/).map(v => v.trim()).filter(Boolean);
                 }
             }
-            
+
             if (values.length > 0) {
                 if (abrangenciaMap.has(type)) {
                     abrangenciaMap.get(type).push(...values);
@@ -701,7 +701,7 @@ export class IntranetAgendaModule {
 
         const timeValue = timeInput.value || '00:00';
         const dataHoraString = `${dateInput.value}T${timeValue}:00`;
-        
+
         let autoConfirmarDiasValue = '';
 
         if (abrangenciaValue !== '' || autoConfirmarInput.checked) {
@@ -718,7 +718,7 @@ export class IntranetAgendaModule {
         if (task && task.concluida && task.autoConfirmarDias === 0 && !autoConfirmarInput.checked) {
             autoConfirmarDiasValue = 0;
         }
-        
+
         const eventData = {
             id: taskId || `evt_${Date.now()}`,
             'data/hora': dataHoraString,
@@ -736,10 +736,10 @@ export class IntranetAgendaModule {
             isConcluida = true;
         } else if (autoConfirmarDiasValue !== '') {
             const due = new Date(dataHoraString);
-            due.setHours(0,0,0,0);
+            due.setHours(0, 0, 0, 0);
             const limit = due.setDate(due.getDate() + autoConfirmarDiasValue);
             const hj = new Date();
-            hj.setHours(0,0,0,0);
+            hj.setHours(0, 0, 0, 0);
             if (hj.getTime() >= limit) isConcluida = true;
         }
 
@@ -759,8 +759,8 @@ export class IntranetAgendaModule {
         }
         this.renderTasks();
 
-        const gasUrl = 'https://script.google.com/macros/s/AKfycbyriniVNqgHE206Vzx3_rplOVwSxV2f6HjyAr1zEhmyXoMH_l8AkGLyin1PK4jI0tHe/exec'; 
-        
+        const gasUrl = 'https://script.google.com/macros/s/AKfycbyriniVNqgHE206Vzx3_rplOVwSxV2f6HjyAr1zEhmyXoMH_l8AkGLyin1PK4jI0tHe/exec';
+
         sendMessageToBackground('agenda-add-event', {
             gasUrl: gasUrl,
             eventData: eventData
@@ -785,15 +785,15 @@ export class IntranetAgendaModule {
             console.error(`SisPMG+ [Agenda]: Tarefa ${taskId} não encontrada para exclusão.`);
             return;
         }
-        
+
         const task = this.tasks[taskIndex];
 
         // Atualização Otimista: Remove fisicamente do array local em vez de mudar o status
         this.tasks.splice(taskIndex, 1);
-        this.renderTasks(); 
+        this.renderTasks();
 
         const gasUrl = 'https://script.google.com/macros/s/AKfycbyriniVNqgHE206Vzx3_rplOVwSxV2f6HjyAr1zEhmyXoMH_l8AkGLyin1PK4jI0tHe/exec';
-        
+
         sendMessageToBackground('agenda-add-event', {
             gasUrl: gasUrl,
             eventData: { id: taskId, status: 'DELETED', editorNumero: this.userNumber }
@@ -825,15 +825,15 @@ export class IntranetAgendaModule {
         // Lógica de Filtragem do Painel Principal
         const activeTasks = this.tasks.filter(task => {
             // Regra 4: Concluída sai do painel para TODOS
-            if (task.concluida) return false; 
-            
+            if (task.concluida) return false;
+
             const isAuthor = this.userNumber && task.autor && this.userNumber === String(task.autor);
             const confirmedUsers = (task.confirmacoes || '').split('|').filter(u => u);
             const isConfirmedByUser = this.userNumber && confirmedUsers.includes(this.userNumber);
-            
+
             // Regra 3: Se confirmei e NÃO sou o autor, sai do painel principal (vai pro arquivo)
             if (isConfirmedByUser && !isAuthor) return false;
-            
+
             return true;
         });
 
@@ -870,7 +870,7 @@ export class IntranetAgendaModule {
                         </button>
                     `;
                 } else if (checkAbrangencia(task.abrangencia, this.userData)) {
-                     actionButtonsHTML = `
+                    actionButtonsHTML = `
                         <button class="sispmg-task-user-confirm-btn ${isConfirmedByUser ? 'confirmed' : ''}"
                                  data-task-id="${task.id}"
                                  title="${isConfirmedByUser ? 'Tarefa confirmada' : 'Confirmar leitura'}"
@@ -879,12 +879,12 @@ export class IntranetAgendaModule {
                         </button>
                     `;
                 }
-                
+
                 const formattedDate = new Date(task['data/hora']).toLocaleString('pt-BR', {
                     year: 'numeric', month: '2-digit', day: '2-digit',
                     hour: '2-digit', minute: '2-digit'
                 });
-    
+
                 taskElement.innerHTML = `
                     <div class="sispmg-task-content">
                         <div class="sispmg-task-header">
@@ -893,12 +893,12 @@ export class IntranetAgendaModule {
                         </div>
                         <div class="sispmg-task-info">${task.assunto}</div>
                     </div>
-                `;            
+                `;
                 taskListContainer.appendChild(taskElement);
 
                 taskElement.addEventListener('click', (e) => {
                     if (e.target.closest('button')) return;
-                    
+
                     const taskToShow = this.tasks.find(t => t.id === task.id);
                     if (taskToShow && taskToShow.descricao) {
                         this._showTaskDetailsModal(taskToShow);
@@ -914,7 +914,7 @@ export class IntranetAgendaModule {
         if (archivedListContainer) {
             archivedListContainer.innerHTML = this.getArchivedTasksHTML();
             this.addTaskActionListeners(archivedListContainer, true);
-            
+
             // Re-bind click events for modal descriptions
             archivedListContainer.querySelectorAll('.archived-task .sispmg-task-content').forEach(el => {
                 el.addEventListener('click', (e) => {
@@ -928,7 +928,7 @@ export class IntranetAgendaModule {
             });
         }
     }
-    
+
     addTaskActionListeners(container, isModal = false) {
         container.querySelectorAll('.sispmg-task-view-confirmations-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -937,8 +937,8 @@ export class IntranetAgendaModule {
                 const task = this.tasks.find(t => t.id === taskId);
                 if (task) {
                     const confirmedUsers = (task.confirmacoes || '').split('|').filter(u => u);
-                    const message = confirmedUsers.length > 0 
-                        ? `Confirmado por:<br>${confirmedUsers.join(', ')}` 
+                    const message = confirmedUsers.length > 0
+                        ? `Confirmado por:<br>${confirmedUsers.join(', ')}`
                         : 'Nenhuma confirmação registrada para esta tarefa.';
                     this._showAlert(message, 'Lista de Confirmações');
                 }
@@ -959,15 +959,15 @@ export class IntranetAgendaModule {
                 const taskId = e.target.closest('.sispmg-agenda-task').dataset.taskId || e.target.dataset.taskId;
                 const task = this.tasks.find(t => t.id.toString() === taskId.toString());
                 if (task) {
-                    if(isModal) {
+                    if (isModal) {
                         const modalBackdrop = container.closest('.sispmg-alert-modal-backdrop');
-                        if(modalBackdrop) modalBackdrop.remove();
+                        if (modalBackdrop) modalBackdrop.remove();
                     }
                     this.showTaskModal(task);
                 }
             });
         });
-        
+
         container.querySelectorAll('.sispmg-task-user-confirm-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -1041,7 +1041,7 @@ export class IntranetAgendaModule {
         // Amarelo: Todas as outras tarefas futuras (> 3 dias)
         return 3;
     }
-    
+
     sortTasks() {
         this.tasks.sort((a, b) => {
             const categoryA = this.getTaskCategory(a);
@@ -1088,14 +1088,14 @@ export class IntranetAgendaModule {
         const task = this.tasks.find(t => t.id.toString() === taskId.toString());
         if (task) {
             const newConcluidaStatus = !task.concluida;
-            const newDiasValue = newConcluidaStatus ? 0 : ''; 
+            const newDiasValue = newConcluidaStatus ? 0 : '';
 
             task.concluida = newConcluidaStatus;
             task.autoConfirmarDias = newDiasValue;
             this.renderTasks();
 
             const gasUrl = 'https://script.google.com/macros/s/AKfycbyriniVNqgHE206Vzx3_rplOVwSxV2f6HjyAr1zEhmyXoMH_l8AkGLyin1PK4jI0tHe/exec';
-            
+
             sendMessageToBackground('agenda-add-event', {
                 gasUrl: gasUrl,
                 eventData: {
@@ -1121,7 +1121,7 @@ export class IntranetAgendaModule {
         this.loadError = null; // Reseta o estado de erro
         const sheetId = '1wtk0NWpyXPm791PPB2ICoto1YnKyYJ4UCs5JxJIRM_U';
         const sheetName = 'agenda';
-        
+
         // Seleciona todas as tarefas válidas (ID não nulo). As excluídas já foram removidas fisicamente do banco.
         const query = `SELECT * WHERE A IS NOT NULL`;
         const response = await sendMessageToBackground('agenda-fetch-data', {
@@ -1136,9 +1136,9 @@ export class IntranetAgendaModule {
             this.tasks = response.data.filter(row => {
                 const autor = row[4];
                 const abrangencia = row[5] || '';
-                
+
                 const hasAccess = (this.userNumber && this.userNumber === autor.toString()) || checkAbrangencia(abrangencia, this.userData);
-                
+
                 return hasAccess;
 
             }).map(row => {
@@ -1151,14 +1151,14 @@ export class IntranetAgendaModule {
                     concluida = true;
                 } else if (autoConfirmarDiasRaw !== '' && autoConfirmarDiasRaw !== null && !isNaN(parseInt(autoConfirmarDiasRaw, 10))) {
                     autoConfirmarDias = parseInt(autoConfirmarDiasRaw, 10);
-                    
+
                     const dueDateTimestamp = new Date(row[2]).getTime();
                     const dueDate = new Date(dueDateTimestamp);
-                    dueDate.setHours(0, 0, 0, 0); 
+                    dueDate.setHours(0, 0, 0, 0);
                     const deadline = dueDate.setDate(dueDate.getDate() + autoConfirmarDias);
 
                     const today = new Date();
-                    today.setHours(0, 0, 0, 0); 
+                    today.setHours(0, 0, 0, 0);
 
                     if (today.getTime() >= deadline) {
                         concluida = true;
@@ -1185,20 +1185,20 @@ export class IntranetAgendaModule {
             this.loadError = { message: 'Falha ao carregar as tarefas.' }; // Define o estado de erro
         }
     }
-    
+
     async persistTasks() {
         console.warn("SisPMG+ [Agenda]: persistTasks não tem mais efeito. As tarefas são salvas individualmente.");
     }
-    
+
     async loadSettings() {
         const result = await sendMessageToBackground('getStorage', { keys: ['sispmg_agenda_settings'], storageType: 'local' });
-        
+
         const defaultSettings = {
             colors: { expired: '#ff0000', soon: '#ffff00', far: '#008000', completed: '#808080' },
             deadlines: { soon: 3 },
             sortOrder: 'asc'
         };
-        
+
         if (result.success && result.value.sispmg_agenda_settings) {
             const savedSettings = result.value.sispmg_agenda_settings;
             this.settings = {
@@ -1316,7 +1316,7 @@ export class IntranetAgendaModule {
                 </button>
             `;
         } else if (checkAbrangencia(task.abrangencia, this.userData)) {
-             actionButtonsHtml = `
+            actionButtonsHtml = `
                 <button class="sispmg-task-user-confirm-btn sispmg-task-action-btn ${isConfirmedByUser ? 'confirmed' : ''}"
                         data-task-id="${task.id}"
                         title="${isConfirmedByUser ? 'Tarefa confirmada' : 'Confirmar leitura'}"

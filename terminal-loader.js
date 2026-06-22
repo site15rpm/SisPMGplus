@@ -4,6 +4,15 @@
 let terminalModuleInstance = null;
 let checkInterval = null; // Controle do intervalo de verificação
 let iconSVG; // Armazenará o SVG do ícone importado
+let reportarErroGlobal = null;
+
+function logarErro(error) {
+    if (reportarErroGlobal) {
+        reportarErroGlobal(error, 'TERMINAL');
+    } else {
+        console.error('SisPMG+ [Loader]: reportarErroGlobal não inicializado para o erro:', error);
+    }
+}
 
 // Função de inicialização auto-executável que lê a configuração do DOM.
 (async function() {
@@ -34,6 +43,7 @@ function loadScript(url) {
     });
 }
 
+/** Injeta uma folha de estilos. */
 function loadCSS(url) {
     return new Promise((resolve, reject) => {
         const link = document.createElement('link');
@@ -63,6 +73,7 @@ async function loadCodeMirror() {
         ]);
     } catch (error) {
         console.error('SisPMG+: Falha ao carregar scripts do CodeMirror.', error);
+        logarErro(error);
         // Se o CodeMirror não carregar, a funcionalidade do editor será degradada, mas o resto pode funcionar.
     }
 }
@@ -78,7 +89,8 @@ async function main(config) {
     // Inicializa o sistema de comunicação e logs de erros global
     try {
         const comunicacaoUrl = config.iconUrl.replace('icon.js', 'comunicacao.js');
-        const { iniciarComunicacao } = await import(comunicacaoUrl);
+        const { iniciarComunicacao, reportarErro } = await import(comunicacaoUrl);
+        reportarErroGlobal = reportarErro;
         await iniciarComunicacao('TERMINAL');
     } catch (err) {
         console.error('SisPMG+ [Loader]: Falha ao inicializar o canal de comunicação/erros no Terminal.', err);
@@ -125,6 +137,7 @@ async function loadTerminalModule(config) {
         console.log("SisPMG+: Módulo TerminalPMG+ carregado com sucesso.");
     } catch (error) {
         console.error("SisPMG+: Falha ao carregar ou inicializar o módulo do terminal.", error);
+        logarErro(error);
     }
 }
 
