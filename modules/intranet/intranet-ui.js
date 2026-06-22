@@ -363,8 +363,16 @@ export class UIModule {
     async getHeaderMenuContent() {
         let moduleItems = '';
         
-        // SIC3 v3.0 Botão
-        moduleItems += `
+        // SIC3 v3.0 Botão — controlado pela abrangência da planilha (chave: "sic3")
+        const _sic3Permitido = (() => {
+            try {
+                const cached = sessionStorage.getItem('sispmg_modulos_permitidos');
+                if (!cached) return true; // Cache ainda não disponível: exibe por padrão
+                return JSON.parse(cached).includes('sic3');
+            } catch (_) { return true; }
+        })();
+        if (_sic3Permitido) {
+            moduleItems += `
             <div id="sic3-btn" class="sispmg-menu-item">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
                     <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
@@ -372,6 +380,7 @@ export class UIModule {
                 <span>SIC3 v3.0</span>
             </div>
         `;
+        }
 
         const isPrincipalPage = window.location.hostname === 'principal.policiamilitar.mg.gov.br';
         const isSicorPage = window.location.pathname.startsWith('/SICOR/');
