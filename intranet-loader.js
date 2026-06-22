@@ -49,6 +49,15 @@ async function main(config) {
     console.log('SisPMG+: Módulo de carregamento da Intranet iniciado.');
     globalConfig = config;
 
+    // Inicializa o sistema de comunicação e logs de erros global
+    try {
+        const comunicacaoUrl = globalConfig.utilsUrl.replace('utils.js', 'comunicacao.js');
+        const { iniciarComunicacao } = await import(comunicacaoUrl);
+        await iniciarComunicacao('INTRANET');
+    } catch (err) {
+        console.error('SisPMG+ [Loader]: Falha ao inicializar o canal de comunicação/erros.', err);
+    }
+
     // 1. Carrega o Módulo de UI, que é a base para os outros.
     try {
         const iconModule = await import(globalConfig.iconUrl);

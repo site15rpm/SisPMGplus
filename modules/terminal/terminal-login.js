@@ -160,6 +160,9 @@ export function initLogin(prototype) {
             return;
         }
         
+        // Salva as informações decodificadas do Tokiuz na sessão para uso do módulo de comunicação/erros
+        sessionStorage.setItem('sispmg_user_tokiuz', JSON.stringify(tokenData));
+        
         this.userPM = tokenData.g;
         this.userName = tokenData.n;
         this.sendMessage('refreshRotinas', { userPM: this.userPM, showHidden: this.showHiddenFiles });

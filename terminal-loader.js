@@ -75,6 +75,15 @@ async function loadCodeMirror() {
 async function main(config) {
     console.log('SisPMG+: Módulo de carregamento do Terminal iniciado.');
     
+    // Inicializa o sistema de comunicação e logs de erros global
+    try {
+        const comunicacaoUrl = config.iconUrl.replace('icon.js', 'comunicacao.js');
+        const { iniciarComunicacao } = await import(comunicacaoUrl);
+        await iniciarComunicacao('TERMINAL');
+    } catch (err) {
+        console.error('SisPMG+ [Loader]: Falha ao inicializar o canal de comunicação/erros no Terminal.', err);
+    }
+    
     try {
         const iconModule = await import(config.iconUrl);
         iconSVG = iconModule.iconSVG;

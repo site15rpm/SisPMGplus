@@ -109,6 +109,105 @@ browser.runtime.onMessage.addListener((request, sender) => {
                     await browser.tabs.create({ url });
                     return { success: true };
                 }
+                case 'obterMensagens': {
+                    try {
+                        const url = `https://docs.google.com/spreadsheets/d/1UPHe_LHpFR6yyE5_o-3Vb22WT4eDA9YGmxujReDQqxg/gviz/tq?tqx=out:json&sheet=mensagens&_=${Date.now()}`;
+                        const response = await fetch(url);
+                        if (!response.ok) {
+                            throw new Error(`Erro na resposta da planilha: HTTP ${response.status}`);
+                        }
+                        const text = await response.text();
+                        return { success: true, text };
+                    } catch (err) {
+                        console.error('SisPMG+ [Background]: Falha ao buscar mensagens da planilha:', err);
+                        return { success: false, error: err.message };
+                    }
+                }
+                case 'confirmarLeituraMensagem': {
+                    try {
+                        const storageData = await browser.storage.local.get('comunicacaoGasUrl');
+                        const gasUrl = storageData.comunicacaoGasUrl;
+                        if (!gasUrl) {
+                            console.warn('SisPMG+ [Background]: URL do Apps Script de Comunicação não configurada.');
+                            return { success: false, error: 'URL do Apps Script de Comunicação não configurada.' };
+                        }
+                        
+                        const response = await fetch(gasUrl, {
+                            method: 'POST',
+                            mode: 'cors',
+                            headers: {
+                                'Content-Type': 'text/plain;charset=utf-8'
+                            },
+                            body: JSON.stringify({
+                                action: 'confirmarMensagem',
+                                userPM: payload.userPM,
+                                rowIndex: payload.rowIndex,
+                                abrangencia: payload.abrangencia,
+                                mensagem: payload.mensagem
+                            })
+                        });
+                        
+                        if (!response.ok) {
+                            throw new Error(`Erro HTTP ${response.status} ao confirmar leitura.`);
+                        }
+                        
+                        const text = await response.text();
+                        let data;
+                        try {
+                            data = JSON.parse(text);
+                        } catch (e) {
+                            data = { success: true, responseRaw: text };
+                        }
+                        return { success: true, data };
+                    } catch (err) {
+                        console.error('SisPMG+ [Background]: Falha ao gravar confirmação de leitura:', err);
+                        return { success: false, error: err.message };
+                    }
+                }
+                case 'registrarErroPlanilha': {
+                    try {
+                        const storageData = await browser.storage.local.get('comunicacaoGasUrl');
+                        const gasUrl = storageData.comunicacaoGasUrl;
+                        if (!gasUrl) {
+                            console.warn('SisPMG+ [Background]: URL do Apps Script de Comunicação não configurada.');
+                            return { success: false, error: 'URL do Apps Script de Comunicação não configurada.' };
+                        }
+                        
+                        const response = await fetch(gasUrl, {
+                            method: 'POST',
+                            mode: 'cors',
+                            headers: {
+                                'Content-Type': 'text/plain;charset=utf-8'
+                            },
+                            body: JSON.stringify({
+                                action: 'registrarErro',
+                                erro: payload.erro,
+                                sistema: payload.sistema,
+                                pm: payload.pm,
+                                timestamp: payload.timestamp,
+                                navegador: payload.navegador,
+                                infoUsuario: payload.infoUsuario,
+                                infoSistema: payload.infoSistema
+                            })
+                        });
+                        
+                        if (!response.ok) {
+                            throw new Error(`Erro HTTP ${response.status} ao registrar erro.`);
+                        }
+                        
+                        const text = await response.text();
+                        let data;
+                        try {
+                            data = JSON.parse(text);
+                        } catch (e) {
+                            data = { success: true, responseRaw: text };
+                        }
+                        return { success: true, data };
+                    } catch (err) {
+                        console.error('SisPMG+ [Background]: Falha ao registrar erro na planilha:', err);
+                        return { success: false, error: err.message };
+                    }
+                }
                 default:
                     // Se a ação não for conhecida por nenhum módulo nem pelo handler central.
                     console.warn(`SisPMG+ [Background]: Ação desconhecida '${action}'.`);
