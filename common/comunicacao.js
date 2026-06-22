@@ -11,6 +11,7 @@ let mensagensPendentes = [];
 let mensagemAtualIndex = 0;
 const errosReportados = new Set();
 let activeCliqueForaListener = null;
+let activeErroTimer = null;
 
 /**
  * Obtém os dados estruturados do usuário a partir da sessão ou do cookie.
@@ -462,9 +463,15 @@ function garantirModalContainer() {
             backdrop-filter: none !important;
             -webkit-backdrop-filter: none !important;
             pointer-events: none !important;
+            align-items: flex-start !important;
+            justify-content: flex-end !important;
         }
         #sispmg-comunicacao-modal-container.no-overlay .modal-box {
             pointer-events: auto !important;
+            margin-top: 20px !important;
+            margin-right: 20px !important;
+            max-width: 380px !important;
+            box-shadow: 0 10px 25px rgba(87, 78, 45, 0.2) !important;
         }
         #sispmg-comunicacao-modal-container.active {
             opacity: 1 !important;
@@ -638,8 +645,11 @@ function exibirModalErro(detalhesErro, sistema) {
     titleEl.innerText = 'Comunicado do SisPMG+';
     messageEl.innerHTML = `
         <strong style="color: #ef4444;">Um erro ocorreu durante a execução da extensão.</strong><br><br>
-        O erro já foi enviado automaticamente ao administrador e será analisado para correção.<br><br>
-        <span style="font-size: 12px; color: #718096; display: block; max-height: 80px; overflow-y: auto; text-align: left; font-family: monospace;">
+        O erro já foi enviado automaticamente ao administrador e será analisado para correção.<br>
+        <span style="font-size: 13px; color: #857444; display: block; margin-top: 8px;">
+            Se o erro persistir, você pode enviar uma mensagem via PA para o número <strong>1453208</strong>.
+        </span><br>
+        <span style="font-size: 11px; color: #718096; display: block; max-height: 70px; overflow-y: auto; text-align: left; font-family: monospace; border: 1px solid rgba(87,78,45,0.15); padding: 5px; border-radius: 4px;">
             Detalhes: ${detalhesErro}
         </span>
     `;
@@ -678,6 +688,40 @@ function exibirModalErro(detalhesErro, sistema) {
     setTimeout(() => {
         modalContainer.classList.add('active');
     }, 10);
+
+    // --- TEMPORIZADOR INTELIGENTE DE FECHAMENTO AUTOMÁTICO ---
+    if (activeErroTimer) {
+        clearTimeout(activeErroTimer);
+    }
+
+    const fecharAutomaticamente = (tempoMs) => {
+        activeErroTimer = setTimeout(() => {
+            fecharModalGeral();
+            if (mensagemAtualIndex < mensagensPendentes.length) {
+                exibirProximaMensagem(sistema);
+            }
+        }, tempoMs);
+    };
+
+    // Inicia temporizador padrão de 8 segundos
+    fecharAutomaticamente(8000);
+
+    const modalBox = modalContainer.querySelector('.modal-box');
+    if (modalBox) {
+        modalBox.onmouseenter = () => {
+            if (activeErroTimer) {
+                clearTimeout(activeErroTimer);
+                activeErroTimer = null;
+                console.log('SisPMG+ [Comunicação]: Fechamento automático suspenso (mouse sobre o alerta).');
+            }
+        };
+        modalBox.onmouseleave = () => {
+            if (!activeErroTimer) {
+                fecharAutomaticamente(4000); // 4 segundos adicionais após a saída do cursor
+                console.log('SisPMG+ [Comunicação]: Fechamento automático retomado (mouse saiu do alerta).');
+            }
+        };
+    }
 }
 
 /**
@@ -693,8 +737,20 @@ function fecharModalGeral() {
         document.removeEventListener('click', activeCliqueForaListener, true);
         activeCliqueForaListener = null;
     }
+
+    // Limpa o timer de fechamento de erro se houver
+    if (activeErroTimer) {
+        clearTimeout(activeErroTimer);
+        activeErroTimer = null;
+    }
     
     setTimeout(() => {
         modalContainer.style.setProperty('display', 'none', 'important');
+        // Limpa listeners da modalBox de erro para evitar vazamento de memória
+        const modalBox = modalContainer.querySelector('.modal-box');
+        if (modalBox) {
+            modalBox.onmouseenter = null;
+            modalBox.onmouseleave = null;
+        }
     }, 200);
 }
