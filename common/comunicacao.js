@@ -207,6 +207,13 @@ async function verificarMensagens(userData) {
         const parsedData = parseGoogleSheetResponse(response.text);
         if (!parsedData || parsedData.length === 0) return;
 
+        // Busca as confirmações gravadas localmente no storage para evitar exibição redundante
+        const chavesParaBuscar = parsedData.map((_, i) => `confirmado_local_${i + 2}`);
+        const chavesConfirmadasLocais = await sendMessageToBackground('getStorage', {
+            keys: chavesParaBuscar
+        });
+        const confirmadosLocais = chavesConfirmadasLocais?.value || {};
+
         mensagensPendentes = [];
         mensagemAtualIndex = 0;
 
@@ -226,8 +233,10 @@ async function verificarMensagens(userData) {
             // Verifica se o usuário atende à abrangência
             if (checkAbrangencia(abrangencia, userData)) {
                 const listaConfirmados = confirmacoes.split('|').map(pm => pm.trim());
-                // Se o usuário ainda não confirmou a leitura
-                if (listaConfirmados.indexOf(userData.g) === -1) {
+                const jaConfirmouLocal = confirmadosLocais[`confirmado_local_${rowIndexFisico}`] === true;
+
+                // Se o usuário ainda não confirmou a leitura na planilha e nem localmente
+                if (listaConfirmados.indexOf(userData.g) === -1 && !jaConfirmouLocal) {
                     mensagensPendentes.push({
                         abrangencia: abrangencia,
                         mensagem: mensagem,
@@ -257,6 +266,13 @@ function exibirProximaMensagem() {
 
     const msgObj = mensagensPendentes[mensagemAtualIndex];
     exibirModalMensagemElement(msgObj.mensagem, () => {
+        // Grava localmente a confirmação para evitar reexibição imediata em recarregamentos de página
+        sendMessageToBackground('setStorage', {
+            [`confirmado_local_${msgObj.rowIndex}`]: true
+        }).catch(err => {
+            console.error(`SisPMG+ [Comunicação]: Falha ao registrar confirmação local para a linha ${msgObj.rowIndex}:`, err);
+        });
+
         // Gravação da confirmação de leitura em segundo plano
         sendMessageToBackground('confirmarLeituraMensagem', {
             userPM: msgObj.userPM,
