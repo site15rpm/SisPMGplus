@@ -464,13 +464,13 @@ function garantirModalContainer() {
             -webkit-backdrop-filter: none !important;
             pointer-events: none !important;
             align-items: flex-start !important;
-            justify-content: flex-end !important;
+            justify-content: flex-start !important;
         }
         #sispmg-comunicacao-modal-container.no-overlay .modal-box {
             pointer-events: auto !important;
             margin-top: 20px !important;
-            margin-right: 20px !important;
-            max-width: 380px !important;
+            margin-left: 20px !important;
+            max-width: 480px !important;
             box-shadow: 0 10px 25px rgba(87, 78, 45, 0.2) !important;
         }
         #sispmg-comunicacao-modal-container.active {
@@ -615,6 +615,7 @@ function exibirModalMensagemElement(mensagem, onConfirm) {
     confirmBtn.className = 'modal-btn info';
     confirmBtn.innerText = 'Confirmar Leitura';
     confirmBtn.disabled = false;
+    confirmBtn.style.setProperty('display', 'inline-block', 'important');
     errorInfo.style.display = 'none';
 
     confirmBtn.onclick = onConfirm;
@@ -657,6 +658,7 @@ function exibirModalErro(detalhesErro, sistema) {
     confirmBtn.className = 'modal-btn error';
     confirmBtn.innerText = 'Fechar';
     confirmBtn.disabled = false;
+    confirmBtn.style.setProperty('display', 'none', 'important');
     errorInfo.style.display = 'none';
 
     confirmBtn.onclick = () => {
