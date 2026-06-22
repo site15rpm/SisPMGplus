@@ -9,6 +9,7 @@ let estaReportandoErro = false;
 let modalContainer = null;
 let mensagensPendentes = [];
 let mensagemAtualIndex = 0;
+const errosReportados = new Set();
 
 /**
  * Obtém os dados estruturados do usuário a partir da sessão ou do cookie.
@@ -158,6 +159,15 @@ function isExtensionError(error, contextString) {
  * Reporta o erro para a planilha e exibe o modal informativo para o usuário.
  */
 export async function reportarErro(error, sistema) {
+    const erroMsg = error ? (error.stack || error.message || String(error)) : 'Erro indefinido';
+    const chaveErro = `${sistema}:${erroMsg}`;
+
+    if (errosReportados.has(chaveErro)) {
+        console.warn(`SisPMG+ [Comunicação]: Erro já reportado nesta sessão: ${chaveErro}`);
+        return;
+    }
+    errosReportados.add(chaveErro);
+
     console.error(`SisPMG+ [Comunicação] Capturado erro no sistema ${sistema}:`, error);
 
     const timestamp = new Date().toISOString();
