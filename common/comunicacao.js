@@ -300,31 +300,31 @@ function garantirModalContainer() {
             left: 0 !important;
             width: 100vw !important;
             height: 100vh !important;
-            background: rgba(10, 10, 15, 0.75) !important;
-            backdrop-filter: blur(8px) !important;
-            -webkit-backdrop-filter: blur(8px) !important;
+            background: rgba(87, 78, 45, 0.45) !important;
+            backdrop-filter: blur(4px) !important;
+            -webkit-backdrop-filter: blur(4px) !important;
             z-index: 200000 !important;
-            display: flex !important;
+            display: none !important;
             align-items: center !important;
             justify-content: center !important;
             font-family: system-ui, -apple-system, sans-serif !important;
             opacity: 0 !important;
-            transition: opacity 0.3s ease !important;
+            transition: opacity 0.2s ease-in-out !important;
         }
         #sispmg-comunicacao-modal-container.active {
             opacity: 1 !important;
         }
         #sispmg-comunicacao-modal-container .modal-box {
-            background: #121214 !important;
-            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            background: #EFE6DD !important;
+            border: 1px solid #b3a368 !important;
             border-radius: 16px !important;
             width: 90% !important;
             max-width: 480px !important;
             padding: 30px !important;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6) !important;
+            box-shadow: 0 10px 30px rgba(87, 78, 45, 0.3) !important;
             transform: scale(0.9) !important;
-            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
-            color: #f1f1f7 !important;
+            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+            color: #574e2d !important;
             text-align: center !important;
             box-sizing: border-box !important;
         }
@@ -339,73 +339,71 @@ function garantirModalContainer() {
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3) !important;
+            box-shadow: 0 4px 10px rgba(87, 78, 45, 0.15) !important;
+            background: #ffffff !important;
+            border: 2px solid #b3a368 !important;
             transition: all 0.3s ease !important;
         }
-        #sispmg-comunicacao-modal-container .modal-icon.info {
-            background: linear-gradient(135deg, #2563eb, #7c3aed) !important;
-            box-shadow: 0 8px 16px rgba(124, 58, 237, 0.3) !important;
-        }
         #sispmg-comunicacao-modal-container .modal-icon.error {
-            background: linear-gradient(135deg, #ef4444, #b91c1c) !important;
-            box-shadow: 0 8px 16px rgba(239, 68, 68, 0.3) !important;
+            border-color: #ef4444 !important;
+            box-shadow: 0 4px 10px rgba(239, 68, 68, 0.2) !important;
         }
         #sispmg-comunicacao-modal-container .modal-icon svg {
-            width: 32px !important;
-            height: 32px !important;
-            fill: #fff !important;
+            width: 44px !important;
+            height: 44px !important;
         }
         #sispmg-comunicacao-modal-container .modal-title {
             font-size: 20px !important;
             font-weight: 700 !important;
             margin: 0 0 12px 0 !important;
-            color: #fff !important;
+            color: #574e2d !important;
             letter-spacing: -0.5px !important;
             line-height: 1.3 !important;
         }
         #sispmg-comunicacao-modal-container .modal-text {
             font-size: 14px !important;
             line-height: 1.6 !important;
-            color: #a0aec0 !important;
+            color: #574e2d !important;
             margin: 0 0 24px 0 !important;
             text-align: left !important;
-            background: rgba(255, 255, 255, 0.03) !important;
+            background: rgba(255, 255, 255, 0.6) !important;
             padding: 15px !important;
             border-radius: 8px !important;
-            border: 1px solid rgba(255, 255, 255, 0.05) !important;
+            border: 1px solid #dcd3c5 !important;
             max-height: 200px !important;
             overflow-y: auto !important;
             word-break: break-word !important;
         }
         #sispmg-comunicacao-modal-container .modal-btn {
             color: #fff !important;
-            border: none !important;
-            padding: 12px 30px !important;
+            border: 1px solid #574e2d !important;
+            padding: 10px 24px !important;
             font-size: 14px !important;
             font-weight: 600 !important;
-            border-radius: 8px !important;
+            border-radius: 6px !important;
             cursor: pointer !important;
             transition: all 0.2s ease !important;
             outline: none !important;
             display: inline-block !important;
         }
         #sispmg-comunicacao-modal-container .modal-btn.info {
-            background: linear-gradient(135deg, #2563eb, #7c3aed) !important;
-            box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3) !important;
+            background: #b3a368 !important;
+            box-shadow: 0 2px 6px rgba(87, 78, 45, 0.2) !important;
         }
         #sispmg-comunicacao-modal-container .modal-btn.info:hover {
-            transform: translateY(-2px) !important;
-            box-shadow: 0 6px 16px rgba(124, 58, 237, 0.4) !important;
-            filter: brightness(1.1) !important;
+            background: #9d8e57 !important;
+            transform: translateY(-1px) !important;
+            box-shadow: 0 4px 10px rgba(87, 78, 45, 0.3) !important;
         }
         #sispmg-comunicacao-modal-container .modal-btn.error {
             background: #ef4444 !important;
-            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3) !important;
+            border-color: #b91c1c !important;
+            box-shadow: 0 2px 6px rgba(239, 68, 68, 0.2) !important;
         }
         #sispmg-comunicacao-modal-container .modal-btn.error:hover {
-            transform: translateY(-2px) !important;
-            box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4) !important;
-            filter: brightness(1.1) !important;
+            background: #dc2626 !important;
+            transform: translateY(-1px) !important;
+            box-shadow: 0 4px 10px rgba(239, 68, 68, 0.3) !important;
         }
         #sispmg-comunicacao-modal-container .modal-btn:active {
             transform: translateY(0) !important;
@@ -413,7 +411,7 @@ function garantirModalContainer() {
         #sispmg-comunicacao-modal-container .modal-error-badge {
             font-size: 12px !important;
             color: #ef4444 !important;
-            background: rgba(239, 68, 68, 0.1) !important;
+            background: rgba(239, 68, 68, 0.08) !important;
             padding: 6px 10px !important;
             border-radius: 6px !important;
             display: inline-block !important;
@@ -448,11 +446,9 @@ function exibirModalMensagemElement(mensagem, onConfirm) {
     const confirmBtn = document.getElementById('sispmg-modal-confirm-btn');
     const errorInfo = document.getElementById('sispmg-modal-error-info');
 
-    // Configura o ícone e cores para mensagem
+    // Configura o ícone com o SVG oficial da extensão
     iconContainer.className = 'modal-icon info';
-    iconContainer.innerHTML = `
-        <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg>
-    `;
+    iconContainer.innerHTML = iconSVG;
 
     titleEl.innerText = 'Comunicado Administrativo';
     messageEl.innerHTML = mensagem.replace(/\n/g, '<br>');
@@ -463,9 +459,8 @@ function exibirModalMensagemElement(mensagem, onConfirm) {
 
     confirmBtn.onclick = onConfirm;
 
-    // Efeito de fade-in
-    modalContainer.style.display = 'flex';
-    // Pequeno timeout para disparar transição de CSS
+    // Efeito de fade-in com controle estrito do display
+    modalContainer.style.setProperty('display', 'flex', 'important');
     setTimeout(() => {
         modalContainer.classList.add('active');
     }, 10);
@@ -483,11 +478,9 @@ function exibirModalErro(detalhesErro) {
     const confirmBtn = document.getElementById('sispmg-modal-confirm-btn');
     const errorInfo = document.getElementById('sispmg-modal-error-info');
 
-    // Configura o ícone e cores para erro
+    // Configura o ícone com o SVG oficial da extensão (borda vermelha de erro aplicada no CSS)
     iconContainer.className = 'modal-icon error';
-    iconContainer.innerHTML = `
-        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 12 10 10-4.48 10-12S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
-    `;
+    iconContainer.innerHTML = iconSVG;
 
     titleEl.innerText = 'Ocorreu um Erro Inesperado';
     messageEl.innerHTML = `
@@ -511,20 +504,20 @@ function exibirModalErro(detalhesErro) {
         }
     };
 
-    // Efeito de fade-in
-    modalContainer.style.display = 'flex';
+    // Efeito de fade-in com controle estrito do display
+    modalContainer.style.setProperty('display', 'flex', 'important');
     setTimeout(() => {
         modalContainer.classList.add('active');
     }, 10);
 }
 
 /**
- * Fecha o modal com transição suave.
+ * Fecha o modal com transição suave e remove o display de overlay.
  */
 function fecharModalGeral() {
     if (!modalContainer) return;
     modalContainer.classList.remove('active');
     setTimeout(() => {
-        modalContainer.style.display = 'none';
-    }, 300);
+        modalContainer.style.setProperty('display', 'none', 'important');
+    }, 200);
 }
