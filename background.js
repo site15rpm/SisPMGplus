@@ -164,6 +164,7 @@ browser.runtime.onMessage.addListener((request, sender) => {
                 case 'registrarErroPlanilha': {
                     try {
                         const gasUrl = GAS_URL;
+                        const versaoExtensao = browser.runtime.getManifest().version;
 
                         const response = await fetch(gasUrl, {
                             method: 'POST',
@@ -174,12 +175,12 @@ browser.runtime.onMessage.addListener((request, sender) => {
                             body: JSON.stringify({
                                 action: 'registrarErro',
                                 erro: payload.erro,
-                                sistema: payload.sistema,
-                                pm: payload.pm,
+                                url: payload.url,
                                 timestamp: payload.timestamp,
                                 navegador: payload.navegador,
                                 infoUsuario: payload.infoUsuario,
-                                infoSistema: payload.infoSistema
+                                versao: versaoExtensao,
+                                infoDepuracao: payload.infoDepuracao
                             })
                         });
 
