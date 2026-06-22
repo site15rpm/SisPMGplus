@@ -3,6 +3,7 @@
 
 import { getCookie, decodeJwt, checkAbrangencia, sendMessageToBackground } from './utils.js';
 import { parseGoogleSheetResponse } from './google-sheets.js';
+import { iconSVG } from './icon.js';
 
 let estaReportandoErro = false;
 let modalContainer = null;
