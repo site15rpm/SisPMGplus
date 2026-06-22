@@ -294,13 +294,19 @@ export class UIModule {
         }
 
         try {
-            const url = "https://docs.google.com/spreadsheets/d/1e93QrFOFFHRhuq1_5J6scH_JTAEWe4Rk-mIZ1SYaQ1s/gviz/tq?tqx=out:json&tq&sheet=links&_=" + new Date().getTime();
-            const response = await fetch(url);
-            if (!response.ok) {
-                throw new Error('Falha ao buscar links da planilha.');
+            const sheetId = '1e93QrFOFFHRhuq1_5J6scH_JTAEWe4Rk-mIZ1SYaQ1s';
+            const sheetName = 'links';
+            
+            const response = await sendMessageToBackground('obterPlanilhaGviz', {
+                sheetId: sheetId,
+                sheetName: sheetName
+            });
+
+            if (!response || !response.success) {
+                throw new Error(response?.error || 'Falha ao buscar links dinâmicos via background.');
             }
             
-            let text = await response.text();
+            let text = response.text;
             
             // Aplicar a lógica de limpeza do usuário
             let jsonString = text.substring(47).slice(0, -2);
@@ -356,6 +362,12 @@ export class UIModule {
 
         } catch (e) {
             console.error("SisPMG+ [UI]: Erro ao carregar links dinâmicos.", e);
+            try {
+                const { reportarErro } = await import('../../common/comunicacao.js');
+                reportarErro(e, 'INTRANET');
+            } catch (reportErr) {
+                console.error("Falha ao reportar erro da UI para a planilha:", reportErr);
+            }
             return '<div class="sispmg-menu-item sispmg-menu-error">Erro ao carregar links.</div>';
         }
     }
