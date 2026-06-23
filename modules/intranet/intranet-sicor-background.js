@@ -5,6 +5,19 @@ import * as XLSX from '../lib/sheetjs/xlsx.mjs';
 import { fetchWithKeepAlive } from '../../common/keep-alive.js';
 import { sendMessageToOffscreen, closeOffscreenDocument } from './intranet-offscreen.js';
 
+/**
+ * Verifica se o usuário atual logado está autorizado a utilizar o módulo SICOR.
+ */
+async function isSicorAuthorized() {
+    try {
+        const res = await browser.storage.local.get('sispmg_modulos_autorizados');
+        const modulos = res.sispmg_modulos_autorizados;
+        return Array.isArray(modulos) && modulos.includes('sicor');
+    } catch (e) {
+        return false;
+    }
+}
+
 // --- Constantes ---
 const SICOR_ALARM_SCHEDULER_CHECK = 'sicor-scheduler-check'; // Nome do alarme periódico
 const STORAGE_SETTINGS_KEY = 'sicorSettings';
@@ -20,6 +33,7 @@ let isUserLoggedIn = false; // Flag para controlar o status de login
 
 // --- FUNÇÕES DE LOG ---
 const addSicorLog = async (message, system = 'SICOR', type = 'info') => {
+    if (!(await isSicorAuthorized())) return;
     try {
         const timestamp = new Date().toLocaleString('pt-BR');
         const logEntry = { timestamp, system, message, type };
@@ -90,7 +104,44 @@ function _getScheduledDateRange(settings) {
 export async function handleSicorMessages(request, sender) {
     const { action, payload } = request;
 
+    // Filtra e bloqueia requisições do SICOR se o usuário não for autorizado
+    const sicorActions = [
+        'sicor-get-settings',
+        'sicor-save-settings',
+        'sicor-clear-logs',
+        'sicor-user-is-logged-in',
+        'sicor-fetch-units',
+        'sicor-log-feedback',
+        'sicor-extract-now'
+    ];
+    if (sicorActions.includes(action)) {
+        if (!(await isSicorAuthorized())) {
+            return { success: false, error: 'Usuário não autorizado a utilizar o módulo SICOR.' };
+        }
+    }
+
     switch (action) {
+        case 'intranet-user-identified': {
+            isUserLoggedIn = true;
+            (async () => {
+                try {
+                    if (await isSicorAuthorized()) {
+                        await addSicorLog('Sinal de login detectado para usuário autorizado do SICOR. Inicializando agendamentos...', 'SISTEMA', 'info');
+                        const res = await browser.storage.local.get(STORAGE_SETTINGS_KEY);
+                        const settings = res[STORAGE_SETTINGS_KEY] || {};
+                        await scheduleNextSicorExtraction(settings);
+                        await runScheduledSicorExtractionIfNeeded();
+                    } else {
+                        // Se não for autorizado, garante que agendamentos antigos sejam limpos
+                        await browser.alarms.clear(SICOR_ALARM_SCHEDULER_CHECK);
+                        await browser.storage.local.remove(SICOR_STORAGE_SCHEDULE_KEY);
+                    }
+                } catch (e) {
+                    console.error("SisPMG+ [SICOR Background]: Erro ao inicializar agendamentos no login.", e);
+                }
+            })();
+            break; // Permite que outros handlers processem
+        }
         case 'sicor-get-settings': {
             const { [STORAGE_SETTINGS_KEY]: settings, [STORAGE_LOGS_KEY]: logs } = await browser.storage.local.get([STORAGE_SETTINGS_KEY, STORAGE_LOGS_KEY]);
             return { settings: settings || {}, logs: logs || [] };
@@ -310,6 +361,9 @@ async function scheduleNextSicorExtraction(config) {
 }
 
 async function runScheduledSicorExtractionIfNeeded() {
+    if (!(await isSicorAuthorized())) {
+        return;
+    }
     if (isExtractionRunning) {
         console.log("SisPMG+ [SICOR Agendador]: Extração agendada ignorada, processo já em andamento.");
         return;
@@ -742,6 +796,7 @@ async function syncWithGoogleScript(gasId, csvData) {
 // --- INICIALIZAÇÃO E LISTENERS DA EXTENSÃO ---
 export function initializeSicorBackground() {
     browser.runtime.onInstalled.addListener(async (details) => {
+        if (!(await isSicorAuthorized())) return;
         await addSicorLog(`Evento onInstalled: ${details.reason}`, 'SISTEMA');
         const { [STORAGE_SETTINGS_KEY]: currentConfig } = await browser.storage.local.get(STORAGE_SETTINGS_KEY);
         let config = currentConfig || {}; // Garante que config seja um objeto
@@ -782,12 +837,14 @@ export function initializeSicorBackground() {
     });
 
     browser.runtime.onStartup.addListener(async () => {
+        if (!(await isSicorAuthorized())) return;
         await addSicorLog('Navegador iniciado. Verificando agendamentos...', 'SISTEMA');
         await runScheduledSicorExtractionIfNeeded(); // Verifica se perdeu alguma execução
     });
 
     browser.alarms.onAlarm.addListener(async (alarm) => {
         if (alarm.name === SICOR_ALARM_SCHEDULER_CHECK) {
+            if (!(await isSicorAuthorized())) return;
             await runScheduledSicorExtractionIfNeeded(); // Verifica se é hora de rodar
         }
     });

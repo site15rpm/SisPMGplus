@@ -64,6 +64,7 @@ async function main(config) {
     const isAuthPage = path.includes('/autenticacaosso/') || path.includes('/autenticacao/');
     if (isAuthPage) {
         console.log('SisPMG+ [Loader]: Página de autenticação/SSO detectada. Abortando inicialização.');
+        sendMessageToBackground('removeStorage', { keys: ['sispmg_modulos_autorizados'] }).catch(() => {});
         return;
     }
 
@@ -82,12 +83,14 @@ async function main(config) {
     const token = getCookieFunc ? getCookieFunc('tokiuz') : null;
     if (!token) {
         console.log('SisPMG+ [Loader]: Token "tokiuz" não encontrado (usuário não autenticado). Abortando inicialização.');
+        sendMessageToBackground('removeStorage', { keys: ['sispmg_modulos_autorizados'] }).catch(() => {});
         return;
     }
 
     const decoded = decodeJwtFunc ? decodeJwtFunc(token) : null;
     if (!decoded || !decoded.g) {
         console.log('SisPMG+ [Loader]: Token "tokiuz" inválido ou sem identificação de usuário. Abortando inicialização.');
+        sendMessageToBackground('removeStorage', { keys: ['sispmg_modulos_autorizados'] }).catch(() => {});
         return;
     }
 
@@ -137,6 +140,9 @@ async function main(config) {
             allowedModules = permitidos;
             if (allowedModules) {
                 console.log('SisPMG+ [Loader]: Módulos permitidos carregados:', [...allowedModules]);
+                sendMessageToBackground('setStorage', { 
+                    sispmg_modulos_autorizados: [...allowedModules] 
+                }).catch(() => {});
             } else {
                 console.log('SisPMG+ [Loader]: Falha ao carregar módulos permitidos. Liberando tudo como fallback.');
             }
@@ -158,6 +164,11 @@ async function main(config) {
                 console.log('SisPMG+ [Loader]: Atualização de abrangência de módulos recebida. Atualizando...');
                 fetchModulosPermitidos().then(permitidos => {
                     allowedModules = permitidos;
+                    if (allowedModules) {
+                        sendMessageToBackground('setStorage', { 
+                            sispmg_modulos_autorizados: [...allowedModules] 
+                        }).catch(() => {});
+                    }
                     checkAllModules();
                 });
             }
