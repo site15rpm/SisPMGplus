@@ -792,7 +792,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (!authorized) {
         console.warn("[SIC3 v3.0 Log] [Acesso Negado] Tentativa de acesso direto à página do SIC3 detectada.");
         
-        // Renderiza tela de acesso negado de alta qualidade estética
+        // Renderiza tela de acesso negado de alta qualidade estética integrada ao design do SisPMG+
         document.body.innerHTML = `
             <div style="
                 display: flex;
@@ -800,7 +800,7 @@ window.addEventListener('DOMContentLoaded', async () => {
                 align-items: center;
                 justify-content: center;
                 height: 100vh;
-                background: radial-gradient(circle, #1a252f 0%, #0f171e 100%);
+                background: radial-gradient(circle, #1a2230 0%, #0c1017 100%);
                 color: #ffffff;
                 font-family: 'Outfit', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
                 text-align: center;
@@ -808,52 +808,110 @@ window.addEventListener('DOMContentLoaded', async () => {
                 box-sizing: border-box;
             ">
                 <div style="
-                    background: rgba(255, 255, 255, 0.03);
-                    border: 1px solid rgba(255, 255, 255, 0.08);
+                    background: rgba(30, 41, 59, 0.45);
+                    border: 1px solid rgba(179, 163, 104, 0.25);
                     border-radius: 16px;
                     padding: 40px 30px;
                     max-width: 500px;
                     width: 100%;
-                    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-                    backdrop-filter: blur(10px);
+                    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+                    backdrop-filter: blur(12px);
+                    -webkit-backdrop-filter: blur(12px);
                 ">
-                    <div style="font-size: 64px; margin-bottom: 20px; color: #e74c3c;">🚫</div>
-                    <h2 style="font-size: 24px; font-weight: 600; margin-bottom: 15px; letter-spacing: 0.5px; color: #f5f6fa;">Acesso Restrito</h2>
-                    <p style="font-size: 15px; line-height: 1.6; color: #bdc3c7; margin-bottom: 25px;">
+                    <!-- Ícone SVG da Extensão -->
+                    <div style="display: flex; justify-content: center; margin-bottom: 25px;">
+                        <svg width="80" height="80" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg" style="font-family: 'Inter', sans-serif; border-radius: 18px; box-shadow: 0 8px 24px rgba(0,0,0,0.45);">
+                            <defs>
+                                <linearGradient id="gradBg-128" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#574e2d;"/><stop offset="100%" style="stop-color:#b3a368;"/></linearGradient>
+                                <linearGradient id="gradItem0-128" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" style="stop-color:#b3a368;"/><stop offset="100%" style="stop-color:#efe6dd;"/></linearGradient>
+                                <filter id="shadowItem0-128" x="-50%" y="-50%" width="200%" height="200%"><feDropShadow dx="3" dy="0" stdDeviation="1" flood-color="#000000" flood-opacity="0.45"/></filter>
+                                <linearGradient id="gradItem1-128" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" style="stop-color:#000000;"/><stop offset="100%" style="stop-color:#efe6dd;"/></linearGradient>
+                                <filter id="shadowItem1-128" x="-50%" y="-50%" width="200%" height="200%"><feDropShadow dx="1" dy="1" stdDeviation="0" flood-color="#000000" flood-opacity="1"/></filter>
+                                <linearGradient id="gradItem2-128" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" style="stop-color:#51ff51;"/><stop offset="100%" style="stop-color:#00d200;"/></linearGradient>
+                                <filter id="shadowItem2-128" x="-50%" y="-50%" width="200%" height="200%"><feDropShadow dx="1" dy="1" stdDeviation="0" flood-color="#000000" flood-opacity="1"/></filter>
+                                <linearGradient id="gradItem3-128" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" style="stop-color:#333333;"/><stop offset="100%" style="stop-color:#efe6dd;"/></linearGradient>
+                                <filter id="shadowItem3-128" x="-50%" y="-50%" width="200%" height="200%"><feDropShadow dx="1" dy="1" stdDeviation="0" flood-color="#000000" flood-opacity="1"/></filter>
+                            </defs>
+                            <rect width="128" height="128" rx="28" fill="url(#gradBg-128)" opacity="1"/>
+                            <g transform="scale(1.28)">
+                                <text x="39" y="85" font-family="'Inter', sans-serif" font-size="105" font-weight="800" fill="url(#gradItem0-128)" text-anchor="middle" style="filter: url(#shadowItem0-128);" opacity="1" stroke="#1e293b" stroke-width="1">S</text>
+                                <text x="25" y="94" font-family="'Inter', sans-serif" font-size="27" font-weight="800" fill="url(#gradItem1-128)" text-anchor="middle" style="filter: url(#shadowItem1-128);" opacity="1" stroke="#000000" stroke-width="0">P</text>
+                                <text x="75" y="94" font-family="'Inter', sans-serif" font-size="27" font-weight="800" fill="url(#gradItem1-128)" text-anchor="middle" style="filter: url(#shadowItem1-128);" opacity="1" stroke="#000000" stroke-width="0">G</text>
+                                <text x="79" y="72" font-family="'Inter', sans-serif" font-size="62" font-weight="900" fill="url(#gradItem2-128)" text-anchor="middle" style="filter: url(#shadowItem2-128);" opacity="1" stroke="#000000" stroke-width="0">+</text>
+                                <text x="48" y="94" font-family="'Inter', sans-serif" font-size="30" font-weight="800" fill="url(#gradItem3-128)" text-anchor="middle" style="filter: url(#shadowItem3-128);" opacity="1" stroke="#000000" stroke-width="0">M</text>
+                            </g>
+                        </svg>
+                    </div>
+
+                    <h2 style="font-size: 24px; font-weight: 600; margin-bottom: 15px; letter-spacing: 0.5px; color: #b3a368;">Acesso Restrito</h2>
+                    <p style="font-size: 15px; line-height: 1.6; color: #e2e8f0; margin-bottom: 25px;">
                         Por razões de segurança, o módulo <strong>SIC3 v3.0</strong> não pode ser acessado diretamente por URL ou favoritos.
                     </p>
                     <div style="
-                        background: rgba(231, 76, 60, 0.1);
-                        border-left: 4px solid #e74c3c;
+                        background: rgba(179, 163, 104, 0.08);
+                        border-left: 4px solid #b3a368;
                         padding: 12px 15px;
                         border-radius: 4px;
                         font-size: 13.5px;
-                        color: #ff7675;
+                        color: #efe6dd;
                         text-align: left;
                         margin-bottom: 25px;
                         line-height: 1.5;
                     ">
                         <strong>Como acessar:</strong> Faça login na Intranet da PM e clique no botão de acesso do SIC3 através do painel do SisPMG+.
                     </div>
-                    <button onclick="window.close()" style="
-                        background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
-                        color: white;
+                    <button id="sic3-close-tab-btn" style="
+                        background: linear-gradient(135deg, #574e2d 0%, #b3a368 100%);
+                        color: #0d1117;
                         border: none;
                         padding: 12px 25px;
                         font-size: 14px;
-                        font-weight: 500;
+                        font-weight: 700;
                         border-radius: 8px;
                         cursor: pointer;
-                        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+                        box-shadow: 0 4px 15px rgba(179, 163, 104, 0.25);
                         transition: all 0.3s ease;
                         font-family: inherit;
                         width: 100%;
-                    " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(0,0,0,0.3)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(0,0,0,0.2)'">
+                    " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(179, 163, 104, 0.4)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(179, 163, 104, 0.25)'">
                         Fechar Aba
                     </button>
                 </div>
             </div>
         `;
+
+        // Associa o evento de clique para fechar a aba de forma robusta
+        const closeBtn = document.getElementById('sic3-close-tab-btn');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                try {
+                    if (typeof browser !== 'undefined' && browser.tabs && browser.tabs.getCurrent) {
+                        browser.tabs.getCurrent().then(tab => {
+                            if (tab) {
+                                browser.tabs.remove(tab.id);
+                            } else {
+                                window.close();
+                            }
+                        }).catch(() => {
+                            window.close();
+                        });
+                    } else if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.getCurrent) {
+                        chrome.tabs.getCurrent(tab => {
+                            if (tab) {
+                                chrome.tabs.remove(tab.id);
+                            } else {
+                                window.close();
+                            }
+                        });
+                    } else {
+                        window.close();
+                    }
+                } catch (e) {
+                    console.error("Erro ao fechar a aba:", e);
+                    window.close();
+                }
+            });
+        }
         return;
     }
 
