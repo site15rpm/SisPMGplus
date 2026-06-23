@@ -38,11 +38,11 @@ Ao receber o comando "compacte os arquivos para atualização na webstore", siga
 1. **Limpeza:** Remova pacotes `.zip` antigos do diretório raiz.
 2. **Pacote Chrome (`SisPMGplus.chrome.zip`):**
    - Inclua todos os arquivos do projeto.
-   - **Exclua:** `manifest-firefox.json`, `gemini.md`, `README.md`, diretório `.git` e qualquer outro arquivo de documentação ou configuração de IA.
+   - **Exclua:** `manifest-firefox.json`, `gemini.md`, `README.md`, diretório `.git`, pasta `gas-backend` e qualquer outro arquivo de documentação ou configuração de IA.
    - O arquivo `manifest.json` deve ser mantido como o manifesto principal.
 3. **Pacote Firefox (`SisPMGplus.firefox.zip`):**
    - Inclua todos os arquivos do projeto.
-   - **Exclua:** `manifest.json`, `gemini.md`, `README.md`, diretório `.git`.
+   - **Exclua:** `manifest.json`, `gemini.md`, `README.md`, diretório `.git`, pasta `gas-backend`.
    - **Ação Especial:** Renomeie o arquivo `manifest-firefox.json` para `manifest.json` dentro do pacote (este será o manifesto lido pelo Firefox).
 4. Ferramenta: Utilize o comando `tar -a -c -f arquivo.zip *` dentro de pastas temporárias para garantir que os caminhos internos usem barras normais (`/`) e não barras invertidas (`\`), garantindo compatibilidade total com Chrome e Firefox.
 

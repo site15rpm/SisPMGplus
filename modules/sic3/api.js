@@ -37,20 +37,20 @@ export async function saveGasApiUrl(url) {
 
 // Mapeamento de ações para chaves de APIs específicas expostas via Google Apps Script
 const actionToApiMap = {
-    // Módulo de Convênios (GAS_Convenios.js)
+    // Módulo de Convênios (gas-backend/Convenios.gs)
     "carregarConveniosMunicipio": "convenios",
     "incluirConvenio": "convenios",
     "alterarConvenio": "convenios",
     "excluirConvenio": "convenios",
     "sincronizarConveniosLote": "convenios",
 
-    // Módulo de Endereços (GAS_Enderecos.js)
+    // Módulo de Endereços (gas-backend/Enderecos.gs)
     "gerenciarEnderecoMedidor": "enderecos",
 
-    // Módulo de Estrutura (GAS_Estrutura.js)
+    // Módulo de Estrutura (gas-backend/Estrutura.gs)
     "criarEstruturaRpmAno": "estrutura",
 
-    // Módulo de Lançamentos e Transações (GAS_Lancamentos.js)
+    // Módulo de Lançamentos e Transações (gas-backend/Lancamentos.gs)
     "salvarDadosNaPlanilha": "lancamentos",
     "obterDadosItens99": "lancamentos",
     "excluirItem99Principal": "lancamentos",
