@@ -2,7 +2,7 @@
 // Responsável pela lógica do novo módulo de Agenda da Intranet
 
 import { sendMessageToBackground, getCookie, decodeJwt } from '../../common/utils.js';
-import { iconSVG_28 } from '../../common/icon-.js';
+import { iconSVG_28 } from '../../common/icon.js';
 
 /**
  * Verifica se o usuário atende aos critérios de abrangência.
