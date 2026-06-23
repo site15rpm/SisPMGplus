@@ -101,6 +101,16 @@ export class UIModule {
         this.hideHelpIcon();
         this.injectHeaderIcon();
         this.preloadHeaderMenuContent(); // Pré-carrega o conteúdo do menu
+
+        // Escuta atualizações de links em tempo real enviadas pelo background
+        window.addEventListener('message', (event) => {
+            if (event.source === window && event.data?.type === 'FROM_SISPMG_BACKGROUND') {
+                if (event.data?.action === 'links-updated') {
+                    console.log('SisPMG+ [UI]: Atualização de links dinâmicos recebida. Recarregando menu...');
+                    this.preloadHeaderMenuContent(true); // Força o recarregamento
+                }
+            }
+        });
     }
 
     async preloadHeaderMenuContent(force = false) {

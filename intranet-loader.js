@@ -59,6 +59,45 @@ async function main(config) {
     console.log('SisPMG+: Módulo de carregamento da Intranet iniciado.');
     globalConfig = config;
 
+    // 1. Evita inicialização no fluxo de login/autenticação/SSO
+    const path = window.location.pathname.toLowerCase();
+    const isAuthPage = path.includes('/autenticacaosso/') || path.includes('/autenticacao/');
+    if (isAuthPage) {
+        console.log('SisPMG+ [Loader]: Página de autenticação/SSO detectada. Abortando inicialização.');
+        return;
+    }
+
+    // 2. Importa e verifica a existência do token 'tokiuz' e do usuário no token
+    let getCookieFunc = null;
+    let decodeJwtFunc = null;
+    try {
+        const { getCookie, decodeJwt } = await import(globalConfig.utilsUrl);
+        getCookieFunc = getCookie;
+        decodeJwtFunc = decodeJwt;
+    } catch (e) {
+        console.error('SisPMG+ [Loader]: Falha ao importar utilitários de inicialização.', e);
+        return;
+    }
+
+    const token = getCookieFunc ? getCookieFunc('tokiuz') : null;
+    if (!token) {
+        console.log('SisPMG+ [Loader]: Token "tokiuz" não encontrado (usuário não autenticado). Abortando inicialização.');
+        return;
+    }
+
+    const decoded = decodeJwtFunc ? decodeJwtFunc(token) : null;
+    if (!decoded || !decoded.g) {
+        console.log('SisPMG+ [Loader]: Token "tokiuz" inválido ou sem identificação de usuário. Abortando inicialização.');
+        return;
+    }
+
+    // Armazena o Tokiuz decodificado no sessionStorage imediatamente para uso rápido de todos os scripts/módulos
+    try {
+        sessionStorage.setItem('sispmg_user_tokiuz', JSON.stringify(decoded));
+    } catch (e) {
+        console.warn('SisPMG+ [Loader]: Não foi possível gravar o token no sessionStorage.', e);
+    }
+
     // Inicializa o sistema de comunicação e logs de erros global
     try {
         const comunicacaoUrl = globalConfig.utilsUrl.replace('utils.js', 'comunicacao.js');
@@ -96,7 +135,11 @@ async function main(config) {
         // O checkAllModules aguardará allowedModules ser populado.
         fetchModulosPermitidos().then(permitidos => {
             allowedModules = permitidos;
-            console.log('SisPMG+ [Loader]: Módulos permitidos carregados:', [...allowedModules]);
+            if (allowedModules) {
+                console.log('SisPMG+ [Loader]: Módulos permitidos carregados:', [...allowedModules]);
+            } else {
+                console.log('SisPMG+ [Loader]: Falha ao carregar módulos permitidos. Liberando tudo como fallback.');
+            }
         });
 
         // Inicia o loop que verifica e carrega os módulos dinamicamente.
@@ -109,6 +152,16 @@ async function main(config) {
         if (event.source === window && event.data?.type === 'FROM_BACKGROUND' && event.data?.action === 'sispmg-ready') {
             initializeDependentModules();
         }
+        // Escuta atualizações de módulos em tempo real enviadas pelo background
+        if (event.source === window && event.data?.type === 'FROM_SISPMG_BACKGROUND') {
+            if (event.data?.action === 'modulos-updated') {
+                console.log('SisPMG+ [Loader]: Atualização de abrangência de módulos recebida. Atualizando...');
+                fetchModulosPermitidos().then(permitidos => {
+                    allowedModules = permitidos;
+                    checkAllModules();
+                });
+            }
+        }
     });
     setTimeout(() => {
         if (!modulesInitialized) {
@@ -119,34 +172,13 @@ async function main(config) {
 
     // 4. Envia o gatilho de identificação do usuário, que fará o background responder com 'sispmg-ready'.
     try {
-        const { getCookie, decodeJwt } = await import(globalConfig.utilsUrl);
-        const token = getCookie('tokiuz');
-        if (token) {
-            const decoded = decodeJwt(token);
-            if (decoded) {
-                // Armazena o Tokiuz decodificado no sessionStorage para uso rápido em todos os scripts/módulos
-                sessionStorage.setItem('sispmg_user_tokiuz', JSON.stringify(decoded));
-
-                if (decoded.g) {
-                    sendMessageToBackground('intranet-user-identified', {
-                        userPM: decoded.g,
-                        unitCode: decoded.u,
-                        system: 'INTRANET'
-                    });
-                } else {
-                    console.warn('SisPMG+ [Loader]: Token JWT não contém identificação (g). Forçando inicialização.');
-                    initializeDependentModules();
-                }
-            } else {
-                console.warn('SisPMG+ [Loader]: Token JWT não pôde ser decodificado. Forçando inicialização.');
-                initializeDependentModules();
-            }
-        } else {
-            console.warn('SisPMG+ [Loader]: Token "tokiuz" não encontrado. Forçando inicialização.');
-            initializeDependentModules();
-        }
+        sendMessageToBackground('intranet-user-identified', {
+            userPM: decoded.g,
+            unitCode: decoded.u,
+            system: 'INTRANET'
+        });
     } catch (e) {
-        console.error('SisPMG+ [Loader]: Falha ao processar token. Forçando inicialização de módulos.', e);
+        console.error('SisPMG+ [Loader]: Falha ao enviar identificação do usuário para o background. Forçando inicialização de módulos.', e);
         initializeDependentModules();
     }
 }

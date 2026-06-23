@@ -155,15 +155,25 @@ browser.runtime.onMessage.addListener((request, sender) => {
                         if (!sheetId || !sheetName) {
                             throw new Error('Parâmetros sheetId ou sheetName inválidos.');
                         }
-                        const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&sheet=${sheetName}&_=${Date.now()}`;
-                        const response = await fetch(url);
-                        if (!response.ok) {
-                            throw new Error(`Erro na resposta da planilha: HTTP ${response.status}`);
+                        const cacheKey = 'sispmg_cache_gviz_' + sheetName;
+                        const storageRes = await browser.storage.local.get(cacheKey);
+                        const cachedText = storageRes[cacheKey];
+
+                        if (cachedText) {
+                            // Se há cache, dispara a revalidação assíncrona em segundo plano e retorna o cache imediatamente
+                            revalidarPlanilhaGviz(sheetId, sheetName, cachedText, sender?.tab?.id);
+                            return { success: true, text: cachedText };
+                        } else {
+                            // Se não há cache (ex: instalação limpa), faz a busca de revalidação síncrona aguardando
+                            const text = await revalidarPlanilhaGviz(sheetId, sheetName, null, sender?.tab?.id);
+                            if (text) {
+                                return { success: true, text };
+                            } else {
+                                return { success: false, error: 'Falha ao buscar planilha gviz (sem cache disponível).' };
+                            }
                         }
-                        const text = await response.text();
-                        return { success: true, text };
                     } catch (err) {
-                        console.error('SisPMG+ [Background]: Falha ao buscar planilha gviz:', err);
+                        console.error('SisPMG+ [Background]: Falha na ação obterPlanilhaGviz:', err);
                         return { success: false, error: err.message };
                     }
                 }
@@ -205,41 +215,15 @@ browser.runtime.onMessage.addListener((request, sender) => {
                 }
                 case 'registrarErroPlanilha': {
                     try {
-                        const gasUrl = GAS_URL;
-                        const versaoExtensao = browser.runtime.getManifest().version;
-
-                        const response = await fetch(gasUrl, {
-                            method: 'POST',
-                            mode: 'cors',
-                            headers: {
-                                'Content-Type': 'text/plain;charset=utf-8'
-                            },
-                            body: JSON.stringify({
-                                action: 'registrarErro',
-                                erro: payload.erro,
-                                url: payload.url,
-                                timestamp: payload.timestamp,
-                                navegador: payload.navegador,
-                                infoUsuario: payload.infoUsuario,
-                                versao: versaoExtensao,
-                                infoDepuracao: payload.infoDepuracao
-                            })
-                        });
-
-                        if (!response.ok) {
-                            throw new Error(`Erro HTTP ${response.status} ao registrar erro.`);
-                        }
-
-                        const text = await response.text();
-                        let data;
-                        try {
-                            data = JSON.parse(text);
-                        } catch (e) {
-                            data = { success: true, responseRaw: text };
-                        }
-                        return { success: true, data };
+                        await enviarErroAoGAS(
+                            payload.erro,
+                            payload.url,
+                            payload.infoUsuario,
+                            payload.infoDepuracao
+                        );
+                        return { success: true };
                     } catch (err) {
-                        console.error('SisPMG+ [Background]: Falha ao registrar erro na planilha:', err);
+                        console.error('SisPMG+ [Background]: Falha ao registrar erro na planilha via ação:', err);
                         return { success: false, error: err.message };
                     }
                 }
@@ -257,5 +241,144 @@ browser.runtime.onMessage.addListener((request, sender) => {
         }
     })(); // A IIFE retorna a promessa, mantendo o canal de resposta aberto.
 });
+
+/**
+ * Envia um erro formatado para a planilha de erros do Google Apps Script (GAS).
+ */
+async function enviarErroAoGAS(erroMsg, url, infoUsuario, infoDepuracao) {
+    try {
+        const gasUrl = GAS_URL;
+        const versaoExtensao = browser.runtime.getManifest().version;
+        
+        let browserName = 'Chrome Background';
+        if (typeof browser !== 'undefined' && typeof browser.runtime !== 'undefined' && browser.runtime.getURL('').startsWith('moz-extension')) {
+            browserName = 'Firefox Background';
+        }
+
+        const response = await fetch(gasUrl, {
+            method: 'POST',
+            mode: 'cors',
+            headers: {
+                'Content-Type': 'text/plain;charset=utf-8'
+            },
+            body: JSON.stringify({
+                action: 'registrarErro',
+                erro: erroMsg,
+                url: url || 'Background Service Worker',
+                timestamp: new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }),
+                navegador: browserName,
+                infoUsuario: infoUsuario || 'N/A no Background',
+                versao: versaoExtensao,
+                infoDepuracao: infoDepuracao || '{}'
+            })
+        });
+
+        if (!response.ok) {
+            console.error(`Erro HTTP ${response.status} ao enviar erro ao GAS.`);
+        }
+    } catch (e) {
+        console.error('Falha ao enviar erro ao GAS:', e);
+    }
+}
+
+/**
+ * Busca a planilha na rede, atualiza o cache local se houver mudanças,
+ * e gerencia logs de erros de rede persistentes (24h de falhas consecutivas espaçadas por 1h).
+ */
+async function revalidarPlanilhaGviz(sheetId, sheetName, cachedText, tabId) {
+    const cacheKey = 'sispmg_cache_gviz_' + sheetName;
+    const statusKey = 'sispmg_fetch_status_' + sheetName;
+    const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&sheet=${sheetName}&_=${Date.now()}`;
+
+    try {
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`Erro na resposta da planilha: HTTP ${response.status}`);
+        }
+        const text = await response.text();
+
+        // 1. Se o conteúdo for diferente do cache, atualiza o cache e notifica o front-end
+        if (text !== cachedText) {
+            await browser.storage.local.set({ [cacheKey]: text });
+            console.log(`SisPMG+ [Background]: Planilha '${sheetName}' atualizada no cache.`);
+            
+            // Se houver uma aba aberta que solicitou, notifica-a para atualizar
+            if (tabId) {
+                const action = sheetName === 'modulos' ? 'modulos-updated' : 'links-updated';
+                browser.tabs.sendMessage(tabId, { action }).catch(() => {
+                    // Ignora se a aba foi fechada nesse meio tempo
+                });
+            }
+        }
+
+        // 2. Limpa os registros de erro de fetch, pois o fetch foi bem-sucedido!
+        await browser.storage.local.remove(statusKey);
+        
+        return text;
+
+    } catch (err) {
+        console.error(`SisPMG+ [Background]: Falha ao revalidar planilha '${sheetName}':`, err);
+
+        const errMsg = err.message || String(err);
+        const conexaoErroKeywords = ['failed to fetch', 'networkerror', 'network error', 'failed to connect', 'aborted', 'timeout'];
+        const ehErroRede = conexaoErroKeywords.some(keyword => errMsg.toLowerCase().includes(keyword));
+
+        if (ehErroRede) {
+            try {
+                const agora = Date.now();
+                const storageRes = await browser.storage.local.get(statusKey);
+                let status = storageRes[statusKey];
+
+                if (!status) {
+                    // Primeira falha
+                    status = {
+                        primeiraFalhaTimestamp: agora,
+                        ultimaFalhaTimestamp: agora,
+                        tentativasFalhas: 1
+                    };
+                    await browser.storage.local.set({ [statusKey]: status });
+                } else {
+                    const tempoDesdeUltimaFalha = agora - status.ultimaFalhaTimestamp;
+                    const umaHoraMs = 60 * 60 * 1000;
+
+                    // Apenas incrementa se a última falha registrada foi há mais de 1 hora
+                    if (tempoDesdeUltimaFalha >= umaHoraMs) {
+                        status.tentativasFalhas += 1;
+                        status.ultimaFalhaTimestamp = agora;
+                        await browser.storage.local.set({ [statusKey]: status });
+                    }
+
+                    const tempoTotalFalha = agora - status.primeiraFalhaTimestamp;
+                    const vinteQuatroHorasMs = 24 * 60 * 60 * 1000;
+
+                    // Se a primeira falha ocorreu há mais de 24 horas E acumulou pelo menos 5 falhas reais
+                    if (tempoTotalFalha >= vinteQuatroHorasMs && status.tentativasFalhas >= 5) {
+                        console.error(`SisPMG+ [Background]: Reportando falha persistente de fetch da planilha '${sheetName}' (há mais de 24h).`);
+                        const erroPersistente = new Error(`Falha persistente de fetch (${sheetName}) apos ${status.tentativasFalhas} tentativas espacadas por mais de 24h: ${errMsg}`);
+                        
+                        const infoDepuracao = JSON.stringify({
+                            sistema: 'BACKGROUND',
+                            tipo: 'Falha de Revalidacao SWR',
+                            sheetName: sheetName,
+                            primeiraFalha: new Date(status.primeiraFalhaTimestamp).toISOString(),
+                            tentativas: status.tentativasFalhas
+                        });
+
+                        enviarErroAoGAS(
+                            erroPersistente.message,
+                            'Background Service Worker',
+                            'N/A (Erro em segundo plano de rede)',
+                            infoDepuracao
+                        );
+                    }
+                }
+            } catch (storageErr) {
+                console.error("SisPMG+ [Background]: Erro ao gerenciar status de falha de fetch no storage:", storageErr);
+            }
+        }
+
+        return null;
+    }
+}
 
 console.log("SisPMG+: Service worker principal iniciado e pronto para receber mensagens.");

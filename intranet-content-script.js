@@ -134,6 +134,12 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
         return; // Ação síncrona, não precisa de mais nada.
     }
 
+    // Lógica para sinalizar atualização de módulos/links
+    if (request.action === 'modulos-updated' || request.action === 'links-updated') {
+        window.postMessage({ type: 'FROM_SISPMG_BACKGROUND', action: request.action }, '*');
+        return;
+    }
+
     // Lógica para atualizar logs do SICOR
     if (request.action === 'sicor-logs-updated') {
         window.postMessage({ type: 'FROM_SISPMG_BACKGROUND', action: request.action, logs: request.logs }, '*');
