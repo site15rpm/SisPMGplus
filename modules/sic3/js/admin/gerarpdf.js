@@ -43,6 +43,19 @@
   };
 
   // ======================== GERAÇÃO DE ANEXOS 'D' E 'ÚNICO' ========================
+  $(document).off('click.prestacaoAnual').on('click.prestacaoAnual', '#btnPrestacaoContasAnual', async function() {
+    const municipio = $("#municipio").val();
+    const convenio = $("#convenio").val();
+    const ano = $("#ano").val();
+
+    if (!municipio || municipio === "TODOS" || !convenio || convenio === "-" || convenio === "TODOS") {
+      mostrarDialogo("Aviso", "Por favor, selecione um Município e um Convênio específico no painel administrativo para gerar a prestação de contas anual.");
+      return;
+    }
+
+    await gerarPrestacaoContasAnual(municipio, convenio, ano);
+  });
+
   $(document).off('click.anexoPDF').on('click.anexoPDF', '.btn-anexo-d, .btn-anexo-u', async function() {
     const $button = $(this);
     const municipio = $button.data('municipio');
@@ -107,10 +120,10 @@
       const convenioLocal = ADMIN_CONFIG.dados.convenios.find(c => c.municipio === municipio && c.convenio === convenio);
       if (convenioLocal) return { ...convenioLocal };
       
-      const conveniosData = await carregarDadosPlanilha({ sheetId: idbase, sheet: 'convenios', query: `SELECT A,B,C,D,E,F,G,H WHERE A='${municipio}' AND B='${convenio}'` });
+      const conveniosData = await carregarDadosPlanilha({ sheetId: idbase, sheet: 'convenios', query: `SELECT A,B,C,D,E,F,G,H,M,X WHERE A='${municipio}' AND B='${convenio}'` });
       if (conveniosData && conveniosData.length > 0) {
-        const [m, c, pn, ppg, p, u, di, df] = conveniosData[0];
-        return { municipio: m, convenio: c, preposto_n: pn || "", preposto_pg: ppg || "", preposto: p || "", unidade: u || "", dataInicio: di || "", dataFim: df || "" };
+        const [m, c, pn, ppg, p, u, di, df, st, ed] = conveniosData[0];
+        return { municipio: m, convenio: c, preposto_n: pn || "", preposto_pg: ppg || "", preposto: p || "", unidade: u || "", dataInicio: di || "", dataFim: df || "", status_texto: st || "", elementos_despesa: ed || "" };
       }
       return null;
     } catch (error) {
@@ -497,4 +510,278 @@
         rowCount += 5;
     }
     return baseHeight + rowCount * lineHeight;
+  }
+
+  // ======================== PRESTAÇÃO DE CONTAS ANUAL ========================
+  async function gerarPrestacaoContasAnual(municipio, convenio, ano) {
+    try {
+      mostrarCarregamento("Buscando dados anuais do convênio...");
+      
+      const convenioInfo = await obterInformacoesConvenio(municipio, convenio);
+      if (!convenioInfo) throw new Error('Não foi possível obter informações do convênio.');
+
+      // Busca os dados da planilha 'principal' de todo o ano (sem filtro de mês)
+      const query = `SELECT E, G, H, I, N WHERE B='${municipio}' AND C='${convenio}' AND D='${ano}'`;
+      const principalRaw = await carregarDadosPlanilha({
+        sheetId: idbase,
+        sheet: 'principal',
+        query: query
+      });
+
+      const principal = (principalRaw || []).map(row => ({
+        mes: row[0] || "",
+        codigo: row[1] || "",
+        descricao: row[2] || "",
+        despesa: row[3] || "",
+        subtotal: row[4] || 0
+      }));
+
+      // Mapeamento local dos elementos de despesa cadastrados no convênio
+      const codigosED = convenioInfo.elementos_despesa 
+        ? convenioInfo.elementos_despesa.split('|').map(s => s.trim()).filter(Boolean)
+        : [];
+        
+      const DICIONARIO_ELEMENTOS = {
+        "3026": "COMBUSTÍVEIS E LUBRIFICANTES PARA VEÍCULOS AUTOMOTORES",
+        "3025": "MATERIAL PARA MANUTENÇÃO DE VEÍCULOS AUTOMOTORES",
+        "3919": "REPARO, MANUTENÇÃO E SERVIÇOS P/ VEÍCULOS AUTOMOTORES",
+        "3922": "INSTALAÇÃO, REPARAÇÃO, ADAPTAÇÃO E CONSERVAÇÃO DE EQUIPAMENTOS",
+        "3016": "MATERIAIS GRÁFICOS E IMPRESSOS",
+        "3024": "MATERIAL PARA ESCRITÓRIO",
+        "3028": "MATERIAL DE INFORMÁTICA",
+        "3022": "ARTIGOS PARA LIMPEZA E HIGIENE",
+        "3913": "TARIFA DE ÁGUA E ESGOTO",
+        "3912": "TARIFA DE ENERGIA ELÉTRICA",
+        "4004": "SERVIÇO DE TELECOMUNICAÇÃO E INTERNET",
+        "3911": "SERVIÇOS DE CONSERVAÇÃO E LIMPEZA"
+      };
+
+      const tabelaGastos = {};
+      codigosED.forEach(codigo => {
+        const desc = DICIONARIO_ELEMENTOS[codigo] || "OUTROS GASTOS DE CONVÊNIO";
+        tabelaGastos[codigo] = {
+          codigo: codigo,
+          descricao: desc,
+          valores: Array(12).fill(0.0)
+        };
+      });
+
+      // Processa os lançamentos da planilha principal
+      principal.forEach(item => {
+        const despesaRaw = String(item.despesa).trim();
+        if (!despesaRaw) return;
+
+        const codigoMatch = despesaRaw.match(/^\d{4}/);
+        if (!codigoMatch) return;
+        const codigo = codigoMatch[0];
+
+        if (!tabelaGastos[codigo]) {
+          let desc = despesaRaw.replace(/^\d{4}\s*-\s*/, "").trim();
+          if (!desc) {
+            desc = DICIONARIO_ELEMENTOS[codigo] || "OUTROS GASTOS";
+          }
+          tabelaGastos[codigo] = {
+            codigo: codigo,
+            descricao: desc,
+            valores: Array(12).fill(0.0)
+          };
+        }
+
+        const mesNum = window.mNumerico(item.mes, "numero");
+        if (mesNum >= 1 && mesNum <= 12) {
+          const mesIndice = mesNum - 1;
+          const subtotal = window.formatarNumero(item.subtotal, "numero");
+          tabelaGastos[codigo].valores[mesIndice] += subtotal;
+        }
+      });
+
+      // Converte o objeto de gastos para um array ordenado pelo código do elemento de despesa
+      const linhasTabela = Object.values(tabelaGastos).sort((a, b) => a.codigo.localeCompare(b.codigo));
+
+      // Calcula os totais mensais
+      const totaisMensais = Array(12).fill(0.0);
+      linhasTabela.forEach(linha => {
+        for (let i = 0; i < 12; i++) {
+          totaisMensais[i] += linha.valores[i];
+        }
+      });
+
+      const totalGeral = totaisMensais.reduce((a, b) => a + b, 0);
+
+      // Prepara o documento PDF
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ orientation: "l", unit: "mm", format: "a4", compress: true });
+      const pageWidth = doc.internal.pageSize.getWidth(), pageCenter = pageWidth / 2;
+
+      // Cabeçalho institucional fora da tabela (Centralizado)
+      doc.setFont(PDF_STYLES.font, "bold");
+      doc.setFontSize(10);
+      
+      // Montagem inteligente da Unidade Superior e Subunidade
+      let unidadeSup = "15ª RPM - 19º BPM";
+      let subunidade = `232ª Cia PM - ${formatarMunicipioPDF(municipio)}`;
+      
+      if (convenioInfo.unidade) {
+        if (convenioInfo.unidade.includes("/")) {
+          const partes = convenioInfo.unidade.split("/");
+          unidadeSup = partes[0].trim();
+          subunidade = partes[1].trim();
+          
+          if (!unidadeSup.toUpperCase().includes("RPM")) {
+            unidadeSup = `15ª RPM - ${unidadeSup}`;
+          }
+          if (!subunidade.includes("-") && municipio) {
+            subunidade = `${subunidade} - ${formatarMunicipioPDF(municipio)}`;
+          }
+        } else {
+          unidadeSup = convenioInfo.unidade;
+          if (!unidadeSup.toUpperCase().includes("RPM")) {
+            unidadeSup = `15ª RPM - ${unidadeSup}`;
+          }
+        }
+      }
+
+      doc.text(unidadeSup.toUpperCase(), pageCenter, 15, { align: "center" });
+      doc.text(subunidade.toUpperCase(), pageCenter, 20, { align: "center" });
+
+      // Período de vigência
+      const dataInicio = convenioInfo.dataInicio || `01/01/${ano}`;
+      const dataFim = convenioInfo.dataFim || `31/12/${ano}`;
+
+      // Monta as linhas do corpo da tabela para o autoTable
+      const tableBody = [];
+
+      linhasTabela.forEach(linha => {
+        const totalLinha = linha.valores.reduce((a, b) => a + b, 0);
+        const row = [
+          `${linha.descricao.toUpperCase()}\n${linha.codigo}`,
+          ...linha.valores.map(v => window.formatarNumero(v, "decimal")),
+          window.formatarNumero(totalLinha, "decimal")
+        ];
+        tableBody.push(row);
+      });
+
+      // Linha de totais mensais
+      const totalMensalRow = [
+        "TOTAL MENSAL",
+        ...totaisMensais.map(v => window.formatarNumero(v, "decimal")),
+        window.formatarNumero(totalGeral, "decimal")
+      ];
+
+      // Definição dos dados da tabela principal, incluindo cabeçalho embutido
+      const autoTableData = [
+        // Título do Relatório
+        [{ content: `PRESTAÇÃO DE CONTAS ALUSIVA AO CONVÊNIO Nº ${convenio}`, colSpan: 14, styles: { halign: 'center', fontStyle: 'bold', fontSize: 10, cellPadding: { top: 3, bottom: 1 }, border: [true, true, false, true] } }],
+        // Período e Valor do Convênio
+        [{ content: `PERÍODO DE ${dataInicio} A ${dataFim}\nVALOR DO CONVÊNIO: R$ -`, colSpan: 14, styles: { halign: 'left', fontStyle: 'bold', fontSize: 8, cellPadding: { top: 1, bottom: 3 }, border: [false, true, true, true] } }],
+        // Cabeçalhos de Colunas
+        [
+          { content: "DISCRIMINAÇÃO\nMATERIAL", rowSpan: 2, styles: { halign: 'center', valign: 'middle', fontStyle: 'bold', fillColor: '#d9d9d9' } },
+          { content: "JAN", styles: { halign: 'center', fillColor: '#d9d9d9', fontStyle: 'bold' } },
+          { content: "FEV", styles: { halign: 'center', fillColor: '#d9d9d9', fontStyle: 'bold' } },
+          { content: "MAR", styles: { halign: 'center', fillColor: '#d9d9d9', fontStyle: 'bold' } },
+          { content: "ABR", styles: { halign: 'center', fillColor: '#d9d9d9', fontStyle: 'bold' } },
+          { content: "MAI", styles: { halign: 'center', fillColor: '#d9d9d9', fontStyle: 'bold' } },
+          { content: "JUN", styles: { halign: 'center', fillColor: '#d9d9d9', fontStyle: 'bold' } },
+          { content: "JUL", styles: { halign: 'center', fillColor: '#d9d9d9', fontStyle: 'bold' } },
+          { content: "AGO", styles: { halign: 'center', fillColor: '#d9d9d9', fontStyle: 'bold' } },
+          { content: "SET", styles: { halign: 'center', fillColor: '#d9d9d9', fontStyle: 'bold' } },
+          { content: "OUT", styles: { halign: 'center', fillColor: '#d9d9d9', fontStyle: 'bold' } },
+          { content: "NOV", styles: { halign: 'center', fillColor: '#d9d9d9', fontStyle: 'bold' } },
+          { content: "DEZ", styles: { halign: 'center', fillColor: '#d9d9d9', fontStyle: 'bold' } },
+          { content: "TOTAL", rowSpan: 2, styles: { halign: 'center', valign: 'middle', fontStyle: 'bold', fillColor: '#d9d9d9' } }
+        ],
+        // Linha secundária "VALOR"
+        [
+          { content: "VALOR", styles: { halign: 'center', fillColor: '#d9d9d9', fontStyle: 'bold' } },
+          { content: "VALOR", styles: { halign: 'center', fillColor: '#d9d9d9', fontStyle: 'bold' } },
+          { content: "VALOR", styles: { halign: 'center', fillColor: '#d9d9d9', fontStyle: 'bold' } },
+          { content: "VALOR", styles: { halign: 'center', fillColor: '#d9d9d9', fontStyle: 'bold' } },
+          { content: "VALOR", styles: { halign: 'center', fillColor: '#d9d9d9', fontStyle: 'bold' } },
+          { content: "VALOR", styles: { halign: 'center', fillColor: '#d9d9d9', fontStyle: 'bold' } },
+          { content: "VALOR", styles: { halign: 'center', fillColor: '#d9d9d9', fontStyle: 'bold' } },
+          { content: "VALOR", styles: { halign: 'center', fillColor: '#d9d9d9', fontStyle: 'bold' } },
+          { content: "VALOR", styles: { halign: 'center', fillColor: '#d9d9d9', fontStyle: 'bold' } },
+          { content: "VALOR", styles: { halign: 'center', fillColor: '#d9d9d9', fontStyle: 'bold' } },
+          { content: "VALOR", styles: { halign: 'center', fillColor: '#d9d9d9', fontStyle: 'bold' } },
+          { content: "VALOR", styles: { halign: 'center', fillColor: '#d9d9d9', fontStyle: 'bold' } }
+        ],
+        
+        // Dados de Elementos de Despesa
+        ...tableBody,
+        
+        // Linha de Total Mensal
+        totalMensalRow.map((content, idx) => ({
+          content: content,
+          styles: { fontStyle: 'bold', fillColor: '#d9d9d9', halign: idx === 0 ? 'center' : 'right' }
+        })),
+
+        // Linha de Total Geral finalizada
+        [{ content: `TOTAL GERAL: ${window.formatarNumero(totalGeral, 'moeda')}`, colSpan: 14, styles: { halign: 'center', fontStyle: 'bold', fontSize: 9, cellPadding: 2.5, fillColor: '#d9d9d9' } }]
+      ];
+
+      autoTable(doc, {
+        startY: 28,
+        margin: { left: 15, right: 15 },
+        body: autoTableData,
+        theme: 'grid',
+        styles: {
+          font: 'helvetica',
+          fontSize: 6.5,
+          textColor: [0, 0, 0],
+          lineColor: '#646464',
+          lineWidth: 0.1,
+          cellPadding: 1
+        },
+        columnStyles: {
+          0: { cellWidth: 80, fontSize: 6.5 },
+          1: { cellWidth: 14, halign: 'right' },
+          2: { cellWidth: 14, halign: 'right' },
+          3: { cellWidth: 14, halign: 'right' },
+          4: { cellWidth: 14, halign: 'right' },
+          5: { cellWidth: 14, halign: 'right' },
+          6: { cellWidth: 14, halign: 'right' },
+          7: { cellWidth: 14, halign: 'right' },
+          8: { cellWidth: 14, halign: 'right' },
+          9: { cellWidth: 14, halign: 'right' },
+          10: { cellWidth: 14, halign: 'right' },
+          11: { cellWidth: 14, halign: 'right' },
+          12: { cellWidth: 14, halign: 'right' },
+          13: { cellWidth: 18, halign: 'right', fontStyle: 'bold' }
+        },
+        didParseCell: (data) => {
+          if (data.row.index === 0 || data.row.index === 1) {
+            data.cell.styles.lineWidth = 0.1;
+            data.cell.styles.lineColor = '#646464';
+          }
+        }
+      });
+
+      // Data de emissão e Assinatura do Preposto (Centralizado/Alinhado abaixo)
+      const dataFormatada = formatarDataPDF(new Date());
+      const assinaturaBody = [
+          [{ content: `Quartel em ${formatarMunicipioPDF(municipio)}, ${dataFormatada}.`, styles: { halign: 'center', cellPadding: { top: 6, bottom: 8 } } }],
+          [{ content: `${convenioInfo.preposto_pg || ""} PM ${convenioInfo.preposto || ""}`, styles: { halign: 'center', fontStyle: 'bold', fontSize: 9 } }],
+          [{ content: `nº ${convenioInfo.preposto_n || "-"} - PREPOSTO DO CONVÊNIO`, styles: { halign: 'center', fontStyle: 'bold', fontSize: 8 } }]
+      ];
+
+      autoTable(doc, {
+          startY: doc.lastAutoTable.finalY + 4,
+          body: assinaturaBody,
+          theme: 'plain',
+          margin: { left: 15, right: 15 },
+          tableWidth: doc.lastAutoTable.width,
+          showHead: 'never',
+          styles: { fontSize: 8, textColor: PDF_STYLES.textColor, cellPadding: 0.5 }
+      });
+
+      const pageCount = doc.internal.getNumberOfPages();
+      await adicionarRodapePDF(doc, pageCount, { timestamp: new Date().toLocaleString("pt-BR") });
+      doc.save(`PRESTACAO_CONTAS_ANUAL_${ano}_${municipio}.pdf`);
+      mostrarDialogo("Sucesso", "Prestação de Contas Anual gerada com sucesso!");
+    } catch (error) {
+      manipularErro(error, "gerarPrestacaoContasAnual");
+    } finally {
+      ocultarCarregamento();
+    }
   }
