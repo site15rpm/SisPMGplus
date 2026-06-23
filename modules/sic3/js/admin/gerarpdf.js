@@ -48,8 +48,8 @@
     const convenio = $("#convenio").val();
     const ano = $("#ano").val();
 
-    if (!municipio || municipio === "TODOS" || !convenio || convenio === "-" || convenio === "TODOS") {
-      mostrarDialogo("Aviso", "Por favor, selecione um Município e um Convênio específico no painel administrativo para gerar a prestação de contas anual.");
+    if (!municipio || municipio === "TODOS" || !convenio || convenio === "-" || convenio === "TODOS" || !ano || ano === "TODOS") {
+      mostrarDialogo("Aviso", "Por favor, selecione um Município, um Convênio e um Ano específico no painel administrativo para gerar a prestação de contas anual.");
       return;
     }
 
@@ -574,17 +574,16 @@
         const codigoMatch = despesaRaw.match(/^\d{4}/);
         if (!codigoMatch) return;
         const codigo = codigoMatch[0];
+        const descLancamento = despesaRaw.replace(/^\d{4}\s*-\s*/, "").trim();
 
         if (!tabelaGastos[codigo]) {
-          let desc = despesaRaw.replace(/^\d{4}\s*-\s*/, "").trim();
-          if (!desc) {
-            desc = DICIONARIO_ELEMENTOS[codigo] || "OUTROS GASTOS";
-          }
           tabelaGastos[codigo] = {
             codigo: codigo,
-            descricao: desc,
+            descricao: descLancamento || DICIONARIO_ELEMENTOS[codigo] || "OUTROS GASTOS",
             valores: Array(12).fill(0.0)
           };
+        } else if (descLancamento && (tabelaGastos[codigo].descricao === "OUTROS GASTOS DE CONVÊNIO" || tabelaGastos[codigo].descricao === "OUTROS GASTOS")) {
+          tabelaGastos[codigo].descricao = descLancamento;
         }
 
         const mesNum = window.mNumerico(item.mes, "numero");
@@ -613,40 +612,29 @@
       const doc = new jsPDF({ orientation: "l", unit: "mm", format: "a4", compress: true });
       const pageWidth = doc.internal.pageSize.getWidth(), pageCenter = pageWidth / 2;
 
-      // Cabeçalho institucional fora da tabela (Centralizado)
+      // Cabeçalho institucional fora da tabela (Centralizado no padrão dos anexos D e Único)
       doc.setFont(PDF_STYLES.font, "bold");
       doc.setFontSize(10);
-      
-      // Montagem inteligente da Unidade Superior e Subunidade
-      let unidadeSup = "15ª RPM - 19º BPM";
-      let subunidade = `232ª Cia PM - ${formatarMunicipioPDF(municipio)}`;
-      
-      if (convenioInfo.unidade) {
-        if (convenioInfo.unidade.includes("/")) {
-          const partes = convenioInfo.unidade.split("/");
-          unidadeSup = partes[0].trim();
-          subunidade = partes[1].trim();
-          
-          if (!unidadeSup.toUpperCase().includes("RPM")) {
-            unidadeSup = `15ª RPM - ${unidadeSup}`;
-          }
-          if (!subunidade.includes("-") && municipio) {
-            subunidade = `${subunidade} - ${formatarMunicipioPDF(municipio)}`;
-          }
-        } else {
-          unidadeSup = convenioInfo.unidade;
-          if (!unidadeSup.toUpperCase().includes("RPM")) {
-            unidadeSup = `15ª RPM - ${unidadeSup}`;
-          }
-        }
-      }
+      doc.text("POLÍCIA MILITAR DO ESTADO DE MINAS GERAIS", pageCenter, 15, { align: "center" });
+      doc.text(`${convenioInfo.unidade}`.toUpperCase(), pageCenter, 20, { align: "center" });
 
-      doc.text(unidadeSup.toUpperCase(), pageCenter, 15, { align: "center" });
-      doc.text(subunidade.toUpperCase(), pageCenter, 20, { align: "center" });
+      // Função auxiliar local para garantir formatação de datas (ISO -> BR)
+      const formatarDataBR = (dataStr) => {
+        if (!dataStr) return "";
+        if (dataStr.includes("/")) return dataStr;
+        const partes = dataStr.split("-");
+        if (partes.length === 3) {
+          if (partes[0].length === 4) {
+            return `${partes[2]}/${partes[1]}/${partes[0]}`;
+          }
+          return `${partes[0]}/${partes[1]}/${partes[2]}`;
+        }
+        return dataStr;
+      };
 
       // Período de vigência
-      const dataInicio = convenioInfo.dataInicio || `01/01/${ano}`;
-      const dataFim = convenioInfo.dataFim || `31/12/${ano}`;
+      const dataInicio = formatarDataBR(convenioInfo.dataInicio) || `01/01/${ano}`;
+      const dataFim = formatarDataBR(convenioInfo.dataFim) || `31/12/${ano}`;
 
       // Monta as linhas do corpo da tabela para o autoTable
       const tableBody = [];
@@ -757,22 +745,31 @@
         }
       });
 
-      // Data de emissão e Assinatura do Preposto (Centralizado/Alinhado abaixo)
+      // Data de emissão e Assinatura do Preposto (Centralizado/Alinhado em conformidade com Anexo D e Único)
       const dataFormatada = formatarDataPDF(new Date());
       const assinaturaBody = [
-          [{ content: `Quartel em ${formatarMunicipioPDF(municipio)}, ${dataFormatada}.`, styles: { halign: 'center', cellPadding: { top: 6, bottom: 8 } } }],
-          [{ content: `${convenioInfo.preposto_pg || ""} PM ${convenioInfo.preposto || ""}`, styles: { halign: 'center', fontStyle: 'bold', fontSize: 9 } }],
-          [{ content: `nº ${convenioInfo.preposto_n || "-"} - PREPOSTO DO CONVÊNIO`, styles: { halign: 'center', fontStyle: 'bold', fontSize: 8 } }]
+          [{ content: `Quartel em ${formatarMunicipioPDF(municipio)}, ${dataFormatada}.` }],
+          [{ content: `nº ${convenioInfo.preposto_n || "-"} - ${convenioInfo.preposto_pg || ""} PM ${convenioInfo.preposto || ""}` }],
+          [{ content: `PREPOSTO DO CONVÊNIO` }]
       ];
 
       autoTable(doc, {
-          startY: doc.lastAutoTable.finalY + 4,
+          startY: doc.lastAutoTable.finalY + 5,
           body: assinaturaBody,
           theme: 'plain',
           margin: { left: 15, right: 15 },
           tableWidth: doc.lastAutoTable.width,
           showHead: 'never',
-          styles: { fontSize: 8, textColor: PDF_STYLES.textColor, cellPadding: 0.5 }
+          styles: { halign: 'center', fontSize: 8, textColor: PDF_STYLES.textColor },
+          didParseCell: (data) => {
+              if (data.row.index === 0) {
+                  data.cell.styles.halign = 'right';
+                  data.cell.styles.cellPadding = { top: 5, right: 0, bottom: 8, left: 0 };
+              } else {
+                  data.cell.styles.fontStyle = 'bold';
+                  data.cell.styles.cellPadding = 0;
+              }
+          }
       });
 
       const pageCount = doc.internal.getNumberOfPages();
