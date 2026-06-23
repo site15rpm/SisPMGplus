@@ -383,7 +383,7 @@
         doc.setTextColor(0, 0, 0); 
         const ps = doc.internal.pageSize, ph = ps.height ? ps.height : ps.getHeight(), pw = ps.width ? ps.width : ps.getWidth();
         doc.text(`Página ${i} de ${pageCount}`, pw - 20, ph - 10, { align: "right" });
-        doc.text("Gerado por SIC3-15RPM v2.0", pw / 2, ph - 10, { align: "center" });
+        doc.text("Gerado por SIC3-15RPM v3.0", pw / 2, ph - 10, { align: "center" });
         if (timestamp) {
             doc.text("Última alteração: " + timestamp, 20, ph - 10);
         }
@@ -619,8 +619,15 @@
       doc.text(`${convenioInfo.unidade}`.toUpperCase(), pageCenter, 20, { align: "center" });
 
       // Função auxiliar local para garantir formatação de datas (ISO -> BR)
-      const formatarDataBR = (dataStr) => {
-        if (!dataStr) return "";
+      const formatarDataBR = (dataVal) => {
+        if (!dataVal) return "";
+        if (dataVal instanceof Date) {
+          const dia = String(dataVal.getDate()).padStart(2, "0");
+          const mes = String(dataVal.getMonth() + 1).padStart(2, "0");
+          const anoStr = dataVal.getFullYear();
+          return `${dia}/${mes}/${anoStr}`;
+        }
+        const dataStr = String(dataVal).trim();
         if (dataStr.includes("/")) return dataStr;
         const partes = dataStr.split("-");
         if (partes.length === 3) {
@@ -632,22 +639,78 @@
         return dataStr;
       };
 
-      // Período de vigência
-      const dataInicio = formatarDataBR(convenioInfo.dataInicio) || `01/01/${ano}`;
-      const dataFim = formatarDataBR(convenioInfo.dataFim) || `31/12/${ano}`;
+      // Determinação das datas limites do período anual
+      let dataInicioPeriodo = `01/01/${ano}`;
+      if (convenioInfo.dataInicio) {
+        const dataInicioConvBR = formatarDataBR(convenioInfo.dataInicio);
+        const partesInicio = dataInicioConvBR.split("/");
+        if (partesInicio.length === 3) {
+          const anoInicioConv = parseInt(partesInicio[2], 10);
+          const anoSel = parseInt(ano, 10);
+          if (anoInicioConv === anoSel) {
+            dataInicioPeriodo = dataInicioConvBR;
+          } else if (anoInicioConv > anoSel) {
+            dataInicioPeriodo = dataInicioConvBR;
+          }
+        }
+      }
+
+      // Encontra o último mês lançado com valores > 0
+      let maxMesLancado = 0;
+      linhasTabela.forEach(linha => {
+        for (let i = 0; i < 12; i++) {
+          if (linha.valores[i] > 0) {
+            const mesNum = i + 1;
+            if (mesNum > maxMesLancado) {
+              maxMesLancado = mesNum;
+            }
+          }
+        }
+      });
+
+      let dataFimPeriodo = "";
+      const hoje = new Date();
+      const anoCorrente = hoje.getFullYear();
+      const mesCorrente = hoje.getMonth() + 1;
+
+      if (maxMesLancado > 0) {
+        const anoSelNum = parseInt(ano, 10);
+        if (anoSelNum === anoCorrente && maxMesLancado === mesCorrente) {
+          dataFimPeriodo = formatarDataBR(hoje);
+        } else {
+          const ultimoDia = new Date(anoSelNum, maxMesLancado, 0).getDate();
+          dataFimPeriodo = `${String(ultimoDia).padStart(2, "0")}/${String(maxMesLancado).padStart(2, "0")}/${anoSelNum}`;
+        }
+      } else {
+        if (convenioInfo.dataFim) {
+          const dataFimConvBR = formatarDataBR(convenioInfo.dataFim);
+          const partesFim = dataFimConvBR.split("/");
+          if (partesFim.length === 3 && parseInt(partesFim[2], 10) === parseInt(ano, 10)) {
+            dataFimPeriodo = dataFimConvBR;
+          } else {
+            dataFimPeriodo = `31/12/${ano}`;
+          }
+        } else {
+          dataFimPeriodo = `31/12/${ano}`;
+        }
+      }
 
       // Monta as linhas do corpo da tabela para o autoTable
       const tableBody = [];
 
       linhasTabela.forEach(linha => {
-        const totalLinha = linha.valores.reduce((a, b) => a + b, 0);
+        const totalLinha = inlineSomarValores(linha.valores);
         const row = [
-          `${linha.descricao.toUpperCase()}\n${linha.codigo}`,
+          `${linha.codigo} - ${linha.descricao.toUpperCase()}`,
           ...linha.valores.map(v => window.formatarNumero(v, "decimal")),
           window.formatarNumero(totalLinha, "decimal")
         ];
         tableBody.push(row);
       });
+
+      function inlineSomarValores(arr) {
+        return arr.reduce((a, b) => a + b, 0);
+      }
 
       // Linha de totais mensais
       const totalMensalRow = [
@@ -661,7 +724,7 @@
         // Título do Relatório
         [{ content: `PRESTAÇÃO DE CONTAS ALUSIVA AO CONVÊNIO Nº ${convenio}`, colSpan: 14, styles: { halign: 'center', fontStyle: 'bold', fontSize: 10, cellPadding: { top: 3, bottom: 1 }, border: [true, true, false, true] } }],
         // Período e Valor do Convênio
-        [{ content: `PERÍODO DE ${dataInicio} A ${dataFim}\nVALOR DO CONVÊNIO: R$ -`, colSpan: 14, styles: { halign: 'left', fontStyle: 'bold', fontSize: 8, cellPadding: { top: 1, bottom: 3 }, border: [false, true, true, true] } }],
+        [{ content: `PERÍODO DE ${dataInicioPeriodo} A ${dataFimPeriodo}\nVALOR DO CONVÊNIO: R$ -`, colSpan: 14, styles: { halign: 'left', fontStyle: 'bold', fontSize: 8, cellPadding: { top: 1, bottom: 3 }, border: [false, true, true, true] } }],
         // Cabeçalhos de Colunas
         [
           { content: "DISCRIMINAÇÃO\nMATERIAL", rowSpan: 2, styles: { halign: 'center', valign: 'middle', fontStyle: 'bold', fillColor: '#d9d9d9' } },
@@ -679,20 +742,20 @@
           { content: "DEZ", styles: { halign: 'center', fillColor: '#d9d9d9', fontStyle: 'bold' } },
           { content: "TOTAL", rowSpan: 2, styles: { halign: 'center', valign: 'middle', fontStyle: 'bold', fillColor: '#d9d9d9' } }
         ],
-        // Linha secundária "VALOR"
+        // Linha secundária "R$"
         [
-          { content: "VALOR", styles: { halign: 'center', fillColor: '#d9d9d9', fontStyle: 'bold' } },
-          { content: "VALOR", styles: { halign: 'center', fillColor: '#d9d9d9', fontStyle: 'bold' } },
-          { content: "VALOR", styles: { halign: 'center', fillColor: '#d9d9d9', fontStyle: 'bold' } },
-          { content: "VALOR", styles: { halign: 'center', fillColor: '#d9d9d9', fontStyle: 'bold' } },
-          { content: "VALOR", styles: { halign: 'center', fillColor: '#d9d9d9', fontStyle: 'bold' } },
-          { content: "VALOR", styles: { halign: 'center', fillColor: '#d9d9d9', fontStyle: 'bold' } },
-          { content: "VALOR", styles: { halign: 'center', fillColor: '#d9d9d9', fontStyle: 'bold' } },
-          { content: "VALOR", styles: { halign: 'center', fillColor: '#d9d9d9', fontStyle: 'bold' } },
-          { content: "VALOR", styles: { halign: 'center', fillColor: '#d9d9d9', fontStyle: 'bold' } },
-          { content: "VALOR", styles: { halign: 'center', fillColor: '#d9d9d9', fontStyle: 'bold' } },
-          { content: "VALOR", styles: { halign: 'center', fillColor: '#d9d9d9', fontStyle: 'bold' } },
-          { content: "VALOR", styles: { halign: 'center', fillColor: '#d9d9d9', fontStyle: 'bold' } }
+          { content: "R$", styles: { halign: 'center', fillColor: '#d9d9d9', fontStyle: 'bold' } },
+          { content: "R$", styles: { halign: 'center', fillColor: '#d9d9d9', fontStyle: 'bold' } },
+          { content: "R$", styles: { halign: 'center', fillColor: '#d9d9d9', fontStyle: 'bold' } },
+          { content: "R$", styles: { halign: 'center', fillColor: '#d9d9d9', fontStyle: 'bold' } },
+          { content: "R$", styles: { halign: 'center', fillColor: '#d9d9d9', fontStyle: 'bold' } },
+          { content: "R$", styles: { halign: 'center', fillColor: '#d9d9d9', fontStyle: 'bold' } },
+          { content: "R$", styles: { halign: 'center', fillColor: '#d9d9d9', fontStyle: 'bold' } },
+          { content: "R$", styles: { halign: 'center', fillColor: '#d9d9d9', fontStyle: 'bold' } },
+          { content: "R$", styles: { halign: 'center', fillColor: '#d9d9d9', fontStyle: 'bold' } },
+          { content: "R$", styles: { halign: 'center', fillColor: '#d9d9d9', fontStyle: 'bold' } },
+          { content: "R$", styles: { halign: 'center', fillColor: '#d9d9d9', fontStyle: 'bold' } },
+          { content: "R$", styles: { halign: 'center', fillColor: '#d9d9d9', fontStyle: 'bold' } }
         ],
         
         // Dados de Elementos de Despesa
