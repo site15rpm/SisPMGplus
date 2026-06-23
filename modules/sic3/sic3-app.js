@@ -727,28 +727,30 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
 
     // 0. Validação de Segurança contra Acesso Direto por URL/Favorito
-    let sessionStore = null;
+    let extensionSessionStore = null;
     if (typeof browser !== 'undefined' && browser.storage && browser.storage.session) {
-        sessionStore = browser.storage.session;
+        extensionSessionStore = browser.storage.session;
     } else if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.session) {
-        sessionStore = chrome.storage.session;
+        extensionSessionStore = chrome.storage.session;
     }
 
-    let isSessionActive = false;
-    if (sessionStore) {
+    let currentBrowserToken = null;
+    if (extensionSessionStore) {
         try {
-            const resSession = await sessionStore.get('sic3_active_session');
-            isSessionActive = resSession && resSession.sic3_active_session === true;
+            const resSession = await extensionSessionStore.get('browser_session_token');
+            currentBrowserToken = resSession ? resSession.browser_session_token : null;
         } catch (e) {
-            console.error("[SIC3 v3.0 Log] Erro ao obter session storage da extensão:", e);
+            console.error("[SIC3 v3.0 Log] Erro ao obter session token da extensão:", e);
         }
-    } else {
-        isSessionActive = sessionStorage.getItem('sic3_active_session') === 'true';
     }
 
+    // A sessão só é válida para esta aba específica se o token do navegador atual coincidir com o salvo na aba
+    const isSessionActive = sessionStorage.getItem('sic3_active_session') === 'true';
+    const localBrowserToken = sessionStorage.getItem('sic3_browser_session_token');
+    
     let authorized = false;
 
-    if (isSessionActive) {
+    if (isSessionActive && currentBrowserToken && localBrowserToken === currentBrowserToken) {
         authorized = true;
     } else {
         try {
@@ -769,10 +771,11 @@ window.addEventListener('DOMContentLoaded', async () => {
                     // O token gerado pelo background é válido por 15 segundos
                     if (now - res.timestamp < 15000) {
                         authorized = true;
-                        if (sessionStore) {
-                            await sessionStore.set({ sic3_active_session: true });
-                        } else {
-                            sessionStorage.setItem('sic3_active_session', 'true');
+                        
+                        // Vincula esta aba específica ao token de sessão do navegador ativo
+                        sessionStorage.setItem('sic3_active_session', 'true');
+                        if (currentBrowserToken) {
+                            sessionStorage.setItem('sic3_browser_session_token', currentBrowserToken);
                         }
                     }
                 }

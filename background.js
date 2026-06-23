@@ -12,6 +12,30 @@ import { handleAgendaMessages, initializeAgendaBackground } from './modules/intr
 
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbw92pNeR6NSgGjsdh5nhtGLUxLPFqe2fCegu1MY4F10Q6uC6YEmKzqFdY5ee-dLu1cNqQ/exec';
 
+// --- Inicialização do Token de Sessão do Navegador para Validação do SIC3 ---
+async function initBrowserSessionToken() {
+    let sessionStore = null;
+    if (typeof browser !== 'undefined' && browser.storage && browser.storage.session) {
+        sessionStore = browser.storage.session;
+    } else if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.session) {
+        sessionStore = chrome.storage.session;
+    }
+    
+    if (sessionStore) {
+        try {
+            const res = await sessionStore.get('browser_session_token');
+            if (!res || !res.browser_session_token) {
+                const newToken = 'sess_' + Date.now() + '_' + Math.random().toString(36).substring(2, 11);
+                await sessionStore.set({ browser_session_token: newToken });
+                console.log("[SisPMG+ Background] Novo browser_session_token gerado:", newToken);
+            }
+        } catch (e) {
+            console.error("Erro ao gerenciar browser_session_token:", e);
+        }
+    }
+}
+initBrowserSessionToken();
+
 // Inicializa os listeners de cada módulo que precisam de configuração inicial.
 initBackgroundListeners();
 initializeAbastecimentosBackground();
