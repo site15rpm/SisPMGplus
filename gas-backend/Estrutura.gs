@@ -176,12 +176,17 @@ function obterIdArquivoCompartilhado(nomeBase, folderRPM) {
     if (!sheet) sheet = ss.insertSheet(nomeAba);
     sheet.clear();
     sheet.appendRow(cabecalho);
-    sheet.getRange(1, 1, 1, cabecalho.length).setFontWeight("bold").setNumberFormat("@STRING@");
+    sheet.getRange(1, 1, sheet.getMaxRows(), sheet.getMaxColumns()).setFontSize(6);
+    sheet.getRange(1, 1, 1, cabecalho.length).setFontWeight("normal").setNumberFormat("@STRING@");
     
-    const defaultSheet = ss.getSheetByName("Página 1") || ss.getSheetByName("Sheet1");
-    if (defaultSheet && ss.getSheets().length > 1) {
-      ss.deleteSheet(defaultSheet);
-    }
+    const activeSheets = ss.getSheets();
+    activeSheets.forEach(s => {
+      if (s.getName() !== nomeAba && activeSheets.length > 1) {
+        try {
+          ss.deleteSheet(s);
+        } catch(e) {}
+      }
+    });
   }
   
   return ss.getId();
@@ -205,11 +210,34 @@ function obterOuCriarPlanilhaAnual(folderRPM, rpm, ano) {
   file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
 
   const abas = {
-    "principal": ["timestamp", "municipio", "convenio", "ano", "mes", "item_id", "codigo", "descricao", "unidade", "quantidade", "valor_unitario", "subtotal", "observacao", "responsavel", "despesa"],
-    "abastecimento": ["timestamp", "municipio", "convenio", "ano", "mes", "data", "hora", "placa", "prefixo", "odometro", "responsavel", "tipo", "quantidade", "valor_unitario", "subtotal", "nota_fiscal", "observacao"],
-    "manutencao": ["timestamp", "municipio", "convenio", "ano", "mes", "data", "placa", "prefixo", "odometro", "responsavel", "tipo", "quantidade", "valor_unitario", "subtotal", "nota_fiscal", "observacao"],
-    "obsgeral": ["timestamp", "municipio", "convenio", "ano", "mes", "valor_total", "obs_geral", "bloqueado", "has_item99", "sirconvStatus", "siadStatus", "siad_dataEntrada", "siad_documentoEntrada", "siad_dataRequisicao", "siad_documentoRequisicao", "siad_dataAnalise", "siad_statusAnalise", "siad_dataSaida", "siad_statusSaida"],
-    "item99": ["timestamp", "municipio", "convenio", "ano", "mes", "item99_code", "descricao", "unidade_distribuicao", "elemento_despesa", "termos_busca", "status", "link_nota_fiscal"]
+    "principal": [
+      "timestamp", "municipio", "convenio", "ano", "mes",
+      "item", "codigo", "descricao", "despesa", "unidade",
+      "data", "quantidade", "valorUnitario", "subtotal", "observacao"
+    ],
+    "manutencao": [
+      "timestamp", "municipio", "convenio", "ano", "mes",
+      "item", "data", "placa", "prefixo", "odometro",
+      "responsavel", "descricao", "quantidade", "valorUnitario", "subtotal",
+      "notaFiscal"
+    ],
+    "abastecimento": [
+      "timestamp", "municipio", "convenio", "ano", "mes",
+      "item", "data", "placa", "prefixo", "odometro",
+      "motorista", "tipo", "quantidade", "valorUnitario", "subtotal",
+      "notaFiscal"
+    ],
+    "obsgeral": [
+      "timestamp", "municipio", "convenio", "ano", "mes",
+      "valorTotal", "obsGeral", "edicaoBloqueada", "item99", "sirconv",
+      "siad", "siad_dataEntrada", "siad_documentoEntrada", "siad_dataRequisicao", "siad_documentoRequisicao",
+      "siad_dataAnalise", "siad_statusAnalise", "siad_dataSaida", "siad_statusSaida"
+    ],
+    "item99": [
+      "timestamp", "municipio", "convenio", "ano", "mes",
+      "item99_code", "descricao", "unidade_distribuicao", "elemento_despesa", "termos_busca",
+      "status", "link"
+    ]
   };
 
   for (const nomeAba in abas) {
@@ -217,13 +245,22 @@ function obterOuCriarPlanilhaAnual(folderRPM, rpm, ano) {
     if (!sheet) sheet = ss.insertSheet(nomeAba);
     sheet.clear();
     sheet.appendRow(abas[nomeAba]);
-    sheet.getRange(1, 1, 1, abas[nomeAba].length).setFontWeight("bold").setNumberFormat("@STRING@");
+    sheet.getRange(1, 1, sheet.getMaxRows(), sheet.getMaxColumns()).setFontSize(6);
+    sheet.getRange(1, 1, 1, abas[nomeAba].length).setFontWeight("normal").setNumberFormat("@STRING@");
   }
 
-  const defaultSheet = ss.getSheetByName("Página 1") || ss.getSheetByName("Sheet1");
-  if (defaultSheet && ss.getSheets().length > 1) {
-    ss.deleteSheet(defaultSheet);
-  }
+  const activeSheets = ss.getSheets();
+  const abasPermitidas = ["principal", "abastecimento", "manutencao", "obsgeral", "item99"];
+  activeSheets.forEach(s => {
+    const name = s.getName();
+    if (!abasPermitidas.includes(name) && activeSheets.length > 1) {
+      try {
+        ss.deleteSheet(s);
+      } catch(e) {
+        console.error("Erro ao excluir aba padrao:", e);
+      }
+    }
+  });
 
   return ss.getId();
 }

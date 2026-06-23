@@ -260,9 +260,17 @@ function salvarDadosNaPlanilha(authToken, municipio, convenio, ano, mes, dados, 
     if (dados.abastecimento?.length && sheets.abastecimento) {
       const dadosFormatadosAbastecimento = dados.abastecimento.map((row) => [
         timestamp, municipio, convenio, String(ano), mes, 
-        String(row[0]), String(row[1]), String(row[2]), String(row[3]), String(row[4]), 
-        String(row[5]), String(row[6]), String(row[7]), String(row[8]), String(row[9]), 
-        String(row[10]), String(row[11])
+        String(row[0]),  // item
+        String(row[1]),  // data
+        String(row[3]),  // placa (pula a hora row[2])
+        String(row[4]),  // prefixo
+        String(row[5]),  // odometro
+        String(row[6]),  // motorista
+        String(row[7]),  // tipo
+        String(row[8]),  // quantidade
+        String(row[9]),  // valorUnitario
+        String(row[10]), // subtotal
+        String(row[11])  // notaFiscal
       ]);
       inserirDados(sheets.abastecimento, dadosFormatadosAbastecimento);
     }
@@ -283,6 +291,25 @@ function salvarDadosNaPlanilha(authToken, municipio, convenio, ano, mes, dados, 
     const isReportCompletelyEmpty = !hasPrincipalItems && !hasAbastecimentoItems && !hasManutencaoItems;
 
     if (sheets.obsgeral) {
+        let dadosSiadExistentes = Array(10).fill(""); // sirconv (col 9) ate siad_statusSaida (col 18)
+        try {
+          const obsData = sheets.obsgeral.getDataRange().getValues();
+          for (let i = 1; i < obsData.length; i++) {
+            const corresponde = obsData[i][1] == municipio && 
+                                String(obsData[i][2]) == String(convenio) && 
+                                String(obsData[i][3]) == String(ano) && 
+                                String(obsData[i][4]) == String(mes);
+            if (corresponde) {
+              for (let col = 9; col <= 18; col++) {
+                dadosSiadExistentes[col - 9] = obsData[i][col] !== undefined ? String(obsData[i][col]) : "";
+              }
+              break;
+            }
+          }
+        } catch (e) {
+          console.error("Erro ao ler dados de SIAD existentes:", e);
+        }
+
         removerRegistrosExistentes(sheets.obsgeral, municipio, convenio, ano, mes);
         if (!isReportCompletelyEmpty) {
             const newObsRowValues = [
@@ -290,7 +317,8 @@ function salvarDadosNaPlanilha(authToken, municipio, convenio, ano, mes, dados, 
               String(dados.valorTotal || ""), 
               String(dados.obsgeral?.dados?.[0] || ""),
               "NAO", 
-              hasItem99InReport ? "SIM" : "NAO"
+              (hasItem99InReport ? "SIM" : "NAO"),
+              ...dadosSiadExistentes
             ];
             appendRowAndFormatAsText(sheets.obsgeral, newObsRowValues);
         }
