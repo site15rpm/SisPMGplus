@@ -727,7 +727,25 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
 
     // 0. Validação de Segurança contra Acesso Direto por URL/Favorito
-    const isSessionActive = sessionStorage.getItem('sic3_active_session') === 'true';
+    let sessionStore = null;
+    if (typeof browser !== 'undefined' && browser.storage && browser.storage.session) {
+        sessionStore = browser.storage.session;
+    } else if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.session) {
+        sessionStore = chrome.storage.session;
+    }
+
+    let isSessionActive = false;
+    if (sessionStore) {
+        try {
+            const resSession = await sessionStore.get('sic3_active_session');
+            isSessionActive = resSession && resSession.sic3_active_session === true;
+        } catch (e) {
+            console.error("[SIC3 v3.0 Log] Erro ao obter session storage da extensão:", e);
+        }
+    } else {
+        isSessionActive = sessionStorage.getItem('sic3_active_session') === 'true';
+    }
+
     let authorized = false;
 
     if (isSessionActive) {
@@ -751,7 +769,11 @@ window.addEventListener('DOMContentLoaded', async () => {
                     // O token gerado pelo background é válido por 15 segundos
                     if (now - res.timestamp < 15000) {
                         authorized = true;
-                        sessionStorage.setItem('sic3_active_session', 'true');
+                        if (sessionStore) {
+                            await sessionStore.set({ sic3_active_session: true });
+                        } else {
+                            sessionStorage.setItem('sic3_active_session', 'true');
+                        }
                     }
                 }
                 
