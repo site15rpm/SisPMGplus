@@ -36,33 +36,37 @@ export const StorageManager = {
         const requestedKeys = isArray ? keys : [keys];
         const result = {};
 
-        // Busca todas as chaves solicitadas
-        const rawResult = await storage.get(requestedKeys);
-
-        // Verifica migração transparente para cada chave solicitada
         for (const key of requestedKeys) {
-            if (rawResult[key] !== undefined) {
-                result[key] = rawResult[key];
-                continue;
+            // Determina qual é a chave real de armazenamento (nova chave padronizada)
+            const storageKey = LEGACY_KEYS_MAPPING[key] || key;
+
+            // Busca o valor da chave real de armazenamento
+            let rawResult = await storage.get(storageKey);
+            let value = rawResult[storageKey];
+
+            // Se não encontrou o valor na chave nova, verifica se existe no storage sob a chave legada antiga
+            if (value === undefined) {
+                // Caso o chamador tenha pedido a chave nova mas os dados ainda estejam na chave antiga
+                const legacyKey = Object.keys(LEGACY_KEYS_MAPPING).find(
+                    (lk) => LEGACY_KEYS_MAPPING[lk] === storageKey
+                );
+
+                if (legacyKey && legacyKey !== storageKey) {
+                    const legacyResult = await storage.get(legacyKey);
+                    if (legacyResult[legacyKey] !== undefined) {
+                        value = legacyResult[legacyKey];
+                        // Migra para a nova chave
+                        await storage.set({ [storageKey]: value });
+                        // Remove a chave antiga
+                        await storage.remove(legacyKey);
+                        console.log(`SisPMG+ [StorageManager]: Chave legada '${legacyKey}' migrada com sucesso para '${storageKey}'.`);
+                    }
+                }
             }
 
-            // Caso contrário, procura se existe uma chave antiga equivalente para migração
-            const legacyKey = Object.keys(LEGACY_KEYS_MAPPING).find(
-                (lk) => LEGACY_KEYS_MAPPING[lk] === key
-            );
-
-            if (legacyKey) {
-                const legacyResult = await storage.get(legacyKey);
-                if (legacyResult[legacyKey] !== undefined) {
-                    const legacyValue = legacyResult[legacyKey];
-                    // Grava o valor na nova chave padronizada
-                    await storage.set({ [key]: legacyValue });
-                    // Remove a chave antiga obsoleta
-                    await storage.remove(legacyKey);
-                    // Atualiza o objeto de retorno
-                    result[key] = legacyValue;
-                    console.log(`SisPMG+ [StorageManager]: Chave legada '${legacyKey}' migrada com sucesso para '${key}'.`);
-                }
+            // Retorna o valor sob a chave que o chamador solicitou
+            if (value !== undefined) {
+                result[key] = value;
             }
         }
 
