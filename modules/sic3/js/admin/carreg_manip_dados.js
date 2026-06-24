@@ -122,6 +122,19 @@
       return;
     }
 
+    // Garante que os IDs das planilhas correspondam ao ano selecionado no painel administrativo
+    if (ano && ano !== sessionStorage.getItem("sic3_ano")) {
+      sessionStorage.setItem("sic3_ano", ano);
+      window.ano = ano;
+      if (typeof window.resolverIdsPlanilhas === 'function') {
+        try {
+          await window.resolverIdsPlanilhas(false);
+        } catch (resolveErr) {
+          console.error("[SIC3 v3.0 Log] Erro ao resolver IDs das planilhas para o ano selecionado:", resolveErr);
+        }
+      }
+    }
+
     if (municipioFiltro === "TODOS" && mesFiltro === "TODOS") {
       mostrarDialogo(
         "Aviso",
