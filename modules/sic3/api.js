@@ -57,6 +57,7 @@ const actionToApiMap = {
     "atualizarStatusItem99": "lancamentos",
     "verificarStatusBloqueio": "lancamentos",
     "atualizarStatusEdicao": "lancamentos",
+    "atualizarStatusSirconvSiad": "lancamentos",
     "salvarItensPrimariosEmLote": "lancamentos"
 };
 
@@ -122,6 +123,8 @@ export async function executarApi(action, params = {}) {
             params[4] = idbase;
         } else if (action === "atualizarStatusEdicao" && params.length >= 6) {
             params[6] = idbase;
+        } else if (action === "atualizarStatusSirconvSiad" && params.length >= 7) {
+            params[7] = idbase;
         } else if (action === "gerenciarEnderecoMedidor" && params.length >= 2) {
             const dados = params[1];
             params[0] = dados;
