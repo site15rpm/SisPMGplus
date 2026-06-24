@@ -2,6 +2,8 @@
 // Lógica de background específica para o módulo TerminalPMG+
 import { fetchWithKeepAlive } from '../../common/keep-alive.js';
 import { parseGoogleSheetResponse } from '../../common/google-sheets.js';
+import { StorageManager } from '../../common/storage-manager.js';
+import { STORAGE_KEYS } from '../../common/storage-keys.js';
 
 // Arquivo: Code.gs Rotinas SisPMG+ v2.3
 const API_URL = "https://script.google.com/macros/s/AKfycbzB8NEKd8oDUpiluZOk2VNmcfbLzhUiHNBP9SgBfE1rhRvwRU3jVLvskYjDPjyvpiQe/exec";
@@ -55,8 +57,8 @@ async function fetchAndCacheRotinas(payload = {}) {
     try {
         const response = await apiCall('GET', { action: 'listRotinasWithContent', ...payload });
         if (response && response.success) {
-            await browser.storage.local.set({ 
-                cachedRotinas: response.data
+            await StorageManager.set({ 
+                [STORAGE_KEYS.TERMINAL_CACHED_ROTINAS]: response.data
             });
             return { success: true, data: response.data };
         } else {
@@ -93,11 +95,11 @@ export async function handleTerminalMessages(request, sender) {
         }
 
         case 'getRotinas': {
-            const result = await browser.storage.local.get(['cachedRotinas']);
-            if (result.cachedRotinas) {
+            const result = await StorageManager.get(STORAGE_KEYS.TERMINAL_CACHED_ROTINAS);
+            if (result) {
                 // Não aguarde, apenas dispare a atualização em segundo plano.
                 fetchAndCacheRotinas(payload);
-                return { success: true, data: result.cachedRotinas };
+                return { success: true, data: result };
             } else {
                 // Aguarde a busca inicial e a retorne.
                 return fetchAndCacheRotinas(payload);
@@ -335,7 +337,7 @@ export function initBackgroundListeners() {
     // --- LIMPEZA DE CACHE NA ATUALIZAÇÃO ---
     browser.runtime.onInstalled.addListener((details) => {
         if (details.reason === 'install' || details.reason === 'update') {
-            browser.storage.local.remove(['cachedRotinas'])
+            StorageManager.remove(STORAGE_KEYS.TERMINAL_CACHED_ROTINAS)
             .then(() => {
                 console.log('SisPMG+ [Background]: Cache de rotinas antigo foi limpo.');
             })
