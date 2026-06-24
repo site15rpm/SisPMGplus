@@ -72,6 +72,11 @@ function handleApiAction(action, body) {
       result = atualizarStatusEdicao(body.authToken || params[0], params[1], params[2], params[3], params[4], params[5], params[6]);
       break;
       
+    case "atualizarStatusSirconvSiad":
+      // params[0] = authToken, params[1] = municipio, params[2] = convenio, params[3] = ano, params[4] = mes, params[5] = tipo, params[6] = novoStatus, params[7] = spreadsheetId
+      result = atualizarStatusSirconvSiad(body.authToken || params[0], params[1], params[2], params[3], params[4], params[5], params[6], params[7]);
+      break;
+      
     case "salvarItensPrimariosEmLote":
       // params[0] = itens, params[1] = TBPrimaria ID
       result = salvarItensPrimariosEmLote(params[0], params[1]);
@@ -712,6 +717,41 @@ function atualizarStatusEdicao(authToken, municipio, convenio, ano, mes, status,
     return { success: false, message: "Registro não encontrado.", errorCode: "NOT_FOUND" };
   } catch (error) {
     return { success: false, message: "Erro ao processar alteração de status: " + error.toString(), errorCode: "PROCESSING_ERROR" };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function atualizarStatusSirconvSiad(authToken, municipio, convenio, ano, mes, tipo, novoStatus, spreadsheetId) {
+  const usuario = validateAuthToken(authToken);
+  if (!usuario || !usuario.isAdmin) {
+    return { success: false, message: "Acesso negado. Apenas administradores.", errorCode: "ADMIN_REQUIRED" };
+  }
+  
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(30000);
+    const ss = SpreadsheetApp.openById(spreadsheetId);
+    const sheet = ss.getSheetByName("obsgeral");
+    if (!sheet) {
+      return { success: false, message: "Aba obsgeral não encontrada.", errorCode: "NOT_FOUND" };
+    }
+    const data = sheet.getDataRange().getValues();
+    
+    for (let i = 0; i < data.length; i++) {
+      if (String(data[i][1]) == municipio && 
+          String(data[i][2]) == String(convenio) && 
+          String(data[i][3]) == String(ano) && 
+          String(data[i][4]) == String(mes)) {
+        
+        const col = tipo === "SIRCONV" ? 10 : 11;
+        sheet.getRange(i + 1, col).setNumberFormat("@STRING@").setValue(String(novoStatus));
+        return { success: true };
+      }
+    }
+    return { success: false, message: "Registro não encontrado em obsgeral.", errorCode: "NOT_FOUND" };
+  } catch (error) {
+    return { success: false, message: "Erro ao atualizar status do " + tipo + ": " + error.toString(), errorCode: "PROCESSING_ERROR" };
   } finally {
     lock.releaseLock();
   }
