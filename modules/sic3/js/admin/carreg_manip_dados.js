@@ -11,7 +11,7 @@
         carregarDadosPlanilha({
           sheetId: idbase,
           sheet: "convenios",
-          query: `SELECT A,B,C,D,E,F,G,H,M,X,Y WHERE ${condicaoWhere}`,
+          query: `SELECT A,B,C,D,E,F,G,H,M,N,Y,Z WHERE ${condicaoWhere}`,
         }),
         carregarDadosPlanilha({
           sheetId: idbase,
@@ -38,6 +38,7 @@
             dataInicio,
             dataFim,
             status_texto,
+            valor_estimado,
             elementos_despesa,
             user_pm
           ] = row;
@@ -52,6 +53,7 @@
               dataInicio: String(dataInicio || "").trim(),
               dataFim: String(dataFim || "").trim(),
               status_texto: String(status_texto || "").trim(),
+              valor_estimado: String(valor_estimado || "").trim(),
               elementos_despesa: String(elementos_despesa || "").trim(),
               user_pm: String(user_pm || "").trim()
             });
