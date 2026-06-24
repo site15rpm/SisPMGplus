@@ -383,7 +383,7 @@
         doc.setTextColor(0, 0, 0); 
         const ps = doc.internal.pageSize, ph = ps.height ? ps.height : ps.getHeight(), pw = ps.width ? ps.width : ps.getWidth();
         doc.text(`Página ${i} de ${pageCount}`, pw - 20, ph - 10, { align: "right" });
-        doc.text("Gerado por SIC3-15RPM v3.0", pw / 2, ph - 10, { align: "center" });
+        doc.text("Gerado por SiC3-15RPM v3.0", pw / 2, ph - 10, { align: "center" });
         if (timestamp) {
             doc.text("Última alteração: " + timestamp, 20, ph - 10);
         }
