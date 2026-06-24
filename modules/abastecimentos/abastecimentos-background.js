@@ -3,12 +3,14 @@
  */
 import { fetchWithKeepAlive } from '../../common/keep-alive.js';
 import { sendMessageToOffscreen } from '../intranet/intranet-offscreen.js';
+import { StorageManager } from '../../common/storage-manager.js';
+import { STORAGE_KEYS } from '../../common/storage-keys.js';
 
 // --- Nomes para Alarmes e Storage ---
 const ALARM_SCHEDULER_CHECK = 'abastecimentos-scheduler-check';
-const STORAGE_CONFIG_KEY = 'app-config';
-const STORAGE_LOGS_KEY = 'execution-logs';
-const STORAGE_SCHEDULE_KEY = 'abastecimentos-schedule';
+const STORAGE_CONFIG_KEY = STORAGE_KEYS.ABASTECIMENTOS_CONFIG;
+const STORAGE_LOGS_KEY = STORAGE_KEYS.ABASTECIMENTOS_LOGS;
+const STORAGE_SCHEDULE_KEY = STORAGE_KEYS.ABASTECIMENTOS_SCHEDULE;
 const MAX_LOG_ENTRIES = 50;
 
 // --- ESTADO E CONFIGURAÇÕES ---
@@ -20,15 +22,16 @@ let isExtractionRunning = false;
 const addLog = async (message, system = 'GERAL', type = 'info') => {
     const timestamp = new Date().toLocaleString('pt-BR');
     const logEntry = { timestamp, system, message, type };
-    const { [STORAGE_LOGS_KEY]: logs = [] } = await browser.storage.local.get(STORAGE_LOGS_KEY);
+    const storageRes = await StorageManager.get(STORAGE_LOGS_KEY);
+    const logs = storageRes || [];
     logs.unshift(logEntry);
     const trimmedLogs = logs.slice(0, MAX_LOG_ENTRIES);
-    await browser.storage.local.set({ [STORAGE_LOGS_KEY]: trimmedLogs });
+    await StorageManager.set({ [STORAGE_LOGS_KEY]: trimmedLogs });
     browser.runtime.sendMessage({ action: 'logsUpdated', logs: trimmedLogs }).catch(() => {});
 };
 
 const clearLogs = async () => {
-    await browser.storage.local.remove(STORAGE_LOGS_KEY);
+    await StorageManager.remove(STORAGE_LOGS_KEY);
     await addLog('Histórico de execuções foi limpo.', 'SISTEMA', 'info');
 };
 
@@ -542,7 +545,7 @@ async function scheduleNextExtraction(config) {
     }
     
     const schedule = { nextRun: nextRun.toISOString() };
-    await browser.storage.local.set({ [STORAGE_SCHEDULE_KEY]: schedule });
+    await StorageManager.set({ [STORAGE_SCHEDULE_KEY]: schedule });
     
     browser.alarms.create(ALARM_SCHEDULER_CHECK, { periodInMinutes: 60 });
     await addLog(`Próxima extração agendada para: ${nextRun.toLocaleString('pt-BR')}`, 'SISTEMA');
@@ -554,7 +557,9 @@ async function runScheduledExtractionIfNeeded() {
         return;
     }
 
-    const { [STORAGE_CONFIG_KEY]: config, [STORAGE_SCHEDULE_KEY]: schedule } = await browser.storage.local.get([STORAGE_CONFIG_KEY, STORAGE_SCHEDULE_KEY]);
+    const storageRes = await StorageManager.get([STORAGE_CONFIG_KEY, STORAGE_SCHEDULE_KEY]);
+    const config = storageRes[STORAGE_CONFIG_KEY];
+    const schedule = storageRes[STORAGE_SCHEDULE_KEY];
 
     if (!config || config['auto-frequency'] === 'none' || !schedule?.nextRun) {
         return; 
@@ -594,10 +599,10 @@ export function initializeAbastecimentosBackground() {
                 'download-folder': 'Abastecimentos',
                 'drive-sync-active': false, 'drive-sync-id': ''
             };
-            await browser.storage.local.set({ [STORAGE_CONFIG_KEY]: defaultConfig });
+            await StorageManager.set({ [STORAGE_CONFIG_KEY]: defaultConfig });
             await addLog('Configurações padrão definidas na instalação.');
         } else if (details.reason === 'update') {
-            const { [STORAGE_CONFIG_KEY]: config } = await browser.storage.local.get(STORAGE_CONFIG_KEY);
+            const config = await StorageManager.get(STORAGE_CONFIG_KEY);
             if (config) {
                 if (typeof config['download-folder'] === 'undefined') { config['download-folder'] = 'Abastecimentos'; }
                 if (typeof config['drive-sync-active'] === 'undefined') { config['drive-sync-active'] = false; config['drive-sync-id'] = ''; }
@@ -606,7 +611,7 @@ export function initializeAbastecimentosBackground() {
                     delete config['drive-sync-url'];
                     config['drive-sync-id'] = '';
                 }
-                await browser.storage.local.set({ [STORAGE_CONFIG_KEY]: config });
+                await StorageManager.set({ [STORAGE_CONFIG_KEY]: config });
                 await addLog('Extensão atualizada. Reagendando extrações, se houver.');
                 await scheduleNextExtraction(config);
             }
@@ -637,7 +642,7 @@ export async function handleAbastecimentosMessages(request, sender) {
                 if (settings['poc-active']) { results.poc = await testarLoginSgta(settings); }
                 const allSuccess = (!results.prime || results.prime.success) && (!results.poc || results.poc.success);
                 if (allSuccess) {
-                    await browser.storage.local.set({ [STORAGE_CONFIG_KEY]: settings });
+                    await StorageManager.set({ [STORAGE_CONFIG_KEY]: settings });
                     await addLog('Configurações salvas com sucesso.', 'SISTEMA', 'success');
                     await scheduleNextExtraction(settings);
                 }
@@ -653,7 +658,7 @@ export async function handleAbastecimentosMessages(request, sender) {
             }
             isExtractionRunning = true; // Bloqueia para extração manual
             try {
-                const { [STORAGE_CONFIG_KEY]: config } = await browser.storage.local.get(STORAGE_CONFIG_KEY);
+                const config = await StorageManager.get(STORAGE_CONFIG_KEY);
                 if (!config) {
                     await addLog('Configurações não salvas.', 'GERAL', 'error');
                     sendFinalizationSignal();
