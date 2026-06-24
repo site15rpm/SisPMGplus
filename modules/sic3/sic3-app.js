@@ -445,7 +445,7 @@ window.resolverIdsPlanilhas = async function(forcarRecarregamento = false) {
             }
         } catch (apiErr) {
             console.error("[SIC3 v3.0 Log] Erro crítico ao solicitar criação de estrutura ao GAS:", apiErr);
-            throw new Error("Não foi possível inicializar os bancos de dados do SIC3 para esta RPM/Ano.");
+            throw new Error("Não foi possível inicializar os bancos de dados do SiC3 para esta RPM/Ano.");
         }
     }
 
@@ -851,7 +851,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
                     <h2 style="font-size: 24px; font-weight: 600; margin-bottom: 15px; letter-spacing: 0.5px; color: #b3a368;">Acesso Restrito</h2>
                     <p style="font-size: 15px; line-height: 1.6; color: #e2e8f0; margin-bottom: 25px;">
-                        Por razões de segurança, o módulo <strong>SIC3 v3.0</strong> não pode ser acessado diretamente por URL ou favoritos.
+                        Por razões de segurança, o módulo <strong>SiC3 v3.0</strong> não pode ser acessado diretamente por URL ou favoritos.
                     </p>
                     <div style="
                         background: rgba(179, 163, 104, 0.08);
@@ -864,7 +864,7 @@ window.addEventListener('DOMContentLoaded', async () => {
                         margin-bottom: 25px;
                         line-height: 1.5;
                     ">
-                        <strong>Como acessar:</strong> Faça login na Intranet da PM e clique no botão de acesso do SIC3 através do painel do SisPMG+.
+                        <strong>Como acessar:</strong> Faça login na Intranet da PM e clique no botão de acesso do SiC3 através do painel do SisPMG+.
                     </div>
                     <button id="sic3-close-tab-btn" style="
                         background: linear-gradient(135deg, #574e2d 0%, #b3a368 100%);
@@ -931,7 +931,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     const btnLogoutGlobal = document.getElementById('btn-logout-global');
     if (btnLogoutGlobal) {
         btnLogoutGlobal.addEventListener('click', () => {
-            if (confirm("Deseja realmente sair do SIC3?")) {
+            if (confirm("Deseja realmente sair do SiC3?")) {
                 console.log("[SIC3 v3.0 Log] Efetuando logout global. Fechando aba...");
                 sessionStorage.clear();
                 window.close();
