@@ -206,7 +206,7 @@ input[disabled] {
 .convenio { width: 180px; }
 .preposto { flex-grow: 1; }
 .unidade { width: 260px; }
-.linha-2 .btn-alterar, .linha-2 .dropdown { width: 120px; margin-left: auto; }
+.linha-2 .btn-alterar, .linha-2 .dropdown { width: 135px; margin-left: auto; }
 
 .buttons-container {
   margin-left: auto;
@@ -279,9 +279,9 @@ input[disabled] {
 
 /* Dropdown de Ações */
 .dropdown { position: relative; display: inline-block; }
-.dropdown button.btn-acoes { width: 120px; margin-top: 0; }
+.dropdown button.btn-acoes { width: 135px; margin-top: 0; }
 .dropdown-menu { display: none; position: absolute; width: 100%; z-index: 20; box-shadow: 0 2px 5px rgba(0,0,0,0.15); border-radius: 4px; padding: 5px 0; }
-.dropdown-menu button { margin-top: 5px; width: 100%; }
+.dropdown-menu button { margin-top: 5px; width: 100%; white-space: nowrap !important; }
 .dropdown:hover .dropdown-menu { display: block; }
 
 /* Estilos de Status e Ações na Tabela */
