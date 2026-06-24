@@ -162,6 +162,26 @@
       $(".btn-alterar").off("click.admin").on("click.admin", alterarConvenio);
       $(".btn-incluir").off("click.admin").on("click.admin", incluirConvenio);
       $(".btn-excluir").off("click.admin").on("click.admin", excluirConvenio);
+
+      $("#btnRecarregarDados")
+        .off("click.admin")
+        .on("click.admin", async function () {
+            mostrarCarregamento("Recarregando informações do banco...");
+            try {
+                if (typeof window.resolverIdsPlanilhas === 'function') {
+                    await window.resolverIdsPlanilhas(true); // Força a recarga total dos links do GAS
+                }
+                await carregarInformacoesAdmin();
+                await carregarLancamentos();
+                mostrarDialogo("Sucesso", "Informações recarregadas com sucesso!");
+            } catch (err) {
+                console.error("Erro ao recarregar dados:", err);
+                mostrarDialogo("Erro", "Falha ao recarregar dados: " + err.message);
+            } finally {
+                ocultarCarregamento();
+            }
+        });
+
       return true;
     } catch (error) {
       manipularErro(error, "configurarEventListenersAdmin");
