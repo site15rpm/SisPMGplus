@@ -9,6 +9,8 @@ import { handleSicorMessages, initializeSicorBackground } from './modules/intran
 // Módulo sirconv-convenios-background removido (sincronização de convênios migrada para o SIC3)
 import { handleUnidadesMessages, initializeUnidadesBackground } from './modules/intranet/intranet-unidades-background.js';
 import { handleAgendaMessages, initializeAgendaBackground } from './modules/intranet/intranet-agenda-background.js';
+import { StorageManager } from './common/storage-manager.js';
+import { STORAGE_KEYS } from './common/storage-keys.js';
 
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbw92pNeR6NSgGjsdh5nhtGLUxLPFqe2fCegu1MY4F10Q6uC6YEmKzqFdY5ee-dLu1cNqQ/exec';
 
@@ -43,6 +45,9 @@ initializeSicorBackground();
 // Sincronização do SIRCONV removida do background
 initializeUnidadesBackground();
 initializeAgendaBackground();
+
+// Executa a varredura e migração do Garbage Collector no storage local
+StorageManager.runGarbageCollector();
 
 // Array com todos os handlers de mensagens dos módulos.
 // A ordem importa: o primeiro a retornar uma resposta não nula encerra a busca.
@@ -83,49 +88,32 @@ browser.runtime.onMessage.addListener((request, sender) => {
             switch (action) {
                 case 'getSettings': // Adicionado alias para getStorage
                 case 'getStorage': {
-                    const storageArea = payload?.storageType === 'sync' ? browser.storage.sync : browser.storage.local;
-
-                    // Normaliza as chaves para um array, aceitando 'key' ou 'keys' (string ou array)
                     let requestedKeys = payload?.keys || payload?.key;
-                    if (requestedKeys && !Array.isArray(requestedKeys)) {
-                        requestedKeys = [requestedKeys];
+                    let keysToGet = requestedKeys;
+                    if (keysToGet && !Array.isArray(keysToGet)) {
+                        keysToGet = [keysToGet];
                     }
 
-                    let items = await storageArea.get(requestedKeys || null);
-
-                    // Migração automática de 'sync' para 'local' se necessário
-                    if (storageArea === browser.storage.local && requestedKeys) {
-                        const keysToMigrate = requestedKeys.filter(k => items[k] === undefined);
-                        if (keysToMigrate.length > 0) {
-                            const syncItems = await browser.storage.sync.get(keysToMigrate);
-                            const foundOnSync = Object.keys(syncItems).filter(k => syncItems[k] !== undefined);
-                            if (foundOnSync.length > 0) {
-                                console.log(`SisPMG+: Migrando chaves [${foundOnSync.join(', ')}] do sync para local.`);
-                                await browser.storage.local.set(syncItems);
-                                items = { ...items, ...syncItems };
-                            }
-                        }
-                    }
-
-                    return { success: true, value: items };
+                    const items = await StorageManager.get(keysToGet || null, payload?.storageType || 'local');
+                    return { success: true, value: typeof items === 'object' && items !== null ? items : { [requestedKeys]: items } };
                 }
                 case 'setStorage': {
-                    const storageArea = payload?.storageType === 'sync' ? browser.storage.sync : browser.storage.local;
+                    const storageType = payload?.storageType || 'local';
                     const dataToSet = { ...payload };
                     delete dataToSet.storageType; // Remove a chave de controle
-                    await storageArea.set(dataToSet);
+                    await StorageManager.set(dataToSet, storageType);
                     return { success: true };
                 }
                 case 'removeStorage': {
-                    const storageArea = payload?.storageType === 'sync' ? browser.storage.sync : browser.storage.local;
-                    await storageArea.remove(payload.keys);
+                    const storageType = payload?.storageType || 'local';
+                    await StorageManager.remove(payload.keys, storageType);
                     return { success: true };
                 }
                 case 'openSettingsPage': {
                     if (payload.page && payload.page.includes('sic3.html')) {
                         // Grava autorização de acesso temporária para o SIC3
-                        await browser.storage.local.set({
-                            sic3_access_authorized: {
+                        await StorageManager.set({
+                            [STORAGE_KEYS.SIC3_ACCESS_AUTHORIZED]: {
                                 timestamp: Date.now(),
                                 authorized: true
                             }
@@ -299,7 +287,7 @@ async function revalidarPlanilhaGviz(sheetId, sheetName, cachedText, tabId) {
 
         // 1. Se o conteúdo for diferente do cache, atualiza o cache e notifica o front-end
         if (text !== cachedText) {
-            await browser.storage.local.set({ [cacheKey]: text });
+            await StorageManager.set({ [cacheKey]: text });
             console.log(`SisPMG+ [Background]: Planilha '${sheetName}' atualizada no cache.`);
             
             // Se houver uma aba aberta que solicitou, notifica-a para atualizar
@@ -312,7 +300,7 @@ async function revalidarPlanilhaGviz(sheetId, sheetName, cachedText, tabId) {
         }
 
         // 2. Limpa os registros de erro de fetch, pois o fetch foi bem-sucedido!
-        await browser.storage.local.remove(statusKey);
+        await StorageManager.remove(statusKey);
         
         return text;
 
@@ -326,8 +314,8 @@ async function revalidarPlanilhaGviz(sheetId, sheetName, cachedText, tabId) {
         if (ehErroRede) {
             try {
                 const agora = Date.now();
-                const storageRes = await browser.storage.local.get(statusKey);
-                let status = storageRes[statusKey];
+                const storageRes = await StorageManager.get(statusKey);
+                let status = storageRes ? storageRes[statusKey] : null;
 
                 if (!status) {
                     // Primeira falha
@@ -336,7 +324,7 @@ async function revalidarPlanilhaGviz(sheetId, sheetName, cachedText, tabId) {
                         ultimaFalhaTimestamp: agora,
                         tentativasFalhas: 1
                     };
-                    await browser.storage.local.set({ [statusKey]: status });
+                    await StorageManager.set({ [statusKey]: status });
                 } else {
                     const tempoDesdeUltimaFalha = agora - status.ultimaFalhaTimestamp;
                     const umaHoraMs = 60 * 60 * 1000;
@@ -345,7 +333,7 @@ async function revalidarPlanilhaGviz(sheetId, sheetName, cachedText, tabId) {
                     if (tempoDesdeUltimaFalha >= umaHoraMs) {
                         status.tentativasFalhas += 1;
                         status.ultimaFalhaTimestamp = agora;
-                        await browser.storage.local.set({ [statusKey]: status });
+                        await StorageManager.set({ [statusKey]: status });
                     }
 
                     const tempoTotalFalha = agora - status.primeiraFalhaTimestamp;
