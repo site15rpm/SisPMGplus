@@ -7,12 +7,12 @@
  */
 export async function getGasApiUrl() {
     if (typeof browser !== 'undefined' && browser.storage && browser.storage.local) {
-        const result = await browser.storage.local.get('sic3GasApiUrl');
-        return result.sic3GasApiUrl || "";
+        const result = await browser.storage.local.get('sispmg_sic3_gas_api_url');
+        return result.sispmg_sic3_gas_api_url || "";
     } else if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
         return new Promise((resolve) => {
-            chrome.storage.local.get('sic3GasApiUrl', (result) => {
-                resolve(result.sic3GasApiUrl || "");
+            chrome.storage.local.get('sispmg_sic3_gas_api_url', (result) => {
+                resolve(result.sispmg_sic3_gas_api_url || "");
             });
         });
     }
@@ -25,10 +25,10 @@ export async function getGasApiUrl() {
  */
 export async function saveGasApiUrl(url) {
     if (typeof browser !== 'undefined' && browser.storage && browser.storage.local) {
-        await browser.storage.local.set({ 'sic3GasApiUrl': url });
+        await browser.storage.local.set({ 'sispmg_sic3_gas_api_url': url });
     } else if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
         return new Promise((resolve) => {
-            chrome.storage.local.set({ 'sic3GasApiUrl': url }, () => {
+            chrome.storage.local.set({ 'sispmg_sic3_gas_api_url': url }, () => {
                 resolve();
             });
         });
@@ -66,12 +66,12 @@ const actionToApiMap = {
  */
 export async function getGasApiUrls() {
     if (typeof browser !== 'undefined' && browser.storage && browser.storage.local) {
-        const result = await browser.storage.local.get('sic3_apis_urls');
-        return result.sic3_apis_urls || {};
+        const result = await browser.storage.local.get('sispmg_sic3_apis_urls');
+        return result.sispmg_sic3_apis_urls || {};
     } else if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
         return new Promise((resolve) => {
-            chrome.storage.local.get('sic3_apis_urls', (result) => {
-                resolve(result.sic3_apis_urls || {});
+            chrome.storage.local.get('sispmg_sic3_apis_urls', (result) => {
+                resolve(result.sispmg_sic3_apis_urls || {});
             });
         });
     }
@@ -84,10 +84,10 @@ export async function getGasApiUrls() {
  */
 export async function saveGasApiUrls(urlsMap) {
     if (typeof browser !== 'undefined' && browser.storage && browser.storage.local) {
-        await browser.storage.local.set({ 'sic3_apis_urls': urlsMap });
+        await browser.storage.local.set({ 'sispmg_sic3_apis_urls': urlsMap });
     } else if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
         return new Promise((resolve) => {
-            chrome.storage.local.set({ 'sic3_apis_urls': urlsMap }, () => {
+            chrome.storage.local.set({ 'sispmg_sic3_apis_urls': urlsMap }, () => {
                 resolve();
             });
         });
