@@ -577,9 +577,6 @@ export async function navegarPara(pagina, contexto = {}) {
                     <button id="btnIrParaPesquisa" class="btn-info btn-expand" style="margin-right: 10px;">
                         <i class="fas fa-search"></i> <span>MATERIAIS DE CONSUMO</span>
                     </button>
-                    <button id="btnPrestacaoContasAnual" class="btn-info btn-expand" style="margin-right: 10px;">
-                        <i class="fas fa-file-pdf"></i> <span>PRESTAÇÃO DE CONTAS ANUAL</span>
-                    </button>
                     <button id="btnVoltarLancamentos" class="btn-info" style="display: none; margin-right: 10px;">
                         <i class="fas fa-arrow-left"></i> VOLTAR
                     </button>
