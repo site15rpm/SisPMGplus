@@ -187,7 +187,7 @@ function obterIdArquivoCompartilhado(nomeBase, folderRPM) {
       sheet.deleteColumns(cabecalho.length + 1, maxCols - cabecalho.length);
     }
     
-    sheet.getRange(1, 1, sheet.getMaxRows(), sheet.getMaxColumns()).setFontSize(6);
+    sheet.getRange(1, 1, sheet.getMaxRows(), sheet.getMaxColumns()).setFontSize(8);
     sheet.getRange(1, 1, 1, cabecalho.length).setFontWeight("normal").setNumberFormat("@STRING@");
     
     const activeSheets = ss.getSheets();
@@ -268,7 +268,7 @@ function obterOuCriarPlanilhaAnual(folderRPM, rpm, ano) {
       sheet.deleteColumns(cabLength + 1, maxCols - cabLength);
     }
     
-    sheet.getRange(1, 1, sheet.getMaxRows(), sheet.getMaxColumns()).setFontSize(6);
+    sheet.getRange(1, 1, sheet.getMaxRows(), sheet.getMaxColumns()).setFontSize(8);
     sheet.getRange(1, 1, 1, cabLength).setFontWeight("normal").setNumberFormat("@STRING@");
   }
 
