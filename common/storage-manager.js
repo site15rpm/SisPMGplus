@@ -91,7 +91,10 @@ export const StorageManager = {
     async remove(keys, storageType = 'local') {
         const storage = getStorageArea(storageType);
         const keysToRemove = Array.isArray(keys) ? keys : [keys];
-        await storage.remove(keysToRemove);
+        const finalKeysToRemove = keysToRemove.map(key => {
+            return LEGACY_KEYS_MAPPING[key] || key;
+        });
+        await storage.remove(finalKeysToRemove);
     },
 
     /**
