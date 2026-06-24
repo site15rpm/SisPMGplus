@@ -2,11 +2,13 @@
 // Lógica de background específica para o módulo de Extração de Unidades.
 import { obterUnidades } from '../../common/busca-unidades.js';
 import { fetchWithKeepAlive } from '../../common/keep-alive.js';
+import { StorageManager } from '../../common/storage-manager.js';
+import { STORAGE_KEYS } from '../../common/storage-keys.js';
 
 // --- Constantes ---
-const STORAGE_SETTINGS_KEY = 'unidadesSettings';
-const STORAGE_LOGS_KEY = 'unidadesLogs';
-const STORAGE_LAST_RUN_KEY = 'unidadesLastRun'; // Alterado
+const STORAGE_SETTINGS_KEY = STORAGE_KEYS.UNIDADES_SETTINGS;
+const STORAGE_LOGS_KEY = STORAGE_KEYS.UNIDADES_LOGS;
+const STORAGE_LAST_RUN_KEY = STORAGE_KEYS.UNIDADES_LAST_RUN;
 const MAX_LOG_ENTRIES = 50;
 const OFFSCREEN_DOCUMENT_PATH = '/offscreen.html';
 
@@ -18,10 +20,11 @@ const addUnidadesLog = async (message, system = 'UNIDADES', type = 'info') => {
     try {
         const timestamp = new Date().toLocaleString('pt-BR');
         const logEntry = { timestamp, system, message, type };
-        const { [STORAGE_LOGS_KEY]: logs = [] } = await browser.storage.local.get(STORAGE_LOGS_KEY);
+        const storageRes = await StorageManager.get(STORAGE_LOGS_KEY);
+        const logs = storageRes || [];
         logs.unshift(logEntry);
         const trimmedLogs = logs.slice(0, MAX_LOG_ENTRIES);
-        await browser.storage.local.set({ [STORAGE_LOGS_KEY]: trimmedLogs });
+        await StorageManager.set({ [STORAGE_LOGS_KEY]: trimmedLogs });
 
         // Envia logs atualizados para a UI
         browser.runtime.sendMessage({ action: 'unidades-logs-updated', logs: trimmedLogs }).catch(() => {});
@@ -124,8 +127,8 @@ async function executeExtraction(userId, settingsOverride = null) {
         }
 
         const today = new Date().toLocaleDateString('pt-BR');
-        const { [STORAGE_LAST_RUN_KEY]: currentLastRunData = {} } = await browser.storage.local.get(STORAGE_LAST_RUN_KEY);
-        await browser.storage.local.set({ [STORAGE_LAST_RUN_KEY]: { ...currentLastRunData, [userId]: today } });
+        const currentLastRunData = (await StorageManager.get(STORAGE_LAST_RUN_KEY)) || {};
+        await StorageManager.set({ [STORAGE_LAST_RUN_KEY]: { ...currentLastRunData, [userId]: today } });
 
         console.log("SisPMG+ [Unidades Extraídas]: Dados resultantes da extração:", parsedData);
         await addUnidadesLog('Extração concluída com sucesso!', 'SISTEMA', 'success');
@@ -156,8 +159,9 @@ async function checkTrigger(userContext) {
     if (!userContext || !userContext.userPM) return;
     const userId = userContext.userPM;
 
-    const { [STORAGE_SETTINGS_KEY]: settings, [STORAGE_LAST_RUN_KEY]: lastRunData = {} } = 
-        await browser.storage.local.get([STORAGE_SETTINGS_KEY, STORAGE_LAST_RUN_KEY]);
+    const storageRes = await StorageManager.get([STORAGE_SETTINGS_KEY, STORAGE_LAST_RUN_KEY]);
+    const settings = storageRes[STORAGE_SETTINGS_KEY];
+    const lastRunData = storageRes[STORAGE_LAST_RUN_KEY] || {};
 
     if (!settings || !settings.scheduleFrequency || settings.scheduleFrequency === 'none') {
         return; // Agendamento desativado
@@ -207,19 +211,21 @@ export async function handleUnidadesMessages(request, sender) {
 
     switch (action) {
         case 'unidades-get-settings': {
-            const { [STORAGE_SETTINGS_KEY]: settings, [STORAGE_LOGS_KEY]: logs } = 
-                await browser.storage.local.get([STORAGE_SETTINGS_KEY, STORAGE_LOGS_KEY]);
-            return { settings: settings || {}, logs: logs || [] };
+            const storageRes = await StorageManager.get([STORAGE_SETTINGS_KEY, STORAGE_LOGS_KEY]);
+            const settings = storageRes[STORAGE_SETTINGS_KEY] || {};
+            const logs = storageRes[STORAGE_LOGS_KEY] || [];
+            return { settings, logs };
         }
 
         case 'unidades-save-settings':
-            await browser.storage.local.set({ [STORAGE_SETTINGS_KEY]: payload.settings });
+            await StorageManager.set({ [STORAGE_SETTINGS_KEY]: payload.settings });
             await addUnidadesLog('Configurações salvas.', 'SISTEMA', 'success');
             return { success: true };
 
         case 'unidades-extract-now': {
             // Para execução manual, podemos pegar o usuário de um contexto recente se disponível
-            const { userPM } = (await browser.storage.local.get('intranetUser'))?.intranetUser || {};
+            const intranetUser = await StorageManager.get(STORAGE_KEYS.INTRANET_USER);
+            const { userPM } = intranetUser || {};
             const result = await executeExtraction(userPM || 'manual', payload?.settings);
             return result;
         }
@@ -229,10 +235,10 @@ export async function handleUnidadesMessages(request, sender) {
             return { success: true };
 
         case 'unidades-clear-logs': {
-            await browser.storage.local.set({ [STORAGE_LOGS_KEY]: [] });
+            await StorageManager.set({ [STORAGE_LOGS_KEY]: [] });
             await addUnidadesLog('Histórico de execuções foi limpo.', 'SISTEMA', 'info');
-            const { [STORAGE_LOGS_KEY]: logs } = await browser.storage.local.get(STORAGE_LOGS_KEY);
-            return { success: true, logs: logs || [] };
+            const logs = (await StorageManager.get(STORAGE_LOGS_KEY)) || [];
+            return { success: true, logs };
         }
 
         case 'intranet-user-identified':
