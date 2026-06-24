@@ -120,10 +120,10 @@
       const convenioLocal = ADMIN_CONFIG.dados.convenios.find(c => c.municipio === municipio && c.convenio === convenio);
       if (convenioLocal) return { ...convenioLocal };
       
-      const conveniosData = await carregarDadosPlanilha({ sheetId: idbase, sheet: 'convenios', query: `SELECT A,B,C,D,E,F,G,H,M,X WHERE A='${municipio}' AND B='${convenio}'` });
+      const conveniosData = await carregarDadosPlanilha({ sheetId: idbase, sheet: 'convenios', query: `SELECT A,B,C,D,E,F,G,H,M,N,Y WHERE A='${municipio}' AND B='${convenio}'` });
       if (conveniosData && conveniosData.length > 0) {
-        const [m, c, pn, ppg, p, u, di, df, st, ed] = conveniosData[0];
-        return { municipio: m, convenio: c, preposto_n: pn || "", preposto_pg: ppg || "", preposto: p || "", unidade: u || "", dataInicio: di || "", dataFim: df || "", status_texto: st || "", elementos_despesa: ed || "" };
+        const [m, c, pn, ppg, p, u, di, df, st, ve, ed] = conveniosData[0];
+        return { municipio: m, convenio: c, preposto_n: pn || "", preposto_pg: ppg || "", preposto: p || "", unidade: u || "", dataInicio: di || "", dataFim: df || "", status_texto: st || "", valor_estimado: ve || "", elementos_despesa: ed || "" };
       }
       return null;
     } catch (error) {
@@ -724,7 +724,7 @@
         // Título do Relatório
         [{ content: `PRESTAÇÃO DE CONTAS ALUSIVA AO CONVÊNIO Nº ${convenio}`, colSpan: 14, styles: { halign: 'center', fontStyle: 'bold', fontSize: 10, cellPadding: { top: 3, bottom: 1 }, border: [true, true, false, true] } }],
         // Período e Valor do Convênio
-        [{ content: `PERÍODO DE ${dataInicioPeriodo} A ${dataFimPeriodo}\nVALOR DO CONVÊNIO: R$ -`, colSpan: 14, styles: { halign: 'left', fontStyle: 'bold', fontSize: 8, cellPadding: { top: 1, bottom: 3 }, border: [false, true, true, true] } }],
+        [{ content: `PERÍODO DE ${dataInicioPeriodo} A ${dataFimPeriodo}\nVALOR DO CONVÊNIO: ${convenioInfo.valor_estimado ? window.formatarNumero(parseFloat(convenioInfo.valor_estimado) || 0, 'moeda') : 'R$ -'}`, colSpan: 14, styles: { halign: 'left', fontStyle: 'bold', fontSize: 8, cellPadding: { top: 1, bottom: 3 }, border: [false, true, true, true] } }],
         // Cabeçalhos de Colunas
         [
           { content: "DISCRIMINAÇÃO\nMATERIAL", rowSpan: 2, styles: { halign: 'center', valign: 'middle', fontStyle: 'bold', fillColor: '#d9d9d9' } },
