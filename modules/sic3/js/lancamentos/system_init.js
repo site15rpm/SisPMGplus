@@ -64,7 +64,7 @@ async function carregarInformacoes() {
     const conveniosData = await carregarDadosPlanilha({
       sheetId: idbase,
       sheet: "convenios",
-      query: `SELECT A,B,C,D,E,F,X WHERE A='${municipio}' AND B='${convenio}'`
+      query: `SELECT A,B,C,D,E,F,Y WHERE A='${municipio}' AND B='${convenio}'`
     });
     const resultado = { convenios: [] };
     conveniosData.forEach((row) => {
