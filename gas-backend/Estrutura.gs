@@ -176,6 +176,17 @@ function obterIdArquivoCompartilhado(nomeBase, folderRPM) {
     if (!sheet) sheet = ss.insertSheet(nomeAba);
     sheet.clear();
     sheet.appendRow(cabecalho);
+    
+    // Remove linhas e colunas vazias extras para otimização e leveza de dados
+    const maxRows = sheet.getMaxRows();
+    if (maxRows > 1) {
+      sheet.deleteRows(2, maxRows - 1);
+    }
+    const maxCols = sheet.getMaxColumns();
+    if (maxCols > cabecalho.length) {
+      sheet.deleteColumns(cabecalho.length + 1, maxCols - cabecalho.length);
+    }
+    
     sheet.getRange(1, 1, sheet.getMaxRows(), sheet.getMaxColumns()).setFontSize(6);
     sheet.getRange(1, 1, 1, cabecalho.length).setFontWeight("normal").setNumberFormat("@STRING@");
     
@@ -245,8 +256,20 @@ function obterOuCriarPlanilhaAnual(folderRPM, rpm, ano) {
     if (!sheet) sheet = ss.insertSheet(nomeAba);
     sheet.clear();
     sheet.appendRow(abas[nomeAba]);
+    
+    // Remove linhas e colunas vazias extras para otimização e leveza de dados
+    const maxRows = sheet.getMaxRows();
+    if (maxRows > 1) {
+      sheet.deleteRows(2, maxRows - 1);
+    }
+    const maxCols = sheet.getMaxColumns();
+    const cabLength = abas[nomeAba].length;
+    if (maxCols > cabLength) {
+      sheet.deleteColumns(cabLength + 1, maxCols - cabLength);
+    }
+    
     sheet.getRange(1, 1, sheet.getMaxRows(), sheet.getMaxColumns()).setFontSize(6);
-    sheet.getRange(1, 1, 1, abas[nomeAba].length).setFontWeight("normal").setNumberFormat("@STRING@");
+    sheet.getRange(1, 1, 1, cabLength).setFontWeight("normal").setNumberFormat("@STRING@");
   }
 
   const activeSheets = ss.getSheets();
