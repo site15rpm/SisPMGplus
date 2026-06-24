@@ -325,6 +325,7 @@ async function verificarMensagens(userData, sistema) {
 
         mensagensPendentes = [];
         mensagemAtualIndex = 0;
+        const chavesParaRemover = [];
 
         // O GViz retorna os dados. O cabeçalho é a linha 1 física da planilha.
         // A primeira linha de dados no parsedData é rows[0], que corresponde à linha física 2.
@@ -339,6 +340,14 @@ async function verificarMensagens(userData, sistema) {
             const rowIndexFisico = i + 2; // Linha física correspondente (1-based + 1 cabeçalho)
 
             if (!mensagem) continue;
+
+            const listaConfirmados = confirmacoes.split('|').map(pm => pm.trim());
+            const jaConfirmouLocal = confirmadosLocais[`confirmado_local_${rowIndexFisico}`] === true;
+
+            // Se o usuário já gravou no banco de dados e a chave local ainda existe, enfileira para remoção
+            if (listaConfirmados.indexOf(userData.g) !== -1 && jaConfirmouLocal) {
+                chavesParaRemover.push(`confirmado_local_${rowIndexFisico}`);
+            }
 
             // Verifica se o usuário atende à abrangência
             if (checkAbrangencia(abrangencia, userData)) {
@@ -358,9 +367,6 @@ async function verificarMensagens(userData, sistema) {
 
                 if (!urlMatch) continue; // Pula essa mensagem se não for a URL correspondente
 
-                const listaConfirmados = confirmacoes.split('|').map(pm => pm.trim());
-                const jaConfirmouLocal = confirmadosLocais[`confirmado_local_${rowIndexFisico}`] === true;
-
                 // Se o usuário ainda não confirmou a leitura na planilha e nem localmente
                 if (listaConfirmados.indexOf(userData.g) === -1 && !jaConfirmouLocal) {
                     mensagensPendentes.push({
@@ -371,6 +377,13 @@ async function verificarMensagens(userData, sistema) {
                     });
                 }
             }
+        }
+
+        // Remove chaves confirmadas localmente que já foram persistidas no banco
+        if (chavesParaRemover.length > 0) {
+            sendMessageToBackground('removeStorage', { keys: chavesParaRemover }).catch(err => {
+                console.error('SisPMG+ [Comunicação]: Falha ao remover chaves confirmadas locais:', err);
+            });
         }
 
         if (mensagensPendentes.length > 0) {
