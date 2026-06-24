@@ -262,7 +262,8 @@ function salvarDadosNaPlanilha(authToken, municipio, convenio, ano, mes, dados, 
         timestamp, municipio, convenio, String(ano), mes, 
         String(row[0]),  // item
         String(row[1]),  // data
-        String(row[3]),  // placa (pula a hora row[2])
+        String(row[2]),  // hora
+        String(row[3]),  // placa
         String(row[4]),  // prefixo
         String(row[5]),  // odometro
         String(row[6]),  // motorista
