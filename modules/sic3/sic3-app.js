@@ -763,7 +763,7 @@ window.addEventListener('DOMContentLoaded', async () => {
             
             if (storage) {
                 const res = await new Promise(resolve => {
-                    storage.get('sic3_access_authorized', r => resolve(r ? r.sic3_access_authorized : null));
+                    storage.get('sispmg_sic3_access_authorized', r => resolve(r ? r.sispmg_sic3_access_authorized : null));
                 });
                 
                 if (res && res.authorized === true) {
@@ -783,7 +783,7 @@ window.addEventListener('DOMContentLoaded', async () => {
                 // Consome o token de acesso único
                 if (res) {
                     await new Promise(resolve => {
-                        storage.remove('sic3_access_authorized', resolve);
+                        storage.remove('sispmg_sic3_access_authorized', resolve);
                     });
                 }
             }
