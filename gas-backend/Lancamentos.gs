@@ -186,6 +186,11 @@ function removerRegistrosExistentes(sheet, municipio, convenio, ano, mes) {
 
   sheet.clearContents();
   sheet.getRange(1, 1, dadosMantidos.length, cabecalho.length).setValues(dadosMantidos).setNumberFormat("@STRING@");
+
+  const totalLinhasRemover = data.length - dadosMantidos.length;
+  if (totalLinhasRemover > 0) {
+    sheet.deleteRows(dadosMantidos.length + 1, totalLinhasRemover);
+  }
 }
 
 function appendRowAndFormatAsText(sheet, rowData) {
