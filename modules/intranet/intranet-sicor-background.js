@@ -4,14 +4,16 @@
 import * as XLSX from '../lib/sheetjs/xlsx.mjs';
 import { fetchWithKeepAlive } from '../../common/keep-alive.js';
 import { sendMessageToOffscreen, closeOffscreenDocument } from './intranet-offscreen.js';
+import { StorageManager } from '../../common/storage-manager.js';
+import { STORAGE_KEYS } from '../../common/storage-keys.js';
 
 /**
  * Verifica se o usuário atual logado está autorizado a utilizar o módulo SICOR.
  */
 async function isSicorAuthorized() {
     try {
-        const res = await browser.storage.local.get('sispmg_modulos_autorizados');
-        const modulos = res.sispmg_modulos_autorizados;
+        const res = await StorageManager.get('sispmg_modulos_autorizados');
+        const modulos = res;
         return Array.isArray(modulos) && modulos.includes('sicor');
     } catch (e) {
         return false;
@@ -20,10 +22,10 @@ async function isSicorAuthorized() {
 
 // --- Constantes ---
 const SICOR_ALARM_SCHEDULER_CHECK = 'sicor-scheduler-check'; // Nome do alarme periódico
-const STORAGE_SETTINGS_KEY = 'sicorSettings';
-const STORAGE_LOGS_KEY = 'sicorLogs';
-const SICOR_STORAGE_SCHEDULE_KEY = 'sicorSchedule'; // Chave para guardar a próxima execução
-const STORAGE_LAST_RUN_KEY = 'sicorLastSuccessfulRunDate'; // Chave para evitar re-execução
+const STORAGE_SETTINGS_KEY = STORAGE_KEYS.SICOR_SETTINGS;
+const STORAGE_LOGS_KEY = STORAGE_KEYS.SICOR_LOGS;
+const SICOR_STORAGE_SCHEDULE_KEY = STORAGE_KEYS.SICOR_SCHEDULE;
+const STORAGE_LAST_RUN_KEY = STORAGE_KEYS.SICOR_LAST_RUN_DATE;
 const MAX_LOG_ENTRIES = 50;
 
 // --- VARIÁVEIS DE ESTADO ---
@@ -37,10 +39,11 @@ const addSicorLog = async (message, system = 'SICOR', type = 'info') => {
     try {
         const timestamp = new Date().toLocaleString('pt-BR');
         const logEntry = { timestamp, system, message, type };
-        const { [STORAGE_LOGS_KEY]: logs = [] } = await browser.storage.local.get(STORAGE_LOGS_KEY);
+        const storageRes = await StorageManager.get(STORAGE_LOGS_KEY);
+        const logs = storageRes || [];
         logs.unshift(logEntry);
         const trimmedLogs = logs.slice(0, MAX_LOG_ENTRIES);
-        await browser.storage.local.set({ [STORAGE_LOGS_KEY]: trimmedLogs });
+        await StorageManager.set({ [STORAGE_LOGS_KEY]: trimmedLogs });
 
         // Envia logs atualizados para a UI (se aberta)
         browser.runtime.sendMessage({ action: 'sicor-logs-updated', logs: trimmedLogs }).catch(() => {});
@@ -127,14 +130,13 @@ export async function handleSicorMessages(request, sender) {
                 try {
                     if (await isSicorAuthorized()) {
                         await addSicorLog('Sinal de login detectado para usuário autorizado do SICOR. Inicializando agendamentos...', 'SISTEMA', 'info');
-                        const res = await browser.storage.local.get(STORAGE_SETTINGS_KEY);
-                        const settings = res[STORAGE_SETTINGS_KEY] || {};
+                        const settings = (await StorageManager.get(STORAGE_SETTINGS_KEY)) || {};
                         await scheduleNextSicorExtraction(settings);
                         await runScheduledSicorExtractionIfNeeded();
                     } else {
                         // Se não for autorizado, garante que agendamentos antigos sejam limpos
                         await browser.alarms.clear(SICOR_ALARM_SCHEDULER_CHECK);
-                        await browser.storage.local.remove(SICOR_STORAGE_SCHEDULE_KEY);
+                        await StorageManager.remove(SICOR_STORAGE_SCHEDULE_KEY);
                     }
                 } catch (e) {
                     console.error("SisPMG+ [SICOR Background]: Erro ao inicializar agendamentos no login.", e);
@@ -143,13 +145,15 @@ export async function handleSicorMessages(request, sender) {
             break; // Permite que outros handlers processem
         }
         case 'sicor-get-settings': {
-            const { [STORAGE_SETTINGS_KEY]: settings, [STORAGE_LOGS_KEY]: logs } = await browser.storage.local.get([STORAGE_SETTINGS_KEY, STORAGE_LOGS_KEY]);
-            return { settings: settings || {}, logs: logs || [] };
+            const storageRes = await StorageManager.get([STORAGE_SETTINGS_KEY, STORAGE_LOGS_KEY]);
+            const settings = storageRes[STORAGE_SETTINGS_KEY] || {};
+            const logs = storageRes[STORAGE_LOGS_KEY] || [];
+            return { settings, logs };
         }
 
         case 'sicor-save-settings':
             try {
-                await browser.storage.local.set({ [STORAGE_SETTINGS_KEY]: payload.settings });
+                await StorageManager.set({ [STORAGE_SETTINGS_KEY]: payload.settings });
                 await scheduleNextSicorExtraction(payload.settings);
                 await addSicorLog('Configurações salvas e agendamento atualizado.', 'SISTEMA', 'success');
                 return { success: true };
@@ -159,10 +163,10 @@ export async function handleSicorMessages(request, sender) {
             }
 
         case 'sicor-clear-logs': {
-             await browser.storage.local.set({ [STORAGE_LOGS_KEY]: [] });
+             await StorageManager.set({ [STORAGE_LOGS_KEY]: [] });
              await addSicorLog('Histórico de execuções foi limpo.', 'SISTEMA', 'info');
-             const { [STORAGE_LOGS_KEY]: logs } = await browser.storage.local.get(STORAGE_LOGS_KEY);
-             return { success: true, logs: logs || [] };
+             const logs = (await StorageManager.get(STORAGE_LOGS_KEY)) || [];
+             return { success: true, logs };
         }
 
         case 'sicor-user-is-logged-in':
@@ -353,7 +357,7 @@ async function scheduleNextSicorExtraction(config) {
 
 
     const schedule = { nextRun: nextRun.toISOString() };
-    await browser.storage.local.set({ [SICOR_STORAGE_SCHEDULE_KEY]: schedule });
+    await StorageManager.set({ [SICOR_STORAGE_SCHEDULE_KEY]: schedule });
 
     // Cria o alarme periódico que apenas verifica
     browser.alarms.create(SICOR_ALARM_SCHEDULER_CHECK, { periodInMinutes: 60 });
@@ -369,7 +373,10 @@ async function runScheduledSicorExtractionIfNeeded() {
         return;
     }
 
-    const { [STORAGE_SETTINGS_KEY]: settings, [SICOR_STORAGE_SCHEDULE_KEY]: schedule, [STORAGE_LAST_RUN_KEY]: lastRunDate } = await browser.storage.local.get([STORAGE_SETTINGS_KEY, SICOR_STORAGE_SCHEDULE_KEY, STORAGE_LAST_RUN_KEY]);
+    const storageRes = await StorageManager.get([STORAGE_SETTINGS_KEY, SICOR_STORAGE_SCHEDULE_KEY, STORAGE_LAST_RUN_KEY]);
+    const settings = storageRes[STORAGE_SETTINGS_KEY];
+    const schedule = storageRes[SICOR_STORAGE_SCHEDULE_KEY];
+    const lastRunDate = storageRes[STORAGE_LAST_RUN_KEY];
 
     // Validação robusta das configurações e agendamento
     if (!settings || settings.scheduleFrequency === 'none' || !schedule?.nextRun || !settings.unidadeId || (!settings.manterCopiaXls && !settings.manterCopiaCsv && !settings.gasId) ) {
@@ -486,7 +493,7 @@ async function runScheduledSicorExtractionIfNeeded() {
         // Reagenda para a próxima execução após sucesso ou falha controlada
         if (allDownloadsSuccessful) {
             // Salva se o download/processamento foi bem-sucedido ou se não encontrou dados
-            await browser.storage.local.set({ [STORAGE_LAST_RUN_KEY]: new Date().toISOString().split('T')[0] });
+            await StorageManager.set({ [STORAGE_LAST_RUN_KEY]: new Date().toISOString().split('T')[0] });
             await addSicorLog('Data da última execução salva (Sucesso ou Sem Dados).', 'SISTEMA', 'info');
         } else {
             await addSicorLog('Execução agendada falhou. A data da última execução não foi atualizada.', 'SISTEMA', 'warn');
@@ -798,7 +805,7 @@ export function initializeSicorBackground() {
     browser.runtime.onInstalled.addListener(async (details) => {
         if (!(await isSicorAuthorized())) return;
         await addSicorLog(`Evento onInstalled: ${details.reason}`, 'SISTEMA');
-        const { [STORAGE_SETTINGS_KEY]: currentConfig } = await browser.storage.local.get(STORAGE_SETTINGS_KEY);
+        const currentConfig = await StorageManager.get(STORAGE_SETTINGS_KEY);
         let config = currentConfig || {}; // Garante que config seja um objeto
 
          // Define padrões se não existirem (instalação ou atualização de config antiga)
@@ -826,7 +833,7 @@ export function initializeSicorBackground() {
          }
 
          if (needsUpdate || details.reason === 'install') {
-            await browser.storage.local.set({ [STORAGE_SETTINGS_KEY]: config });
+            await StorageManager.set({ [STORAGE_SETTINGS_KEY]: config });
             await addSicorLog(`Configurações ${details.reason === 'install' ? 'padrão definidas' : 'atualizadas'}.`, 'SISTEMA');
          }
 
