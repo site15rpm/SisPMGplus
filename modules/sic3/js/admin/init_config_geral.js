@@ -168,11 +168,18 @@
         .on("click.admin", async function () {
             mostrarCarregamento("Recarregando informações do banco...");
             try {
+                if (typeof window.salvarSelecaoUsuario === 'function') {
+                    window.salvarSelecaoUsuario();
+                }
                 if (typeof window.resolverIdsPlanilhas === 'function') {
                     await window.resolverIdsPlanilhas(true); // Força a recarga total dos links do GAS
                 }
                 await carregarInformacoesAdmin();
-                await carregarLancamentos();
+                if (typeof restaurarSelecaoUsuario === 'function') {
+                    await restaurarSelecaoUsuario();
+                } else {
+                    await carregarLancamentos();
+                }
                 mostrarDialogo("Sucesso", "Informações recarregadas com sucesso!");
             } catch (err) {
                 console.error("Erro ao recarregar dados:", err);
