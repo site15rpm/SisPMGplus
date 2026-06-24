@@ -1,107 +1,113 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="SIC3 v3.0 - Lançamentos e Controle de Convênios." />
-    <title>SIC3 v3.0 - Controle de Contas de Convênio</title>
 
-    <!-- Google Fonts para uma tipografia moderna e elegante -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="SiC3 v3.0 - Lançamentos e Controle de Convênios." />
+  <title>SiC3 v3.0 - Controle de Contas de Convênio</title>
 
-    <!-- Bibliotecas Locais (CSP Compliant para Manifest V3) -->
-    <script src="../lib/jquery-3.7.0.min.js"></script>
-    <link href="../lib/dataTables.dataTables.min.css" rel="stylesheet" />
-    <script src="../lib/dataTables.js"></script>
-    <link href="../lib/dataTables.searchHighlight.css" rel="stylesheet" />
-    <script src="../lib/dataTables.searchHighlight.min.js"></script>
-    <script src="../lib/jquery.highlight.min.js"></script>
-    <link rel="stylesheet" href="../lib/jquery-ui.css" />
-    <script src="../lib/jquery-ui.js"></script>
-    <script src="../lib/jspdf.umd.min.js"></script>
-    <script src="../lib/jspdf.plugin.autotable.min.js"></script>
-    <link rel="stylesheet" href="../lib/font-awesome-all.min.css" />
+  <!-- Google Fonts para uma tipografia moderna e elegante -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet">
 
-    <!-- Estilo Premium para o SIC3 v3.0 -->
-    <link rel="stylesheet" href="styles.css" />
-  </head>
-  <body>
-    <!-- Overlay de Carregamento Premium -->
-    <div id="loading-overlay-global" class="loading-overlay">
-      <div class="loading-container">
-        <div class="spinner-premium"></div>
-        <div id="loading-message-global" class="loading-message">Carregando o SIC3 v3.0...</div>
-      </div>
+  <!-- Bibliotecas Locais (CSP Compliant para Manifest V3) -->
+  <script src="../lib/jquery-3.7.0.min.js"></script>
+  <link href="../lib/dataTables.dataTables.min.css" rel="stylesheet" />
+  <script src="../lib/dataTables.js"></script>
+  <link href="../lib/dataTables.searchHighlight.css" rel="stylesheet" />
+  <script src="../lib/dataTables.searchHighlight.min.js"></script>
+  <script src="../lib/jquery.highlight.min.js"></script>
+  <link rel="stylesheet" href="../lib/jquery-ui.css" />
+  <script src="../lib/jquery-ui.js"></script>
+  <script src="../lib/jspdf.umd.min.js"></script>
+  <script src="../lib/jspdf.plugin.autotable.min.js"></script>
+  <link rel="stylesheet" href="../lib/font-awesome-all.min.css" />
+
+  <!-- Estilo Premium para o SiC3 v3.0 -->
+  <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+  <!-- Overlay de Carregamento Premium -->
+  <div id="loading-overlay-global" class="loading-overlay">
+    <div class="loading-container">
+      <div class="spinner-premium"></div>
+      <div id="loading-message-global" class="loading-message">Carregando o SiC3 v3.0...</div>
     </div>
+  </div>
 
-    <!-- Barra de Navegação/Header Principal -->
-    <header class="main-header">
-      <!-- Lado Esquerdo: Marca + Painel de Perfil do Usuário colado logo após -->
-      <div class="header-left-side" style="display: flex; align-items: center; gap: 24px;">
-        <div class="header-brand">
-          <div class="brand-text">
-            <h1>SIC3 <span class="version-badge">v3.0</span></h1>
-            <p>Controle de Contas de Convênio</p>
-          </div>
+  <!-- Barra de Navegação/Header Principal -->
+  <header class="main-header">
+    <!-- Lado Esquerdo: Marca + Painel de Perfil do Usuário colado logo após -->
+    <div class="header-left-side" style="display: flex; align-items: center; gap: 24px;">
+      <div class="header-brand">
+        <div class="brand-text">
+          <h1>SiC3 <span class="version-badge">v3.0</span></h1>
+          <p>Sistema de Controle</p>
+          <p>de Contas de Convênio</p>
         </div>
+      </div>
 
-        <!-- Painel de Perfil de Usuário Premium Integrado (reformulado para ficar à direita logo após header-brand) -->
-        <div class="header-user-widget" id="user-profile-panel" style="display: none;">
-          <div class="widget-profile-main">
-            <div class="widget-profile-info">
-              <div class="widget-name-row">
-                <span class="widget-profile-name" id="user-profile-name">Carregando...</span>
-                <span id="user-profile-admin-status"></span>
-              </div>
-              <div class="widget-profile-meta">
-                <span><i class="fas fa-shield-alt"></i> <strong id="user-profile-regiao">Região: -</strong></span>
-                <span class="widget-meta-separator">&bull;</span>
-                <span><i class="fas fa-building"></i> <span id="user-profile-secao">Seção: -</span></span>
-              </div>
+      <!-- Painel de Perfil de Usuário Premium Integrado (reformulado para ficar à direita logo após header-brand) -->
+      <div class="header-user-widget" id="user-profile-panel" style="display: none;">
+        <div class="widget-profile-main">
+          <div class="widget-profile-info">
+            <div class="widget-name-row">
+              <span class="widget-profile-name" id="user-profile-name">Carregando...</span>
+              <span id="user-profile-admin-status"></span>
+            </div>
+            <div class="widget-profile-meta">
+              <span><i class="fas fa-shield-alt"></i> <strong id="user-profile-regiao">Região: -</strong></span>
+              <span class="widget-meta-separator">&bull;</span>
+              <span><i class="fas fa-building"></i> <span id="user-profile-secao">Seção: -</span></span>
             </div>
           </div>
         </div>
       </div>
+    </div>
 
-      <!-- Mantemos os ids de contexto legados para evitar erros no JS, mas ocultos por padrão -->
-      <div class="user-context-display" style="display: none !important;">
-        <span id="user-municipio-display">Buscando município...</span>
-        <span id="user-rpm-display">Buscando RPM...</span>
-        <span id="user-secao-display">Buscando seção...</span>
-      </div>
+    <!-- Mantemos os ids de contexto legados para evitar erros no JS, mas ocultos por padrão -->
+    <div class="user-context-display" style="display: none !important;">
+      <span id="user-municipio-display">Buscando município...</span>
+      <span id="user-rpm-display">Buscando RPM...</span>
+      <span id="user-secao-display">Buscando seção...</span>
+    </div>
 
-      <!-- Seção Direita: Botões de Navegação + Botão Sair -->
-      <div class="header-right-side">
-        <div id="header-dynamic-menu" class="header-dynamic-menu"></div>
-        
-        <!-- Botão Sair Global -->
-        <button id="btn-logout-global" class="btn-logout-global" title="Sair da Conta">
-          <i class="fas fa-sign-out-alt"></i>
-          <span>SAIR</span>
-        </button>
-      </div>
-    </header>
+    <!-- Seção Direita: Botões de Navegação + Botão Sair -->
+    <div class="header-right-side">
+      <div id="header-dynamic-menu" class="header-dynamic-menu"></div>
 
-    <!-- Container da Aplicação -->
-    <main id="sic3-app-container" class="app-main-content">
+      <!-- Botão Sair Global -->
+      <button id="btn-logout-global" class="btn-logout-global" title="Sair da Conta">
+        <i class="fas fa-sign-out-alt"></i>
+        <span>SAIR</span>
+      </button>
+    </div>
+  </header>
 
-      <!-- Área de injeção dinâmica de convênios -->
-      <div id="sic3-views-container"></div>
-    </main>
+  <!-- Container da Aplicação -->
+  <main id="sic3-app-container" class="app-main-content">
 
-    <!-- Dialog de Mensagens do jQuery UI -->
-    <div id="dialog-message" style="display: none;"></div>
+    <!-- Área de injeção dinâmica de convênios -->
+    <div id="sic3-views-container"></div>
+  </main>
 
-    <!-- Rodapé discreto e moderno -->
-    <footer class="app-footer">
-      <div class="footer-credits">
-        <span>SisPMG+ Extension</span>
-      </div>
-    </footer>
+  <!-- Dialog de Mensagens do jQuery UI -->
+  <div id="dialog-message" style="display: none;"></div>
 
-    <!-- Script Principal da Aplicação SPA (sic3_v3) -->
-    <script type="module" src="sic3-app.js"></script>
-  </body>
+  <!-- Rodapé discreto e moderno -->
+  <footer class="app-footer">
+    <div class="footer-credits">
+      <span>SisPMG+ Extension</span>
+    </div>
+  </footer>
+
+  <!-- Script Principal da Aplicação SPA (sic3_v3) -->
+  <script type="module" src="sic3-app.js"></script>
+</body>
+
 </html>
