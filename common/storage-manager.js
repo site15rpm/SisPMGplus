@@ -69,16 +69,14 @@ export const StorageManager = {
         return isArray ? result : result[keys];
     },
 
-    /**
-     * Define valores no storage.
-     * 
-     * @param {Object} data Objeto contendo chaves e valores.
-     * @param {string} storageType Tipo de storage ('local' ou 'sync').
-     * @returns {Promise<void>}
-     */
     async set(data, storageType = 'local') {
         const storage = getStorageArea(storageType);
-        await storage.set(data);
+        const finalData = {};
+        for (const key in data) {
+            const finalKey = LEGACY_KEYS_MAPPING[key] || key;
+            finalData[finalKey] = data[key];
+        }
+        await storage.set(finalData);
     },
 
     /**
