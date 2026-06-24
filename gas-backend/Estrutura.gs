@@ -165,7 +165,7 @@ function obterIdArquivoCompartilhado(nomeBase, folderRPM) {
     cabecalho = ["CÓDIGO", "DESCRIÇÃO", "VALOR", "UNIDADE"];
   } else if (nomeBase === "SIC3_BDConvenios") {
     nomeAba = "convenios";
-    cabecalho = ["municipio", "convenio", "preposto_n", "preposto_pg", "preposto", "unidade", "dataInicio", "dataFim", "", "", "", "", "status_texto", "valor_estimado", "", "", "", "", "", "", "", "", "", "", "elementos_despesa", "user_pm"];
+    cabecalho = ["municipio", "convenio", "preposto_n", "preposto_pg", "preposto", "unidade", "dataInicio", "dataFim", "numero_face", "uni_nome_principal", "aditivo", "ativo", "status_texto", "valor_estimado", "concedente", "concedente_id", "cnpj", "unidade_responsavel", "unidade_nivel", "unidade_hierarquia", "unidade_codigo_secao", "unidade_secao", "unidade_codigo_municipio", "unidade_municipio", "elementos_despesa", "user_pm"];
   } else if (nomeBase === "SIC3_BDEnderecos") {
     nomeAba = "enderecos";
     cabecalho = ["municipio", "convenio", "endereco", "dtEndereco", "medidorAgua", "dtMedidorAgua", "medidorEnergia", "dtMedidorEnergia"];
