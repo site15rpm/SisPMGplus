@@ -317,15 +317,14 @@ async function verificarMensagens(userData, sistema) {
         if (!parsedData || parsedData.length === 0) return;
 
         // Busca as confirmações gravadas localmente no storage para evitar exibição redundante
-        const chavesParaBuscar = parsedData.map((_, i) => `confirmado_local_${i + 2}`);
         const chavesConfirmadasLocais = await sendMessageToBackground('getStorage', {
-            keys: chavesParaBuscar
+            keys: ['sispmg_comunicacao_confirmados_locais']
         });
-        const confirmadosLocais = chavesConfirmadasLocais?.value || {};
+        const confirmadosLocais = chavesConfirmadasLocais?.value?.sispmg_comunicacao_confirmados_locais || {};
 
         mensagensPendentes = [];
         mensagemAtualIndex = 0;
-        const chavesParaRemover = [];
+        let confirmadosLocaisModificados = false;
 
         // O GViz retorna os dados. O cabeçalho é a linha 1 física da planilha.
         // A primeira linha de dados no parsedData é rows[0], que corresponde à linha física 2.
@@ -342,11 +341,12 @@ async function verificarMensagens(userData, sistema) {
             if (!mensagem) continue;
 
             const listaConfirmados = confirmacoes.split('|').map(pm => pm.trim());
-            const jaConfirmouLocal = confirmadosLocais[`confirmado_local_${rowIndexFisico}`] === true;
+            const jaConfirmouLocal = confirmadosLocais[rowIndexFisico] === true;
 
-            // Se o usuário já gravou no banco de dados e a chave local ainda existe, enfileira para remoção
+            // Se o usuário já gravou no banco de dados e a chave local ainda existe, remove da lista
             if (listaConfirmados.indexOf(userData.g) !== -1 && jaConfirmouLocal) {
-                chavesParaRemover.push(`confirmado_local_${rowIndexFisico}`);
+                delete confirmadosLocais[rowIndexFisico];
+                confirmadosLocaisModificados = true;
             }
 
             // Verifica se o usuário atende à abrangência
@@ -379,10 +379,12 @@ async function verificarMensagens(userData, sistema) {
             }
         }
 
-        // Remove chaves confirmadas localmente que já foram persistidas no banco
-        if (chavesParaRemover.length > 0) {
-            sendMessageToBackground('removeStorage', { keys: chavesParaRemover }).catch(err => {
-                console.error('SisPMG+ [Comunicação]: Falha ao remover chaves confirmadas locais:', err);
+        // Salva o dicionário atualizado sem as chaves confirmadas que já foram gravadas no banco
+        if (confirmadosLocaisModificados) {
+            sendMessageToBackground('setStorage', { 
+                sispmg_comunicacao_confirmados_locais: confirmadosLocais 
+            }).catch(err => {
+                console.error('SisPMG+ [Comunicação]: Falha ao atualizar chaves confirmadas locais no storage:', err);
             });
         }
 
@@ -406,13 +408,19 @@ function exibirProximaMensagem(sistema) {
 
     const msgObj = mensagensPendentes[mensagemAtualIndex];
     exibirModalMensagemElement(msgObj.mensagem, () => {
-        // Grava localmente a confirmação para evitar reexibição imediata em recarregamentos de página
-        sendMessageToBackground('setStorage', {
-            [`confirmado_local_${msgObj.rowIndex}`]: true
-        }).catch(err => {
-            console.error(`SisPMG+ [Comunicação]: Falha ao registrar confirmação local para a linha ${msgObj.rowIndex}:`, err);
-            reportarErro(err, sistema);
-        });
+        // Grava localmente a confirmação no dicionário unificado para evitar reexibição imediata
+        sendMessageToBackground('getStorage', { keys: ['sispmg_comunicacao_confirmados_locais'] })
+            .then(res => {
+                const dict = res?.value?.sispmg_comunicacao_confirmados_locais || {};
+                dict[msgObj.rowIndex] = true;
+                return sendMessageToBackground('setStorage', {
+                    sispmg_comunicacao_confirmados_locais: dict
+                });
+            })
+            .catch(err => {
+                console.error(`SisPMG+ [Comunicação]: Falha ao registrar confirmação local para a linha ${msgObj.rowIndex}:`, err);
+                reportarErro(err, sistema);
+            });
 
         // Gravação da confirmação de leitura em segundo plano
         sendMessageToBackground('confirmarLeituraMensagem', {
