@@ -4,6 +4,8 @@ import { fetchWithKeepAlive } from '../../common/keep-alive.js';
 import { parseGoogleSheetResponse } from '../../common/google-sheets.js';
 import { sendMessageToOffscreen, closeOffscreenDocument } from './intranet-offscreen.js';
 import { fetchUnidadesHTML, parseUnidades } from '../../common/busca-unidades.js';
+import { StorageManager } from '../../common/storage-manager.js';
+import { STORAGE_KEYS } from '../../common/storage-keys.js';
 
 async function fetchApiData(url, token, options = {}) {
     const defaultOptions = {
@@ -84,7 +86,7 @@ export async function handleIntranetMessages(request, sender) {
             // Ele não deve retornar uma resposta para permitir que outros handlers na cadeia o processem.
             (async () => {
                 try {
-                    await browser.storage.local.set({ intranetUser: restOfPayload });
+                    await StorageManager.set({ [STORAGE_KEYS.INTRANET_USER]: restOfPayload });
                     if (sender.tab?.id) {
                         // Sinaliza para a aba de origem que o background está pronto
                         browser.tabs.sendMessage(sender.tab.id, { action: 'sispmg-ready' });
@@ -261,7 +263,7 @@ export async function handleIntranetMessages(request, sender) {
                 };
                 
                 try {
-                    await browser.storage.local.set({ sic3_unidades_rpm: parsedData });
+                    await StorageManager.set({ [STORAGE_KEYS.SIC3_UNIDADES_RPM]: parsedData });
                     logBg(`[BG-Identificação] Cache de unidades gravado com sucesso no storage local (chave 'sic3_unidades_rpm', ${parsedData.length} registros).`);
                 } catch (storageErr) {
                     logBg(`[BG-Erro Storage] Falha ao salvar cache de unidades: ${storageErr.message}`);
