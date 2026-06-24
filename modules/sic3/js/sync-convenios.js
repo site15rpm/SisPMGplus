@@ -447,6 +447,7 @@ export async function executarSincronizacaoConvenios(isPrimeiraBusca) {
                 const dtFinal = limparCampoHtml(detalhes.DT_VIGENCIA_FINAL || detalhes.dt_vigencia_final || detalhes.DTFINAL || detalhes.dtfinal || "");
                 const numeroFace = limparCampoHtml(detalhes.NUMERO_FACE || detalhes.numero_face || conv.NUMERO_FACE || "");
                 const uniNomePrincipal = limparCampoHtml(detalhes.UNI_NOME_PRINCIPAL || detalhes.uni_nome_principal || conv.UNI_NOME_PRINCIPAL || "");
+                const valorEstimado = limparCampoHtml(detalhes.VALOR_ESTIMADO || detalhes.valor_estimado || "");
                 
                 // Filtrar por RPM da unidade principal (Requisito 5)
                 const uniNomePrincipalNorm = normalizarParaCompararRPM(uniNomePrincipal);
@@ -570,6 +571,7 @@ export async function executarSincronizacaoConvenios(isPrimeiraBusca) {
                     UNIDADE_RESPONSAVEL: String(unidadeResponsavel),
                     ELEMENTOS_DESPESA: elementosDespesa,
                     USER_PM: userPMTokiuz,
+                    VALOR_ESTIMADO: String(valorEstimado),
                     
                     // Anexa todas as informações disponíveis de busca-unidades
                     unidadeNivel: unidadeEncontrada ? unidadeEncontrada.nivel : "",
