@@ -872,35 +872,18 @@
 
   // Função utilitária para obter dados do storage local da extensão
   function obterDadosStorage(key) {
-    return new Promise((resolve) => {
-      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-        chrome.storage.local.get(key, (result) => {
-          resolve(result[key] || null);
-        });
-      } else if (typeof browser !== 'undefined' && browser.storage && browser.storage.local) {
-        browser.storage.local.get(key).then(result => {
-          resolve(result[key] || null);
-        }).catch(() => resolve(null));
-      } else {
-        resolve(null);
-      }
-    });
+    return enviarMensagemBackground('getStorage', { keys: [key] })
+      .then(res => {
+        return res?.value?.[key] || null;
+      })
+      .catch(() => null);
   }
 
   // Função utilitária para gravar dados no storage local da extensão
   function gravarDadosStorage(key, value) {
-    return new Promise((resolve) => {
-      const data = { [key]: value };
-      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-        chrome.storage.local.set(data, () => {
-          resolve();
-        });
-      } else if (typeof browser !== 'undefined' && browser.storage && browser.storage.local) {
-        browser.storage.local.set(data).then(resolve).catch(() => resolve());
-      } else {
-        resolve();
-      }
-    });
+    return enviarMensagemBackground('setStorage', { [key]: value })
+      .then(() => {})
+      .catch(() => {});
   }
 
   // Função utilitária para enviar mensagens ao background
@@ -975,14 +958,14 @@
       }
 
       // 3. Tenta obter a lista de unidades do cache do storage local primeiro
-      let unidadesRaw = await obterDadosStorage('sic3_unidades_rpm');
+      let unidadesRaw = await obterDadosStorage('sispmg_sic3_unidades_rpm');
       let unidades = [];
 
       if (unidadesRaw && Array.isArray(unidadesRaw) && unidadesRaw.length > 0) {
-        console.log(`[SIRCONV Pendências] Recuperando ${unidadesRaw.length} unidades diretamente do cache local ('sic3_unidades_rpm').`);
+        console.log(`[SIRCONV Pendências] Recuperando ${unidadesRaw.length} unidades diretamente do cache local ('sispmg_sic3_unidades_rpm').`);
         unidades = unidadesRaw;
       } else {
-        console.log(`[SIRCONV Pendências] Cache 'sic3_unidades_rpm' vazio ou inválido. Consultando subunidades via rede (cUEOp: ${cUEOp})...`);
+        console.log(`[SIRCONV Pendências] Cache 'sispmg_sic3_unidades_rpm' vazio ou inválido. Consultando subunidades via rede (cUEOp: ${cUEOp})...`);
         const response = await enviarMensagemBackground('agenda-fetch-unidades', { userRegionCode: cUEOp });
         if (!response || !response.success || !response.data || response.data.length === 0) {
           console.error("[SIRCONV Pendências] Falha ao obter a árvore de unidades da Intranet PM:", response ? response.error : "Sem resposta");
@@ -990,7 +973,7 @@
         }
         unidades = response.data;
         // Grava no storage local para evitar consultas de rede nas próximas pendências
-        await gravarDadosStorage('sic3_unidades_rpm', unidades);
+        await gravarDadosStorage('sispmg_sic3_unidades_rpm', unidades);
       }
 
       // Normalização robusta do formato para lidar com dados do cache no formato cru {codigoSecao/code, secao/nomeSecao/unitName} ou formatado {value, label}
