@@ -174,8 +174,9 @@ function carregarConveniosMunicipio(municipio, authToken, bdConveniosIdOpcional)
           dataInicio: dados[i][6] ? Utilities.formatDate(new Date(dados[i][6]), "GMT", "dd/MM/yyyy") : "",
           dataFim: dados[i][7] ? Utilities.formatDate(new Date(dados[i][7]), "GMT", "dd/MM/yyyy") : "",
           status_texto: dados[i][12] || "",
-          elementos_despesa: dados[i][23] || "",
-          user_pm: dados[i][24] || ""
+          valor_estimado: dados[i][13] || "",
+          elementos_despesa: dados[i][24] || "",
+          user_pm: dados[i][25] || ""
         });
       }
     }
@@ -199,7 +200,7 @@ function incluirConvenio(authToken, municipio, convenio, preposto_n, preposto_pg
     const ss = SpreadsheetApp.openById(ssId);
     const conveniosSheet = ss.getSheetByName("convenios");
     
-    const novaLinha = Array(25).fill("");
+    const novaLinha = Array(26).fill("");
     novaLinha[0] = String(municipio);
     novaLinha[1] = String(convenio);
     novaLinha[2] = String(preposto_n);
@@ -347,6 +348,7 @@ function sincronizarConveniosLote(authToken, convenios, bdConveniosIdOpcional) {
         String(conv.ADITIVO || conv.aditivo || ""),
         String(conv.ATIVO || conv.ativo || ""),
         String(conv.status_texto || conv.STATUS_TEXTO || ""),
+        String(conv.VALOR_ESTIMADO || conv.valor_estimado || ""),
         String(conv.CONCEDENTE || conv.concedente || ""),
         String(conv.CONCEDENTE_ID || conv.concedente_id || ""),
         String(conv.CNPJ || conv.cnpj || ""),
@@ -364,7 +366,7 @@ function sincronizarConveniosLote(authToken, convenios, bdConveniosIdOpcional) {
       const indexExistente = mapaLinhasExistentes[id];
       if (indexExistente !== undefined) {
         // Atualiza em memória os campos da linha existente
-        const pmExistenteStr = String(dadosOriginais[indexExistente][24] || "").trim();
+        const pmExistenteStr = String(dadosOriginais[indexExistente][25] || "").trim();
         const pmNovoStr = String(conv.USER_PM || conv.user_pm || "").trim();
         let pmFinalStr = pmNovoStr;
         
@@ -379,7 +381,7 @@ function sincronizarConveniosLote(authToken, convenios, bdConveniosIdOpcional) {
           }
         }
         
-        novaLinha[24] = pmFinalStr;
+        novaLinha[25] = pmFinalStr;
         // Substitui a linha inteira na matriz em memória
         dadosOriginais[indexExistente] = novaLinha;
         atualizadosCount++;
