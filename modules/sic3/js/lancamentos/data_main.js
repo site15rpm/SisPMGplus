@@ -78,6 +78,20 @@ async function buscarDadosRelatorio() {
     };
     const sheetId = idbase;
 
+    const idBDItem99 = window.idBDItem99 || sessionStorage.getItem("sic3_idBDItem99");
+    let queryItem99 = Promise.resolve([]);
+    
+    if (idBDItem99) {
+      queryItem99 = carregarDadosPlanilha({
+        sheetId: idBDItem99,
+        sheet: "item99",
+        query: `SELECT F,G,H,I,J,K,L WHERE B='${municipio}' AND C='${convenio}' AND D='${ano}' AND E='${mes}'`
+      }).catch(err => {
+        console.warn("[SIC3] Não foi possível carregar os metadados dos itens 99:", err);
+        return [];
+      });
+    }
+
     const queries = [
       carregarDadosPlanilha({
         sheetId: sheetId,
@@ -98,22 +112,52 @@ async function buscarDadosRelatorio() {
         sheetId: sheetId,
         sheet: "obsgeral",
         query: `SELECT G WHERE B='${municipio}' AND C='${convenio}' AND D='${ano}' AND E='${mes}'`
-      })
+      }),
+      queryItem99
     ];
 
-    const [principalData, abastecimentoData, manutencaoData, obsgeralData] = await Promise.all(queries);
+    const [principalData, abastecimentoData, manutencaoData, obsgeralData, item99Data] = await Promise.all(queries);
     
-    resultado.principal = principalData.map((row) => ({
-        codigo: row[0] || "",
-        descricao: row[1] || "",
-        despesa: row[2] || "",
-        unidade: row[3] || "",
-        data: row[4] || "",
-        quantidade: row[5] || "",
-        valorUnitario: row[6] || "",
-        subtotal: row[7] || 0,
-        observacao: row[8] || ""
-    }));
+    // Mapeia os itens 99 encontrados pelo código do item99
+    const item99Map = new Map();
+    if (Array.isArray(item99Data)) {
+      item99Data.forEach(row => {
+        const code = String(row[0] || "").trim();
+        if (code) {
+          item99Map.set(code, {
+            codigo: code,
+            descricao: row[1] || "",
+            unidade: row[2] || "",
+            elementoDespesa: row[3] || "",
+            searchTerms: row[4] || "",
+            status: row[5] || "",
+            linkNotaFiscal: row[6] || ""
+          });
+        }
+      });
+    }
+
+    resultado.principal = principalData.map((row) => {
+        const codigoMat = row[0] || "";
+        const isItem99 = String(codigoMat).startsWith("99");
+        let item99Info = null;
+        if (isItem99 && item99Map.has(String(codigoMat).trim())) {
+          item99Info = item99Map.get(String(codigoMat).trim());
+        }
+
+        return {
+            codigo: codigoMat,
+            descricao: row[1] || "",
+            despesa: row[2] || "",
+            unidade: row[3] || "",
+            data: row[4] || "",
+            quantidade: row[5] || "",
+            valorUnitario: row[6] || "",
+            subtotal: row[7] || 0,
+            observacao: row[8] || "",
+            item99Info: item99Info
+        };
+    });
 
     resultado.abastecimento = abastecimentoData.map((row) => ({
       data: row[0] || "",
