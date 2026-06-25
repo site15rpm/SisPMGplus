@@ -169,6 +169,9 @@ function obterIdArquivoCompartilhado(nomeBase, folderRPM) {
   } else if (nomeBase === "SIC3_BDEnderecos") {
     nomeAba = "enderecos";
     cabecalho = ["municipio", "convenio", "endereco", "dtEndereco", "medidorAgua", "dtMedidorAgua", "medidorEnergia", "dtMedidorEnergia"];
+  } else if (nomeBase === "SIC3_BDItem99") {
+    nomeAba = "item99";
+    cabecalho = ["timestamp", "municipio", "convenio", "ano", "mes", "item99_code", "descricao", "unidade_distribuicao", "elemento_despesa", "termos_busca", "status", "link"];
   }
   
   if (nomeAba) {
@@ -243,11 +246,6 @@ function obterOuCriarPlanilhaAnual(folderRPM, rpm, ano) {
       "valorTotal", "obsGeral", "edicaoBloqueada", "item99", "sirconv",
       "siad", "siad_dataEntrada", "siad_documentoEntrada", "siad_dataRequisicao", "siad_documentoRequisicao",
       "siad_dataAnalise", "siad_statusAnalise", "siad_dataSaida", "siad_statusSaida"
-    ],
-    "item99": [
-      "timestamp", "municipio", "convenio", "ano", "mes",
-      "item99_code", "descricao", "unidade_distribuicao", "elemento_despesa", "termos_busca",
-      "status", "link"
     ]
   };
 
@@ -273,7 +271,7 @@ function obterOuCriarPlanilhaAnual(folderRPM, rpm, ano) {
   }
 
   const activeSheets = ss.getSheets();
-  const abasPermitidas = ["principal", "abastecimento", "manutencao", "obsgeral", "item99"];
+  const abasPermitidas = ["principal", "abastecimento", "manutencao", "obsgeral"];
   activeSheets.forEach(s => {
     const name = s.getName();
     if (!abasPermitidas.includes(name) && activeSheets.length > 1) {
@@ -311,6 +309,14 @@ function criarEstruturaRpmAno(authToken, rpm, ano) {
     // 3. Obter ou Criar Arquivos Compartilhados da RPM
     const BDConvenios = obterIdArquivoCompartilhado("SIC3_BDConvenios", folderRPM);
     const BDEnderecos = obterIdArquivoCompartilhado("SIC3_BDEnderecos", folderRPM);
+    const BDItem99 = obterIdArquivoCompartilhado("SIC3_BDItem99", folderRPM);
+
+    // Criar pasta ITEM99 na pasta da RPM se não existir
+    const subFolders = folderRPM.getFoldersByName("ITEM99");
+    if (!subFolders.hasNext()) {
+      const folderItem99 = folderRPM.createFolder("ITEM99");
+      folderItem99.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    }
 
     // 4. Salvar na Planilha Central SIC3_BDLinks
     const ssCentral = SpreadsheetApp.openById(CENTRAL_BD_LINKS_ID);
@@ -331,7 +337,8 @@ function criarEstruturaRpmAno(authToken, rpm, ano) {
       anoNorm,
       spreadsheetId,
       BDConvenios,
-      BDEnderecos
+      BDEnderecos,
+      BDItem99
     ];
 
     if (rowIndex !== -1) {
@@ -371,6 +378,7 @@ function criarEstruturaRpmAno(authToken, rpm, ano) {
       arquivosCompartilhados: {
         BDConvenios: BDConvenios,
         BDEnderecos: BDEnderecos,
+        BDItem99: BDItem99,
         TBPrimaria: globalTBPrimaria,
         TBSecundaria: globalTBSecundaria
       }
