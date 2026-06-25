@@ -625,9 +625,21 @@ async function processarSubmissaoMaterial(dadosForm, linhaEditadaId) {
     if (isItem99 && linhaPrincipal) {
       const isEditing = !!linhaEditadaId;
       const searchTermsFromForm = form.dataset.searchTerms || '';
-      const itemInfo = {
+      
+      let itemInfo = {
         isNew: !isEditing
       };
+
+      if (isEditing) {
+        try {
+          const prevInfoAttr = $(linhaPrincipal).attr('data-item99-info');
+          if (prevInfoAttr) {
+            itemInfo = { ...JSON.parse(prevInfoAttr), ...itemInfo };
+          }
+        } catch (e) {
+          console.error("Erro ao mesclar data-item99-info anterior:", e);
+        }
+      }
 
       if (searchTermsFromForm) {
         itemInfo.searchTerms = searchTermsFromForm;
