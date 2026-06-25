@@ -324,7 +324,7 @@ window.resolverIdsPlanilhas = async function(forcarRecarregamento = false) {
                 });
             });
 
-            if (cachedData && cachedData.spreadsheetId && cachedData.arquivosCompartilhados) {
+            if (cachedData && cachedData.spreadsheetId && cachedData.arquivosCompartilhados && cachedData.arquivosCompartilhados.BDEnderecos) {
                 console.log(`[SIC3 v3.0 Log] IDs das planilhas recuperados do cache permanente (${cacheKey})`);
                 window.idbase = cachedData.spreadsheetId;
                 window.idBDConvenios = cachedData.arquivosCompartilhados.BDConvenios;
