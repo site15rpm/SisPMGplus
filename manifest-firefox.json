@@ -19,6 +19,8 @@
   ],
   "host_permissions": [
     "*://*.policiamilitar.mg.gov.br/*",
+    "https://*.compras.mg.gov.br/*",
+    "https://compras.mg.gov.br/*",
     "https://script.google.com/*",
     "https://script.googleusercontent.com/*",
     "https://docs.google.com/*",
