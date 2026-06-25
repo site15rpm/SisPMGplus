@@ -1109,8 +1109,8 @@ function salvarItensPrimariosEmLote(itens, tbPrimariaId) {
     try {
       lock.waitLock(30000);
       const ss = SpreadsheetApp.openById(tbPrimariaId);
-      const sheet = ss.getSheetByName("dt-primaria") || ss.getSheetByName("tb-primaria");
-      if (!sheet) return { success: false, message: "Aba dt-primaria ou tb-primaria não encontrada na planilha de itens primários." };
+      const sheet = ss.getSheetByName("tb-primaria");
+      if (!sheet) return { success: false, message: "Aba tb-primaria não encontrada na planilha de itens primários." };
   
       const dataRange = sheet.getRange("A:A");
       const values = dataRange.getValues();

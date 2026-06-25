@@ -165,7 +165,7 @@ async function carregarCatalogoMateriais() {
     try {
         const data = await carregarDadosPlanilha({
             sheetId: idbase,
-            sheet: 'dt-primaria',
+            sheet: 'tb-primaria',
             query: 'SELECT A, B, C, D'
         });
         if ($.fn.DataTable.isDataTable('#tabelaMateriais')) {

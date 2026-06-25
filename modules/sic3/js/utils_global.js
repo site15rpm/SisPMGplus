@@ -300,9 +300,9 @@ window.carregarDadosPlanilha = function (config) {
         targetSheetId = cachedBDEnderecos || targetSheetId;
       } else if (config.sheet === "convenios") {
         targetSheetId = cachedBDConvenios || targetSheetId;
-      } else if (config.sheet === "tb-primaria" || config.sheet === "dt-primaria") {
+      } else if (config.sheet === "tb-primaria") {
         targetSheetId = cachedTBPrimaria || targetSheetId;
-      } else if (config.sheet === "tb-secundaria" || config.sheet === "dt-secundaria") {
+      } else if (config.sheet === "tb-secundaria") {
         targetSheetId = cachedTBSecundaria || targetSheetId;
       }
 

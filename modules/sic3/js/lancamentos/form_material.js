@@ -345,7 +345,7 @@ async function extrairDadosLinhaMaterial(rowElement) {
       if (!itemDataFromSource) {
         const secundarioData = await carregarDadosPlanilha({
           sheetId: window.idTBSecundaria || "1JSea5w5dmuxO2svSVqVpNft4NUsKDCeWv5i3Rv_wRUM",
-          sheet: "dt-secundaria",
+          sheet: "tb-secundaria",
           query: `SELECT A,B,C,D WHERE A='${codigoItem}'`
         });
         if (secundarioData?.length > 0 && secundarioData[0].length >= 4) {
