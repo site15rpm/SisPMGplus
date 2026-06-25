@@ -7,16 +7,16 @@
       const condicaoWhere =
         userMLog === "admin" ? "A IS NOT NULL" : `A = '${userMLog}'`;
 
-      const [conveniosData, anosData] = await Promise.all([
+      const [conveniosData, linksData] = await Promise.all([
         carregarDadosPlanilha({
           sheetId: idbase,
           sheet: "convenios",
           query: `SELECT A,B,C,D,E,F,G,H,M,N,Y,Z WHERE ${condicaoWhere}`,
         }),
         carregarDadosPlanilha({
-          sheetId: idbase,
-          sheet: "principal",
-          query: "SELECT D WHERE D IS NOT NULL",
+          sheetId: "1hP7wQgtsgUMuSNDC7Ac4gHKX0uWPVMTQV7Q5Xwpqwic", // CENTRAL_BD_LINKS_ID
+          sheet: "links",
+          query: `SELECT B WHERE A = '${window.rpm || ''}' AND B IS NOT NULL`,
         }),
       ]);
 
@@ -64,8 +64,8 @@
       const anoAtual = new Date().getFullYear();
       const anoAnterior = anoAtual - 1;
       const todosAnos =
-        anosData && anosData.length > 1
-          ? anosData.slice(1).map((row) => String(row[0]).trim())
+        linksData && linksData.length > 0
+          ? linksData.map((row) => String(row[0]).trim())
           : [];
       todosAnos.push(anoAtual.toString(), anoAnterior.toString());
       ADMIN_CONFIG.dados.anos = [...new Set(todosAnos)]
@@ -82,11 +82,18 @@
     }
   }
 
-  async function carregarDadosBrutosAdmin(ano, mes) {
+  async function carregarDadosBrutosAdmin(ano, mes, municipio, convenio) {
     try {
-      const queryStatus =
-        `SELECT A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S WHERE D='${ano}'` +
-        (mes !== "TODOS" ? ` AND E='${mes}'` : "");
+      let queryStatus = `SELECT A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S WHERE D='${ano}'`;
+      if (mes && mes !== "TODOS") {
+        queryStatus += ` AND E='${mes}'`;
+      }
+      if (municipio && municipio !== "TODOS") {
+        queryStatus += ` AND B='${municipio}'`;
+      }
+      if (convenio && convenio !== "TODOS") {
+        queryStatus += ` AND C='${convenio}'`;
+      }
 
       const [statusInfoRaw] = await Promise.all([
         carregarDadosPlanilha({
@@ -96,8 +103,7 @@
         }),
       ]);
 
-      const statusInfoFiltrados =
-        statusInfoRaw.length > 1 ? statusInfoRaw : [];
+      const statusInfoFiltrados = statusInfoRaw || [];
 
       return { status: statusInfoFiltrados };
     } catch (error) {
@@ -168,7 +174,7 @@
         setTimeout(() => reject(new Error("Tempo esgotado")), 30000)
       );
       const dadosBrutos = await Promise.race([
-        carregarDadosBrutosAdmin(ano, mesFiltro),
+        carregarDadosBrutosAdmin(ano, mesFiltro, municipioFiltro, convenioFiltro),
         timeoutPromise,
       ]);
       const lancamentosParaTabela = [];
