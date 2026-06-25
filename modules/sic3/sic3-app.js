@@ -329,12 +329,14 @@ window.resolverIdsPlanilhas = async function(forcarRecarregamento = false) {
                 window.idbase = cachedData.spreadsheetId;
                 window.idBDConvenios = cachedData.arquivosCompartilhados.BDConvenios;
                 window.idBDEnderecos = cachedData.arquivosCompartilhados.BDEnderecos;
+                window.idBDItem99 = cachedData.arquivosCompartilhados.BDItem99 || "";
                 window.idTBPrimaria = cachedData.arquivosCompartilhados.TBPrimaria;
                 window.idTBSecundaria = cachedData.arquivosCompartilhados.TBSecundaria;
 
                 sessionStorage.setItem("sic3_idbase", window.idbase);
                 sessionStorage.setItem("sic3_idBDConvenios", window.idBDConvenios);
                 sessionStorage.setItem("sic3_idBDEnderecos", window.idBDEnderecos);
+                sessionStorage.setItem("sic3_idBDItem99", window.idBDItem99);
                 sessionStorage.setItem("sic3_idTBPrimaria", window.idTBPrimaria);
                 sessionStorage.setItem("sic3_idTBSecundaria", window.idTBSecundaria);
                 return cachedData;
@@ -403,7 +405,7 @@ window.resolverIdsPlanilhas = async function(forcarRecarregamento = false) {
         const linksRows = await window.carregarDadosPlanilha({
             sheetId: "1hP7wQgtsgUMuSNDC7Ac4gHKX0uWPVMTQV7Q5Xwpqwic",
             sheet: "links",
-            query: "SELECT A, B, C, D, E"
+            query: "SELECT A, B, C, D, E, F"
         });
 
         const rpmNorm = String(rpmAtiva).trim().replace(/\s+/g, '').toUpperCase();
@@ -422,7 +424,8 @@ window.resolverIdsPlanilhas = async function(forcarRecarregamento = false) {
                 spreadsheetId: String(row[2]).trim(),
                 arquivosCompartilhados: {
                     BDConvenios: String(row[3]).trim(),
-                    BDEnderecos: String(row[4]).trim()
+                    BDEnderecos: String(row[4]).trim(),
+                    BDItem99: row[5] ? String(row[5]).trim() : ""
                 }
             };
             console.log(`[SIC3 v3.0 Log] IDs resolvidos com sucesso da planilha central de links para ${rpmAtiva}/${anoAtivo}`);
@@ -454,6 +457,7 @@ window.resolverIdsPlanilhas = async function(forcarRecarregamento = false) {
         if (linksResolvidos.arquivosCompartilhados) {
             window.idBDConvenios = linksResolvidos.arquivosCompartilhados.BDConvenios;
             window.idBDEnderecos = linksResolvidos.arquivosCompartilhados.BDEnderecos;
+            window.idBDItem99 = linksResolvidos.arquivosCompartilhados.BDItem99 || "";
             
             // Atribui os IDs globais preferencialmente a partir de configGlobais, com fallback para o retorno da API do GAS se necessário
             window.idTBPrimaria = configGlobais.TBPrimaria || linksResolvidos.arquivosCompartilhados.TBPrimaria || "";
@@ -462,6 +466,7 @@ window.resolverIdsPlanilhas = async function(forcarRecarregamento = false) {
             sessionStorage.setItem("sic3_idbase", window.idbase);
             sessionStorage.setItem("sic3_idBDConvenios", window.idBDConvenios);
             sessionStorage.setItem("sic3_idBDEnderecos", window.idBDEnderecos);
+            sessionStorage.setItem("sic3_idBDItem99", window.idBDItem99);
             sessionStorage.setItem("sic3_idTBPrimaria", window.idTBPrimaria);
             sessionStorage.setItem("sic3_idTBSecundaria", window.idTBSecundaria);
 
@@ -471,6 +476,7 @@ window.resolverIdsPlanilhas = async function(forcarRecarregamento = false) {
                     arquivosCompartilhados: {
                         BDConvenios: window.idBDConvenios,
                         BDEnderecos: window.idBDEnderecos,
+                        BDItem99: window.idBDItem99,
                         TBPrimaria: window.idTBPrimaria,
                         TBSecundaria: window.idTBSecundaria
                     }
