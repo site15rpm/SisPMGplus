@@ -82,7 +82,7 @@
     }
   }
 
-  async function carregarDadosBrutosAdmin(ano, mes, municipio, convenio) {
+  async function carregarDadosBrutosAdmin(mes, municipio, convenio) {
     try {
       const filters = [];
       if (mes && mes !== "TODOS") {
@@ -179,7 +179,7 @@
         setTimeout(() => reject(new Error("Tempo esgotado")), 30000)
       );
       const dadosBrutos = await Promise.race([
-        carregarDadosBrutosAdmin(ano, mesFiltro, municipioFiltro, convenioFiltro),
+        carregarDadosBrutosAdmin(mesFiltro, municipioFiltro, convenioFiltro),
         timeoutPromise,
       ]);
       const lancamentosParaTabela = [];
