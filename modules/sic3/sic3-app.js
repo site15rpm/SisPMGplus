@@ -402,11 +402,27 @@ window.resolverIdsPlanilhas = async function(forcarRecarregamento = false) {
     console.log(`[SIC3 v3.0 Log] Tentando obter IDs da planilha central links para RPM: ${rpmAtiva}, Ano: ${anoAtivo}`);
     let linksResolvidos = null;
     try {
-        const linksRows = await window.carregarDadosPlanilha({
-            sheetId: "1hP7wQgtsgUMuSNDC7Ac4gHKX0uWPVMTQV7Q5Xwpqwic",
-            sheet: "links",
-            query: "SELECT A, B, C, D, E, F"
-        });
+        let linksRows = [];
+        try {
+            linksRows = await window.carregarDadosPlanilha({
+                sheetId: "1hP7wQgtsgUMuSNDC7Ac4gHKX0uWPVMTQV7Q5Xwpqwic",
+                sheet: "links",
+                query: "SELECT A, B, C, D, E, F"
+            });
+        } catch (gvizErr) {
+            // Se a coluna F ainda não existir na planilha central (NO_COLUMN: F), faz o fallback apenas para as colunas A a E
+            const errMsg = gvizErr.toString();
+            if (errMsg.includes("NO_COLUMN") || errMsg.includes("F") || errMsg.includes("coluna")) {
+                console.warn("[SIC3 v3.0 Log] Coluna F (BDItem99) ausente na planilha central. Fazendo fallback de query para colunas A a E...");
+                linksRows = await window.carregarDadosPlanilha({
+                    sheetId: "1hP7wQgtsgUMuSNDC7Ac4gHKX0uWPVMTQV7Q5Xwpqwic",
+                    sheet: "links",
+                    query: "SELECT A, B, C, D, E"
+                });
+            } else {
+                throw gvizErr;
+            }
+        }
 
         const rpmNorm = String(rpmAtiva).trim().replace(/\s+/g, '').toUpperCase();
         const anoNorm = String(anoAtivo).trim();
