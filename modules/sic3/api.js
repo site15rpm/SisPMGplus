@@ -109,6 +109,10 @@ export async function executarApi(action, params = {}) {
         const idBDEnderecos = window.idBDEnderecos || sessionStorage.getItem("sic3_idBDEnderecos");
         const idTBPrimaria = window.idTBPrimaria || sessionStorage.getItem("sic3_idTBPrimaria");
 
+        if (action === "gerenciarEnderecoMedidor" && !idBDEnderecos) {
+            console.warn("[SIC3 v3.0 Log] [API Warning] idBDEnderecos está nulo ou indefinido ao executar gerenciarEnderecoMedidor. A gravação poderá usar a planilha de fallback global do servidor.");
+        }
+
         if (action === "salvarDadosNaPlanilha" && params.length >= 6) {
             params[6] = idbase;
         } else if (action === "salvarItensPrimariosEmLote" && params.length >= 1) {
