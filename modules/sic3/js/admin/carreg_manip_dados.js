@@ -84,15 +84,20 @@
 
   async function carregarDadosBrutosAdmin(ano, mes, municipio, convenio) {
     try {
-      let queryStatus = `SELECT A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S WHERE D='${ano}'`;
+      const filters = [];
       if (mes && mes !== "TODOS") {
-        queryStatus += ` AND E='${mes}'`;
+        filters.push(`E='${mes}'`);
       }
       if (municipio && municipio !== "TODOS") {
-        queryStatus += ` AND B='${municipio}'`;
+        filters.push(`B='${municipio}'`);
       }
       if (convenio && convenio !== "TODOS") {
-        queryStatus += ` AND C='${convenio}'`;
+        filters.push(`C='${convenio}'`);
+      }
+
+      let queryStatus = "SELECT A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S";
+      if (filters.length > 0) {
+        queryStatus += " WHERE " + filters.join(" AND ");
       }
 
       const [statusInfoRaw] = await Promise.all([
