@@ -195,7 +195,7 @@ function removerRegistrosExistentes(sheet, municipio, convenio, ano, mes) {
 
 function appendRowAndFormatAsText(sheet, rowData) {
   try {
-    sheet.insertRowBefore(2); 
+    sheet.insertRowAfter(1); 
     const newRowRange = sheet.getRange(2, 1, 1, rowData.length);
     newRowRange.setValues([rowData]);
     newRowRange.setNumberFormat("@STRING@");
