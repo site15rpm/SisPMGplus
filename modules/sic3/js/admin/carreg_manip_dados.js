@@ -91,7 +91,7 @@
       if (municipio && municipio !== "TODOS") {
         filters.push(`B='${municipio}'`);
       }
-      if (convenio && convenio !== "TODOS") {
+      if (convenio && convenio !== "TODOS" && /^\d+$/.test(convenio)) {
         filters.push(`C='${convenio}'`);
       }
 
