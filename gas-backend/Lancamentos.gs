@@ -354,8 +354,10 @@ function obterDadosItens99(authToken, filtros, spreadsheetId) {
     }
 
     try {
-        const ss = SpreadsheetApp.openById(spreadsheetId);
-        const sheet = ss.getSheetByName("item99");
+        const ssItem99 = obterPlanilhaItem99(spreadsheetId);
+        if (!ssItem99) return { success: true, dados: [], metadados: { anos: [], municipios: [], status: [] } };
+
+        const sheet = ssItem99.getSheetByName("item99");
         if (!sheet) return { success: true, dados: [], metadados: { anos: [], municipios: [], status: [] } };
 
         const allData = sheet.getDataRange().getValues();
@@ -406,135 +408,259 @@ function obterMaiorCodigo99(sheetData) {
   return maxCode;
 }
 
-function sincronizarItens99(authToken, spreadsheet, municipio, convenio, ano, mes, dadosPrincipais, timestamp) {
-  const item99Sheet = spreadsheet.getSheetByName("item99");
-  if (!item99Sheet) return { success: true, mapeamento: {} };
-  
-  const item99AllData = item99Sheet.getDataRange().getValues();
-  const cabecalho = item99AllData[0];
-  const dadosOriginais = [...item99AllData];
-  dadosOriginais.shift(); // Remove cabeçalho
-  
-  const codigoColIdx = 5;
-  const statusColIdx = 10;
-
-  const sheetReportItems = new Map();
-  dadosOriginais.forEach((row, index) => {
-    if (String(row[1]) === municipio && String(row[2]) === String(convenio) && String(row[3]) === String(ano) && String(row[4]) === String(mes)) {
-      sheetReportItems.set(String(row[codigoColIdx]), {
-        rowIndex: index, // Índice na matriz de dados sem cabeçalho
-        rowData: row
-      });
-    }
-  });
-
-  const clientItemCodes = new Set();
-  const clientItems = dadosPrincipais.filter(row => {
-    const code = String(row[1]);
-    const isItem99 = code.startsWith("99") || code.startsWith("ITEM99P");
-    if (isItem99 && !code.startsWith("ITEM99P")) {
-      clientItemCodes.add(code);
-    }
-    return isItem99;
-  });
-
-  // Marca como excluído os que sumiram do relatório do cliente
-  const sheetCodes = new Set(sheetReportItems.keys());
-  sheetCodes.forEach(code => {
-    if (!clientItemCodes.has(code)) {
-      const itemInfo = sheetReportItems.get(code);
-      if (itemInfo && itemInfo.rowData[statusColIdx] != 'excluido') {
-        dadosOriginais[itemInfo.rowIndex][statusColIdx] = "excluido";
+function obterIdBDItem99PorSpreadsheetId(spreadsheetId) {
+  try {
+    const ssCentral = SpreadsheetApp.openById(CENTRAL_BD_LINKS_ID);
+    const sheetLinks = ssCentral.getSheetByName("links");
+    const data = sheetLinks.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][2]).trim() === String(spreadsheetId).trim()) {
+        return String(data[i][5] || "").trim(); // Coluna F (índice 5) é o BDItem99
       }
     }
-  });
+  } catch (e) {
+    console.error("Erro ao obterIdBDItem99PorSpreadsheetId:", e);
+  }
+  return "";
+}
 
-  const mapeamentoCodigos = {};
+function obterPlanilhaItem99(spreadsheetId) {
+  let bdItem99Id = obterIdBDItem99PorSpreadsheetId(spreadsheetId);
+  if (!bdItem99Id) {
+    // Tenta obter da pasta pai no Drive
+    try {
+      const file = DriveApp.getFileById(spreadsheetId);
+      const parents = file.getParents();
+      if (parents.hasNext()) {
+        const folderRPM = parents.next();
+        bdItem99Id = obterIdArquivoCompartilhado("SIC3_BDItem99", folderRPM);
+        // Opcional: Atualiza a planilha central links
+        try {
+          const ssCentral = SpreadsheetApp.openById(CENTRAL_BD_LINKS_ID);
+          const sheetLinks = ssCentral.getSheetByName("links");
+          const data = sheetLinks.getDataRange().getValues();
+          for (let i = 1; i < data.length; i++) {
+            if (String(data[i][2]).trim() === String(spreadsheetId).trim()) {
+              sheetLinks.getRange(i + 1, 6).setValue(bdItem99Id);
+              break;
+            }
+          }
+        } catch (e) {
+          console.error("Erro ao atualizar links com bdItem99Id:", e);
+        }
+      }
+    } catch (e) {
+      console.error("Erro ao obter pasta pai para SIC3_BDItem99:", e);
+    }
+  }
   
-  // Otimização: Obtém o maior código uma única vez
-  let proximoCodigo99 = obterMaiorCodigo99(item99AllData) + 1;
-  const novosRegistros = [];
+  if (bdItem99Id) {
+    return SpreadsheetApp.openById(bdItem99Id);
+  }
+  return null;
+}
 
-  for (const rowCliente of clientItems) {
-    const codigoCliente = String(rowCliente[1]);
-    const isNew = codigoCliente.startsWith("ITEM99P");
+function obterOuCriarPastaItem99DaRpm(spreadsheetId) {
+  try {
+    const file = DriveApp.getFileById(spreadsheetId);
+    const parents = file.getParents();
+    if (parents.hasNext()) {
+      const folderRPM = parents.next();
+      const subFolders = folderRPM.getFoldersByName("ITEM99");
+      if (subFolders.hasNext()) {
+        return subFolders.next();
+      } else {
+        const newFolder = folderRPM.createFolder("ITEM99");
+        newFolder.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+        return newFolder;
+      }
+    }
+  } catch (e) {
+    console.error("Erro ao obterOuCriarPastaItem99DaRpm:", e);
+  }
+  // Fallback para a pasta raiz padrão do SIC3
+  return DriveApp.getFolderById(DRIVE_FOLDER_ID);
+}
 
-    if (isNew) {
-      const finalCode = String(proximoCodigo99++);
-      mapeamentoCodigos[rowCliente[11]] = finalCode;
+function sincronizarItens99(authToken, spreadsheet, municipio, convenio, ano, mes, dadosPrincipais, timestamp) {
+  try {
+    const spreadsheetId = spreadsheet.getId();
+    const ssItem99 = obterPlanilhaItem99(spreadsheetId);
+    if (!ssItem99) {
+      return { success: false, message: "Não foi possível obter a planilha central de Itens 99 da RPM." };
+    }
+    
+    const item99Sheet = ssItem99.getSheetByName("item99") || ssItem99.insertSheet("item99");
+    const cabecalho = ["timestamp", "municipio", "convenio", "ano", "mes", "item99_code", "descricao", "unidade_distribuicao", "elemento_despesa", "termos_busca", "status", "link"];
+    
+    // Se a planilha estiver vazia, adiciona o cabeçalho
+    if (item99Sheet.getLastRow() === 0) {
+      item99Sheet.appendRow(cabecalho);
+      item99Sheet.getRange(1, 1, 1, cabecalho.length).setFontWeight("bold").setNumberFormat("@STRING@");
+    }
+    
+    const item99AllData = item99Sheet.getDataRange().getValues();
+    const codigoColIdx = 5; // F
+    const statusColIdx = 10; // K
+    const linkColIdx = 11; // L
 
-      let fileUrl = "";
-      if (rowCliente[12] && rowCliente[13]) {
-        fileUrl = uploadNotaFiscal({
-          base64Data: rowCliente[12],
-          mimeType: rowCliente[13],
-          fileName: `${finalCode} - ${String(rowCliente[2]).replace(/[^\w\s.-]/g, '_').substring(0, 50)}`
+    // 1. Mapear todos os itens da planilha de itens 99 que pertencem a este relatório
+    const sheetReportItems = new Map();
+    for (let i = 1; i < item99AllData.length; i++) {
+      const row = item99AllData[i];
+      if (String(row[1]) === municipio && String(row[2]) === String(convenio) && String(row[3]) === String(ano) && String(row[4]) === String(mes)) {
+        sheetReportItems.set(String(row[codigoColIdx]).trim(), {
+          rowIndex: i + 1, // Linha 1-indexed na planilha
+          rowData: row
         });
       }
-      
+    }
+
+    // 2. Filtrar os itens 99 enviados pelo cliente
+    const clientItemCodes = new Set();
+    const clientItems = dadosPrincipais.filter(row => {
+      const code = String(row[1]).trim();
+      const isItem99 = code.startsWith("99") || code.startsWith("ITEM99P");
+      if (isItem99 && !code.startsWith("ITEM99P")) {
+        clientItemCodes.add(code);
+      }
+      return isItem99;
+    });
+
+    // 3. Marcar como "excluido" os itens 99 deste relatório que sumiram do envio do cliente
+    sheetReportItems.forEach((itemInfo, code) => {
+      if (!clientItemCodes.has(code)) {
+        if (String(itemInfo.rowData[statusColIdx]) !== 'excluido') {
+          item99Sheet.getRange(itemInfo.rowIndex, statusColIdx + 1).setValue("excluido");
+        }
+      }
+    });
+
+    const mapeamentoCodigos = {};
+    
+    // Obter ou criar pasta ITEM99 da RPM
+    const folderItem99 = obterOuCriarPastaItem99DaRpm(spreadsheetId);
+    
+    // 4. Processar cada item do cliente (novos e existentes)
+    for (const rowCliente of clientItems) {
+      const codigoCliente = String(rowCliente[1]).trim();
+      const isNew = codigoCliente.startsWith("ITEM99P");
+
       let item99Info = {};
       try {
         if (rowCliente[10]) item99Info = JSON.parse(rowCliente[10]);
       } catch (e) {}
-
-      const termosDeBusca = (item99Info && typeof item99Info.searchTerms === 'string') ? item99Info.searchTerms : '';
-      const novaLinha = [
-        timestamp, municipio, convenio, String(ano), mes, finalCode,
-        String(rowCliente[2]), String(rowCliente[4]), String(rowCliente[3]),
-        termosDeBusca, 'pendente', fileUrl
-      ];
       
-      novosRegistros.push(novaLinha);
+      const termosDeBusca = (item99Info && typeof item99Info.searchTerms === 'string') ? item99Info.searchTerms : '';
 
-    } else {
-      const existingItem = sheetReportItems.get(codigoCliente);
-      if (existingItem) {
-        const rowIndex = existingItem.rowIndex;
-        const rowValues = dadosOriginais[rowIndex];
+      if (isNew) {
+        // Novo item 99
+        // Recarrega os dados para obter o código sequencial correto de forma concorrente
+        const currentData = item99Sheet.getDataRange().getValues();
+        const proximoCodigo99 = obterMaiorCodigo99(currentData) + 1;
+        const finalCode = String(proximoCodigo99);
+        mapeamentoCodigos[rowCliente[11]] = finalCode;
 
-        rowValues[0] = timestamp;
-        rowValues[6] = String(rowCliente[2]);
-        rowValues[7] = String(rowCliente[4]);
-        rowValues[8] = String(rowCliente[3]);
-
+        let fileUrl = "";
         if (rowCliente[12] && rowCliente[13]) {
-          rowValues[11] = uploadNotaFiscal({
+          fileUrl = uploadNotaFiscal({
             base64Data: rowCliente[12],
             mimeType: rowCliente[13],
-            fileName: `${codigoCliente} - ${String(rowCliente[2]).replace(/[^\w\s.-]/g, '_').substring(0, 50)}`
-          }, rowValues[11]);
+            fileName: `${finalCode} - ${String(rowCliente[2]).replace(/[^\w\s.-]/g, '_').substring(0, 50)}`
+          }, folderItem99);
         }
 
-        let item99Info = {};
-        try {
-          if (rowCliente[10]) item99Info = JSON.parse(rowCliente[10]);
-        } catch(e) {}
+        const novaLinha = [
+          timestamp, municipio, convenio, String(ano), mes, finalCode,
+          String(rowCliente[2]), String(rowCliente[4]), String(rowCliente[3]),
+          termosDeBusca, 'pendente', fileUrl
+        ];
+        
+        item99Sheet.appendRow(novaLinha);
+        item99Sheet.getRange(item99Sheet.getLastRow(), 1, 1, novaLinha.length).setNumberFormat("@STRING@");
 
-        if (item99Info && typeof item99Info.searchTerms === 'string' && item99Info.searchTerms.trim() !== '') {
-          rowValues[9] = item99Info.searchTerms;
+      } else {
+        // Item 99 existente
+        let rowIndexInSheet = -1;
+        let existingRowData = null;
+        
+        if (sheetReportItems.has(codigoCliente)) {
+          const match = sheetReportItems.get(codigoCliente);
+          rowIndexInSheet = match.rowIndex;
+          existingRowData = match.rowData;
+        } else {
+          // Busca em toda a planilha se necessário
+          for (let i = 1; i < item99AllData.length; i++) {
+            if (String(item99AllData[i][codigoColIdx]).trim() === codigoCliente) {
+              rowIndexInSheet = i + 1;
+              existingRowData = item99AllData[i];
+              break;
+            }
+          }
         }
 
-        if (rowValues[statusColIdx] === 'excluido') {
-          rowValues[statusColIdx] = 'pendente';
+        if (rowIndexInSheet !== -1 && existingRowData) {
+          let linkFinal = existingRowData[linkColIdx]; // Preserva por padrão
+          
+          if (rowCliente[12] && rowCliente[13]) {
+            // Cliente enviou novo arquivo para substituir nota fiscal
+            linkFinal = uploadNotaFiscal({
+              base64Data: rowCliente[12],
+              mimeType: rowCliente[13],
+              fileName: `${codigoCliente} - ${String(rowCliente[2]).replace(/[^\w\s.-]/g, '_').substring(0, 50)}`
+            }, folderItem99, existingRowData[linkColIdx]);
+          }
+
+          let novoStatus = existingRowData[statusColIdx];
+          if (novoStatus === 'excluido') {
+            novoStatus = 'pendente'; // Reativa se foi reenviado no relatório
+          }
+
+          const novosValoresLinha = [
+            timestamp,
+            municipio,
+            convenio,
+            String(ano),
+            mes,
+            codigoCliente,
+            String(rowCliente[2]), // descricao
+            String(rowCliente[4]), // unidade
+            String(rowCliente[3]), // elemento despesa
+            termosDeBusca || existingRowData[9], // preserva termos_busca anteriores se vier vazio do cliente
+            novoStatus,
+            linkFinal
+          ];
+
+          item99Sheet.getRange(rowIndexInSheet, 1, 1, novosValoresLinha.length)
+            .setValues([novosValoresLinha])
+            .setNumberFormat("@STRING@");
+        } else {
+          // Se não encontrou de forma alguma, cria um novo registro
+          let fileUrl = "";
+          if (rowCliente[12] && rowCliente[13]) {
+            fileUrl = uploadNotaFiscal({
+              base64Data: rowCliente[12],
+              mimeType: rowCliente[13],
+              fileName: `${codigoCliente} - ${String(rowCliente[2]).replace(/[^\w\s.-]/g, '_').substring(0, 50)}`
+            }, folderItem99);
+          }
+
+          const novaLinha = [
+            timestamp, municipio, convenio, String(ano), mes, codigoCliente,
+            String(rowCliente[2]), String(rowCliente[4]), String(rowCliente[3]),
+            termosDeBusca, 'pendente', fileUrl
+          ];
+          
+          item99Sheet.appendRow(novaLinha);
+          item99Sheet.getRange(item99Sheet.getLastRow(), 1, 1, novaLinha.length).setNumberFormat("@STRING@");
         }
-        dadosOriginais[rowIndex] = rowValues;
       }
     }
-  }
 
-  // Combina dados em memória e executa Batch Update na aba inteira
-  const novosEAntigos = [cabecalho].concat(novosRegistros).concat(dadosOriginais);
-  
-  item99Sheet.clearContents();
-  const range = item99Sheet.getRange(1, 1, novosEAntigos.length, cabecalho.length);
-  range.setValues(novosEAntigos).setNumberFormat("@STRING@");
-  
-  if (novosEAntigos.length > 1) {
-    const rangeToSort = item99Sheet.getRange(2, 1, novosEAntigos.length - 1, cabecalho.length);
-    rangeToSort.sort({ column: 6, ascending: false });
+    return { success: true, mapeamento: mapeamentoCodigos };
+  } catch (e) {
+    return { success: false, message: "Erro ao sincronizar itens 99: " + e.toString() };
   }
-
-  return { success: true, mapeamento: mapeamentoCodigos };
 }
 
 function excluirItem99Principal(authToken, item99Codigo, spreadsheetId) {
@@ -546,8 +672,11 @@ function excluirItem99Principal(authToken, item99Codigo, spreadsheetId) {
   const lock = LockService.getScriptLock();
   try {
     lock.waitLock(30000);
-    const ss = SpreadsheetApp.openById(spreadsheetId);
-    const item99Sheet = ss.getSheetByName("item99");
+    const ssItem99 = obterPlanilhaItem99(spreadsheetId);
+    if (!ssItem99) {
+      return { success: false, message: "Planilha de Itens 99 não encontrada." };
+    }
+    const item99Sheet = ssItem99.getSheetByName("item99");
 
     const item99Data = item99Sheet.getDataRange().getValues();
     const rowIndexItem99 = item99Data.findIndex(row => String(row[5]) === String(item99Codigo));
@@ -561,6 +690,8 @@ function excluirItem99Principal(authToken, item99Codigo, spreadsheetId) {
 
     item99Sheet.getRange(rowIndexItem99 + 1, 11).setValue("excluido");
 
+    // Remove do relatório anual principal do cliente se estiver lá
+    const ss = SpreadsheetApp.openById(spreadsheetId);
     ['principal', 'abastecimento', 'manutencao'].forEach(sheetName => {
         const sheet = ss.getSheetByName(sheetName);
         if (!sheet) return;
@@ -596,8 +727,11 @@ function atualizarStatusItem99(authToken, item99Codigo, novoStatus, spreadsheetI
   const lock = LockService.getScriptLock();
   try {
     lock.waitLock(30000);
-    const ss = SpreadsheetApp.openById(spreadsheetId);
-    const sheet = ss.getSheetByName("item99");
+    const ssItem99 = obterPlanilhaItem99(spreadsheetId);
+    if (!ssItem99) {
+      return { success: false, message: "Planilha de Itens 99 não encontrada." };
+    }
+    const sheet = ssItem99.getSheetByName("item99");
     const data = sheet.getRange("F:K").getValues();
 
     const rowIndex = data.findIndex(row => String(row[0]) === String(item99Codigo));
@@ -614,7 +748,7 @@ function atualizarStatusItem99(authToken, item99Codigo, novoStatus, spreadsheetI
   }
 }
 
-function uploadNotaFiscal(fileObject, existingFileUrl = null) {
+function uploadNotaFiscal(fileObject, folder, existingFileUrl = null) {
   try {
     if (existingFileUrl) {
       try {
@@ -624,7 +758,6 @@ function uploadNotaFiscal(fileObject, existingFileUrl = null) {
     }
     
     const { base64Data, mimeType, fileName } = fileObject;
-    const folder = DriveApp.getFolderById("14TPdLFpf2bEMzWdLjxEtVIeUuoIrFuNu");
     const decoded = Utilities.base64Decode(base64Data, Utilities.Charset.UTF_8);
     const blob = Utilities.newBlob(decoded, mimeType, fileName);
     const file = folder.createFile(blob);
