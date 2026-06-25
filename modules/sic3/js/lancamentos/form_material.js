@@ -511,6 +511,11 @@ async function atualizarRegistroSecundario(tabela, descricaoOriginal, novosDados
 async function processarSubmissaoMaterial(dadosForm, linhaEditadaId) {
   try {
     const form = document.getElementById("form-dinamico");
+
+    if (dadosForm.codigoItem === "") {
+      dadosForm.codigoItem = `ITEM99P${String(item99TempCounter).padStart(2, '0')}`;
+    }
+
     const isItem99 = dadosForm.codigoItem.startsWith("99") || dadosForm.codigoItem.startsWith("ITEM99P");
 
     const elementosDespesaPermitidos = [
@@ -528,10 +533,6 @@ async function processarSubmissaoMaterial(dadosForm, linhaEditadaId) {
         `O elemento de despesa '${elementoDespesaAtualCodigo}' não pode ser utilizado neste convênio.<br><br>Por favor, selecione um elemento de despesa válido para prosseguir.`
       );
       return; // Impede o salvamento
-    }
-
-    if (dadosForm.codigoItem === "") {
-      dadosForm.codigoItem = `ITEM99P${String(item99TempCounter).padStart(2, '0')}`;
     }
 
     const isNewItem99 = !linhaEditadaId && isItem99;
