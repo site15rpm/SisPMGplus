@@ -364,7 +364,7 @@ window.carregarDadosPlanilha = function (config) {
           console.error(`[SIC3 v3.0 Log] [Planilha Error] Erro ao carregar gviz para a aba "${config.sheet || 'idbase'}":`, error);
 
           // Se falhar o acesso ao banco de dados (Gviz), invalida o cache permanente e consulta novamente o servidor
-          if (typeof window.resolverIdsPlanilhas === 'function' && !config._isRetry) {
+          if (typeof window.resolverIdsPlanilhas === 'function' && !config._isRetry && config.sheet !== "links") {
             console.warn("[SIC3 v3.0 Log] Tentativa de acesso falhou. Invalidando cache de IDs e consultando servidor...");
             try {
               await window.resolverIdsPlanilhas(true); // Força renovação bypassando o cache
