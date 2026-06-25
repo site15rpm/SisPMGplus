@@ -186,17 +186,7 @@ var termosDeBuscaGlobal = new Set();
       try {
         let dadosParaForm;
         if (isPortal) {
-          const detalhes = await new Promise((resolve, reject) => {
-            google.script.run
-              .withSuccessHandler(result => {
-                resolve(result);
-              })
-              .withFailureHandler(error => {
-                manipularErro(error, 'obterDetalhesItemPortal');
-                reject(error);
-              })
-              .obterDetalhesItemPortal(portalId);
-          });
+          const detalhes = await obterDetalhesItemPortalLocal(portalId);
 
           if (!detalhes) {
             mostrarDialogo("Erro", "Não foi possível obter os detalhes do item do portal.");
@@ -287,17 +277,7 @@ var termosDeBuscaGlobal = new Set();
       mostrarCarregamento("Aguarde, pesquisando no Portal de Compras MG...");
       
       try {
-          const dadosPortal = await new Promise((resolve, reject) => {
-              google.script.run
-                  .withSuccessHandler(result => {
-                      resolve(result || []);
-                  })
-                  .withFailureHandler(error => { 
-                      manipularErro(error, 'buscarNoPortalCompras'); 
-                      reject(error);
-                  })
-                  .buscarNoPortalCompras(searchTerm);
-          });
+          const dadosPortal = await buscarNoPortalComprasLocal(searchTerm);
 
           const dadosPortalFormatados = (dadosPortal || []).map(item => {
               return {
@@ -343,3 +323,85 @@ var termosDeBuscaGlobal = new Set();
     if (!valueString || typeof valueString != 'string') return [];
     return valueString.split("|").map(option => option.trim()).filter(option => option !== "");
   }
+
+async function buscarNoPortalComprasLocal(searchTerm) {
+  try {
+    const url = "https://www1.compras.mg.gov.br/servico/catalogo/itemmaterialservico/Consulta/pesquisar";
+    const payload = {
+      reqId: 1,
+      ordenacoes: [],
+      sizePerPage: 9999999,
+      page: 1,
+      filtros: {
+        tiposGrupo: "MATERIAL",
+        tipoPesquisa: "CONSIDERAR_TUDO_COM_SINONIMO",
+        especificacaoItem: searchTerm
+      }
+    };
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Erro na resposta do portal de compras: HTTP ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    if (data && data.resultado && Array.isArray(data.resultado.dados)) {
+      return data.resultado.dados.map(item => ({
+        id: item.id,
+        codigo: item.codigo,
+        descricao: item.especificacaoCompleta || item.nome
+      })).filter(item => item.id && item.codigo && item.descricao);
+    }
+    return [];
+  } catch (error) {
+    console.error("Erro ao buscar no portal de compras:", error);
+    throw error;
+  }
+}
+
+async function obterDetalhesItemPortalLocal(portalId) {
+  try {
+    const url = `https://www1.compras.mg.gov.br/servico/catalogo/itemmaterialservico/Consulta/recuperarDetalhesItemMaterial?id=${portalId}&operacao=visualizar&realizarBuscaCaracteristica=false`;
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Erro na resposta do portal de compras: HTTP ${response.status}`);
+    }
+    
+    const dados = await response.json();
+    
+    if (dados && dados.itemMaterial && dados.itemMaterial.material) {
+      const item = dados.itemMaterial.material;
+      const elementosDespesa = [...new Set(item.elementosItemDespesa
+        .filter(el => el.situacao && el.situacao.id === 'ATIVO')
+        .map(el => el.descricao.trim()))].sort();
+
+      const unidadesFornecimento = [...new Set(item.unidadesAquisicao
+        .filter(ua => ua.situacao && ua.situacao.id === 'ATIVO')
+        .map(ua => ua.unidadeFornecimento.trim()))].sort();
+      
+      return {
+        elementosDespesa: elementosDespesa,
+        unidadesFornecimento: unidadesFornecimento,
+      };
+    }
+    return null;
+  } catch (error) {
+    console.error("Erro ao obter detalhes do item no portal:", error);
+    throw error;
+  }
+}
