@@ -6,9 +6,9 @@ function mostrarErroValidacao(campo, mensagem) {
     feedbackElement = document.createElement('div');
     feedbackElement.className = 'invalid-feedback';
     if (campo.parentNode) {
-        campo.parentNode.insertBefore(feedbackElement, campo.nextSibling);
+      campo.parentNode.insertBefore(feedbackElement, campo.nextSibling);
     } else {
-        document.body.appendChild(feedbackElement);
+      document.body.appendChild(feedbackElement);
     }
   }
   feedbackElement.textContent = mensagem;
@@ -73,7 +73,7 @@ function obterRegrasValidacao(fieldId) {
 
 function validarCampo(campo, contexto = {}) {
   if (!campo || campo.offsetParent === null) {
-      return { valid: true, message: "" };
+    return { valid: true, message: "" };
   }
 
   campo.classList.remove('is-invalid');
@@ -91,7 +91,7 @@ function validarCampo(campo, contexto = {}) {
     if (campo.type === 'file') {
       const form = campo.closest('form');
       const isEditing = form && form.hasAttribute('data-linha-edicao');
-      
+
       if (!isEditing && campo.files.length === 0) {
         return { valid: false, message: regras.message || "Campo obrigatório" };
       }
@@ -99,14 +99,14 @@ function validarCampo(campo, contexto = {}) {
       return { valid: false, message: regras.message || "Campo obrigatório" };
     }
   }
-  
+
   if (!value.trim() && !regras.required && !regras.pattern && !regras.type && campo.type != 'file') {
     return { valid: true, message: "" };
   }
 
   if (regras.pattern && !regras.pattern.test(value)) {
     if (!regras.required && value.trim() === "") {
-        return { valid: true, message: "" };
+      return { valid: true, message: "" };
     }
     return { valid: false, message: regras.message || "Formato inválido." };
   }
@@ -121,13 +121,13 @@ function validarCampo(campo, contexto = {}) {
       }
       break;
     case 'telefone':
-        if (value.trim()) {
-            const justNumbers = value.replace(/\D/g, '');
-            if (!/^\d{10,11}$/.test(justNumbers)) {
-                return { valid: false, message: "Quantidade de dígitos incorreta." };
-            }
+      if (value.trim()) {
+        const justNumbers = value.replace(/\D/g, '');
+        if (!/^\d{10,11}$/.test(justNumbers)) {
+          return { valid: false, message: "Quantidade de dígitos incorreta." };
         }
-        break;
+      }
+      break;
     case 'convenio-conv':
       break;
     case 'unidade-conv':
@@ -159,8 +159,8 @@ function validarCampo(campo, contexto = {}) {
         if (id === "consumo" && numQtde <= 0) return { valid: false, message: "Consumo deve ser maior que zero" };
 
         if (id === "consumo") {
-            if (tipoItemEndereco === "O33903913" && !/^\d{1,3}(,\d+)?$/.test(value.trim())) return { valid: false, message: "Consumo de água: máx 3 dígitos inteiros" };
-            if (tipoItemEndereco === "O33903912" && !/^\d{1,5}(,\d+)?$/.test(value.trim())) return { valid: false, message: "Consumo de energia: máx 5 dígitos inteiros" };
+          if (tipoItemEndereco === "O33903913" && !/^\d{1,3}(,\d+)?$/.test(value.trim())) return { valid: false, message: "Consumo de água: máx 3 dígitos inteiros" };
+          if (tipoItemEndereco === "O33903912" && !/^\d{1,5}(,\d+)?$/.test(value.trim())) return { valid: false, message: "Consumo de energia: máx 5 dígitos inteiros" };
         }
       }
       break;
@@ -169,12 +169,12 @@ function validarCampo(campo, contexto = {}) {
       break;
     case "odometro":
       if (value.trim()) {
-        const odometroNum = parseInt(value.replace(/\D/g,''));
+        const odometroNum = parseInt(value.replace(/\D/g, ''));
         if (isNaN(odometroNum) || odometroNum <= 0) return { valid: false, message: "Odômetro deve ser > 0" };
       }
       break;
     case "prefixo":
-      if (value.trim() && (value.replace(/\D/g,'').length > 0 && value.replace(/\D/g,'').length < 5)) return { valid: false, message: "Prefixo inválido: Deve conter 5 dígitos" };
+      if (value.trim() && (value.replace(/\D/g, '').length > 0 && value.replace(/\D/g, '').length < 5)) return { valid: false, message: "Prefixo inválido: Deve conter 5 dígitos" };
       break;
     case "descricao":
       if (campo.closest('form')?.getAttribute('data-tipo-form') === 'manutencao' && value.trim() === 'MAO DE OBRA - SERVICO DE') return { valid: false, message: "Descreva o serviço." };
@@ -186,7 +186,7 @@ function validarCampo(campo, contexto = {}) {
       break;
     case "data":
     case "mesRef":
-      if (value && typeof mes !== 'undefined' && typeof ano !== 'undefined') { 
+      if (value && typeof mes !== 'undefined' && typeof ano !== 'undefined') {
         try {
           const dataObj = new Date(value + (id === "data" ? "T00:00:00" : "-01T00:00:00"));
           if (isNaN(dataObj.valueOf())) return { valid: false, message: "Data inválida" };
@@ -205,16 +205,16 @@ function validarCampo(campo, contexto = {}) {
               return { valid: false, message: `Data fora do período do relatório (${mes}/${ano})` };
             }
             if (temMesRefNoForm) {
-                const mesRefValue = temMesRefNoForm.value;
-                if (mesRefValue) {
-                    const [anoMesRef, mesMesRef] = mesRefValue.split("-").map(Number);
-                    if (anoMesRef === anoRelatorioNum && mesMesRef === mesRelatorioNum) {
-                        const inicioMesRelatorio = new Date(anoRelatorioNum, mesRelatorioNum - 1, 1);
-                        if (dataObj < inicioMesRelatorio) {
-                             return { valid: false, message: `Data não pode ser anterior a ${mNumerico(mesRelatorioNum, 'nome')}/${anoRelatorioNum}` };
-                        }
-                    }
+              const mesRefValue = temMesRefNoForm.value;
+              if (mesRefValue) {
+                const [anoMesRef, mesMesRef] = mesRefValue.split("-").map(Number);
+                if (anoMesRef === anoRelatorioNum && mesMesRef === mesRelatorioNum) {
+                  const inicioMesRelatorio = new Date(anoRelatorioNum, mesRelatorioNum - 1, 1);
+                  if (dataObj < inicioMesRelatorio) {
+                    return { valid: false, message: `Data não pode ser anterior a ${mNumerico(mesRelatorioNum, 'nome')}/${anoRelatorioNum}` };
+                  }
                 }
+              }
             }
           } else if (id === "mesRef") {
             if (anoLancamento !== anoRelatorioNum || mesLancamento !== mesRelatorioNum) {
@@ -226,13 +226,13 @@ function validarCampo(campo, contexto = {}) {
         }
       }
       break;
-    case "dataFim-conv": 
+    case "dataFim-conv":
       const dataInicioConvElement = document.getElementById('dataInicio-conv');
       if (dataInicioConvElement) {
-          const dataInicioConv = dataInicioConvElement.value;
-          if (dataInicioConv && value && new Date(value + "T00:00:00") < new Date(dataInicioConv + "T00:00:00")) {
-              return { valid: false, message: "Data Fim não pode ser anterior à Data Início." };
-          }
+        const dataInicioConv = dataInicioConvElement.value;
+        if (dataInicioConv && value && new Date(value + "T00:00:00") < new Date(dataInicioConv + "T00:00:00")) {
+          return { valid: false, message: "Data Fim não pode ser anterior à Data Início." };
+        }
       }
       break;
   }
@@ -255,14 +255,14 @@ function configurarValidacoesFormulario(formElement = null) {
 
     const partes = valor.split(',');
     if (partes.length > 1) {
-        if (partes[1].length > maxDec) {
-            partes[1] = partes[1].substring(0, maxDec);
-            valor = partes.join(',');
-        }
+      if (partes[1].length > maxDec) {
+        partes[1] = partes[1].substring(0, maxDec);
+        valor = partes.join(',');
+      }
     }
-    
+
     if (campo.value !== valor) {
-        campo.value = valor;
+      campo.value = valor;
     }
   };
 
@@ -275,7 +275,7 @@ function configurarValidacoesFormulario(formElement = null) {
       }
     }
 
-    campo.addEventListener('input', function() {
+    campo.addEventListener('input', function () {
       this.classList.remove('is-invalid');
       const feedback = this.nextElementSibling;
       if (feedback?.classList.contains('invalid-feedback')) {
@@ -288,7 +288,7 @@ function configurarValidacoesFormulario(formElement = null) {
       }
     });
 
-    campo.addEventListener('blur', function() {
+    campo.addEventListener('blur', function () {
       const validacao = validarCampo(this);
       if (!validacao.valid) {
         mostrarErroValidacao(this, validacao.message);
@@ -296,17 +296,17 @@ function configurarValidacoesFormulario(formElement = null) {
     });
 
     if (campo.tagName === 'SELECT') {
-      campo.addEventListener('change', function() {
+      campo.addEventListener('change', function () {
         const validacao = validarCampo(this);
         if (!validacao.valid) {
           mostrarErroValidacao(this, validacao.message);
         } else {
-            this.classList.remove('is-invalid');
-            const feedback = this.nextElementSibling;
-            if (feedback?.classList.contains('invalid-feedback')) {
-                feedback.textContent = '';
-                feedback.style.visibility = 'hidden';
-            }
+          this.classList.remove('is-invalid');
+          const feedback = this.nextElementSibling;
+          if (feedback?.classList.contains('invalid-feedback')) {
+            feedback.textContent = '';
+            feedback.style.visibility = 'hidden';
+          }
         }
       });
     }
@@ -318,26 +318,26 @@ function configurarValidacoesFormulario(formElement = null) {
 function configurarValidacaoTiposCampo(form) {
   if (!form) return;
   form.querySelectorAll('#preposto-n, [id^="responsavel"], [id^="motorista"]').forEach(campo => {
-    campo.addEventListener('input', function() { this.value = this.value.replace(/\D/g, '').substring(0, 7); });
+    campo.addEventListener('input', function () { this.value = this.value.replace(/\D/g, '').substring(0, 7); });
   });
   form.querySelectorAll('#convenio-conv').forEach(campo => {
-    campo.addEventListener('input', function() { this.value = this.value.replace(/\D/g, '').substring(0, 10); });
+    campo.addEventListener('input', function () { this.value = this.value.replace(/\D/g, '').substring(0, 10); });
   });
   form.querySelectorAll('[id^="odometro"]').forEach(campo => {
-    campo.addEventListener('input', function() { this.value = this.value.replace(/\D/g, '').substring(0, 6); });
+    campo.addEventListener('input', function () { this.value = this.value.replace(/\D/g, '').substring(0, 6); });
   });
   form.querySelectorAll('[id^="prefixo"]').forEach(campo => {
-    campo.addEventListener('input', function() { this.value = this.value.replace(/\D/g, '').substring(0, 5); });
+    campo.addEventListener('input', function () { this.value = this.value.replace(/\D/g, '').substring(0, 5); });
   });
   form.querySelectorAll('[id^="placa"]').forEach(campo => {
-    campo.addEventListener('input', function() { this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '').substring(0, 7); });
+    campo.addEventListener('input', function () { this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '').substring(0, 7); });
   });
   form.querySelectorAll('#telefone').forEach(campo => {
-    campo.addEventListener('input', function() { this.value = this.value.replace(/\D/g, '').substring(0, 11); });
+    campo.addEventListener('input', function () { this.value = this.value.replace(/\D/g, '').substring(0, 11); });
   });
-  
+
   form.querySelectorAll('[id^="consumo"]').forEach(campo => {
-    campo.addEventListener('input', function() {
+    campo.addEventListener('input', function () {
       const tipoFormContexto = this.closest('form')?.getAttribute('data-tipo-item-endereco') || this.closest('form')?.getAttribute('data-tipo-form');
       if (tipoFormContexto === "O33903913") {
         this.value = this.value.replace(/\D/g, "").substring(0, 3);
@@ -362,20 +362,20 @@ function validarFormulario(contexto = {}, formElement = null) {
   let isValid = true;
   form.querySelectorAll("input:not([type=hidden]):not(:disabled), select:not(:disabled), textarea:not(:disabled)").forEach(campo => {
     if ((campo.id === "medidor-O33903912" || campo.id === "medidor-O33903913") && campo.disabled) {
-        return;
+      return;
     }
     if (campo.id === "endereco-input" && campo.closest("#endereco-edit")?.style.display === 'none') {
-        return;
+      return;
     }
     if (campo.id === "endereco" && campo.style.display === 'none') {
-        return;
+      return;
     }
 
     const validacao = validarCampo(campo, contexto);
     if (!validacao.valid) {
       mostrarErroValidacao(campo, validacao.message);
-      if (isValid) { 
-          mostrarDialogo("Atenção!", "Preencha todos os campos obrigatórios (*) corretamente antes de prosseguir.");
+      if (isValid) {
+        mostrarDialogo("Atenção!", "Preencha todos os campos obrigatórios (*) corretamente antes de prosseguir.");
       }
       isValid = false;
     }
@@ -433,7 +433,7 @@ function validarFormulario(contexto = {}, formElement = null) {
           if (campoDespesa) {
             mostrarErroValidacao(campoDespesa, `O elemento de despesa "${codigoDespesaForm}" não está contido no plano de trabalho.`);
           }
-          mostrarDialogo("Elemento Não Permitido", `O elemento de despesa "${valDespesaCompleto}" não é permitido no plano de trabalho deste convênio. Elementos permitidos: ${elementosPermitidos.join(', ')}`);
+          mostrarDialogo("Elemento Não Permitido", `O elemento de despesa "${valDespesaCompleto}" não é permitido no plano de trabalho deste convênio. \n\nElementos permitidos: ${elementosPermitidos.join(', ')}`);
           return false;
         }
       }
@@ -457,34 +457,34 @@ function validarDuplicidadeEndereco(dadosItem, linhaEditadaId = null, isOutroIte
 
     // Se não for item de telefonia, usa a lógica original
     if (codigoLinha !== 'O33903914' && codigoLinha !== 'O33904004') {
-        if (codigoLinha !== dadosItem.codigo) return false;
-        
-        const descricaoLinha = $tr.find(".descricao-item").text();
-        const enderecoMatch = descricaoLinha.match(/End\.:\s*(.+)/);
-        const enderecoLinha = enderecoMatch ? enderecoMatch[1].trim() : null;
-        const dataLinha = $tr.find(".data-item").text();
-        const [anoLinha, mesLinha] = dataLinha.split("-").slice(0, 2);
+      if (codigoLinha !== dadosItem.codigo) return false;
 
-        if (enderecoLinha === dadosItem.endereco && anoLinha === anoRef && mesLinha === mesRef) {
-            return true;
-        }
+      const descricaoLinha = $tr.find(".descricao-item").text();
+      const enderecoMatch = descricaoLinha.match(/End\.:\s*(.+)/);
+      const enderecoLinha = enderecoMatch ? enderecoMatch[1].trim() : null;
+      const dataLinha = $tr.find(".data-item").text();
+      const [anoLinha, mesLinha] = dataLinha.split("-").slice(0, 2);
+
+      if (enderecoLinha === dadosItem.endereco && anoLinha === anoRef && mesLinha === mesRef) {
+        return true;
+      }
     } else { // Lógica para telefonia
-        if (codigoLinha !== dadosItem.codigo) return false;
+      if (codigoLinha !== dadosItem.codigo) return false;
 
-        const descricaoLinha = $tr.find(".descricao-item").text();
-        const enderecoMatch = descricaoLinha.match(/End\.:\s*(.+)/);
-        const enderecoLinha = enderecoMatch ? enderecoMatch[1].trim() : null;
-        
-        const observacaoLinha = $tr.find(".observacao-item").text();
-        const telefoneMatch = observacaoLinha.match(/Tel\.:\s*(\S+)/);
-        const telefoneLinha = telefoneMatch ? telefoneMatch[1].trim() : null;
+      const descricaoLinha = $tr.find(".descricao-item").text();
+      const enderecoMatch = descricaoLinha.match(/End\.:\s*(.+)/);
+      const enderecoLinha = enderecoMatch ? enderecoMatch[1].trim() : null;
 
-        const dataLinha = $tr.find(".data-item").text();
-        const [anoLinha, mesLinha] = dataLinha.split("-").slice(0, 2);
+      const observacaoLinha = $tr.find(".observacao-item").text();
+      const telefoneMatch = observacaoLinha.match(/Tel\.:\s*(\S+)/);
+      const telefoneLinha = telefoneMatch ? telefoneMatch[1].trim() : null;
 
-        if (enderecoLinha === dadosItem.endereco && telefoneLinha === dadosItem.telefone && anoLinha === anoRef && mesLinha === mesRef) {
-            return true;
-        }
+      const dataLinha = $tr.find(".data-item").text();
+      const [anoLinha, mesLinha] = dataLinha.split("-").slice(0, 2);
+
+      if (enderecoLinha === dadosItem.endereco && telefoneLinha === dadosItem.telefone && anoLinha === anoRef && mesLinha === mesRef) {
+        return true;
+      }
     }
     return false;
   });
@@ -494,7 +494,7 @@ function validarDuplicidadeEndereco(dadosItem, linhaEditadaId = null, isOutroIte
     const anoNome = typeof ano !== 'undefined' ? ano : anoRef;
     let msg = `Já existe um lançamento para este serviço/endereço no período de ${mesNome}/${anoNome}.`;
     if (dadosItem.codigo === 'O33903914' || dadosItem.codigo === 'O33904004') {
-        msg = `Já existe um lançamento para este número de telefone (${dadosItem.telefone}) neste endereço e período.`;
+      msg = `Já existe um lançamento para este número de telefone (${dadosItem.telefone}) neste endereço e período.`;
     }
     mostrarDialogo("Aviso de Duplicidade", msg);
     return false;
