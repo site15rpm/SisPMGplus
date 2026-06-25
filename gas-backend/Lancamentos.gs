@@ -4,6 +4,83 @@
  * controle de Itens 99, status de edição e rebloqueios automáticos.
  */
 
+// ID da planilha central de links e da pasta raiz do Drive do SIC3
+const CENTRAL_BD_LINKS_ID = "1hP7wQgtsgUMuSNDC7Ac4gHKX0uWPVMTQV7Q5Xwpqwic";
+const DRIVE_FOLDER_ID = "14TPdLFpf2bEMzWdLjxEtVIeUuoIrFuNu";
+
+function obterIdArquivoCompartilhado(nomeBase, folderRPM) {
+  const isGlobal = nomeBase === "SIC3_TBPrimaria" || nomeBase === "SIC3_TBSecundaria";
+  const parentFolder = isGlobal ? DriveApp.getFolderById(DRIVE_FOLDER_ID) : folderRPM;
+  
+  const files = parentFolder.getFilesByName(nomeBase);
+  if (files.hasNext()) {
+    return files.next().getId();
+  }
+  
+  // Cria se não existir
+  const ss = SpreadsheetApp.create(nomeBase);
+  const file = DriveApp.getFileById(ss.getId());
+  try {
+    file.moveTo(parentFolder);
+  } catch(e) {
+    parentFolder.addFile(file);
+    try {
+      DriveApp.getRootFolder().removeFile(file);
+    } catch(err) {}
+  }
+  
+  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  
+  let cabecalho = [];
+  let nomeAba = "";
+  if (nomeBase === "SIC3_TBPrimaria") {
+    nomeAba = "tb-primaria";
+    cabecalho = ["codigo", "especificacao", "elementosDespesa", "unidadesFornecimento"];
+  } else if (nomeBase === "SIC3_TBSecundaria") {
+    nomeAba = "tb-secundaria";
+    cabecalho = ["CÓDIGO", "DESCRIÇÃO", "VALOR", "UNIDADE"];
+  } else if (nomeBase === "SIC3_BDConvenios") {
+    nomeAba = "convenios";
+    cabecalho = ["municipio", "convenio", "preposto_n", "preposto_pg", "preposto", "unidade", "dataInicio", "dataFim", "numero_face", "uni_nome_principal", "aditivo", "ativo", "status_texto", "valor_estimado", "concedente", "concedente_id", "cnpj", "unidade_responsavel", "unidade_nivel", "unidade_hierarquia", "unidade_codigo_secao", "unidade_secao", "unidade_codigo_municipio", "unidade_municipio", "elementos_despesa", "user_pm"];
+  } else if (nomeBase === "SIC3_BDEnderecos") {
+    nomeAba = "enderecos";
+    cabecalho = ["municipio", "convenio", "endereco", "dtEndereco", "medidorAgua", "dtMedidorAgua", "medidorEnergia", "dtMedidorEnergia"];
+  } else if (nomeBase === "SIC3_BDItem99") {
+    nomeAba = "item99";
+    cabecalho = ["timestamp", "municipio", "convenio", "ano", "mes", "item99_code", "descricao", "unidade_distribuicao", "elemento_despesa", "termos_busca", "status", "link"];
+  }
+  
+  if (nomeAba) {
+    let sheet = ss.getSheetByName(nomeAba);
+    if (!sheet) sheet = ss.insertSheet(nomeAba);
+    sheet.clear();
+    sheet.appendRow(cabecalho);
+    
+    const maxRows = sheet.getMaxRows();
+    if (maxRows > 1) {
+      sheet.deleteRows(2, maxRows - 1);
+    }
+    const maxCols = sheet.getMaxColumns();
+    if (maxCols > cabecalho.length) {
+      sheet.deleteColumns(cabecalho.length + 1, maxCols - cabecalho.length);
+    }
+    
+    sheet.getRange(1, 1, sheet.getMaxRows(), sheet.getMaxColumns()).setVerticalAlignment('top').setFontSize(6);
+    sheet.getRange(1, 1, 1, cabecalho.length).setFontWeight("normal").setNumberFormat("@STRING@");
+    
+    const activeSheets = ss.getSheets();
+    activeSheets.forEach(s => {
+      if (s.getName() !== nomeAba && activeSheets.length > 1) {
+        try {
+          ss.deleteSheet(s);
+        } catch(e) {}
+      }
+    });
+  }
+  
+  return ss.getId();
+}
+
 function doOptions(e) {
   return ContentService.createTextOutput("OK")
     .setMimeType(ContentService.MimeType.TEXT);
@@ -425,7 +502,13 @@ function obterIdBDItem99PorSpreadsheetId(spreadsheetId) {
 }
 
 function obterPlanilhaItem99(spreadsheetId) {
-  let bdItem99Id = obterIdBDItem99PorSpreadsheetId(spreadsheetId);
+  let bdItem99Id = "";
+  try {
+    bdItem99Id = obterIdBDItem99PorSpreadsheetId(spreadsheetId);
+  } catch (e) {
+    throw new Error("Erro ao buscar ID do BDItem99 na planilha de links central: " + e.toString());
+  }
+
   if (!bdItem99Id) {
     // Tenta obter da pasta pai no Drive
     try {
@@ -433,7 +516,12 @@ function obterPlanilhaItem99(spreadsheetId) {
       const parents = file.getParents();
       if (parents.hasNext()) {
         const folderRPM = parents.next();
-        bdItem99Id = obterIdArquivoCompartilhado("SIC3_BDItem99", folderRPM);
+        try {
+          bdItem99Id = obterIdArquivoCompartilhado("SIC3_BDItem99", folderRPM);
+        } catch (e) {
+          throw new Error("Erro ao obter ou criar arquivo compartilhado SIC3_BDItem99 na pasta da RPM: " + e.toString());
+        }
+        
         // Opcional: Atualiza a planilha central links
         try {
           const ssCentral = SpreadsheetApp.openById(CENTRAL_BD_LINKS_ID);
@@ -441,6 +529,10 @@ function obterPlanilhaItem99(spreadsheetId) {
           const data = sheetLinks.getDataRange().getValues();
           for (let i = 1; i < data.length; i++) {
             if (String(data[i][2]).trim() === String(spreadsheetId).trim()) {
+              const maxCols = sheetLinks.getMaxColumns();
+              if (maxCols < 6) {
+                sheetLinks.insertColumnsAfter(maxCols, 6 - maxCols);
+              }
               sheetLinks.getRange(i + 1, 6).setValue(bdItem99Id);
               break;
             }
@@ -448,16 +540,23 @@ function obterPlanilhaItem99(spreadsheetId) {
         } catch (e) {
           console.error("Erro ao atualizar links com bdItem99Id:", e);
         }
+      } else {
+        throw new Error("A planilha anual do relatório não possui uma pasta pai associada no Drive.");
       }
     } catch (e) {
-      console.error("Erro ao obter pasta pai para SIC3_BDItem99:", e);
+      throw new Error("Falha ao acessar a planilha anual ou sua pasta pai no Drive (verifique permissões/autorização do script): " + e.toString());
     }
   }
   
   if (bdItem99Id) {
-    return SpreadsheetApp.openById(bdItem99Id);
+    try {
+      return SpreadsheetApp.openById(bdItem99Id);
+    } catch (e) {
+      throw new Error("Não foi possível abrir a planilha de Itens 99 pelo ID '" + bdItem99Id + "': " + e.toString());
+    }
   }
-  return null;
+  
+  throw new Error("O ID da planilha de Itens 99 da RPM está indefinido e a criação automática falhou.");
 }
 
 function obterOuCriarPastaItem99DaRpm(spreadsheetId) {

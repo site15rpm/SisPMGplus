@@ -148,10 +148,14 @@ function obterIdArquivoCompartilhado(nomeBase, folderRPM) {
   // Cria se não existir
   const ss = SpreadsheetApp.create(nomeBase);
   const file = DriveApp.getFileById(ss.getId());
-  parentFolder.addFile(file);
   try {
-    DriveApp.getRootFolder().removeFile(file);
-  } catch(e) {}
+    file.moveTo(parentFolder);
+  } catch(e) {
+    parentFolder.addFile(file);
+    try {
+      DriveApp.getRootFolder().removeFile(file);
+    } catch(err) {}
+  }
   
   file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
   
