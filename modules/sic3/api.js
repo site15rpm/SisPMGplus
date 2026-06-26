@@ -58,7 +58,8 @@ const actionToApiMap = {
     "verificarStatusBloqueio": "lancamentos",
     "atualizarStatusEdicao": "lancamentos",
     "atualizarStatusSirconvSiad": "lancamentos",
-    "salvarItensPrimariosEmLote": "lancamentos"
+    "salvarItensPrimariosEmLote": "lancamentos",
+    "substituirItem99": "lancamentos"
 };
 
 /**
@@ -117,6 +118,8 @@ export async function executarApi(action, params = {}) {
             params[6] = idbase;
         } else if (action === "salvarItensPrimariosEmLote" && params.length >= 1) {
             params[1] = idTBPrimaria;
+        } else if (action === "substituirItem99" && params.length >= 1) {
+            params[1] = idbase;
         } else if (action === "obterDadosItens99" && params.length >= 2) {
             params[2] = idbase;
         } else if (action === "excluirItem99Principal" && params.length >= 2) {
