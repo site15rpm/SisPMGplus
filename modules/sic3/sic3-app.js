@@ -1167,9 +1167,16 @@ window.addEventListener('DOMContentLoaded', async () => {
                 bancoVazio = true;
             }
         } catch (errVerificacao) {
-            console.warn("[SIC3 v3.0 Log] Erro ao verificar se a tabela 'convenios' está vazia. Assumindo que está vazia:", errVerificacao);
-            bancoVazio = true;
+            console.warn("[SIC3 v3.0 Log] Erro ao verificar se a tabela 'convenios' está vazia:", errVerificacao);
+            // Se for administrador, assume que não está vazia em caso de erro para evitar extrações automáticas indesejadas
+            bancoVazio = !window.isAdmin;
         }
+
+        console.log(`[SIC3 v3.0 Log] [SIC3-Extração] Avaliando sincronização automática:
+          - window.userPM: "${window.userPM}"
+          - window.isAdmin: ${window.isAdmin}
+          - bancoVazio: ${bancoVazio}
+          - window.sic3_estrutura_criada_agora: ${!!window.sic3_estrutura_criada_agora}`);
 
         if (window.sic3_estrutura_criada_agora || bancoVazio) {
             primeiraBuscaObrigatoria = true;
