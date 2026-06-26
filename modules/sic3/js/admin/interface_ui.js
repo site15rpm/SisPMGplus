@@ -59,8 +59,8 @@
         const municipios = [
           ...new Set(
             data.convenios
-              .map((c) => c.municipio)
-              .filter((m) => m && m !== "ADMIN")
+              .map((c) => c.unidade_principal)
+              .filter((m) => m && m !== "ADMIN" && m.trim() !== "")
           ),
         ].sort((a, b) => a.localeCompare(b));
         municipios.forEach((mun) =>
@@ -145,9 +145,15 @@
           (item) => item.convenio !== "-"
         );
       } else {
-        baseConveniosParaFiltrar = ADMIN_CONFIG.dados.convenios.filter(
-          (item) => item.municipio === municipio && item.convenio !== "-"
-        );
+        const userIsAdmin = typeof mLog != "undefined" && mLog === "admin";
+        baseConveniosParaFiltrar = ADMIN_CONFIG.dados.convenios.filter((item) => {
+          if (item.convenio === "-") return false;
+          if (userIsAdmin) {
+            return item.unidade_principal === municipio;
+          } else {
+            return item.municipio === municipio;
+          }
+        });
       }
 
       let conveniosFiltradosPorVigencia;
