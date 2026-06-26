@@ -136,13 +136,20 @@
             // Município alterado para "TODOS"
             const mesSelect = $("#mes");
             if (mesSelect.val() === "TODOS") {
-              // Mudar automaticamente para o mês corrente (1-indexed base)
-              const mesesNomes = [
-                "JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO",
-                "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"
-              ];
-              const mesCorrente = mesesNomes[new Date().getMonth()];
-              mesSelect.val(mesCorrente);
+              const mesInicial = getMesAtual();
+              mesSelect.val(mesInicial);
+              
+              // Ajustar o ano conforme a regra da inicialização (Janeiro mostra Dezembro do ano passado)
+              const hoje = new Date();
+              if (hoje.getMonth() === 0) { 
+                $("#ano").val(hoje.getFullYear() - 1);
+              } else {
+                $("#ano").val(hoje.getFullYear());
+              }
+              
+              if (typeof M !== 'undefined' && M.FormSelect) {
+                $('select').formSelect();
+              }
             }
           }
         }
