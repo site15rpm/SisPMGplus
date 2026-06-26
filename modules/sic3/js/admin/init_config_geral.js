@@ -132,6 +132,18 @@
             if (mesSelect.val() !== "TODOS") {
               mesSelect.val("TODOS");
             }
+          } else {
+            // Município alterado para "TODOS"
+            const mesSelect = $("#mes");
+            if (mesSelect.val() === "TODOS") {
+              // Mudar automaticamente para o mês corrente (1-indexed base)
+              const mesesNomes = [
+                "JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO",
+                "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"
+              ];
+              const mesCorrente = mesesNomes[new Date().getMonth()];
+              mesSelect.val(mesCorrente);
+            }
           }
         }
 
@@ -141,6 +153,20 @@
             const municipioSelect = $("#municipio");
             if (municipioSelect.val() !== "TODOS") {
               municipioSelect.val("TODOS");
+            }
+          } else if (mesAtual === "TODOS") {
+            // Mês alterado para "TODOS"
+            const municipioSelect = $("#municipio");
+            if (municipioSelect.val() === "TODOS") {
+              // Encontrar o primeiro município válido da lista (diferente de "TODOS")
+              const primeiroMunicipio = municipioSelect.find("option").filter(function() {
+                const val = $(this).val();
+                return val && val !== "TODOS" && val !== "";
+              }).first().val();
+              
+              if (primeiroMunicipio) {
+                municipioSelect.val(primeiroMunicipio);
+              }
             }
           }
         }
