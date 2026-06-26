@@ -488,6 +488,10 @@ async function atualizarRegistroSecundario(tabela, descricaoOriginal, novosDados
         $linha.find(".valorUnitario-item").text(formatarNumero(novosDados.valorUnitario, "moeda"));
         $linha.find(".subtotal-item").text(formatarNumero(novosDados.subtotal, "moeda"));
         $linha.find(".notaFiscal-item").text(novosDados.notaFiscal);
+        
+        $linha.attr('data-codigo', novosDados.codigoItem || '000025593');
+        $linha.attr('data-despesa', novosDados.despesa || '3918 - REPAROS DE VEICULOS');
+        $linha.attr('data-unidade', novosDados.unidade || '00001 - 1,00 UNIDADE');
       } else { // abastecimento
         $linha.find(".data-item").text(novosDados.data);
         $linha.find(".placa-item").text(novosDados.placa);
@@ -499,6 +503,15 @@ async function atualizarRegistroSecundario(tabela, descricaoOriginal, novosDados
         $linha.find(".valorUnitario-item").text(formatarNumero(novosDados.valorUnitario, "moeda"));
         $linha.find(".subtotal-item").text(formatarNumero(novosDados.subtotal, "moeda"));
         $linha.find(".notaFiscal-item").text(novosDados.notaFiscal);
+
+        const codigoPorTipo = {
+          "ABASTECIMENTO - TIPO: GASOLINA": "000014486",
+          "ABASTECIMENTO - TIPO: ALCOOL": "000014516",
+          "ABASTECIMENTO - TIPO: OLEO DIESEL": "001325876"
+        };
+        $linha.attr('data-codigo', novosDados.codigoItem || novosDados.codigo || codigoPorTipo[novosDados.tipo] || 'O33903026');
+        $linha.attr('data-despesa', novosDados.despesa);
+        $linha.attr('data-unidade', novosDados.unidade);
       }
       linhaEncontrada = true;
       return false;
