@@ -102,8 +102,8 @@
         $(this).toggle(
           !!(
             convInfo &&
-            convInfo.unidade &&
-            convInfo.unidade.includes(unidadeSel)
+            convInfo.unidade_principal &&
+            convInfo.unidade_principal.includes(unidadeSel)
           )
         );
       });

@@ -59,7 +59,7 @@
         const municipios = [
           ...new Set(
             data.convenios
-              .map((c) => c.unidade_principal)
+              .map((c) => c.municipio)
               .filter((m) => m && m !== "ADMIN" && m.trim() !== "")
           ),
         ].sort((a, b) => a.localeCompare(b));
@@ -145,15 +145,9 @@
           (item) => item.convenio !== "-"
         );
       } else {
-        const userIsAdmin = typeof mLog != "undefined" && mLog === "admin";
-        baseConveniosParaFiltrar = ADMIN_CONFIG.dados.convenios.filter((item) => {
-          if (item.convenio === "-") return false;
-          if (userIsAdmin) {
-            return item.unidade_principal === municipio;
-          } else {
-            return item.municipio === municipio;
-          }
-        });
+        baseConveniosParaFiltrar = ADMIN_CONFIG.dados.convenios.filter(
+          (item) => item.municipio === municipio && item.convenio !== "-"
+        );
       }
 
       let conveniosFiltradosPorVigencia;
@@ -257,7 +251,7 @@
       if (municipio === "TODOS") {
         if (!$("#filtro-unidade").length) {
           const unidadesCadastradas = ADMIN_CONFIG.dados.convenios
-            ? [...new Set(ADMIN_CONFIG.dados.convenios.map(c => c.unidade).filter(Boolean))].sort()
+            ? [...new Set(ADMIN_CONFIG.dados.convenios.map(c => c.unidade_principal).filter(Boolean))].sort()
             : [];
           const unidades = [
             "MUNICÍPIO",
