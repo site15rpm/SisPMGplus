@@ -1045,6 +1045,7 @@ window.addEventListener('DOMContentLoaded', async () => {
             window.userRegiao = info.nomeRegiao || "";
             window.userPostoGraduacao = info.postoGraduacao || "";
             window.isAdmin = info.isAdmin === true;
+            window.unidadesAdmin = info.unidadesAdmin || "";
             
             window.municipio = municipioParam ? decodeURIComponent(municipioParam).toUpperCase() : (info.municipio ? info.municipio.toUpperCase() : "");
             window.rpm = rpmParam ? rpmParam : (info.nomeRegiao || "");
@@ -1057,6 +1058,7 @@ window.addEventListener('DOMContentLoaded', async () => {
                 userRegiao: window.userRegiao,
                 userPostoGraduacao: window.userPostoGraduacao,
                 isAdmin: window.isAdmin,
+                unidadesAdmin: window.unidadesAdmin,
                 municipio: window.municipio,
                 rpm: window.rpm,
                 secao: window.secao
@@ -1068,6 +1070,7 @@ window.addEventListener('DOMContentLoaded', async () => {
             window.rpm = rpmParam || "19";
             window.secao = secaoParam ? decodeURIComponent(secaoParam) : "19º BPM";
             window.isAdmin = false;
+            window.unidadesAdmin = "";
             window.userPM = "";
             window.userNome = "Usuário Teste";
             window.userSecao = window.secao;
@@ -1076,7 +1079,8 @@ window.addEventListener('DOMContentLoaded', async () => {
                 municipio: window.municipio,
                 rpm: window.rpm,
                 secao: window.secao,
-                isAdmin: window.isAdmin
+                isAdmin: window.isAdmin,
+                unidadesAdmin: window.unidadesAdmin
             });
         }
         
