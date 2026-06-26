@@ -26,7 +26,27 @@
       if (conveniosData && conveniosData.length > 0) {
         dadosParaProcessar = (userMLog === "admin") ? conveniosData.slice(1) : conveniosData;
       }
+      // Função local para normalizar nomes de unidades para correspondência tolerante e flexível
+      const normalizarUnidade = (str) => {
+        if (!str) return "";
+        return String(str)
+          .toUpperCase()
+          .replace(/[ºª\.\-]/g, "")
+          .replace(/\s+/g, "")
+          .trim();
+      };
+
       if (dadosParaProcessar.length > 0) {
+        // Pré-calcula unidades permitidas normalizadas para evitar computação no loop
+        let unidadesPermitidasNorm = [];
+        const hasUnidadesRestricao = typeof window.unidadesAdmin !== "undefined" && window.unidadesAdmin && window.unidadesAdmin !== "*";
+        if (hasUnidadesRestricao) {
+          unidadesPermitidasNorm = String(window.unidadesAdmin)
+            .split('|')
+            .map(u => normalizarUnidade(u))
+            .filter(u => u);
+        }
+
         dadosParaProcessar.forEach((row) => {
           const [
             municipio,
@@ -43,13 +63,26 @@
             user_pm
           ] = row;
           if (municipio) {
+            const unidadeTxt = String(unidade || "").trim();
+            
+            // Se o admin tiver restrição de unidades, valida se o convênio pertence a alguma das unidades autorizadas
+            if (hasUnidadesRestricao && unidadesPermitidasNorm.length > 0) {
+              const unidadeConvNorm = normalizarUnidade(unidadeTxt);
+              const permiteConvenio = unidadesPermitidasNorm.some(uPerm => 
+                unidadeConvNorm.includes(uPerm) || uPerm.includes(unidadeConvNorm)
+              );
+              if (!permiteConvenio) {
+                return; // Pula este convênio se não pertencer às unidades permitidas
+              }
+            }
+
             ADMIN_CONFIG.dados.convenios.push({
               municipio: String(municipio).trim(),
               convenio: String(convenio).trim(),
               preposto_n: String(preposto_n || "").trim(),
               preposto_pg: String(preposto_pg || "").trim(),
               preposto: String(preposto || "").trim(),
-              unidade: String(unidade || "").trim(),
+              unidade: unidadeTxt,
               dataInicio: String(dataInicio || "").trim(),
               dataFim: String(dataFim || "").trim(),
               status_texto: String(status_texto || "").trim(),
