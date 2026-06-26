@@ -139,7 +139,7 @@ browser.runtime.onMessage.addListener((request, sender) => {
                 }
                 case 'obterPlanilhaGviz': {
                     try {
-                        const { sheetId, sheetName } = payload;
+                        const { sheetId, sheetName, bypassCache } = payload;
                         if (!sheetId || !sheetName) {
                             throw new Error('Parâmetros sheetId ou sheetName inválidos.');
                         }
@@ -147,12 +147,12 @@ browser.runtime.onMessage.addListener((request, sender) => {
                         const storageRes = await browser.storage.local.get(cacheKey);
                         const cachedText = storageRes[cacheKey];
 
-                        if (cachedText) {
+                        if (cachedText && !bypassCache) {
                             // Se há cache, dispara a revalidação assíncrona em segundo plano e retorna o cache imediatamente
                             revalidarPlanilhaGviz(sheetId, sheetName, cachedText, sender?.tab?.id);
                             return { success: true, text: cachedText };
                         } else {
-                            // Se não há cache (ex: instalação limpa), faz a busca de revalidação síncrona aguardando
+                            // Se não há cache (ex: instalação limpa) ou bypassCache é true, faz a busca de revalidação síncrona aguardando
                             const text = await revalidarPlanilhaGviz(sheetId, sheetName, null, sender?.tab?.id);
                             if (text) {
                                 return { success: true, text };
