@@ -159,6 +159,11 @@ function handleApiAction(action, body) {
       result = salvarItensPrimariosEmLote(params[0], params[1]);
       break;
       
+    case "substituirItem99":
+      // params[0] = dados, params[1] = spreadsheetId
+      result = substituirItem99(params[0], params[1]);
+      break;
+      
     default:
       throw new Error("Ação da API '" + action + "' não registrada no servidor de Lançamentos.");
   }
@@ -1171,5 +1176,78 @@ function configurarTriggerCron() {
     .create();
   
   console.log("Trigger Cron configurado com sucesso! Execução diária agendada para às 3h da manhã.");
+}
+
+// ========== SUBSTITUIR ITEM 99 ==========
+
+function substituirItem99(dados, spreadsheetId) {
+  // dados = { item99Codigo, itemConsumoCodigo, itemConsumoDescricao, itemConsumoDespesa, itemConsumoUnidade }
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(30000);
+    
+    // 1. Atualizar na aba 'item99' da planilha central de Itens 99
+    const ssItem99 = obterPlanilhaItem99(spreadsheetId);
+    if (!ssItem99) {
+      return { success: false, message: "Planilha central de Itens 99 não encontrada." };
+    }
+    
+    const sheetItem99 = ssItem99.getSheetByName("item99");
+    if (!sheetItem99) {
+      return { success: false, message: "Aba 'item99' não encontrada na planilha central." };
+    }
+    
+    const item99Data = sheetItem99.getDataRange().getValues();
+    const idxItem99 = item99Data.findIndex(row => String(row[5]).trim() === String(dados.item99Codigo).trim());
+    
+    if (idxItem99 === -1) {
+      return { success: false, message: "Item 99 original não encontrado na base central." };
+    }
+    
+    // Atualiza especificações e muda status para substituido
+    sheetItem99.getRange(idxItem99 + 1, 6).setValue(String(dados.itemConsumoCodigo)); // Coluna F (item99_code)
+    sheetItem99.getRange(idxItem99 + 1, 7).setValue(String(dados.itemConsumoDescricao)); // Coluna G (descricao)
+    sheetItem99.getRange(idxItem99 + 1, 8).setValue(String(dados.itemConsumoUnidade)); // Coluna H (unidade_distribuicao)
+    sheetItem99.getRange(idxItem99 + 1, 9).setValue(String(dados.itemConsumoDespesa)); // Coluna I (elemento_despesa)
+    sheetItem99.getRange(idxItem99 + 1, 11).setValue("substituido"); // Coluna K (status)
+    
+    // 2. Atualizar no relatório anual principal (planilha do cliente)
+    const ss = SpreadsheetApp.openById(spreadsheetId);
+    const principalSheet = ss.getSheetByName("principal");
+    if (principalSheet) {
+      const principalData = principalSheet.getDataRange().getValues();
+      const item99Row = item99Data[idxItem99];
+      const municipio = item99Row[1], convenio = item99Row[2], ano = item99Row[3], mes = item99Row[4];
+
+      // Busca na planilha principal do cliente a linha correspondente ao item 99
+      let idxPrincipal = -1;
+      for (let i = 1; i < principalData.length; i++) {
+        const row = principalData[i];
+        if (String(row[1]).trim() === String(municipio).trim() && 
+            String(row[2]).trim() === String(convenio).trim() && 
+            String(row[3]).trim() === String(ano).trim() && 
+            String(row[4]).trim() === String(mes).trim() && 
+            String(row[6]).trim() === String(dados.item99Codigo).trim()) { // Coluna G é o índice 6 (Código)
+          idxPrincipal = i;
+          break;
+        }
+      }
+      
+      if (idxPrincipal !== -1) {
+        principalSheet.getRange(idxPrincipal + 1, 7).setValue(String(dados.itemConsumoCodigo)); // Coluna G (Código)
+        principalSheet.getRange(idxPrincipal + 1, 8).setValue(String(dados.itemConsumoDescricao)); // Coluna H (Descrição)
+        principalSheet.getRange(idxPrincipal + 1, 9).setValue(String(dados.itemConsumoDespesa)); // Coluna I (Elemento Despesa)
+        principalSheet.getRange(idxPrincipal + 1, 10).setValue(String(dados.itemConsumoUnidade)); // Coluna J (Unidade)
+      }
+    }
+    
+    return { success: true, message: "Item 99 substituído com sucesso na base central e no relatório principal." };
+    
+  } catch (e) {
+    console.error("Erro ao substituir item 99: " + e.toString());
+    return { success: false, message: "Erro no servidor ao substituir item: " + e.toString() };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
