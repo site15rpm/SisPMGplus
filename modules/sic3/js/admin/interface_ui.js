@@ -250,12 +250,12 @@
       }
       if (municipio === "TODOS") {
         if (!$("#filtro-unidade").length) {
+          const unidadesCadastradas = ADMIN_CONFIG.dados.convenios
+            ? [...new Set(ADMIN_CONFIG.dados.convenios.map(c => c.unidade).filter(Boolean))].sort()
+            : [];
           const unidades = [
             "MUNICÍPIO",
-            "19 BPM",
-            "44 BPM",
-            "70 BPM",
-            "24 CIA PM IND",
+            ...unidadesCadastradas
           ];
           thMun.html(
             `<select id="filtro-unidade" class="form-control">${unidades
