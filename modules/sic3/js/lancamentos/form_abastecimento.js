@@ -74,6 +74,15 @@ async function processarSubmissaoAbastecimento(dadosForm, linhaEditadaId) {
         $(linhaEditada).find(".valorUnitario-item").text(formatarNumero(dadosRegistro.valorUnitario, "moeda"));
         $(linhaEditada).find(".subtotal-item").text(formatarNumero(dadosRegistro.subtotal, "moeda"));
         $(linhaEditada).find(".notaFiscal-item").text(dadosRegistro.notaFiscal);
+
+        const codigoPorTipo = {
+          "ABASTECIMENTO - TIPO: GASOLINA": "000014486",
+          "ABASTECIMENTO - TIPO: ALCOOL": "000014516",
+          "ABASTECIMENTO - TIPO: OLEO DIESEL": "001325876"
+        };
+        $(linhaEditada).attr('data-codigo', dadosRegistro.codigoItem || dadosRegistro.codigo || codigoPorTipo[dadosRegistro.tipo] || 'O33903026');
+        $(linhaEditada).attr('data-despesa', dadosRegistro.despesa);
+        $(linhaEditada).attr('data-unidade', dadosRegistro.unidade);
       }
       if (typeof ordenarTabelaAbastecimentoDOM === 'function') ordenarTabelaAbastecimentoDOM();
     } else {
@@ -182,8 +191,8 @@ function criarLinhaRegistroAbastecimento(dados) {
     </td>`;
 
   const codigoPorTipo = {
-    "ABASTECIMENTO - TIPO: GASOLINA": "000715298",
-    "ABASTECIMENTO - TIPO: ALCOOL": "000715301",
+    "ABASTECIMENTO - TIPO: GASOLINA": "000014486",
+    "ABASTECIMENTO - TIPO: ALCOOL": "000014516",
     "ABASTECIMENTO - TIPO: OLEO DIESEL": "001325876"
   };
 
@@ -238,8 +247,8 @@ async function sincronizarTabelaPrincipalAbastecimento() {
                 };
             } else {
                 const codigoPorTipo = {
-                    "ABASTECIMENTO - TIPO: GASOLINA": "000715298",
-                    "ABASTECIMENTO - TIPO: ALCOOL": "000715301",
+                    "ABASTECIMENTO - TIPO: GASOLINA": "000014486",
+                    "ABASTECIMENTO - TIPO: ALCOOL": "000014516",
                     "ABASTECIMENTO - TIPO: OLEO DIESEL": "001325876"
                 };
                 acc[chaveGrupo] = {
