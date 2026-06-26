@@ -793,7 +793,8 @@ export class UIModule {
                 console.log("[SIC3 v3.0 Log] [UI-Extração] Consultando planilha de administradores...");
                 const responseAdmins = await sendMessageToBackground('obterPlanilhaGviz', {
                     sheetId: '1ajjlKk0yclUpTsb4V1ZNa62XTRoXRIE3KTApm9NuX5s',
-                    sheetName: 'admin'
+                    sheetName: 'admin',
+                    bypassCache: true
                 });
                 
                 if (responseAdmins && responseAdmins.success && responseAdmins.text) {
