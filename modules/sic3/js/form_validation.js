@@ -447,6 +447,14 @@ function validarDuplicidadeEndereco(dadosItem, linhaEditadaId = null, isOutroIte
   if (!isOutroItem || !dadosItem.endereco) return true;
 
   const [anoRef, mesRef] = (dadosItem.data.split("-")).slice(0, 2);
+  const descItem = (dadosItem.descricaoParaTabela || dadosItem.descricao || "").toUpperCase();
+  const isInternetItem = dadosItem.codigo === 'O33904004' && descItem.includes("INTERNET");
+  const isTelefoniaItem = dadosItem.codigo === 'O33904004' && descItem.includes("TELEFONE MÓVEL");
+
+  // Se for serviço de Internet, não acusa duplicidade (permite múltiplos medidores/provedores no mesmo endereço)
+  if (isInternetItem) {
+    return true;
+  }
 
   const registroDuplicado = $(".principal-table tbody tr").toArray().some((tr) => {
     if (linhaEditadaId && tr.id === linhaEditadaId) return false;
@@ -455,7 +463,7 @@ function validarDuplicidadeEndereco(dadosItem, linhaEditadaId = null, isOutroIte
     const codigoLinha = $tr.find(".codigo-item").text();
     if (!codigoLinha.startsWith('O')) return false;
 
-    // Se não for item de telefonia, usa a lógica original
+    // Se não for item de telefonia (ou se for o de internet, que já foi filtrado acima), usa a lógica original
     if (codigoLinha !== 'O33903914' && codigoLinha !== 'O33904004') {
       if (codigoLinha !== dadosItem.codigo) return false;
 
@@ -468,11 +476,18 @@ function validarDuplicidadeEndereco(dadosItem, linhaEditadaId = null, isOutroIte
       if (enderecoLinha === dadosItem.endereco && anoLinha === anoRef && mesLinha === mesRef) {
         return true;
       }
-    } else { // Lógica para telefonia
+    } else { // Lógica para telefonia (O33903914 ou O33904004a Telefonia Móvel)
       if (codigoLinha !== dadosItem.codigo) return false;
 
-      const descricaoLinha = $tr.find(".descricao-item").text();
-      const enderecoMatch = descricaoLinha.match(/End\.:\s*(.+)/);
+      const descricaoLinha = $tr.find(".descricao-item").text().toUpperCase();
+      
+      // Se for o código O33904004, precisamos garantir que estamos comparando com outra Telefonia Móvel e não com Internet
+      if (dadosItem.codigo === 'O33904004') {
+        const isInternetLinha = descricaoLinha.includes("INTERNET");
+        if (isInternetLinha) return false; // Ignora linhas de Internet cadastrada para evitar falsos-positivos
+      }
+
+      const enderecoMatch = $tr.find(".descricao-item").text().match(/End\.:\s*(.+)/);
       const enderecoLinha = enderecoMatch ? enderecoMatch[1].trim() : null;
 
       const observacaoLinha = $tr.find(".observacao-item").text();
@@ -493,7 +508,7 @@ function validarDuplicidadeEndereco(dadosItem, linhaEditadaId = null, isOutroIte
     const mesNome = typeof mes !== 'undefined' ? mes.toLowerCase() : mNumerico(mesRef, 'nome');
     const anoNome = typeof ano !== 'undefined' ? ano : anoRef;
     let msg = `Já existe um lançamento para este serviço/endereço no período de ${mesNome}/${anoNome}.`;
-    if (dadosItem.codigo === 'O33903914' || dadosItem.codigo === 'O33904004') {
+    if (dadosItem.codigo === 'O33903914' || (dadosItem.codigo === 'O33904004' && isTelefoniaItem)) {
       msg = `Já existe um lançamento para este número de telefone (${dadosItem.telefone}) neste endereço e período.`;
     }
     mostrarDialogo("Aviso de Duplicidade", msg);
