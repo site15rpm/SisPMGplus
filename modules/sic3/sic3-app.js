@@ -324,7 +324,11 @@ window.resolverIdsPlanilhas = async function(forcarRecarregamento = false) {
                 });
             });
 
-            if (cachedData && cachedData.spreadsheetId && cachedData.arquivosCompartilhados && cachedData.arquivosCompartilhados.BDEnderecos) {
+            // Valida expiração de 12 horas (12 * 60 * 60 * 1000 = 43200000 ms)
+            const cacheExpirationLimit = 43200000;
+            const isCacheExpired = !cachedData?.timestamp || (Date.now() - cachedData.timestamp > cacheExpirationLimit);
+
+            if (!isCacheExpired && cachedData && cachedData.spreadsheetId && cachedData.arquivosCompartilhados && cachedData.arquivosCompartilhados.BDEnderecos) {
                 console.log(`[SIC3 v3.0 Log] IDs das planilhas recuperados do cache permanente (${cacheKey})`);
                 window.idbase = cachedData.spreadsheetId;
                 window.idBDConvenios = cachedData.arquivosCompartilhados.BDConvenios;
@@ -340,6 +344,8 @@ window.resolverIdsPlanilhas = async function(forcarRecarregamento = false) {
                 sessionStorage.setItem("sic3_idTBPrimaria", window.idTBPrimaria);
                 sessionStorage.setItem("sic3_idTBSecundaria", window.idTBSecundaria);
                 return cachedData;
+            } else if (isCacheExpired && cachedData) {
+                console.log(`[SIC3 v3.0 Log] Cache permanente expirado (> 12h) para ${cacheKey}. Forçando atualização.`);
             }
         } catch (err) {
             console.error("[SIC3 v3.0 Log] Erro ao carregar IDs do cache permanente:", err);
@@ -488,6 +494,7 @@ window.resolverIdsPlanilhas = async function(forcarRecarregamento = false) {
 
             if (storage) {
                 const dataToCache = {
+                    timestamp: Date.now(),
                     spreadsheetId: linksResolvidos.spreadsheetId,
                     arquivosCompartilhados: {
                         BDConvenios: window.idBDConvenios,
