@@ -450,12 +450,7 @@ async function salvarDados() {
       valorTotal: $(".principal-table tfoot .total-valor").text()
     };
 
-    // Dispara o salvamento dos itens primários em segundo plano (fire-and-forget)
-    if (itensParaSalvarNaPrimaria.length > 0) {
-        google.script.run.salvarItensPrimariosEmLote(itensParaSalvarNaPrimaria);
-    }
-
-    // Aguarda apenas o salvamento do relatório principal
+    // Aguarda primeiro o salvamento do relatório principal
     const resultFinal = await new Promise((resolve, reject) => {
       google.script.run
         .withSuccessHandler(resolve)
@@ -464,8 +459,28 @@ async function salvarDados() {
     });
 
     if (resultFinal && resultFinal.success) {
-      // Limpa a fila local após o sucesso do salvamento principal
-      itensParaSalvarNaPrimaria = [];
+      // Dispara o salvamento secundário de itens primários de forma assíncrona encadeada (para não bloquear o fluxo visual de sucesso)
+      if (itensParaSalvarNaPrimaria.length > 0) {
+        const itensParaSalvar = [...itensParaSalvarNaPrimaria];
+        const idTBPrimariaVal = window.idTBPrimaria || sessionStorage.getItem("sic3_idTBPrimaria");
+        
+        google.script.run
+          .withSuccessHandler((resSync) => {
+            if (resSync && resSync.success) {
+              console.log("[SIC3] Itens primários salvos em lote com sucesso:", resSync.adicionados);
+              // Remove do buffer apenas os itens que foram enviados para salvar
+              itensParaSalvarNaPrimaria = itensParaSalvarNaPrimaria.filter(item => !itensParaSalvar.some(saved => saved.codigo === item.codigo));
+              if (typeof window.salvarBackupLocal === 'function') window.salvarBackupLocal();
+            } else {
+              console.warn("[SIC3] Servidor respondeu falha ao salvar itens primários:", resSync?.message || "Sem mensagem");
+            }
+          })
+          .withFailureHandler((err) => {
+            console.error("[SIC3] Erro ao salvar itens primários na base central:", err);
+          })
+          .salvarItensPrimariosEmLote(itensParaSalvar, idTBPrimariaVal);
+      }
+
       window.backupAtivo = false;
       await apagarBackupLocal();
 
