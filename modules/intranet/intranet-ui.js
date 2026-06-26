@@ -757,17 +757,86 @@ export class UIModule {
                 }
             }
             
+            // 1.1 Preparar dados de abrangência do usuário (com base no token / overrides)
+            const userFunctions = Array.isArray(decoded.f) ? decoded.f.map(String) : [];
+            const userFunctionsL = []; 
+            const userFunctionsF = []; 
+
+            userFunctions.forEach(func => {
+                const parts = func.split('.');
+                if (parts.length > 1) {
+                    userFunctionsL.push(parts[0]);
+                    userFunctionsF.push(parts.slice(1).join('.'));
+                } else {
+                    userFunctionsL.push(func);
+                    userFunctionsF.push("");
+                }
+            });
+            
+            const userData = {
+                g: String(decoded.g || ''),
+                t: String(decoded.t || ''),
+                e: String(decoded.e || ''),
+                p: String(decoded.p || ''),
+                r: String(decoded.r || ''),
+                u: String(decoded.u || ''),
+                c: String(decoded.c || ''),
+                f: userFunctions,
+                fl: userFunctionsL,
+                ff: userFunctionsF
+            };
+
+            // 1.2 Consultar se o usuário é administrador na planilha dedicada (sem fallback)
+            let usuarioEhAdmin = false;
+            let unidadesAdmin = "";
+            try {
+                console.log("[SIC3 v3.0 Log] [UI-Extração] Consultando planilha de administradores...");
+                const responseAdmins = await sendMessageToBackground('obterPlanilhaGviz', {
+                    sheetId: '1ajjlKk0yclUpTsb4V1ZNa62XTRoXRIE3KTApm9NuX5s',
+                    sheetName: 'admin'
+                });
+                
+                if (responseAdmins && responseAdmins.success && responseAdmins.text) {
+                    let jsonString = responseAdmins.text.substring(47).slice(0, -2);
+                    jsonString = jsonString.replace(/\[null/g, '[{"v":"NAO"}');
+                    jsonString = jsonString.replace(/,null/g, ',{"v":""}');
+                    jsonString = jsonString.replace(/:null/g, ':""');
+
+                    const jsonTable = JSON.parse(jsonString).table;
+                    if (jsonTable.rows && jsonTable.rows.length > 0) {
+                        for (const row of jsonTable.rows) {
+                            if (!row.c || row.c.length < 1) continue;
+                            const abrangencia = row.c[0]?.v || '';
+                            if (abrangencia && checkAbrangencia(abrangencia, userData)) {
+                                usuarioEhAdmin = true;
+                                unidadesAdmin = row.c[1]?.v || '';
+                                console.log(`[SIC3 v3.0 Log] [UI-Extração] Usuário identificado como Admin com abrangência: "${abrangencia}". Unidades permitidas: "${unidadesAdmin}"`);
+                                break;
+                            }
+                        }
+                    }
+                }
+            } catch (errAdmins) {
+                console.error("[SIC3 v3.0 Log] [UI-Extração] Falha ao verificar administradores na planilha dedicada. Tratar como usuário comum.", errAdmins);
+                usuarioEhAdmin = false;
+                unidadesAdmin = "";
+            }
+
             let userInfoFinal = null;
             
             if (cachedInfo && 
                 String(cachedInfo.numeroPM) === String(decoded.g) && 
                 String(cachedInfo.codigoSecao) === String(decoded.c)) {
                 
-                console.log("[SIC3 v3.0 Log] [UI-Extração] Cadastro em cache compatível encontrado no Storage Local. Pulando consulta na rede.", cachedInfo);
-                userInfoFinal = cachedInfo;
-                // Recalcula isAdmin para refletir qualquer mudança de unidade ou nas regras ('ALMOXARIFADO' ou 'SOFI')
-                const secaoUpper = String(userInfoFinal.secao || '').toUpperCase();
-                userInfoFinal.isAdmin = secaoUpper.includes('ALMOXARIFADO') || secaoUpper.includes('SOFI');
+                console.log("[SIC3 v3.0 Log] [UI-Extração] Cadastro em cache compatível encontrado no Storage Local. Atualizando privilégios de administrador...", cachedInfo);
+                userInfoFinal = { ...cachedInfo };
+                userInfoFinal.isAdmin = usuarioEhAdmin;
+                userInfoFinal.unidadesAdmin = unidadesAdmin;
+                
+                // Grava de volta no storage com os novos privilégios
+                await sendMessageToBackground('setStorage', {
+                    sic3_user_info: userInfoFinal
+                });
             } else {
                 if (cachedInfo) {
                     console.log("[SIC3 v3.0 Log] [UI-Extração] Cache do usuário obsoleto ou de outro PM. Iniciando consulta de unidades...");
@@ -785,9 +854,6 @@ export class UIModule {
                 
                 console.log("[SIC3 v3.0 Log] [UI-Extração] Identificação de unidade realizada com sucesso pelo background:", response);
                 
-                const secaoUpper = String(response.secao || '').toUpperCase();
-                const usuarioEhAdmin = secaoUpper.includes('ALMOXARIFADO') || secaoUpper.includes('SOFI');
-                
                 userInfoFinal = {
                     codigoSecao: String(response.codigoSecao),
                     secao: response.secao,
@@ -803,6 +869,7 @@ export class UIModule {
                     nomeUnidade: decoded.p || '',
                     codigoUnidade: String(decoded.u || ''),
                     isAdmin: usuarioEhAdmin,
+                    unidadesAdmin: unidadesAdmin,
                     timestamp: Date.now()
                 };
                 
