@@ -11,7 +11,7 @@
         carregarDadosPlanilha({
           sheetId: idbase,
           sheet: "convenios",
-          query: `SELECT A,B,C,D,E,F,G,H,M,N,Y,Z WHERE ${condicaoWhere}`,
+          query: `SELECT A,B,C,D,E,F,G,H,J,M,N,Y,Z WHERE ${condicaoWhere}`,
         }),
         carregarDadosPlanilha({
           sheetId: "1hP7wQgtsgUMuSNDC7Ac4gHKX0uWPVMTQV7Q5Xwpqwic", // CENTRAL_BD_LINKS_ID
@@ -57,6 +57,7 @@
             unidade,
             dataInicio,
             dataFim,
+            unidade_principal,
             status_texto,
             valor_estimado,
             elementos_despesa,
@@ -85,6 +86,7 @@
               unidade: unidadeTxt,
               dataInicio: String(dataInicio || "").trim(),
               dataFim: String(dataFim || "").trim(),
+              unidade_principal: String(unidade_principal || "").trim(),
               status_texto: String(status_texto || "").trim(),
               valor_estimado: String(valor_estimado || "").trim(),
               elementos_despesa: String(elementos_despesa || "").trim(),
@@ -121,7 +123,8 @@
       if (mes && mes !== "TODOS") {
         filters.push(`E='${mes}'`);
       }
-      if (municipio && municipio !== "TODOS") {
+      const userMLog = typeof mLog != "undefined" ? mLog : "";
+      if (userMLog !== "admin" && municipio && municipio !== "TODOS") {
         filters.push(`B='${municipio}'`);
       }
       if (convenio && convenio !== "TODOS" && /^\d+$/.test(convenio)) {
@@ -312,9 +315,15 @@
           }
         });
       } else {
-        const conveniosDoMunicipio = ADMIN_CONFIG.dados.convenios.filter(
-          (item) => item.municipio === municipioFiltro && item.convenio !== "-"
-        );
+        const userIsAdmin = typeof mLog != "undefined" && mLog === "admin";
+        const conveniosDoMunicipio = ADMIN_CONFIG.dados.convenios.filter((item) => {
+          if (item.convenio === "-") return false;
+          if (userIsAdmin) {
+            return item.unidade_principal === municipioFiltro;
+          } else {
+            return item.municipio === municipioFiltro;
+          }
+        });
         const mesesAIterar = mesFiltro === "TODOS" ? mesesNomes : [mesFiltro];
 
         mesesAIterar.forEach((nomeMesCorrente) => {
@@ -341,7 +350,7 @@
             conveniosParaEsteMes.forEach((conv) => {
               const statusRowConv = dadosBrutos.status.find(
                 (s) =>
-                  String(s[1]).trim() === municipioFiltro &&
+                  String(s[1]).trim() === conv.municipio &&
                   String(s[2]).trim() === conv.convenio &&
                   String(s[3]).trim() === ano &&
                   String(s[4]).trim() === nomeMesCorrente
@@ -351,7 +360,7 @@
                   statusRowConv && statusRowConv[0]
                     ? String(statusRowConv[0]).trim()
                     : "",
-                municipio: municipioFiltro,
+                municipio: conv.municipio,
                 convenio: conv.convenio,
                 ano,
                 mes: nomeMesCorrente,
