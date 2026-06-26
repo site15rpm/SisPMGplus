@@ -70,6 +70,10 @@ async function processarSubmissaoManutencao(dadosForm, linhaEditadaId) {
         $(linhaEditada).find(".valorUnitario-item").text(formatarNumero(dadosRegistro.valorUnitario, "moeda"));
         $(linhaEditada).find(".subtotal-item").text(formatarNumero(dadosRegistro.subtotal, "moeda"));
         $(linhaEditada).find(".notaFiscal-item").text(dadosRegistro.notaFiscal);
+
+        $(linhaEditada).attr('data-codigo', dadosRegistro.codigoItem || dadosRegistro.codigo || '000025593');
+        $(linhaEditada).attr('data-despesa', dadosRegistro.despesa);
+        $(linhaEditada).attr('data-unidade', dadosRegistro.unidade);
       }
       if (typeof ordenarTabelaManutencaoDOM === 'function') ordenarTabelaManutencaoDOM();
     } else {
