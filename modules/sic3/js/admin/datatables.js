@@ -19,6 +19,13 @@
                       { width: "auto", targets: 1, className: "dt-col-descricao" },
                       { width: "20%", targets: 2, className: "dt-col-despesa" },
                       { width: "200px", targets: 3, className: "dt-col-unidade" } ],
+        createdRow: function (row, data, dataIndex) {
+          if (data.isPortal) {
+            $(row).find('td').css('background-color', '#ffcccb'); // Vermelho claro
+          } else if (data.isSecondary) {
+            $(row).find('td').css('background-color', '#fffacd'); // Amarelo claro
+          }
+        },
         initComplete: (settings) => { setupDataTableSearchAdmin(settings); ocultarCarregamento(); },
         error: (xhr, error, thrown) => { manipularErro(error, "DataTableInit"); ocultarCarregamento(); }
       });
