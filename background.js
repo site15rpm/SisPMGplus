@@ -110,7 +110,10 @@ browser.runtime.onMessage.addListener((request, sender) => {
                     return { success: true };
                 }
                 case 'openSettingsPage': {
-                    if (payload.page && payload.page.includes('sic3.html')) {
+                    if (!payload || typeof payload.page !== 'string') {
+                        throw new Error("Parâmetro 'page' ausente ou inválido no payload.");
+                    }
+                    if (payload.page.includes('sic3.html')) {
                         // Grava autorização de acesso temporária para o SIC3
                         await StorageManager.set({
                             [STORAGE_KEYS.SIC3_ACCESS_AUTHORIZED]: {
@@ -224,7 +227,7 @@ browser.runtime.onMessage.addListener((request, sender) => {
             // 3. Captura global de erros.
             // Se qualquer parte do código acima (incluindo os handlers dos módulos) lançar um erro,
             // ele será capturado aqui. Isso garante que sempre enviaremos uma resposta estruturada.
-            console.error(`SisPMG+ [Background]: Erro não tratado ao processar a ação '${action}'.`, { error, request });
+            console.error(`SisPMG+ [Background]: Erro não tratado ao processar a ação '${action}': ${error.message || error}`, { error, request });
             return { success: false, error: error.message || 'Comunicado do SisPMG+ no service worker.' };
         }
     })(); // A IIFE retorna a promessa, mantendo o canal de resposta aberto.
