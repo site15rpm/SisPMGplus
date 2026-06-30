@@ -1,74 +1,8 @@
 // Arquivo: modules/intranet/intranet-agenda.js
 // Responsável pela lógica do novo módulo de Agenda da Intranet
 
-import { sendMessageToBackground, getCookie, decodeJwt } from '../../common/utils.js';
+import { sendMessageToBackground, getCookie, decodeJwt, checkAbrangencia } from '../../common/utils.js';
 import { iconSVG_28 } from '../../common/icon.js';
-
-/**
- * Verifica se o usuário atende aos critérios de abrangência.
- * Copiado de intranet-ui.js para uso local.
- * @param {string} abrangenciaString - A string de regras (ex: "g:123|456, t:SGT").
- * @param {object} userData - O objeto com os dados do usuário do token.
- * @returns {boolean} - True se o usuário tiver acesso, false caso contrário.
- */
-function checkAbrangencia(abrangenciaString, userData) {
-    if (!abrangenciaString) {
-        return false;
-    }
-    const upperString = abrangenciaString.toUpperCase();
-    if (upperString === "PMMG" || upperString === "1") {
-        return true;
-    }
-
-    const allCriteria = abrangenciaString.split(',');
-    if (allCriteria.length === 0) return false;
-
-    for (const criterion of allCriteria) {
-        const parts = criterion.split(':');
-        if (parts.length < 2) continue;
-
-        const key = parts[0].trim().toLowerCase();
-        const rules = parts.slice(1).join(':').trim();
-        const ruleList = rules.split('|').map(r => r.trim()).filter(r => r);
-
-        const userValue = userData.hasOwnProperty(key) ? userData[key] : undefined;
-
-
-        if (userValue === undefined || ruleList.length === 0) {
-            continue;
-        }
-
-        let criteriaMet = false;
-        // Garante que todos os valores a serem testados sejam strings para uma comparação consistente.
-        const valuesToTest = Array.isArray(userValue) ? userValue.map(String) : [String(userValue)];
-
-        for (const value of valuesToTest) {
-            for (const rule of ruleList) {
-                try {
-                    // Compara usando Regex para flexibilidade
-                    if (new RegExp('^' + rule + '$', 'i').test(value)) {
-                        criteriaMet = true;
-                        break;
-                    }
-                } catch (e) {
-                    // Fallback para comparação estrita caso a regex seja inválida
-                    if (value === rule) {
-                        criteriaMet = true;
-                        break;
-                    }
-                }
-            }
-            if (criteriaMet) break;
-        }
-
-        if (criteriaMet) {
-            return true;
-        }
-    }
-
-    return false;
-}
-
 
 export class IntranetAgendaModule {
     constructor() {
@@ -84,10 +18,50 @@ export class IntranetAgendaModule {
         try {
             await this.loadSettings();
 
-            const token = getCookie('tokiuz');
-            if (token) {
-                this.userData = decodeJwt(token);
-                this.userNumber = this.userData ? String(this.userData.g) : null;
+            const raw = sessionStorage.getItem('sispmg_user_tokiuz');
+            let decoded = null;
+            if (raw) {
+                try {
+                    decoded = JSON.parse(raw);
+                } catch (e) {
+                    console.warn("SisPMG+ [Agenda]: Erro ao fazer parse de sispmg_user_tokiuz do sessionStorage.", e);
+                }
+            }
+            if (!decoded) {
+                const token = getCookie('tokiuz');
+                if (token) {
+                    decoded = decodeJwt(token);
+                }
+            }
+
+            if (decoded) {
+                const funcoes = Array.isArray(decoded.f) ? decoded.f.map(String) : [];
+                const fl = [];
+                const ff = [];
+                funcoes.forEach(func => {
+                    const parts = func.split('.');
+                    if (parts.length > 1) {
+                        fl.push(parts[0]);
+                        ff.push(parts.slice(1).join('.'));
+                    } else {
+                        fl.push(func);
+                        ff.push('');
+                    }
+                });
+
+                this.userData = {
+                    g: String(decoded.g || ''),
+                    t: String(decoded.t || ''),
+                    e: String(decoded.e || ''),
+                    p: String(decoded.p || ''),
+                    r: String(decoded.r || ''),
+                    u: String(decoded.u || ''),
+                    c: String(decoded.c || ''),
+                    f: funcoes,
+                    fl,
+                    ff
+                };
+                this.userNumber = String(decoded.g || '');
             } else {
                 throw new Error("Token 'tokiuz' não encontrado.");
             }
