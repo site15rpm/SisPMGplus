@@ -209,7 +209,8 @@ export function initRotinas(prototype) {
         this.sendMessage('forceRefreshRotinas', { 
             showHidden: this.showHiddenFiles, 
             userPM: this.userPM,
-            userName: this.userName
+            userName: this.userName,
+            forceRefresh: 'true'
         }, (response) => {
             this.hideLoadingOverlay();
             if (response && response.success) {

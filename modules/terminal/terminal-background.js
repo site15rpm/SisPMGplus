@@ -107,7 +107,7 @@ export async function handleTerminalMessages(request, sender) {
         }
 
         case 'forceRefreshRotinas':
-            return fetchAndCacheRotinas(payload);
+            return fetchAndCacheRotinas({ ...payload, forceRefresh: 'true' });
 
         case 'saveRotina':
         case 'deleteRotina': {
