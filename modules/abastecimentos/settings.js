@@ -117,7 +117,96 @@ document.addEventListener('DOMContentLoaded', () => {
         return { valid: true };
     };
 
-    const garantirPermissoesAbastecimento = async (origins) => {
+    const exibirPrePromptAbastecimento = (sistema, origins) => {
+        return new Promise((resolve) => {
+            const overlay = document.createElement('div');
+            overlay.id = 'sispmg-permission-modal-overlay';
+            overlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                background: rgba(13, 17, 23, 0.75);
+                backdrop-filter: blur(4px);
+                z-index: 25000;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            `;
+
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                background: #1e293b;
+                border: 1px solid #334155;
+                border-radius: 12px;
+                width: 90%;
+                max-width: 440px;
+                padding: 24px;
+                box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
+                color: #f1f5f9;
+                text-align: center;
+                animation: sispmgFadeIn 0.3s ease;
+            `;
+
+            const styleEl = document.createElement('style');
+            styleEl.textContent = `
+                @keyframes sispmgFadeIn {
+                    from { opacity: 0; transform: scale(0.95); }
+                    to { opacity: 1; transform: scale(1); }
+                }
+            `;
+            document.head.appendChild(styleEl);
+
+            const nomeSistema = sistema === 'PRIME' ? 'PRIME' : 'POC (Netfrota)';
+            const siteExemplo = sistema === 'PRIME' ? 'primebeneficios.com.br' : 'sgta.netfrota.com.br';
+
+            modal.innerHTML = `
+                <div style="font-size: 42px; margin-bottom: 12px;">⛽</div>
+                <h3 style="font-size: 18px; font-weight: 700; margin: 0 0 10px 0; color: #b3a368; letter-spacing: 0.5px;">Permissão de Acesso ao ${nomeSistema}</h3>
+                <p style="font-size: 14px; line-height: 1.6; color: #cbd5e1; margin: 0 0 20px 0; text-align: left;">
+                    Para sincronizar e baixar os relatórios de abastecimento diretamente do sistema ${nomeSistema} (${siteExemplo}), o SisPMG+ precisa realizar consultas externas seguras.<br><br>
+                    Clique em <strong>Autorizar Acesso</strong> e confirme a permissão na próxima janela de segurança do navegador.
+                </p>
+                <button id="sispmg-modal-grant-btn" style="
+                    background: linear-gradient(135deg, #574e2d 0%, #b3a368 100%);
+                    color: #0f172a;
+                    border: none;
+                    padding: 12px 24px;
+                    font-size: 14.5px;
+                    font-weight: 700;
+                    border-radius: 8px;
+                    cursor: pointer;
+                    width: 100%;
+                    box-shadow: 0 4px 12px rgba(179, 163, 104, 0.2);
+                    transition: all 0.2s ease;
+                    letter-spacing: 0.3px;
+                " onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 6px 16px rgba(179, 163, 104, 0.35)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(179, 163, 104, 0.2)'">Autorizar Acesso</button>
+            `;
+
+            overlay.appendChild(modal);
+            document.body.appendChild(overlay);
+
+            document.getElementById('sispmg-modal-grant-btn').addEventListener('click', async () => {
+                overlay.remove();
+                styleEl.remove();
+                
+                try {
+                    const api = typeof chrome !== 'undefined' ? chrome : (typeof browser !== 'undefined' ? browser : null);
+                    const granted = await new Promise(resolve => {
+                        api.permissions.request({ origins }, resolve);
+                    });
+                    resolve(granted);
+                } catch (e) {
+                    console.warn('[Abastecimentos] Erro ao abrir prompt nativo:', e);
+                    resolve(false);
+                }
+            });
+        });
+    };
+
+    const garantirPermissoesAbastecimento = async (sistema, origins) => {
         const api = typeof chrome !== 'undefined' ? chrome : (typeof browser !== 'undefined' ? browser : null);
         if (!api || !api.permissions) return true;
 
@@ -126,14 +215,96 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         if (hasPermission) return true;
 
-        try {
-            const granted = await new Promise(resolve => {
-                api.permissions.request({ origins }, resolve);
-            });
-            return granted;
-        } catch (e) {
-            console.warn('[Abastecimentos] Falha ao solicitar permissões de host:', e);
-            return false;
+        return await exibirPrePromptAbastecimento(sistema, origins);
+    };
+
+    const verificarPermissoesAbastecimentoSalvas = async (settings) => {
+        const api = typeof chrome !== 'undefined' ? chrome : (typeof browser !== 'undefined' ? browser : null);
+        if (!api || !api.permissions) return;
+
+        const needsPrime = settings['prime-active'];
+        const needsPoc = settings['poc-active'];
+        
+        let missingPrime = false;
+        let missingPoc = false;
+
+        if (needsPrime) {
+            const origins = ["https://primebeneficios.com.br/*", "https://sistema-customizado.primebeneficios.com.br/*"];
+            const ok = await new Promise(resolve => api.permissions.contains({ origins }, resolve));
+            if (!ok) missingPrime = true;
+        }
+
+        if (needsPoc) {
+            const origins = ["http://sgta.netfrota.com.br/*"];
+            const ok = await new Promise(resolve => api.permissions.contains({ origins }, resolve));
+            if (!ok) missingPoc = true;
+        }
+
+        if (missingPrime || missingPoc) {
+            const container = document.querySelector('.container');
+            if (container) {
+                const banner = document.createElement('div');
+                banner.id = 'sispmg-abastecimento-permission-banner';
+                banner.style.cssText = `
+                    background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%);
+                    color: #fef2f2;
+                    border-left: 5px solid #ef4444;
+                    padding: 15px 20px;
+                    margin-bottom: 20px;
+                    border-radius: 8px;
+                    font-family: system-ui, -apple-system, sans-serif;
+                    font-size: 13.5px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                `;
+                
+                let msg = '<strong>Permissão de Host Necessária:</strong> Para que a automação funcione, autorize o acesso aos portais de abastecimento ativados.';
+                if (missingPrime && !missingPoc) msg = '<strong>Permissão de Host Necessária:</strong> Autorize o acesso aos portais do PRIME para realizar a extração.';
+                if (!missingPrime && missingPoc) msg = '<strong>Permissão de Host Necessária:</strong> Autorize o acesso ao portal do POC (Netfrota) para realizar a extração.';
+
+                banner.innerHTML = `
+                    <div style="flex: 1; margin-right: 15px;">${msg}</div>
+                    <button id="sispmg-grant-abastecimento-btn" style="
+                        background: #fef2f2;
+                        color: #991b1b;
+                        border: none;
+                        padding: 8px 16px;
+                        font-weight: 700;
+                        border-radius: 4px;
+                        cursor: pointer;
+                        white-space: nowrap;
+                        transition: all 0.2s ease;
+                    ">Autorizar Acesso</button>
+                `;
+                container.insertBefore(banner, container.firstChild);
+
+                document.getElementById('sispmg-grant-abastecimento-btn').addEventListener('click', async () => {
+                    const toGrant = [];
+                    if (missingPrime) {
+                        toGrant.push("https://primebeneficios.com.br/*", "https://sistema-customizado.primebeneficios.com.br/*");
+                    }
+                    if (missingPoc) {
+                        toGrant.push("http://sgta.netfrota.com.br/*");
+                    }
+
+                    try {
+                        const granted = await new Promise(resolve => {
+                            api.permissions.request({ origins: toGrant }, resolve);
+                        });
+                        if (granted) {
+                            banner.remove();
+                            alert("Acesso aos portais de abastecimento autorizado com sucesso!");
+                            location.reload();
+                        } else {
+                            alert("SisPMG+: A permissão não foi concedida. A automação pode não funcionar.");
+                        }
+                    } catch (e) {
+                        console.error("[Abastecimentos] Erro ao solicitar permissões via banner:", e);
+                    }
+                });
+            }
         }
     };
 
@@ -197,7 +368,13 @@ document.addEventListener('DOMContentLoaded', () => {
             
             initialSettings = collectSettings();
             updateButtonVisibility();
+            
+            const oldBanner = document.getElementById('sispmg-abastecimento-permission-banner');
+            if (oldBanner) oldBanner.remove();
+
             displayLogs(result['execution-logs']);
+
+            await verificarPermissoesAbastecimentoSalvas(settings);
         }
     };
     
@@ -213,7 +390,7 @@ document.addEventListener('DOMContentLoaded', () => {
     primeActiveToggle.addEventListener('change', async () => {
         if (primeActiveToggle.checked) {
             const origins = ["https://primebeneficios.com.br/*", "https://sistema-customizado.primebeneficios.com.br/*"];
-            const temPermissao = await garantirPermissoesAbastecimento(origins);
+            const temPermissao = await garantirPermissoesAbastecimento('PRIME', origins);
             if (!temPermissao) {
                 primeActiveToggle.checked = false;
                 toggleCredentialFields(false, primeCredsDiv);
@@ -225,7 +402,7 @@ document.addEventListener('DOMContentLoaded', () => {
     pocActiveToggle.addEventListener('change', async () => {
         if (pocActiveToggle.checked) {
             const origins = ["http://sgta.netfrota.com.br/*"];
-            const temPermissao = await garantirPermissoesAbastecimento(origins);
+            const temPermissao = await garantirPermissoesAbastecimento('POC', origins);
             if (!temPermissao) {
                 pocActiveToggle.checked = false;
                 toggleCredentialFields(false, pocCredsDiv);
@@ -248,7 +425,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Garante as permissões necessárias com base no que está ativo
         if (settings['prime-active']) {
             const origins = ["https://primebeneficios.com.br/*", "https://sistema-customizado.primebeneficios.com.br/*"];
-            const ok = await garantirPermissoesAbastecimento(origins);
+            const ok = await garantirPermissoesAbastecimento('PRIME', origins);
             if (!ok) {
                 showStatus('Erro: Permissão de host necessária para o PRIME não concedida.', 'error');
                 return;
@@ -256,7 +433,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (settings['poc-active']) {
             const origins = ["http://sgta.netfrota.com.br/*"];
-            const ok = await garantirPermissoesAbastecimento(origins);
+            const ok = await garantirPermissoesAbastecimento('POC', origins);
             if (!ok) {
                 showStatus('Erro: Permissão de host necessária para o POC não concedida.', 'error');
                 return;
@@ -309,7 +486,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Garante as permissões antes de rodar
         if (settings['prime-active']) {
             const origins = ["https://primebeneficios.com.br/*", "https://sistema-customizado.primebeneficios.com.br/*"];
-            const ok = await garantirPermissoesAbastecimento(origins);
+            const ok = await garantirPermissoesAbastecimento('PRIME', origins);
             if (!ok) {
                 alert('SisPMG+: Permissão de host para o PRIME é necessária para a extração.');
                 return;
@@ -317,7 +494,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (settings['poc-active']) {
             const origins = ["http://sgta.netfrota.com.br/*"];
-            const ok = await garantirPermissoesAbastecimento(origins);
+            const ok = await garantirPermissoesAbastecimento('POC', origins);
             if (!ok) {
                 alert('SisPMG+: Permissão de host para o POC é necessária para a extração.');
                 return;
