@@ -62,20 +62,72 @@ export class IntranetNotasModule {
     }
 
     extractData() {
-        const getSelectedText = (id) => {
-            const el = document.getElementById(id) || document.querySelector(`[name="${id}"]`);
-            return el && el.options[el.selectedIndex] && el.value !== "" 
-                ? el.options[el.selectedIndex].text.replace(/\s+/g, ' ').trim() 
+        const obterSelectPorContexto = (idOriginal, textoLabel, indexPosicional) => {
+            // 1. Tenta encontrar pelo ID original ou Name original
+            let el = document.getElementById(idOriginal) || document.querySelector(`[name="${idOriginal}"]`);
+            if (el && el.tagName === 'SELECT') return el;
+
+            // 2. Tenta encontrar pelo texto do Label associado
+            const cleanLabel = textoLabel.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/:/g, "").trim();
+            const labels = Array.from(document.querySelectorAll('label, td, th, span'));
+            for (const l of labels) {
+                const text = l.textContent.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/:/g, "").trim();
+                if (text === cleanLabel || text.startsWith(cleanLabel)) {
+                    if (l.tagName === 'LABEL' && l.getAttribute('for')) {
+                        const target = document.getElementById(l.getAttribute('for'));
+                        if (target && target.tagName === 'SELECT') return target;
+                    }
+                    const parent = l.parentElement;
+                    if (parent) {
+                        const sel = parent.querySelector('select');
+                        if (sel) return sel;
+                        let next = parent.nextElementSibling;
+                        while (next) {
+                            const s = next.querySelector('select') || (next.tagName === 'SELECT' ? next : null);
+                            if (s) return s;
+                            next = next.nextElementSibling;
+                        }
+                    }
+                    let nextEl = l.nextElementSibling;
+                    while (nextEl) {
+                        const s = nextEl.querySelector('select') || (nextEl.tagName === 'SELECT' ? nextEl : null);
+                        if (s) return s;
+                        nextEl = nextEl.nextElementSibling;
+                    }
+                }
+            }
+
+            // 3. Fallback Posicional (busca todos os selects visíveis do formulário)
+            const form = document.getElementById('formularioPrincipal') || document.querySelector('form');
+            if (form) {
+                const selects = Array.from(form.querySelectorAll('select'));
+                if (selects.length > indexPosicional) {
+                    return selects[indexPosicional];
+                }
+            }
+
+            return null;
+        };
+
+        const getSelectedTextFromElement = (el) => {
+            return el && el.options && el.options[el.selectedIndex] && el.value !== ""
+                ? el.options[el.selectedIndex].text.replace(/\s+/g, ' ').trim()
                 : '';
         };
 
-        const avaliacaoSelecionada = getSelectedText('formularioPrincipal:j_id188');
+        const selectUnidade = obterSelectPorContexto('formularioPrincipal:j_id166', 'Unidade', 0);
+        const selectAno = obterSelectPorContexto('formularioPrincipal:j_id171', 'Ano', 1);
+        const selectTurma = obterSelectPorContexto('formularioPrincipal:select_turmas', 'Turma', 2);
+        const selectDisciplina = obterSelectPorContexto('formularioPrincipal:select_diario_classe', 'Componente curricular', 3);
+        const selectAvaliacao = obterSelectPorContexto('formularioPrincipal:j_id188', 'Avaliação', 4);
+
+        const avaliacaoSelecionada = getSelectedTextFromElement(selectAvaliacao);
 
         const metadata = {
-            unidade: getSelectedText('formularioPrincipal:j_id166'),
-            ano: getSelectedText('formularioPrincipal:j_id171'),
-            turma: getSelectedText('formularioPrincipal:select_turmas'),
-            disciplina: getSelectedText('formularioPrincipal:select_diario_classe'),
+            unidade: getSelectedTextFromElement(selectUnidade),
+            ano: getSelectedTextFromElement(selectAno),
+            turma: getSelectedTextFromElement(selectTurma),
+            disciplina: getSelectedTextFromElement(selectDisciplina),
             avaliacao: avaliacaoSelecionada
         };
 
