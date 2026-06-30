@@ -943,41 +943,30 @@ window.addEventListener('DOMContentLoaded', async () => {
         let rpmParam = null;
         let secaoParam = null;
         
-        let storage = null;
-        if (typeof browser !== 'undefined' && browser.storage && browser.storage.local) {
-            storage = browser.storage.local;
-        } else if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-            storage = chrome.storage.local;
-        }
-        
-        if (storage) {
-            try {
-                const resParams = await new Promise(resolve => {
-                    storage.get('sic3_url_params', res => resolve(res ? res.sic3_url_params : null));
-                });
+        try {
+            const resParams = await StorageManager.get(STORAGE_KEYS.SIC3_URL_PARAMS);
+            
+            if (resParams) {
+                console.log("[SIC3 v3.0 Log] Parâmetros de inicialização recuperados com sucesso do storage local:", resParams);
+                municipioParam = resParams.municipio || null;
+                rpmParam = resParams.rpm || null;
+                secaoParam = resParams.secao || null;
                 
-                if (resParams) {
-                    console.log("[SIC3 v3.0 Log] Parâmetros de inicialização recuperados com sucesso do storage local:", resParams);
-                    municipioParam = resParams.municipio || null;
-                    rpmParam = resParams.rpm || null;
-                    secaoParam = resParams.secao || null;
-                    
-                    if (resParams.convenioId) {
-                        window.convenioId = resParams.convenioId;
-                        sessionStorage.setItem("sic3_convenioId", resParams.convenioId);
-                    }
-                    if (resParams.ano) {
-                        sessionStorage.setItem("sic3_ano", resParams.ano);
-                        window.ano = resParams.ano;
-                    }
-                    
-                    // Limpa do storage para evitar reutilizações obsoletas em aberturas subsequentes
-                    storage.remove('sic3_url_params', () => {
-                        console.log("[SIC3 v3.0 Log] Parâmetros consumidos e limpos do storage local.");
-                    });
+                if (resParams.convenioId) {
+                    window.convenioId = resParams.convenioId;
+                    sessionStorage.setItem("sic3_convenioId", resParams.convenioId);
                 }
-            } catch (errStorage) {
-                console.warn("[SIC3 v3.0 Log] Falha ao recuperar sic3_url_params do storage:", errStorage);
+                if (resParams.ano) {
+                    sessionStorage.setItem("sic3_ano", resParams.ano);
+                    window.ano = resParams.ano;
+                }
+                
+                // Limpa do storage para evitar reutilizações obsoletas em aberturas subsequentes
+                await StorageManager.remove(STORAGE_KEYS.SIC3_URL_PARAMS);
+                console.log("[SIC3 v3.0 Log] Parâmetros consumidos e limpos do storage local.");
+            }
+        } catch (errStorage) {
+            console.warn("[SIC3 v3.0 Log] Falha ao recuperar sic3_url_params do storage:", errStorage);
             }
         }
         
@@ -1004,10 +993,9 @@ window.addEventListener('DOMContentLoaded', async () => {
             }
         }
 
-        console.log("[SIC3 v3.0 Log] [SIC3-Extração] Lendo credenciais e dados da unidade ('sic3_user_info') do browser.storage.local...");
+        console.log("[SIC3 v3.0 Log] [SIC3-Extração] Lendo credenciais e dados da unidade ('sic3_user_info') do StorageManager...");
         // Sempre tenta ler do storage local para obter as informações completas do usuário
-        const storageResult = await browser.storage.local.get('sic3_user_info');
-        const info = (storageResult && storageResult.sic3_user_info) ? storageResult.sic3_user_info : null;
+        const info = await StorageManager.get(STORAGE_KEYS.SIC3_USER_INFO);
         console.log("[SIC3 v3.0 Log] [SIC3-Extração] Informações recuperadas do storage local:", info);
         
         if (info) {
