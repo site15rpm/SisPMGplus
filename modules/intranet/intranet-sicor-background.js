@@ -314,7 +314,7 @@ async function scheduleNextSicorExtraction(config) {
     await browser.alarms.clear(SICOR_ALARM_SCHEDULER_CHECK);
 
     if (frequency === 'none') {
-        await browser.storage.local.remove(SICOR_STORAGE_SCHEDULE_KEY);
+        await StorageManager.remove(SICOR_STORAGE_SCHEDULE_KEY);
         await addSicorLog('Agendamento automático desativado.', 'SISTEMA');
         return;
     }
