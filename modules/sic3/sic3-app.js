@@ -706,6 +706,22 @@ export async function navegarPara(pagina, contexto = {}) {
             await carregarJS('js/item99.js');
             console.log("[SIC3 v3.0 Log] Scripts de Itens 99 injetados com sucesso.");
         }
+
+        // Atualiza o título dinâmico no cabeçalho
+        const headerTitleEl = document.getElementById('sic3-header-title');
+        if (headerTitleEl) {
+            if (pagina === 'admin') {
+                const telaAtual = (window.ADMIN_CONFIG && window.ADMIN_CONFIG.estados && window.ADMIN_CONFIG.estados.telaAtual) || "lancamentos";
+                headerTitleEl.textContent = (telaAtual === "pesquisa") ? "Pesquisa de Materiais de Consumo" : "Painel Administrativo";
+            } else if (pagina === 'lancamentos') {
+                headerTitleEl.textContent = "Painel de Lançamentos";
+            } else if (pagina === 'item99') {
+                headerTitleEl.textContent = "Gerenciamento de Item 99";
+            } else {
+                headerTitleEl.textContent = "";
+            }
+        }
+        
         
     } catch (error) {
         console.error("[SIC3 v3.0 Log] Erro na navegação do SIC3:", error);
