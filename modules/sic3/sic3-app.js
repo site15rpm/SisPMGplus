@@ -967,7 +967,6 @@ window.addEventListener('DOMContentLoaded', async () => {
             }
         } catch (errStorage) {
             console.warn("[SIC3 v3.0 Log] Falha ao recuperar sic3_url_params do storage:", errStorage);
-            }
         }
         
         // Fallback: se não encontrou no storage, tenta ler da URL (retrocompatibilidade)
