@@ -115,11 +115,11 @@ export class IntranetNotasModule {
                 : '';
         };
 
-        const selectUnidade = obterSelectPorContexto('formularioPrincipal:j_id166', 'Unidade', 0);
-        const selectAno = obterSelectPorContexto('formularioPrincipal:j_id171', 'Ano', 1);
+        const selectUnidade = obterSelectPorContexto('', 'Unidade', 0);
+        const selectAno = obterSelectPorContexto('', 'Ano', 1);
         const selectTurma = obterSelectPorContexto('formularioPrincipal:select_turmas', 'Turma', 2);
         const selectDisciplina = obterSelectPorContexto('formularioPrincipal:select_diario_classe', 'Componente curricular', 3);
-        const selectAvaliacao = obterSelectPorContexto('formularioPrincipal:j_id188', 'Avaliação', 4);
+        const selectAvaliacao = obterSelectPorContexto('', 'Avaliação', 4);
 
         const avaliacaoSelecionada = getSelectedTextFromElement(selectAvaliacao);
 
