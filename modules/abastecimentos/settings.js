@@ -117,6 +117,26 @@ document.addEventListener('DOMContentLoaded', () => {
         return { valid: true };
     };
 
+    const garantirPermissoesAbastecimento = async (origins) => {
+        const api = typeof chrome !== 'undefined' ? chrome : (typeof browser !== 'undefined' ? browser : null);
+        if (!api || !api.permissions) return true;
+
+        const hasPermission = await new Promise(resolve => {
+            api.permissions.contains({ origins }, resolve);
+        });
+        if (hasPermission) return true;
+
+        try {
+            const granted = await new Promise(resolve => {
+                api.permissions.request({ origins }, resolve);
+            });
+            return granted;
+        } catch (e) {
+            console.warn('[Abastecimentos] Falha ao solicitar permissões de host:', e);
+            return false;
+        }
+    };
+
     const collectSettings = () => {
         const settings = {};
         fields.forEach(id => {
@@ -190,8 +210,30 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelector('.container').addEventListener('change', updateButtonVisibility);
     document.querySelector('.container').addEventListener('input', updateButtonVisibility);
     
-    primeActiveToggle.addEventListener('change', () => toggleCredentialFields(primeActiveToggle.checked, primeCredsDiv));
-    pocActiveToggle.addEventListener('change', () => toggleCredentialFields(pocActiveToggle.checked, pocCredsDiv));
+    primeActiveToggle.addEventListener('change', async () => {
+        if (primeActiveToggle.checked) {
+            const origins = ["https://primebeneficios.com.br/*", "https://sistema-customizado.primebeneficios.com.br/*"];
+            const temPermissao = await garantirPermissoesAbastecimento(origins);
+            if (!temPermissao) {
+                primeActiveToggle.checked = false;
+                toggleCredentialFields(false, primeCredsDiv);
+                return;
+            }
+        }
+        toggleCredentialFields(primeActiveToggle.checked, primeCredsDiv);
+    });
+    pocActiveToggle.addEventListener('change', async () => {
+        if (pocActiveToggle.checked) {
+            const origins = ["http://sgta.netfrota.com.br/*"];
+            const temPermissao = await garantirPermissoesAbastecimento(origins);
+            if (!temPermissao) {
+                pocActiveToggle.checked = false;
+                toggleCredentialFields(false, pocCredsDiv);
+                return;
+            }
+        }
+        toggleCredentialFields(pocActiveToggle.checked, pocCredsDiv);
+    });
     driveSyncToggle.addEventListener('change', toggleDriveSyncInput);
     autoFrequencySelect.addEventListener('change', toggleWeekdaySelector);
 
@@ -201,6 +243,24 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!validation.valid) {
             showStatus(validation.message, 'error');
             return;
+        }
+
+        // Garante as permissões necessárias com base no que está ativo
+        if (settings['prime-active']) {
+            const origins = ["https://primebeneficios.com.br/*", "https://sistema-customizado.primebeneficios.com.br/*"];
+            const ok = await garantirPermissoesAbastecimento(origins);
+            if (!ok) {
+                showStatus('Erro: Permissão de host necessária para o PRIME não concedida.', 'error');
+                return;
+            }
+        }
+        if (settings['poc-active']) {
+            const origins = ["http://sgta.netfrota.com.br/*"];
+            const ok = await garantirPermissoesAbastecimento(origins);
+            if (!ok) {
+                showStatus('Erro: Permissão de host necessária para o POC não concedida.', 'error');
+                return;
+            }
         }
         
         saveBtn.disabled = true;
@@ -244,7 +304,26 @@ document.addEventListener('DOMContentLoaded', () => {
     
     cancelDateBtn.addEventListener('click', () => { dateModal.style.display = 'none'; });
 
-    confirmDateBtn.addEventListener('click', () => {
+    confirmDateBtn.addEventListener('click', async () => {
+        const settings = collectSettings();
+        // Garante as permissões antes de rodar
+        if (settings['prime-active']) {
+            const origins = ["https://primebeneficios.com.br/*", "https://sistema-customizado.primebeneficios.com.br/*"];
+            const ok = await garantirPermissoesAbastecimento(origins);
+            if (!ok) {
+                alert('SisPMG+: Permissão de host para o PRIME é necessária para a extração.');
+                return;
+            }
+        }
+        if (settings['poc-active']) {
+            const origins = ["http://sgta.netfrota.com.br/*"];
+            const ok = await garantirPermissoesAbastecimento(origins);
+            if (!ok) {
+                alert('SisPMG+: Permissão de host para o POC é necessária para a extração.');
+                return;
+            }
+        }
+
         dateModal.style.display = 'none';
         extractBtn.disabled = true;
         extractBtn.textContent = 'Extraindo...';
