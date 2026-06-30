@@ -919,79 +919,8 @@ window.addEventListener('DOMContentLoaded', async () => {
         return;
     }
 
-async function verificarPermissoesComprasNoPainel() {
-    const origins = ["https://*.compras.mg.gov.br/*", "https://compras.mg.gov.br/*"];
-    const api = typeof chrome !== 'undefined' ? chrome : (typeof browser !== 'undefined' ? browser : null);
-    if (!api || !api.permissions) return;
-
-    try {
-        const temPermissao = await new Promise(resolve => {
-            api.permissions.contains({ origins }, resolve);
-        });
-
-        if (!temPermissao) {
-            const appContainer = document.getElementById('sic3-views-container') || document.getElementById('sic3-app-container');
-            if (appContainer) {
-                const banner = document.createElement('div');
-                banner.id = 'sispmg-compras-permission-banner';
-                banner.style.cssText = `
-                    background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%);
-                    color: #fef2f2;
-                    border-left: 5px solid #ef4444;
-                    padding: 15px 20px;
-                    margin-bottom: 20px;
-                    border-radius: 6px;
-                    font-family: system-ui, -apple-system, sans-serif;
-                    font-size: 14px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: space-between;
-                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-                `;
-                banner.innerHTML = `
-                    <div style="flex: 1; margin-right: 15px;">
-                        <strong>Permissão de Host Necessária:</strong> Para que a busca de materiais e a sincronização do SIC3 funcionem corretamente, é necessário autorizar o acesso ao portal compras.mg.gov.br.
-                    </div>
-                    <button id="sispmg-grant-compras-btn" style="
-                        background: #fef2f2;
-                        color: #991b1b;
-                        border: none;
-                        padding: 8px 16px;
-                        font-weight: 700;
-                        border-radius: 4px;
-                        cursor: pointer;
-                        white-space: nowrap;
-                        transition: all 0.2s ease;
-                    ">Autorizar Acesso</button>
-                `;
-                appContainer.insertBefore(banner, appContainer.firstChild);
-
-                document.getElementById('sispmg-grant-compras-btn').addEventListener('click', async () => {
-                    try {
-                        const granted = await new Promise(resolve => {
-                            api.permissions.request({ origins }, resolve);
-                        });
-                        if (granted) {
-                            banner.remove();
-                            console.log("[SIC3] Permissão compras.mg.gov.br concedida via banner.");
-                            alert("Acesso ao portal de compras autorizado com sucesso!");
-                        } else {
-                            alert("SisPMG+: A permissão não foi concedida. Algumas funções do SIC3 podem não responder.");
-                        }
-                    } catch (e) {
-                        console.error("[SIC3] Erro ao solicitar permissão de compras:", e);
-                    }
-                });
-            }
-        }
-    } catch (e) {
-        console.warn("[SIC3] Erro ao verificar permissões de compras na inicialização:", e);
-    }
-}
-
     console.log("[SIC3 v3.0 Log] DOMContentLoaded disparado no sic3.html. Inicializando barra de configurações de API.");
     await initConfigBar();
-    await verificarPermissoesComprasNoPainel();
 
     window.executarApiGas = executarApi;
     window.navegarParaSic3 = navegarPara;
