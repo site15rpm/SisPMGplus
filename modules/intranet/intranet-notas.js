@@ -63,18 +63,22 @@ export class IntranetNotasModule {
 
     extractData() {
         const obterSelectPorContexto = (idOriginal, textoLabel, indexPosicional) => {
+            const container = document.getElementById('formularioPrincipal') || document.body;
+
             // 1. Tenta encontrar pelo ID original ou Name original
             if (idOriginal) {
-                let el = document.getElementById(idOriginal) || document.querySelector(`[name="${idOriginal}"]`);
+                let el = document.getElementById(idOriginal) || container.querySelector(`[name="${idOriginal}"]`);
                 if (el && el.tagName === 'SELECT') {
                     console.log(`SisPMG+ [Notas-Resolução]: Select "${textoLabel}" resolvido por ID original: "${idOriginal}"`);
                     return el;
                 }
             }
 
-            // 2. Tenta encontrar pelo texto do Label associado
+            // 2. Tenta encontrar pelo texto do Label associado (filtrando elementos que estejam dentro de modais)
             const cleanLabel = textoLabel.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/:/g, "").trim();
-            const labels = Array.from(document.querySelectorAll('label, td, th, span'));
+            const labels = Array.from(container.querySelectorAll('label, td, th, span'))
+                .filter(el => !el.closest('.rich-modalpanel') && !el.closest('[id*="modal"]'));
+
             for (const l of labels) {
                 const text = l.textContent.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/:/g, "").trim();
                 if (text === cleanLabel || text.startsWith(cleanLabel)) {
@@ -114,14 +118,12 @@ export class IntranetNotasModule {
                 }
             }
 
-            // 3. Fallback Posicional (busca todos os selects visíveis do formulário)
-            const form = document.getElementById('formularioPrincipal') || document.querySelector('form');
-            if (form) {
-                const selects = Array.from(form.querySelectorAll('select'));
-                if (selects.length > indexPosicional) {
-                    console.log(`SisPMG+ [Notas-Resolução]: Select "${textoLabel}" resolvido por Fallback Posicional (Index: ${indexPosicional})`);
-                    return selects[indexPosicional];
-                }
+            // 3. Fallback Posicional (busca todos os selects visíveis do formulário principal, ignorando modais)
+            const selects = Array.from(container.querySelectorAll('select'))
+                .filter(el => !el.closest('.rich-modalpanel') && !el.closest('[id*="modal"]'));
+            if (selects.length > indexPosicional) {
+                console.log(`SisPMG+ [Notas-Resolução]: Select "${textoLabel}" resolvido por Fallback Posicional (Index: ${indexPosicional})`);
+                return selects[indexPosicional];
             }
 
             console.warn(`SisPMG+ [Notas-Erro]: Falha ao tentar resolver o Select "${textoLabel}"`);
