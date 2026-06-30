@@ -583,15 +583,20 @@ export async function navegarPara(pagina, contexto = {}) {
                         <i class="fas fa-sync-alt"></i> <span>SINCRONIZAR CONVÊNIOS</span>
                     </button>
                 ` : '';
+
+                const telaAtual = (window.ADMIN_CONFIG && window.ADMIN_CONFIG.estados && window.ADMIN_CONFIG.estados.telaAtual) || "lancamentos";
+                const displayPesquisa = (telaAtual === "pesquisa") ? 'none' : 'inline-block';
+                const displayVoltar = (telaAtual === "pesquisa") ? 'inline-block' : 'none';
+
                 dynamicMenu.innerHTML = `
                     ${btnSyncHtml}
                     <button id="btnGerenciarItem99" class="btn-info btn-expand" style="margin-right: 10px;">
                         <i class="fas fa-tasks"></i> <span>GERENCIAR ITENS 99</span>
                     </button>
-                    <button id="btnIrParaPesquisa" class="btn-info btn-expand" style="margin-right: 10px;">
+                    <button id="btnIrParaPesquisa" class="btn-info btn-expand" style="display: ${displayPesquisa}; margin-right: 10px;">
                         <i class="fas fa-search"></i> <span>MATERIAIS DE CONSUMO</span>
                     </button>
-                    <button id="btnVoltarLancamentos" class="btn-info" style="display: none; margin-right: 10px;">
+                    <button id="btnVoltarLancamentos" class="btn-info" style="display: ${displayVoltar}; margin-right: 10px;">
                         <i class="fas fa-arrow-left"></i> VOLTAR
                     </button>
                 `;
