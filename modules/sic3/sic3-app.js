@@ -585,7 +585,7 @@ export async function navegarPara(pagina, contexto = {}) {
                 ` : '';
 
                 const telaAtual = (window.ADMIN_CONFIG && window.ADMIN_CONFIG.estados && window.ADMIN_CONFIG.estados.telaAtual) || "lancamentos";
-                const displayPesquisa = (telaAtual === "pesquisa") ? 'none' : 'inline-block';
+                const displayPesquisa = (telaAtual === "pesquisa") ? 'none !important' : 'inline-flex !important';
                 const displayVoltar = (telaAtual === "pesquisa") ? 'inline-block' : 'none';
 
                 dynamicMenu.innerHTML = `
