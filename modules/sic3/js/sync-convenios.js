@@ -4,6 +4,8 @@
 import { obterConveniosAtivosJSON, getMunicipioClean } from '../../../common/busca-convenios.js';
 import { obterUnidades } from '../../../common/busca-unidades.js';
 import { executarApi } from '../api.js';
+import { StorageManager } from '../../../common/storage-manager.js';
+import { STORAGE_KEYS } from '../../../common/storage-keys.js';
 
 function normalizarSemAcento(str) {
     if (!str) return "";
@@ -125,8 +127,7 @@ export async function executarSincronizacaoConvenios(isPrimeiraBusca) {
         let codigoRpmTokiuz = "";
         let nomeRegiaoTokiuz = "";
         let userPMTokiuz = "";
-        const storageResult = await browser.storage.local.get('sic3_user_info');
-        const info = storageResult.sic3_user_info;
+        const info = await StorageManager.get(STORAGE_KEYS.SIC3_USER_INFO);
         if (info) {
             if (info.codigoRegiao) codigoRpmTokiuz = String(info.codigoRegiao).trim();
             if (info.nomeRegiao) nomeRegiaoTokiuz = String(info.nomeRegiao).trim();
