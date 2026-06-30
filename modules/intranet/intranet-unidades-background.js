@@ -99,7 +99,7 @@ async function executeExtraction(userId, settingsOverride = null) {
         await addUnidadesLog('Iniciando extração de unidades...', 'SISTEMA', 'info');
         let settings = settingsOverride;
         if (!settings) {
-            const { [STORAGE_SETTINGS_KEY]: storedSettings } = await browser.storage.local.get(STORAGE_SETTINGS_KEY);
+            const storedSettings = await StorageManager.get(STORAGE_SETTINGS_KEY);
             settings = storedSettings;
         }
 
