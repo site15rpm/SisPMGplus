@@ -149,8 +149,31 @@ export async function executarApi(action, params = {}) {
         }
     }
 
+    // Resolve a RPM com prioridade máxima para sessionStorage
+    let rpm = sessionStorage.getItem('sic3_rpm');
+    if (!rpm) {
+        if (window.rpm && typeof window.rpm === 'string') {
+            rpm = window.rpm;
+        } else if (window.rpm && typeof window.rpm === 'object' && window.rpm.value) {
+            rpm = window.rpm.value;
+        } else {
+            rpm = "";
+        }
+    }
+
     const apiUrls = await getGasApiUrls();
-    const apiKey = actionToApiMap[action] || "lancamentos";
+    let apiKey = actionToApiMap[action] || "lancamentos";
+
+    if (apiKey === "lancamentos" && rpm) {
+        const rpmNum = String(rpm).replace(/[^\d]/g, "");
+        if (rpmNum) {
+            const keyWithRpm = `lancamentos_${rpmNum}RPM`;
+            if (apiUrls[keyWithRpm]) {
+                apiKey = keyWithRpm;
+            }
+        }
+    }
+
     const scriptId = apiUrls[apiKey];
 
     if (!scriptId) {
@@ -174,18 +197,6 @@ export async function executarApi(action, params = {}) {
             ano = window.ano.value;
         } else {
             ano = new Date().getFullYear().toString();
-        }
-    }
-
-    // Resolve a RPM com prioridade máxima para sessionStorage
-    let rpm = sessionStorage.getItem('sic3_rpm');
-    if (!rpm) {
-        if (window.rpm && typeof window.rpm === 'string') {
-            rpm = window.rpm;
-        } else if (window.rpm && typeof window.rpm === 'object' && window.rpm.value) {
-            rpm = window.rpm.value;
-        } else {
-            rpm = "";
         }
     }
     
