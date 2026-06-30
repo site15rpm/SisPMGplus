@@ -1,22 +1,16 @@
 // Arquivo: modules/sic3/api.js
 // Cliente de comunicação HTTP REST com a API do Google Apps Script (GAS) para o SIC3.
 
+import { StorageManager } from '../../common/storage-manager.js';
+import { STORAGE_KEYS } from '../../common/storage-keys.js';
+
 /**
  * Obtém a URL configurada do Web App do GAS a partir do armazenamento da extensão.
  * @returns {Promise<string>} A URL do Web App do GAS.
  */
 export async function getGasApiUrl() {
-    if (typeof browser !== 'undefined' && browser.storage && browser.storage.local) {
-        const result = await browser.storage.local.get('sispmg_sic3_gas_api_url');
-        return result.sispmg_sic3_gas_api_url || "";
-    } else if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-        return new Promise((resolve) => {
-            chrome.storage.local.get('sispmg_sic3_gas_api_url', (result) => {
-                resolve(result.sispmg_sic3_gas_api_url || "");
-            });
-        });
-    }
-    return "";
+    const url = await StorageManager.get(STORAGE_KEYS.SIC3_GAS_API_URL);
+    return url || "";
 }
 
 /**
@@ -24,15 +18,7 @@ export async function getGasApiUrl() {
  * @param {string} url - A URL do Web App.
  */
 export async function saveGasApiUrl(url) {
-    if (typeof browser !== 'undefined' && browser.storage && browser.storage.local) {
-        await browser.storage.local.set({ 'sispmg_sic3_gas_api_url': url });
-    } else if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-        return new Promise((resolve) => {
-            chrome.storage.local.set({ 'sispmg_sic3_gas_api_url': url }, () => {
-                resolve();
-            });
-        });
-    }
+    await StorageManager.set({ [STORAGE_KEYS.SIC3_GAS_API_URL]: url });
 }
 
 // Mapeamento de ações para chaves de APIs específicas expostas via Google Apps Script
@@ -67,17 +53,8 @@ const actionToApiMap = {
  * @returns {Promise<object>}
  */
 export async function getGasApiUrls() {
-    if (typeof browser !== 'undefined' && browser.storage && browser.storage.local) {
-        const result = await browser.storage.local.get('sispmg_sic3_apis_urls');
-        return result.sispmg_sic3_apis_urls || {};
-    } else if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-        return new Promise((resolve) => {
-            chrome.storage.local.get('sispmg_sic3_apis_urls', (result) => {
-                resolve(result.sispmg_sic3_apis_urls || {});
-            });
-        });
-    }
-    return {};
+    const urls = await StorageManager.get(STORAGE_KEYS.SIC3_APIS_URLS);
+    return urls || {};
 }
 
 /**
@@ -85,15 +62,7 @@ export async function getGasApiUrls() {
  * @param {object} urlsMap - Dicionário contendo as URLs mapeadas.
  */
 export async function saveGasApiUrls(urlsMap) {
-    if (typeof browser !== 'undefined' && browser.storage && browser.storage.local) {
-        await browser.storage.local.set({ 'sispmg_sic3_apis_urls': urlsMap });
-    } else if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-        return new Promise((resolve) => {
-            chrome.storage.local.set({ 'sispmg_sic3_apis_urls': urlsMap }, () => {
-                resolve();
-            });
-        });
-    }
+    await StorageManager.set({ [STORAGE_KEYS.SIC3_APIS_URLS]: urlsMap });
 }
 
 /**
