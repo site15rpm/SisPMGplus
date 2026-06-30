@@ -94,11 +94,54 @@ function extrairMunicipioLimpo(nomeBruto) {
 }
 
 /**
+ * Garante que a extensão possui a permissão de host para o portal compras.mg.gov.br.
+ * @returns {Promise<boolean>} True se a permissão foi concedida ou já existia.
+ */
+async function garantirPermissaoCompras() {
+    const origins = ["https://*.compras.mg.gov.br/*", "https://compras.mg.gov.br/*"];
+    
+    const hasPermission = await new Promise(resolve => {
+        const api = typeof chrome !== 'undefined' ? chrome : (typeof browser !== 'undefined' ? browser : null);
+        if (api && api.permissions && api.permissions.contains) {
+            api.permissions.contains({ origins }, resolve);
+        } else {
+            resolve(true);
+        }
+    });
+
+    if (hasPermission) return true;
+
+    try {
+        const granted = await new Promise((resolve) => {
+            const api = typeof chrome !== 'undefined' ? chrome : (typeof browser !== 'undefined' ? browser : null);
+            if (api && api.permissions && api.permissions.request) {
+                api.permissions.request({ origins }, resolve);
+            } else {
+                resolve(true);
+            }
+        });
+        return granted;
+    } catch (e) {
+        console.warn("[SIC3 Sync] Falha ao solicitar permissão de host (compras.mg.gov.br):", e);
+        return false;
+    }
+}
+
+/**
  * Executa a extração dos convênios do Portal PM e a gravação/atualização no banco do GAS.
  */
 export async function executarSincronizacaoConvenios(isPrimeiraBusca) {
-    window.mostrarCarregamentoGlobal("Iniciando sincronização de convênios...");
     console.log("[SIC3 Sync] [Log] Iniciando o processo de sincronização de convênios semanal...");
+    
+    // Garante o consentimento dinâmico de host para o compras.mg.gov.br
+    const temPermissao = await garantirPermissaoCompras();
+    if (!temPermissao) {
+        console.warn("[SIC3 Sync] Permissão para os hosts compras.mg.gov.br não concedida. Abortando sincronização.");
+        alert("SisPMG+: A permissão de acesso ao portal 'compras.mg.gov.br' é necessária para sincronizar os convênios. Por favor, tente novamente e conceda o acesso.");
+        return;
+    }
+
+    window.mostrarCarregamentoGlobal("Iniciando sincronização de convênios...");
     
     try {
         if (isPrimeiraBusca === undefined || isPrimeiraBusca === null) {
