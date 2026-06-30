@@ -82,9 +82,9 @@ async function carregarPesquisaMaterial() {
       }],
       createdRow: function (row, data, dataIndex) {
         if (data.isPortal) {
-          $(row).css('background-color', '#ffcccb'); // Vermelho claro
+          $(row).find('td').css('background-color', '#ffcccb'); // Vermelho claro
         } else if (data.isSecondary) {
-          $(row).css('background-color', '#fffacd'); // Amarelo claro
+          $(row).find('td').css('background-color', '#fffacd'); // Amarelo claro
         }
       },
 
