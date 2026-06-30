@@ -219,7 +219,7 @@ body {
   border: 1px solid var(--cor-vermelho) !important;
   color: white !important;
   padding: 8px 16px;
-  border-radius: 10px;
+  border-radius: 8px;
   font-family: var(--font-family-title);
   font-size: 12px;
   font-weight: 700;
