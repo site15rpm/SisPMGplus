@@ -20,11 +20,13 @@
   ],
   "host_permissions": [
     "*://*.policiamilitar.mg.gov.br/*",
+    "https://script.google.com/*",
+    "https://docs.google.com/*"
+  ],
+  "optional_host_permissions": [
+    "https://script.googleusercontent.com/*",
     "https://*.compras.mg.gov.br/*",
     "https://compras.mg.gov.br/*",
-    "https://script.google.com/*",
-    "https://script.googleusercontent.com/*",
-    "https://docs.google.com/*",
     "https://primebeneficios.com.br/*",
     "https://sistema-customizado.primebeneficios.com.br/*",
     "http://sgta.netfrota.com.br/*"
