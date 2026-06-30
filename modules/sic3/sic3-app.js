@@ -1144,20 +1144,7 @@ window.addEventListener('DOMContentLoaded', async () => {
             console.log(`[SIC3 v3.0 Log] Sincronização obrigatória de primeira busca ativada. Estrutura criada agora: ${!!window.sic3_estrutura_criada_agora}, Banco vazio: ${bancoVazio}`);
         } else if (window.userPM && !window.isAdmin) {
             const lastRunKey = `sic3_last_auto_sync_${window.userPM}`;
-            const lastRunResult = await new Promise(resolve => {
-                let storage = null;
-                if (typeof browser !== 'undefined' && browser.storage && browser.storage.local) {
-                    storage = browser.storage.local;
-                } else if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-                    storage = chrome.storage.local;
-                }
-                
-                if (storage) {
-                    storage.get(lastRunKey, res => resolve(res ? res[lastRunKey] : null));
-                } else {
-                    resolve(null);
-                }
-            });
+            const lastRunResult = await StorageManager.get(lastRunKey);
             
             const hoje = Date.now();
             const umaSemanaMs = 7 * 24 * 60 * 60 * 1000;
@@ -1175,17 +1162,7 @@ window.addEventListener('DOMContentLoaded', async () => {
             
             if (window.userPM && !primeiraBuscaObrigatoria) {
                 const lastRunKey = `sic3_last_auto_sync_${window.userPM}`;
-                let storage = null;
-                if (typeof browser !== 'undefined' && browser.storage && browser.storage.local) {
-                    storage = browser.storage.local;
-                } else if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-                    storage = chrome.storage.local;
-                }
-                if (storage) {
-                    await new Promise(resolve => {
-                        storage.set({ [lastRunKey]: Date.now() }, resolve);
-                    });
-                }
+                await StorageManager.set({ [lastRunKey]: Date.now() });
             }
         }
         
