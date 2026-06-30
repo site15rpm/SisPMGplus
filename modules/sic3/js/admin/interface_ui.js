@@ -6,7 +6,7 @@
       $(".principal-container").hide();
       $(".datatable-container").show();
 
-      $("#btnIrParaPesquisa").hide();
+      $("#btnIrParaPesquisa").css('cssText', 'display: none !important;');
       $("#btnVoltarLancamentos").show();
 
       $("#mainTitle").text("PESQUISA DE MATERIAIS DE CONSUMO");
@@ -22,7 +22,7 @@
       $(".datatable-container").hide();
 
       $("#btnVoltarLancamentos").hide();
-      $("#btnIrParaPesquisa").show();
+      $("#btnIrParaPesquisa").css('cssText', 'display: inline-flex !important;');
 
       $(".info-convenio").show();
       $(".principal-container").show();
