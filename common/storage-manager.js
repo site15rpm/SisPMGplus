@@ -38,7 +38,10 @@ export const StorageManager = {
 
         for (const key of requestedKeys) {
             // Determina qual é a chave real de armazenamento (nova chave padronizada)
-            const storageKey = LEGACY_KEYS_MAPPING[key] || key;
+            let storageKey = LEGACY_KEYS_MAPPING[key] || key;
+            if (key.startsWith('sic3_ids_cache_') || key.startsWith('sic3_backup_')) {
+                storageKey = 'sispmg_' + key;
+            }
 
             // Busca o valor da chave real de armazenamento
             let rawResult = await storage.get(storageKey);
@@ -47,9 +50,14 @@ export const StorageManager = {
             // Se não encontrou o valor na chave nova, verifica se existe no storage sob a chave legada antiga
             if (value === undefined) {
                 // Caso o chamador tenha pedido a chave nova mas os dados ainda estejam na chave antiga
-                const legacyKey = Object.keys(LEGACY_KEYS_MAPPING).find(
-                    (lk) => LEGACY_KEYS_MAPPING[lk] === storageKey
-                );
+                let legacyKey = null;
+                if (storageKey.startsWith('sispmg_sic3_ids_cache_') || storageKey.startsWith('sispmg_sic3_backup_')) {
+                    legacyKey = storageKey.replace('sispmg_', '');
+                } else {
+                    legacyKey = Object.keys(LEGACY_KEYS_MAPPING).find(
+                        (lk) => LEGACY_KEYS_MAPPING[lk] === storageKey
+                    );
+                }
 
                 if (legacyKey && legacyKey !== storageKey) {
                     const legacyResult = await storage.get(legacyKey);
@@ -77,7 +85,10 @@ export const StorageManager = {
         const storage = getStorageArea(storageType);
         const finalData = {};
         for (const key in data) {
-            const finalKey = LEGACY_KEYS_MAPPING[key] || key;
+            let finalKey = LEGACY_KEYS_MAPPING[key] || key;
+            if (key.startsWith('sic3_ids_cache_') || key.startsWith('sic3_backup_')) {
+                finalKey = 'sispmg_' + key;
+            }
             finalData[finalKey] = data[key];
         }
         await storage.set(finalData);
@@ -94,7 +105,11 @@ export const StorageManager = {
         const storage = getStorageArea(storageType);
         const keysToRemove = Array.isArray(keys) ? keys : [keys];
         const finalKeysToRemove = keysToRemove.map(key => {
-            return LEGACY_KEYS_MAPPING[key] || key;
+            let finalKey = LEGACY_KEYS_MAPPING[key] || key;
+            if (key.startsWith('sic3_ids_cache_') || key.startsWith('sic3_backup_')) {
+                finalKey = 'sispmg_' + key;
+            }
+            return finalKey;
         });
         await storage.remove(finalKeysToRemove);
     },
@@ -122,6 +137,25 @@ export const StorageManager = {
                     }
                     keysToRemove.push(legacyKey);
                     legacyKeysFound.push(legacyKey);
+                }
+            }
+
+            // 1.1 Migração de chaves dinâmicas legadas e credenciais do SIC3
+            for (const key in allData) {
+                if (key.startsWith('sic3_ids_cache_')) {
+                    const newKey = 'sispmg_' + key;
+                    if (allData[newKey] === undefined && newValuesToSet[newKey] === undefined) {
+                        newValuesToSet[newKey] = allData[key];
+                        console.log(`SisPMG+ [GC]: Enfileirada migração de cache dinâmico '${key}' para '${newKey}'.`);
+                    }
+                    keysToRemove.push(key);
+                } else if (key.startsWith('sic3_backup_')) {
+                    const newKey = 'sispmg_' + key;
+                    if (allData[newKey] === undefined && newValuesToSet[newKey] === undefined) {
+                        newValuesToSet[newKey] = allData[key];
+                        console.log(`SisPMG+ [GC]: Enfileirada migração de backup dinâmico '${key}' para '${newKey}'.`);
+                    }
+                    keysToRemove.push(key);
                 }
             }
 
