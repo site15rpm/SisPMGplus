@@ -274,6 +274,22 @@ async function buscarNaBaseSecundaria(searchTerm, colIndex, table) {
 }
 
 async function buscarNoPortalEBaseSecundaria(searchTerm, colIndex, table) {
+  // Garante a permissão opcional de host antes de fazer o fetch
+  const api = typeof chrome !== 'undefined' ? chrome : (typeof browser !== 'undefined' ? browser : null);
+  if (api && api.permissions) {
+    const origins = ["https://*.compras.mg.gov.br/*", "https://compras.mg.gov.br/*"];
+    const temPermissao = await new Promise(resolve => api.permissions.contains({ origins }, resolve));
+    
+    if (!temPermissao) {
+      const concedido = await new Promise(resolve => api.permissions.request({ origins }, resolve));
+      if (!concedido) {
+        console.warn("[SIC3 Materiais] Permissão compras.mg.gov.br não concedida. Abortando busca.");
+        alert("SisPMG+: A permissão de acesso ao portal 'compras.mg.gov.br' é necessária para pesquisar materiais externos.");
+        return;
+      }
+    }
+  }
+
   mostrarCarregamento("Aguarde, pesquisando no Portal de Compras MG...");
 
   try {
