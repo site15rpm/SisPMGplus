@@ -851,7 +851,7 @@ function obterChaveBackup() {
   const convStr = typeof window.convenio !== 'undefined' ? window.convenio : (typeof convenio !== 'undefined' ? convenio : '');
   const anoStr = typeof window.ano !== 'undefined' ? window.ano : (typeof ano !== 'undefined' ? ano : '');
   const mesStr = typeof window.mes !== 'undefined' ? window.mes : (typeof mes !== 'undefined' ? mes : '');
-  const chave = `sic3_backup_${muniStr}_${convStr}_${anoStr}_${mesStr}`;
+  const chave = `sispmg_sic3_backup_${muniStr}_${convStr}_${anoStr}_${mesStr}`;
   console.log(`[SIC3 Backup] obterChaveBackup gerou a chave: ${chave}`);
   return chave;
 }
