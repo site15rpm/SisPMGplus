@@ -513,7 +513,7 @@ async function scheduleNextExtraction(config) {
     await browser.alarms.clear(ALARM_SCHEDULER_CHECK);
     
     if (frequency === 'none') {
-        await browser.storage.local.remove(STORAGE_SCHEDULE_KEY);
+        await StorageManager.remove(STORAGE_SCHEDULE_KEY);
         await addLog('Agendamento automático desativado.', 'SISTEMA');
         return;
     }
