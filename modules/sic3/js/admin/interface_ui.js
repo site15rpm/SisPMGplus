@@ -1,6 +1,7 @@
 // Grupo 2: Manipulação da Interface do Usuário (UI)
 
   function alternarVisualizacaoTela(novaTela) {
+    const headerTitleEl = document.getElementById('sic3-header-title');
     if (novaTela === "pesquisa") {
       $(".info-convenio").hide();
       $(".principal-container").hide();
@@ -10,6 +11,7 @@
       $("#btnVoltarLancamentos").show();
 
       $("#mainTitle").text("PESQUISA DE MATERIAIS DE CONSUMO");
+      if (headerTitleEl) headerTitleEl.textContent = "Pesquisa de Materiais de Consumo";
       ADMIN_CONFIG.estados.telaAtual = "pesquisa";
       if (
         typeof carregarPesquisaMaterialAdmin == "function" &&
@@ -27,6 +29,7 @@
       $(".info-convenio").show();
       $(".principal-container").show();
       $("#mainTitle").text("PAINEL ADMINISTRATIVO");
+      if (headerTitleEl) headerTitleEl.textContent = "Painel Administrativo";
       ADMIN_CONFIG.estados.telaAtual = "lancamentos";
       if (
         ADMIN_CONFIG.lancamentosCarregados === false ||
