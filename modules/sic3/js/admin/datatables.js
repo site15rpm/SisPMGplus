@@ -32,8 +32,8 @@
     } catch (error) { manipularErro(error, "carregarPesquisaMaterialAdmin"); ocultarCarregamento(); }
   }
 
-  let ultimoTermoBuscaAdmin = "";
-  let contadorEnterAdmin = 0;
+  var ultimoTermoBuscaAdmin = "";
+  var contadorEnterAdmin = 0;
 
   function setupDataTableSearchAdmin(settings) {
     const table = settings.oInstance.api();
