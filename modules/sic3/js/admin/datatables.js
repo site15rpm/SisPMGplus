@@ -25,6 +25,9 @@
     } catch (error) { manipularErro(error, "carregarPesquisaMaterialAdmin"); ocultarCarregamento(); }
   }
 
+  let ultimoTermoBuscaAdmin = "";
+  let contadorEnterAdmin = 0;
+
   function setupDataTableSearchAdmin(settings) {
     const table = settings.oInstance.api();
     table.columns([0, 1, 2, 3]).every(function(colIndex) {
@@ -35,41 +38,248 @@
           if (column.search() !== this.value) {
             column.search(this.value).draw();
             if (table.rows({ filter: "applied" }).data().length === 0) {
-              $(".dt-empty, .dataTables_empty").css({ color: "red", "font-size": "120%" }).html("Nenhum resultado na base primária.<br>Altere a busca ou tecle ENTER para buscar na base secundária.");
+              const mensagemSemResultado = `Nenhum resultado encontrado. Altere os termos da busca por SINÔNIMOS e tecle ENTER para fazer nova pesquisa na base secundária<br>ou mantenha os mesmos termos da busca e tecle ENTER para procurar no Portal de Compras MG.<br><br>Dica: Use apenas palavras chaves e/ou partes de palavras. Evite o uso de caracteres especiais como vírgula, hífem, etc.`;
+              $(".dt-empty, .dataTables_empty").css({ color: "red", "font-size": "120%" }).html(mensagemSemResultado);
             }
           }
-        }).on("keydown", function(e) { if (e.key === "Enter") { e.preventDefault(); handleServerSearchAdmin($(this).val().toLowerCase(), colIndex, table); } });
+        }).on("keydown", function(e) {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            const termoBuscaAtual = $(this).val().toLowerCase().trim();
+
+            if (termoBuscaAtual.length < 3) {
+              mostrarDialogo("Busca Inválida", "Por favor, digite no mínimo 3 caracteres para realizar a busca.");
+              return;
+            }
+
+            if (termoBuscaAtual === ultimoTermoBuscaAdmin) {
+              contadorEnterAdmin++;
+            } else {
+              ultimoTermoBuscaAdmin = termoBuscaAtual;
+              contadorEnterAdmin = 1;
+            }
+
+            if (contadorEnterAdmin === 1) {
+              buscarNaBaseSecundariaAdmin(termoBuscaAtual, colIndex, table);
+            } else {
+              buscarNoPortalEBaseSecundariaAdmin(termoBuscaAtual, colIndex, table);
+            }
+          }
+        });
     });
   }
 
-  async function handleServerSearchAdmin(searchTerm, colIndex, table) {
+  async function buscarNaBaseSecundariaAdmin(searchTerm, colIndex, table) {
+    mostrarCarregamento("Aguarde, pesquisando na base secundária...");
+    const searchColumnMap = { 0: 'A', 1: 'B' };
+    const searchColumn = searchColumnMap[colIndex];
+    if (!searchColumn) {
+      manipularErro(new Error("Índice de coluna inválido para busca secundária: " + colIndex), "buscarNaBaseSecundariaAdmin");
+      ocultarCarregamento();
+      return;
+    }
+    const conditions = searchTerm.split(" ").filter(w => w.length > 0).map(word => `${searchColumn} CONTAINS UPPER('${word}')`).join(" AND ");
+    const query = `SELECT A,B,C,D WHERE ${conditions}`;
+
     try {
-      mostrarCarregamento();
-      const searchWords = searchTerm.split(" ").filter(w => w.length > 0);
-      if (searchWords.length === 0) { mostrarDialogo("Aviso", "Digite termos para buscar na base secundária."); ocultarCarregamento(); return; }
-      $("#dataTable > tbody").empty().html('<tr><td colspan="5" style="text-align: center; color: blue; font-size: 120%; z-index: 998">Aguarde, pesquisando na Base de Dados Secundária...</td></tr>');
-      const searchColumnMap = { 0: 'A', 1: 'B' };
-      const searchColumn = searchColumnMap[colIndex];
-      if (!searchColumn) { manipularErro(new Error("Índice de coluna inválido para busca secundária: " + colIndex), "handleServerSearchAdmin"); ocultarCarregamento(); return; }
-      const conditions = searchWords.map(word => `${searchColumn} CONTAINS UPPER('${word}')`).join(" AND ");
-      const query = `SELECT A,B,C,D WHERE ${conditions}`;
-      try {
-        const serverData = await carregarDadosPlanilha({ sheetId: "1JSea5w5dmuxO2svSVqVpNft4NUsKDCeWv5i3Rv_wRUM", sheet: "tb-secundaria", query: query });
-        const processedServerData = (serverData && serverData.length > 0 && serverData[0][0] === 'CÓDIGO') ? serverData.slice(1) : serverData || [];
-        if (!processedServerData || processedServerData.length === 0) {
-          $(".dt-empty, .dataTables_empty").css({ color: "red", "font-size": "120%" }).html("Nenhum resultado na Base de Dados Secundária.<br>Altere a busca ou tecle ENTER para nova busca.");
-        } else {
-          const combinedData = mergeAndRemoveDuplicatesAdmin(table.data().toArray(), processedServerData);
-          table.clear().rows.add(combinedData).draw();
-          if (combinedData.length > 0) $(".dt-empty, .dataTables_empty").text("");
+      const serverData = await carregarDadosPlanilha({ sheetId: "1JSea5w5dmuxO2svSVqVpNft4NUsKDCeWv5i3Rv_wRUM", sheet: "tb-secundaria", query: query });
+      const processedServerData = (serverData && serverData.length > 0 && serverData[0][0] === 'CÓDIGO')
+        ? serverData.slice(1).map(row => { row.isSecondary = true; return row; })
+        : (serverData || []).map(row => { row.isSecondary = true; return row; });
+
+      const combinedData = mergeAndRemoveDuplicatesAdmin(table.data().toArray(), processedServerData);
+
+      table.clear().rows.add(combinedData).draw();
+
+      if (table.rows({ page: 'current' }).data().length === 0) {
+        const mensagemSemResultado = `Nenhum resultado encontrado. Altere os termos da busca por SINÔNIMOS e tecle ENTER para fazer nova pesquisa na base secundária<br>ou mantenha os mesmos termos da busca e tecle ENTER para procurar no Portal de Compras MG.<br><br>Dica: Use apenas palavras chaves e/ou partes de palavras. Evite o uso de caracteres especiais como vírgula, hífem, etc.`;
+        $(".dt-empty, .dataTables_empty").css({ color: "red", "font-size": "120%" }).html(mensagemSemResultado);
+      }
+
+    } catch (error) {
+      manipularErro(error, "buscarNaBaseSecundariaAdmin_Planilha");
+    } finally {
+      ocultarCarregamento();
+    }
+  }
+
+  function exibirPrePromptComprasAdmin() {
+    return new Promise((resolve) => {
+      const overlay = document.createElement('div');
+      overlay.id = 'sispmg-permission-modal-overlay';
+      overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(13, 17, 23, 0.75);
+        backdrop-filter: blur(4px);
+        z-index: 25000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      `;
+
+      const modal = document.createElement('div');
+      modal.style.cssText = `
+        background: #1e293b;
+        border: 1px solid #334155;
+        border-radius: 12px;
+        width: 90%;
+        max-width: 440px;
+        padding: 24px;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
+        color: #f1f5f9;
+        text-align: center;
+        animation: sispmgFadeIn 0.3s ease;
+      `;
+
+      const styleEl = document.createElement('style');
+      styleEl.textContent = `
+        @keyframes sispmgFadeIn {
+          from { opacity: 0; transform: scale(0.95); }
+          to { opacity: 1; transform: scale(1); }
         }
-      } catch (error) { manipularErro(error, "handleServerSearchAdmin_PlanilhaSecundaria"); }
-    } catch (error) { manipularErro(error, "handleServerSearchAdmin_Geral"); }
-    finally { ocultarCarregamento(); }
+      `;
+      document.head.appendChild(styleEl);
+
+      modal.innerHTML = `
+        <div style="font-size: 42px; margin-bottom: 12px;">🔍</div>
+        <h3 style="font-size: 18px; font-weight: 700; margin: 0 0 10px 0; color: #b3a368; letter-spacing: 0.5px;">Pesquisa no Catálogo de Materiais</h3>
+        <p style="font-size: 14px; line-height: 1.6; color: #cbd5e1; margin: 0 0 20px 0; text-align: left;">
+          Para buscar materiais diretamente no Portal de Compras do Estado (compras.mg.gov.br), o SisPMG+ precisa realizar uma consulta externa segura.<br><br>
+          Clique em <strong>Autorizar Acesso</strong> e confirme a permissão na próxima janela de segurança que o navegador abrirá.
+        </p>
+        <button id="sispmg-modal-grant-btn" style="
+          background: linear-gradient(135deg, #574e2d 0%, #b3a368 100%);
+          color: #0f172a;
+          border: none;
+          padding: 12px 24px;
+          font-size: 14.5px;
+          font-weight: 700;
+          border-radius: 8px;
+          cursor: pointer;
+          width: 100%;
+          box-shadow: 0 4px 12px rgba(179, 163, 104, 0.2);
+          transition: all 0.2s ease;
+          letter-spacing: 0.3px;
+        " onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 6px 16px rgba(179, 163, 104, 0.35)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(179, 163, 104, 0.2)'">Autorizar Acesso</button>
+      `;
+
+      overlay.appendChild(modal);
+      document.body.appendChild(overlay);
+
+      document.getElementById('sispmg-modal-grant-btn').addEventListener('click', () => {
+        overlay.remove();
+        styleEl.remove();
+        resolve();
+      });
+    });
+  }
+
+  async function buscarNoPortalEBaseSecundariaAdmin(searchTerm, colIndex, table) {
+    const api = typeof chrome !== 'undefined' ? chrome : (typeof browser !== 'undefined' ? browser : null);
+    if (api && api.permissions) {
+      const origins = ["https://*.compras.mg.gov.br/*", "https://compras.mg.gov.br/*"];
+      const temPermissao = await new Promise(resolve => api.permissions.contains({ origins }, resolve));
+      
+      if (!temPermissao) {
+        await exibirPrePromptComprasAdmin();
+        const concedido = await new Promise(resolve => api.permissions.request({ origins }, resolve));
+        if (!concedido) {
+          console.warn("[SIC3 Materiais Admin] Permissão compras.mg.gov.br não concedida. Abortando busca.");
+          alert("SisPMG+: A permissão de acesso ao portal 'compras.mg.gov.br' é necessária para pesquisar materiais externos.");
+          return;
+        }
+      }
+    }
+
+    mostrarCarregamento("Aguarde, pesquisando no Portal de Compras MG...");
+
+    try {
+      const dadosPortal = await buscarNoPortalComprasLocalAdmin(searchTerm);
+
+      const dadosPortalFormatados = (dadosPortal || []).map(item => {
+        return {
+          0: item.codigo,
+          1: item.descricao,
+          2: '',
+          3: '',
+          isPortal: true,
+          portalId: item.id
+        };
+      });
+
+      const dadosAtuais = table.data().toArray();
+      const dadosCombinados = mergeAndRemoveDuplicatesAdmin(dadosAtuais, dadosPortalFormatados);
+
+      table.clear().rows.add(dadosCombinados).draw();
+
+      if (table.rows({ page: 'current' }).data().length === 0) {
+        const mensagemSemResultado = `Nenhum item encontrado. Altere os termos da busca por SINÔNIMOS e pesquise novamente.<br><br>Dica: Use apenas palavras chaves e/ou partes de palavras. Evite o uso de caracteres especiais como vírgula, hífem, etc.`;
+        $(".dt-empty, .dataTables_empty").css({ color: "red", "font-size": "120%" }).html(mensagemSemResultado);
+      }
+
+    } catch (error) {
+      manipularErro(error, "buscarNoPortalEBaseSecundariaAdmin");
+    } finally {
+      ocultarCarregamento();
+    }
+  }
+
+  async function buscarNoPortalComprasLocalAdmin(searchTerm) {
+    try {
+      const url = "https://www1.compras.mg.gov.br/servico/catalogo/itemmaterialservico/Consulta/pesquisar";
+      const payload = {
+        reqId: 1,
+        ordenacoes: [],
+        sizePerPage: 9999999,
+        page: 1,
+        filtros: {
+          tiposGrupo: "MATERIAL",
+          tipoPesquisa: "CONSIDERAR_TUDO_COM_SINONIMO",
+          especificacaoItem: searchTerm
+        }
+      };
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        throw new Error(`Erro na resposta do portal de compras: HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (data && data.resultado && Array.isArray(data.resultado.dados)) {
+        return data.resultado.dados.map(item => ({
+          id: item.id,
+          codigo: item.codigo,
+          descricao: item.especificacaoCompleta || item.nome
+        })).filter(item => item.id && item.codigo && item.descricao);
+      }
+      return [];
+    } catch (error) {
+      console.error("Erro ao buscar no portal de compras:", error);
+      throw error;
+    }
   }
 
   function mergeAndRemoveDuplicatesAdmin(localData, serverData) {
-    const allData = [...localData, ...serverData], uniqueData = [], codes = new Set();
-    for (const row of allData) { const code = row && row.length > 0 ? row[0] : null; if (code !== null && String(code).trim() !== '' && !codes.has(String(code).trim())) { uniqueData.push(row); codes.add(String(code).trim()); } }
-    return uniqueData;
+    const combined = [...localData, ...serverData];
+    const unique = new Map();
+    combined.forEach(row => {
+      const code = Array.isArray(row) ? row[0] : (row && row['0'] ? row['0'] : null);
+      if (code && !unique.has(String(code).trim())) {
+        unique.set(String(code).trim(), row);
+      }
+    });
+    return Array.from(unique.values());
   }
