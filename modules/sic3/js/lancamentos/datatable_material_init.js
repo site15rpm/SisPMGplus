@@ -273,6 +273,82 @@ async function buscarNaBaseSecundaria(searchTerm, colIndex, table) {
   }
 }
 
+function exibirPrePromptCompras() {
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.id = 'sispmg-permission-modal-overlay';
+    overlay.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(13, 17, 23, 0.75);
+      backdrop-filter: blur(4px);
+      z-index: 25000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    `;
+
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      width: 90%;
+      max-width: 440px;
+      padding: 24px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
+      color: #f1f5f9;
+      text-align: center;
+      animation: sispmgFadeIn 0.3s ease;
+    `;
+
+    const styleEl = document.createElement('style');
+    styleEl.textContent = `
+      @keyframes sispmgFadeIn {
+        from { opacity: 0; transform: scale(0.95); }
+        to { opacity: 1; transform: scale(1); }
+      }
+    `;
+    document.head.appendChild(styleEl);
+
+    modal.innerHTML = `
+      <div style="font-size: 42px; margin-bottom: 12px;">🔍</div>
+      <h3 style="font-size: 18px; font-weight: 700; margin: 0 0 10px 0; color: #b3a368; letter-spacing: 0.5px;">Pesquisa no Catálogo de Materiais</h3>
+      <p style="font-size: 14px; line-height: 1.6; color: #cbd5e1; margin: 0 0 20px 0; text-align: left;">
+        Para buscar materiais diretamente no Portal de Compras do Estado (compras.mg.gov.br), o SisPMG+ precisa realizar uma consulta externa segura.<br><br>
+        Clique em <strong>Autorizar Acesso</strong> e confirme a permissão na próxima janela de segurança que o navegador abrirá.
+      </p>
+      <button id="sispmg-modal-grant-btn" style="
+        background: linear-gradient(135deg, #574e2d 0%, #b3a368 100%);
+        color: #0f172a;
+        border: none;
+        padding: 12px 24px;
+        font-size: 14.5px;
+        font-weight: 700;
+        border-radius: 8px;
+        cursor: pointer;
+        width: 100%;
+        box-shadow: 0 4px 12px rgba(179, 163, 104, 0.2);
+        transition: all 0.2s ease;
+        letter-spacing: 0.3px;
+      " onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 6px 16px rgba(179, 163, 104, 0.35)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(179, 163, 104, 0.2)'">Autorizar Acesso</button>
+    `;
+
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+
+    document.getElementById('sispmg-modal-grant-btn').addEventListener('click', () => {
+      overlay.remove();
+      styleEl.remove();
+      resolve();
+    });
+  });
+}
+
 async function buscarNoPortalEBaseSecundaria(searchTerm, colIndex, table) {
   // Garante a permissão opcional de host antes de fazer o fetch
   const api = typeof chrome !== 'undefined' ? chrome : (typeof browser !== 'undefined' ? browser : null);
@@ -281,6 +357,9 @@ async function buscarNoPortalEBaseSecundaria(searchTerm, colIndex, table) {
     const temPermissao = await new Promise(resolve => api.permissions.contains({ origins }, resolve));
     
     if (!temPermissao) {
+      // Exibe o pré-prompt explicativo e amigável da extensão com botão único antes do request nativo
+      await exibirPrePromptCompras();
+      
       const concedido = await new Promise(resolve => api.permissions.request({ origins }, resolve));
       if (!concedido) {
         console.warn("[SIC3 Materiais] Permissão compras.mg.gov.br não concedida. Abortando busca.");
