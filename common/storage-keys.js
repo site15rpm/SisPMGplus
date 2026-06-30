@@ -43,6 +43,7 @@ export const STORAGE_KEYS = {
     SIC3_GAS_API_URL: 'sispmg_sic3_gas_api_url',
     SIC3_APIS_URLS: 'sispmg_sic3_apis_urls',
     SIC3_USER_INFO: 'sispmg_sic3_user_info',
+    SIC3_URL_PARAMS: 'sispmg_sic3_url_params',
 
     // Geral / Outros
     INTRANET_USER: 'sispmg_intranet_user',
@@ -84,6 +85,7 @@ export const LEGACY_KEYS_MAPPING = {
     'sic3GasApiUrl': STORAGE_KEYS.SIC3_GAS_API_URL,
     'sic3_apis_urls': STORAGE_KEYS.SIC3_APIS_URLS,
     'sic3_user_info': STORAGE_KEYS.SIC3_USER_INFO,
+    'sic3_url_params': STORAGE_KEYS.SIC3_URL_PARAMS,
     'intranetUser': STORAGE_KEYS.INTRANET_USER,
     'PAdm+Enabled': STORAGE_KEYS.PADM_ENABLED
 };

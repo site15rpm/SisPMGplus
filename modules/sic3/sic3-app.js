@@ -3,6 +3,8 @@
 
 import { executarApi, getGasApiUrl, saveGasApiUrl } from './api.js';
 import { getCookie, decodeJwt } from '../../common/utils.js';
+import { StorageManager } from '../../common/storage-manager.js';
+import { STORAGE_KEYS } from '../../common/storage-keys.js';
 
 function extrairRpmDoToken() {
     try {
@@ -301,22 +303,11 @@ window.includeHtmlBody = function(contentHtml) {
 window.resolverIdsPlanilhas = async function(forcarRecarregamento = false) {
     const rpmAtiva = sessionStorage.getItem("sic3_rpm") || (window.rpm && typeof window.rpm === 'string' ? window.rpm : "");
     const anoAtivo = sessionStorage.getItem("sic3_ano") || (window.ano && typeof window.ano === 'string' ? window.ano : new Date().getFullYear().toString());
-    const cacheKey = `sic3_ids_cache_${rpmAtiva.replace(/\s+/g, '_')}_${anoAtivo}`;
+    const cacheKey = `sispmg_sic3_ids_cache_${rpmAtiva.replace(/\s+/g, '_')}_${anoAtivo}`;
     
-    let storage = null;
-    if (typeof browser !== 'undefined' && browser.storage && browser.storage.local) {
-        storage = browser.storage.local;
-    } else if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-        storage = chrome.storage.local;
-    }
-
-    if (!forcarRecarregamento && storage) {
+    if (!forcarRecarregamento) {
         try {
-            const cachedData = await new Promise((resolve) => {
-                storage.get(cacheKey, (res) => {
-                    resolve(res ? res[cacheKey] : null);
-                });
-            });
+            const cachedData = await StorageManager.get(cacheKey);
 
             // Valida expiração de 12 horas (12 * 60 * 60 * 1000 = 43200000 ms)
             const cacheExpirationLimit = 43200000;
@@ -486,22 +477,22 @@ window.resolverIdsPlanilhas = async function(forcarRecarregamento = false) {
             sessionStorage.setItem("sic3_idTBPrimaria", window.idTBPrimaria);
             sessionStorage.setItem("sic3_idTBSecundaria", window.idTBSecundaria);
 
-            if (storage) {
-                const dataToCache = {
-                    timestamp: Date.now(),
-                    spreadsheetId: linksResolvidos.spreadsheetId,
-                    arquivosCompartilhados: {
-                        BDConvenios: window.idBDConvenios,
-                        BDEnderecos: window.idBDEnderecos,
-                        BDItem99: window.idBDItem99,
-                        TBPrimaria: window.idTBPrimaria,
-                        TBSecundaria: window.idTBSecundaria
-                    }
-                };
-                storage.set({ [cacheKey]: dataToCache }, () => {
-                    console.log(`[SIC3 v3.0 Log] Cache permanente atualizado para ${cacheKey}`);
-                });
-            }
+            const dataToCache = {
+                timestamp: Date.now(),
+                spreadsheetId: linksResolvidos.spreadsheetId,
+                arquivosCompartilhados: {
+                    BDConvenios: window.idBDConvenios,
+                    BDEnderecos: window.idBDEnderecos,
+                    BDItem99: window.idBDItem99,
+                    TBPrimaria: window.idTBPrimaria,
+                    TBSecundaria: window.idTBSecundaria
+                }
+            };
+            StorageManager.set({ [cacheKey]: dataToCache }).then(() => {
+                console.log(`[SIC3 v3.0 Log] Cache permanente atualizado para ${cacheKey}`);
+            }).catch(err => {
+                console.error("[SIC3 v3.0 Log] Falha ao gravar no cache do StorageManager:", err);
+            });
         }
         return linksResolvidos;
     } else {
@@ -777,38 +768,25 @@ window.addEventListener('DOMContentLoaded', async () => {
         authorized = true;
     } else {
         try {
-            let storage = null;
-            if (typeof browser !== 'undefined' && browser.storage && browser.storage.local) {
-                storage = browser.storage.local;
-            } else if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-                storage = chrome.storage.local;
-            }
+            const res = await StorageManager.get(STORAGE_KEYS.SIC3_ACCESS_AUTHORIZED);
             
-            if (storage) {
-                const res = await new Promise(resolve => {
-                    storage.get('sispmg_sic3_access_authorized', r => resolve(r ? r.sispmg_sic3_access_authorized : null));
-                });
-                
-                if (res && res.authorized === true) {
-                    const now = Date.now();
-                    // O token gerado pelo background é válido por 15 segundos
-                    if (now - res.timestamp < 15000) {
-                        authorized = true;
-                        
-                        // Vincula esta aba específica ao token de sessão do navegador ativo
-                        sessionStorage.setItem('sic3_active_session', 'true');
-                        if (currentBrowserToken) {
-                            sessionStorage.setItem('sic3_browser_session_token', currentBrowserToken);
-                        }
+            if (res && res.authorized === true) {
+                const now = Date.now();
+                // O token gerado pelo background é válido por 15 segundos
+                if (now - res.timestamp < 15000) {
+                    authorized = true;
+                    
+                    // Vincula esta aba específica ao token de sessão do navegador ativo
+                    sessionStorage.setItem('sic3_active_session', 'true');
+                    if (currentBrowserToken) {
+                        sessionStorage.setItem('sic3_browser_session_token', currentBrowserToken);
                     }
                 }
-                
-                // Consome o token de acesso único
-                if (res) {
-                    await new Promise(resolve => {
-                        storage.remove('sispmg_sic3_access_authorized', resolve);
-                    });
-                }
+            }
+            
+            // Consome o token de acesso único
+            if (res) {
+                await StorageManager.remove(STORAGE_KEYS.SIC3_ACCESS_AUTHORIZED);
             }
         } catch (errAuth) {
             console.error("[SIC3 v3.0 Log] Erro ao validar token de acesso:", errAuth);
