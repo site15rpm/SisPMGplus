@@ -22,12 +22,6 @@ function extrairRpmDoToken() {
             const match = String(tokenData.r).match(/\d+/);
             if (match) return match[0];
         }
-        
-        // u = codigoUnidadeContabil
-        if (tokenData.u) {
-            const match = String(tokenData.u).match(/\d+/);
-            if (match) return match[0];
-        }
     } catch (e) {
         console.error("Erro ao extrair RPM do token:", e);
     }
