@@ -233,7 +233,7 @@ export class IntranetNotasModule {
     async saveToStorage(dados) {
         return await sendMessageToBackground('setStorage', {
             'sispmg_intranet_notas_data': dados,
-            'sispmg_terminal_routine': 'public/SIEP_Notas',
+            'sispmg_terminal_routine': 'SIEP_Notas',
             'sispmg_terminal_param': 'intranetData'
         });
     }
