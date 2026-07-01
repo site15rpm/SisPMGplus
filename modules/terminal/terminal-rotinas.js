@@ -261,11 +261,7 @@ export function initRotinas(prototype) {
         let displayName = name;
         if (this.selectedSystemName && !isNew) {
             const systemPrefix = this.selectedSystemName + '/';
-            const publicSystemPrefix = 'public/' + systemPrefix;
-            
-            if (displayName.startsWith(publicSystemPrefix)) {
-                displayName = displayName.substring(publicSystemPrefix.length);
-            } else if (displayName.startsWith(systemPrefix)) {
+            if (displayName.startsWith(systemPrefix)) {
                 displayName = displayName.substring(systemPrefix.length);
             }
         }
@@ -514,10 +510,6 @@ export function initRotinas(prototype) {
         if (!this.userPM) { this.exibirNotificacao("Usuário não logado.", false); return; }
         
         let finalName = name;
-        if (isPublic && name.toLowerCase().startsWith('public/')) {
-            finalName = name.substring('public/'.length);
-        }
-
         const system = this.selectedSystemName || '';
         
         // Limpa o prefixo do sistema caso o nome venha com a barra (ex: "SIAD/teste" vira "teste")
@@ -528,9 +520,6 @@ export function initRotinas(prototype) {
         this.showLoadingOverlay('Salvando rotina...');
         const oldName = this.editingRotinaName || '';
         let finalOldName = oldName;
-        if (isPublic && finalOldName.toLowerCase().startsWith('public/')) {
-            finalOldName = finalOldName.substring('public/'.length);
-        }
         if (system && finalOldName.startsWith(system + '/')) {
             finalOldName = finalOldName.substring((system + '/').length);
         }
@@ -589,16 +578,11 @@ export function initRotinas(prototype) {
     prototype.getRotinaContent = function(name, isPublic = false) {
         let pathParts = name.split('/');
         
-        // Normalização de compatibilidade retroativa:
-        // Se o caminho contiver o nome do sistema como o primeiro segmento lógico (ex: public/SIAD/teste ou SIAD/teste),
+        // Se o caminho contiver o nome do sistema como o primeiro segmento lógico (ex: SIAD/teste),
         // removemos o nome do sistema pois a planilha nova filtra o sistema direto na query e remove o prefixo.
         const system = this.selectedSystemName;
-        if (system) {
-            if (pathParts[0].toLowerCase() === 'public' && pathParts[1] === system) {
-                pathParts.splice(1, 1); // remove o SIAD de public/SIAD/teste
-            } else if (pathParts[0] === system) {
-                pathParts.shift(); // remove o SIAD de SIAD/teste
-            }
+        if (system && pathParts[0] === system) {
+            pathParts.shift(); // remove o SIAD de SIAD/teste
         }
         
         const findPath = (obj, path) => {
@@ -612,12 +596,14 @@ export function initRotinas(prototype) {
     
         let content = null;
 
-        if (pathParts[0].toLowerCase() === 'public') {
-            content = findPath(this.rotinas.public, pathParts.slice(1));
-        } else if (isPublic) {
+        if (isPublic) {
             content = findPath(this.rotinas.public, pathParts);
         } else {
             content = findPath(this.rotinas.user, pathParts);
+            if (content === null || content === undefined) {
+                // Tenta buscar na pública como fallback
+                content = findPath(this.rotinas.public, pathParts);
+            }
         }
     
         return typeof content === 'string' ? content : null;
@@ -719,7 +705,7 @@ export function initRotinas(prototype) {
                             this.rotinaState = 'stopped';
                             const content = customCode ?? this.getRotinaContent(name);
                             if (content !== null) {
-                                 const isPublic = !isTestRun && (name.startsWith('public/') || (this.rotinas && this.rotinas.public && this.getRotinaContent(name, true) !== null));
+                                 const isPublic = !isTestRun && (this.rotinas && this.rotinas.public && this.getRotinaContent(name, true) !== null);
                                 this.openEditor({ name, content, isUserRotina: isTestRun || !isPublic });
                             }
                             throw new UserCancellationError("Execução cancelada para edição.");

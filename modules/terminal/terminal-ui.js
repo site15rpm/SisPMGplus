@@ -313,15 +313,10 @@ export function initUI(prototype) {
                 for (const [name, content] of Object.entries(items)) {
                     const fullPath = parentPath ? `${parentPath}/${name}` : name;
                     
-                    let relPath = fullPath;
-                    if (relPath.startsWith('public/')) {
-                        relPath = relPath.substring('public/'.length);
-                    }
-                    
                     // Verifica se o caminho está marcado como oculto na lista hiddenPublic (ou se tem algum descendente nela)
                     const isOcultaNoBanco = isPublic && (
-                        hiddenPublic.includes(relPath) || 
-                        hiddenPublic.some(p => p.startsWith(relPath + '/'))
+                        hiddenPublic.includes(fullPath) || 
+                        hiddenPublic.some(p => p.startsWith(fullPath + '/'))
                     );
                     
                     if (isOcultaNoBanco) {
@@ -788,7 +783,7 @@ export function initUI(prototype) {
             const content = `<div class="rotina-error-message"><pre><code>${formattedMessage}</code></pre></div>`;
             
             const buttons = [];
-            const isPublic = name.startsWith('public/') || (this.rotinas && this.rotinas.public && this.getRotinaContent(name, true) !== null);
+            const isPublic = this.rotinas && this.rotinas.public && this.getRotinaContent(name, true) !== null;
             const canEditPublic = String(this.userPM) === '1453208';
 
             // Botão Editar (Extremidade Esquerda se houver outro botão)
@@ -843,7 +838,7 @@ export function initUI(prototype) {
                 this.sessionDisabledAutoRun.push(name);
                 this.closeModalAndFocus(m);
                 const content = this.getRotinaContent(name);
-                const isPublic = name.startsWith('public/') || (this.rotinas && this.rotinas.public && this.getRotinaContent(name, true) !== null);
+                const isPublic = this.rotinas && this.rotinas.public && this.getRotinaContent(name, true) !== null;
                 if (content !== null) {
                     this.openEditor({ name, content, isUserRotina: !isPublic });
                 }
