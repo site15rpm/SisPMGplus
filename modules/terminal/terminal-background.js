@@ -147,16 +147,8 @@ export async function handleTerminalMessages(request, sender) {
         }
 
         case 'getRotinas': {
-            const result = await StorageManager.get(STORAGE_KEYS.TERMINAL_CACHED_ROTINAS);
-            // Verifica se o cache existe e pertence ao mesmo sistema solicitado
-            if (result && result.system === payload.system) {
-                // Não aguarde, apenas dispare a atualização em segundo plano.
-                fetchAndCacheRotinas(payload);
-                return { success: true, data: result };
-            } else {
-                // Aguarde a busca inicial e a retorne (sistema diferente ou cache vazio).
-                return fetchAndCacheRotinas(payload);
-            }
+            // Busca sempre em tempo real via gviz para garantir integridade e evitar cache obsoleto
+            return fetchAndCacheRotinas(payload);
         }
 
         case 'forceRefreshRotinas':
