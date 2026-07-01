@@ -313,8 +313,16 @@ export function initUI(prototype) {
                 for (const [name, content] of Object.entries(items)) {
                     const fullPath = parentPath ? `${parentPath}/${name}` : name;
                     
-                    // Verifica se o caminho está marcado como oculto na lista hiddenPublic
-                    const isOcultaNoBanco = isPublic && hiddenPublic.includes(name);
+                    let relPath = fullPath;
+                    if (relPath.startsWith('public/')) {
+                        relPath = relPath.substring('public/'.length);
+                    }
+                    
+                    // Verifica se o caminho está marcado como oculto na lista hiddenPublic (ou se tem algum descendente nela)
+                    const isOcultaNoBanco = isPublic && (
+                        hiddenPublic.includes(relPath) || 
+                        hiddenPublic.some(p => p.startsWith(relPath + '/'))
+                    );
                     
                     if (isOcultaNoBanco) {
                         hiddenEntries.push({ name: name, content: content, path: fullPath });

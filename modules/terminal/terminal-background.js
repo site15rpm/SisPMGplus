@@ -59,16 +59,16 @@ async function fetchAndCacheRotinas(payload = {}) {
         const { userPM, system } = payload;
         
         // Novas Colunas Planilha: A(ID), B(UltimaAtualizacao), C(Ambito), D(Oculto), E(Sistema), F(Nome/Caminho), G(Conteudo)
-        // Selecionamos C(Ambito), F(Nome/Caminho), G(Conteudo), D(Oculto)
-        // E filtramos na origem pela coluna E (Sistema) igual ao sistema ativo
-        let query = `SELECT C, F, G, D WHERE (C = 'public'`;
+        // Selecionamos C(Ambito), F(Nome/Caminho), G(Conteudo), E(Sistema)
+        // E filtramos na origem pelo sistema ativo ou sistema vazio (para trazer rotinas globais)
+        let query = `SELECT C, F, G, E WHERE (C = 'public'`;
         if (userPM) {
             query += ` OR C = '${userPM}'`;
         }
         query += `)`;
         
         if (system) {
-            query += ` AND E = '${system.trim()}'`;
+            query += ` AND (E = '${system.trim()}' OR E IS NULL)`;
         }
         
         const gvizUrl = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&tq=${encodeURIComponent(query)}&_=${Date.now()}`;
@@ -83,15 +83,16 @@ async function fetchAndCacheRotinas(payload = {}) {
         const rotinasData = { public: {}, user: {}, hiddenPublic: [] };
         
         for (const row of rows) {
-            const [ambito, path, content, hidden] = row;
+            const [ambito, path, content, sistema] = row;
             if (!path) continue;
             
             // Verifica se o ambito na planilha é 'public'
             const isPublic = (ambito === 'public');
             const targetObj = isPublic ? rotinasData.public : rotinasData.user;
             
-            // Registra se é uma rotina pública marcada como oculta na planilha (coluna D = true)
-            const isOculta = hidden !== null && String(hidden).trim().toLowerCase() === 'true';
+            // Registra se é uma rotina pública marcada como oculta na planilha.
+            // Se o valor da coluna E (sistema) estiver vazio então exiba (não oculta), caso contrário oculte.
+            const isOculta = sistema !== null && String(sistema).trim() !== '';
             if (isPublic && isOculta) {
                 rotinasData.hiddenPublic.push(path.trim());
             }
