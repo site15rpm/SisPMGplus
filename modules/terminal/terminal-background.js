@@ -60,17 +60,13 @@ async function fetchAndCacheRotinas(payload = {}) {
         const isAdmin = userPM === '1453208';
         
         // Colunas da Planilha: A(ID), B(UltimaAtualizacao), C(Ambito), D(Oculto), E(Nome/Caminho), F(Conteudo)
-        // Selecionamos C, E, F, D. Filtramos C por 'public' e D por 'Oculto'
+        // Selecionamos C, E, F, D. Filtramos C por 'public'.
+        // Todas as rotinas públicas (ocultas ou não) são baixadas para permitir execução de subrotinas.
         let query = `SELECT C, E, F, D WHERE (C = 'public'`;
         if (userPM) {
             query += ` OR C = '${userPM}'`;
         }
         query += `)`;
-        
-        // A coluna D agora representa a coluna de visibilidade 'Oculto'
-        if (!isAdmin) {
-            query += ` AND (D <> 'true' OR D IS NULL)`;
-        }
         
         const gvizUrl = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&tq=${encodeURIComponent(query)}&_=${Date.now()}`;
         
@@ -81,7 +77,7 @@ async function fetchAndCacheRotinas(payload = {}) {
         const rows = parseGoogleSheetResponse(responseText);
         
         // Reconstrói a hierarquia de objetos aninhados baseada em caminhos divididos por "/"
-        const rotinasData = { public: {}, user: {} };
+        const rotinasData = { public: {}, user: {}, hiddenPublic: [] };
         
         for (const row of rows) {
             const [ambito, path, content, hidden] = row;
@@ -90,6 +86,11 @@ async function fetchAndCacheRotinas(payload = {}) {
             // Verifica se o ambito na planilha é 'public'
             const isPublic = (ambito === 'public');
             const targetObj = isPublic ? rotinasData.public : rotinasData.user;
+            
+            // Registra se é uma rotina pública marcada como oculta na planilha (coluna D = true)
+            if (isPublic && (hidden === true || hidden === 'true')) {
+                rotinasData.hiddenPublic.push(path.trim());
+            }
             
             const parts = path.split('/');
             let current = targetObj;

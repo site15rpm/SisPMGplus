@@ -272,6 +272,8 @@ export function initUI(prototype) {
         if (!container) return;
         container.innerHTML = '';
         
+        const hiddenPublic = rotinas.hiddenPublic || [];
+        
         const result = await this.getStorage(['userProfiles']);
         const profiles = result.userProfiles || {};
         const userProfile = profiles[this.userPM] || {};
@@ -313,21 +315,24 @@ export function initUI(prototype) {
                         // Conteúdo da pasta do sistema atual (Visível)
                         Object.entries(content).forEach(([subName, subContent]) => {
                             const fullPath = `${parentPath ? parentPath + '/' : ''}${system}/${subName}`;
-                            visibleEntries.push({ name: subName, content: subContent, path: fullPath });
+                            
+                            // A chave no hiddenPublic da planilha não inclui o prefixo 'public/' nem 'user/'
+                            const pathParaChecar = `${system}/${subName}`;
+                            const isOcultaNoBanco = isPublic && hiddenPublic.includes(pathParaChecar);
+                            
+                            if (isOcultaNoBanco) {
+                                hiddenEntries.push({ name: subName, content: subContent, path: fullPath });
+                            } else {
+                                visibleEntries.push({ name: subName, content: subContent, path: fullPath });
+                            }
                         });
-                    } else {
-                        // Todo o resto (Oculto)
-                        const fullPath = `${parentPath ? parentPath + '/' : ''}${name}`;
-                        hiddenEntries.push({ name: name, content: content, path: fullPath });
                     }
+                    // Outras pastas de sistemas (ex: name !== system) são completamente ignoradas e nunca exibidas
                 }
 
                 // Renderiza itens visíveis
                 visibleEntries.sort((a, b) => a.name.localeCompare(b.name));
                 visibleEntries.forEach(item => {
-                    const isNameHidden = /^\(.*\)$/.test(item.name);
-                    if (isNameHidden && !this.showHiddenFiles) return;
-
                     if (typeof item.content === 'object' && item.content !== null) {
                         const sub = createSubMenu(item.content, `📁 ${item.name}`, item.path, isPublic);
                         if (sub) submenu.appendChild(sub);
@@ -349,12 +354,9 @@ export function initUI(prototype) {
                     });
                 }
             } else {
-                // Comportamento recursivo padrão
+                // Comportamento recursivo padrão (removemos regex de parênteses)
                 const entries = Object.entries(items).sort(([keyA], [keyB]) => keyA.localeCompare(keyB));
                 for (const [name, content] of entries) {
-                    const isHidden = /^\(.*\)$/.test(name);
-                    if (isHidden && !this.showHiddenFiles) continue;
-
                     const currentPath = parentPath ? `${parentPath}/${name}` : name;
                     if (typeof content === 'object' && content !== null) {
                         const sub = createSubMenu(content, `📁 ${name}`, currentPath, isPublic);
