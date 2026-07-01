@@ -244,6 +244,7 @@ export function initRotinas(prototype) {
     }
 
     prototype.openEditor = async function({ name = '', content = '', isUserRotina = true, readOnly = false, onSaveOverride = null } = {}) {
+        this.editingRotinaName = name;
         this.saveCursorPosition();
         const isNew = !name;
         const isPublic = !isUserRotina;
@@ -524,7 +525,8 @@ export function initRotinas(prototype) {
         }
 
         this.showLoadingOverlay('Salvando rotina...');
-        this.sendMessage('saveRotina', { name: finalName, content, userPM: this.userPM, userName: this.userName, isPublic }, (response) => {
+        const oldName = this.editingRotinaName || '';
+        this.sendMessage('saveRotina', { name: finalName, oldName, content, userPM: this.userPM, userName: this.userName, isPublic }, (response) => {
             this.hideLoadingOverlay();
             if (response && response.success) {
                 this.exibirNotificacao(`Rotina "${finalName}" salva!`);
