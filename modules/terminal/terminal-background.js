@@ -59,17 +59,17 @@ async function fetchAndCacheRotinas(payload = {}) {
         const { userPM } = payload;
         const isAdmin = userPM === '1453208';
         
-        // Colunas da Planilha: A(ID), B(Ambito), C(Nome/Caminho), D(UltimaAtualizacao), E(Oculto), F(Conteudo)
-        // Selecionamos B, C, F, E. Filtramos B por 'public'
-        let query = `SELECT B, C, F, E WHERE (B = 'public'`;
+        // Colunas da Planilha: A(ID), B(UltimaAtualizacao), C(Ambito), D(Oculto), E(Nome/Caminho), F(Conteudo)
+        // Selecionamos C, E, F, D. Filtramos C por 'public' e D por 'Oculto'
+        let query = `SELECT C, E, F, D WHERE (C = 'public'`;
         if (userPM) {
-            query += ` OR B = '${userPM}'`;
+            query += ` OR C = '${userPM}'`;
         }
         query += `)`;
         
-        // A coluna E agora representa a coluna de visibilidade 'Oculto'
+        // A coluna D agora representa a coluna de visibilidade 'Oculto'
         if (!isAdmin) {
-            query += ` AND (E <> 'true' OR E IS NULL)`;
+            query += ` AND (D <> 'true' OR D IS NULL)`;
         }
         
         const gvizUrl = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&tq=${encodeURIComponent(query)}&_=${Date.now()}`;
