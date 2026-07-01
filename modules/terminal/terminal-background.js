@@ -5,8 +5,9 @@ import { parseGoogleSheetResponse } from '../../common/google-sheets.js';
 import { StorageManager } from '../../common/storage-manager.js';
 import { STORAGE_KEYS } from '../../common/storage-keys.js';
 
-// Arquivo: Code.gs Rotinas SisPMG+ v2.3
-const API_URL = "https://script.google.com/macros/s/AKfycbzB8NEKd8oDUpiluZOk2VNmcfbLzhUiHNBP9SgBfE1rhRvwRU3jVLvskYjDPjyvpiQe/exec";
+// Arquivo: Code.gs Rotinas SisPMG+ v3.0
+const API_URL = "https://script.google.com/macros/s/AKfycbw3o7oRRM-0fIMUNCLDu3n-DAsL0h0zD62tdmj5Ttfopa8Kidny5z3ph6k8ylDJHo4VWA/exec";
+const SPREADSHEET_ID = "1DTBw8zQGUvvXRwD2Wwbam4r9YYHdFZRfsXHoCG4wlAw";
 
 // Helper para gerenciar o estado da sessão de forma segura
 const getStorageEngine = () => browser.storage.session || browser.storage.local;
@@ -55,18 +56,63 @@ async function apiCall(method, params) {
 
 async function fetchAndCacheRotinas(payload = {}) {
     try {
-        const response = await apiCall('GET', { action: 'listRotinasWithContent', ...payload });
-        if (response && response.success) {
-            await StorageManager.set({ 
-                [STORAGE_KEYS.TERMINAL_CACHED_ROTINAS]: response.data
-            });
-            return { success: true, data: response.data };
-        } else {
-            console.error("Background: Falha ao buscar rotinas para o cache.", response.error);
-            return { success: false, error: response.error || "Erro desconhecido" };
+        const { userPM } = payload;
+        const isAdmin = userPM === '1453208';
+        
+        // Colunas da Planilha: A(ID), B(Ambito), C(Nome/Caminho), D(UltimaAtualizacao), E(Oculto), F(Conteudo)
+        // Selecionamos B, C, F, E. Filtramos B por 'public'
+        let query = `SELECT B, C, F, E WHERE (B = 'public'`;
+        if (userPM) {
+            query += ` OR B = '${userPM}'`;
         }
+        query += `)`;
+        
+        // A coluna E agora representa a coluna de visibilidade 'Oculto'
+        if (!isAdmin) {
+            query += ` AND (E <> 'true' OR E IS NULL)`;
+        }
+        
+        const gvizUrl = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&tq=${encodeURIComponent(query)}&_=${Date.now()}`;
+        
+        const response = await fetchWithKeepAlive(gvizUrl, { credentials: 'omit' });
+        if (!response.ok) throw new Error(`Erro na Planilha de Rotinas: HTTP ${response.status}`);
+        
+        const responseText = await response.text();
+        const rows = parseGoogleSheetResponse(responseText);
+        
+        // Reconstrói a hierarquia de objetos aninhados baseada em caminhos divididos por "/"
+        const rotinasData = { public: {}, user: {} };
+        
+        for (const row of rows) {
+            const [ambito, path, content, hidden] = row;
+            if (!path) continue;
+            
+            // Verifica se o ambito na planilha é 'public'
+            const isPublic = (ambito === 'public');
+            const targetObj = isPublic ? rotinasData.public : rotinasData.user;
+            
+            const parts = path.split('/');
+            let current = targetObj;
+            for (let i = 0; i < parts.length; i++) {
+                const part = parts[i].trim();
+                if (i === parts.length - 1) {
+                    current[part] = content || '';
+                } else {
+                    if (!current[part] || typeof current[part] !== 'object') {
+                        current[part] = {};
+                    }
+                    current = current[part];
+                }
+            }
+        }
+        
+        await StorageManager.set({ 
+            [STORAGE_KEYS.TERMINAL_CACHED_ROTINAS]: rotinasData
+        });
+        return { success: true, data: rotinasData };
+        
     } catch (error) {
-        console.error("Background: Erro crítico ao atualizar o cache de rotinas.", error);
+        console.error("Background: Erro crítico ao atualizar o cache de rotinas via gviz.", error);
         return { success: false, error: error.message };
     }
 }
