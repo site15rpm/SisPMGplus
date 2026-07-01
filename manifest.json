@@ -24,7 +24,6 @@
     "https://docs.google.com/*"
   ],
   "optional_host_permissions": [
-    "https://script.googleusercontent.com/*",
     "https://*.compras.mg.gov.br/*",
     "https://compras.mg.gov.br/*",
     "https://primebeneficios.com.br/*",
