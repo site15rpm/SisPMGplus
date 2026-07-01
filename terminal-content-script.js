@@ -129,9 +129,18 @@ window.addEventListener('message', (event) => {
                 if (response == null) {
                     finalResponse = { success: false, error: 'Resposta nula ou indefinida recebida do background.' };
                 }
+                
+                // 1. Envia via CustomEvent no document (compatibilidade com common/utils.js e Firefox)
                 document.dispatchEvent(new CustomEvent('SisPMG+:Response', {
                     detail: JSON.stringify({ response: finalResponse, messageId })
                 }));
+                
+                // 2. Envia via postMessage no window (compatibilidade com terminal.js e terminal-loader.js legados)
+                window.postMessage({
+                    type: 'SisPMG+:Response',
+                    response: finalResponse,
+                    messageId
+                }, '*');
             })
             .catch(error => {
                 // Erros, incluindo um contexto invalidado, rejeitarão a promessa.

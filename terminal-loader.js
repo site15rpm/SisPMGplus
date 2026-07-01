@@ -154,18 +154,12 @@ function sendMessageToBackground(action, payload) {
         const messageId = Date.now() + Math.random();
         
         const responseListener = (event) => {
-            if (!event.detail) return;
-            try {
-                const detail = JSON.parse(event.detail);
-                if (detail.messageId === messageId) {
-                    document.removeEventListener('SisPMG+:Response', responseListener);
-                    resolve(detail.response);
-                }
-            } catch (e) {
-                // ignorar
+            if (event.data && event.data.type === 'SisPMG+:Response' && event.data.messageId === messageId) {
+                window.removeEventListener('message', responseListener);
+                resolve(event.data.response);
             }
         };
-        document.addEventListener('SisPMG+:Response', responseListener);
+        window.addEventListener('message', responseListener);
 
         window.postMessage({ type: 'FROM_APP', action, payload, messageId }, '*');
     });
