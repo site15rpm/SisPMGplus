@@ -97,6 +97,18 @@ export class UIModule {
 
     async init() {
         window.SisPMG_UI = this; // Torna a instância da UI globalmente acessível
+        
+        // Verifica se há alguma atualização pendente do service worker e aplica de forma invisível
+        try {
+            const updateCheck = await sendMessageToBackground('checkPendingUpdate').catch(() => null);
+            if (updateCheck && updateCheck.reloadTriggered) {
+                console.log("SisPMG+ [UI]: Atualização pendente detectada e acionada. Abortando inicialização atual.");
+                return;
+            }
+        } catch (e) {
+            console.error("SisPMG+ [UI]: Erro na verificação de atualização pendente:", e);
+        }
+
         this.injectGlobalContainer();
         this.hideHelpIcon();
         this.injectHeaderIcon();

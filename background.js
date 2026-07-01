@@ -129,6 +129,19 @@ browser.runtime.onMessage.addListener((request, sender) => {
                 case 'getVersion': {
                     return { success: true, version: browser.runtime.getManifest().version };
                 }
+                case 'checkPendingUpdate': {
+                    const result = await StorageManager.get('isUpdatePending', 'local');
+                    if (result && result.isUpdatePending) {
+                        console.log("SisPMG+ [Background]: Atualização pendente confirmada pelo cliente. Forçando reload da extensão.");
+                        await StorageManager.remove('isUpdatePending', 'local');
+                        // Pequeno delay para garantir gravação física da remoção
+                        setTimeout(() => {
+                            browser.runtime.reload();
+                        }, 100);
+                        return { success: true, reloadTriggered: true };
+                    }
+                    return { success: true, reloadTriggered: false };
+                }
                 case 'obterMensagens': {
                     try {
                         const url = `https://docs.google.com/spreadsheets/d/1UPHe_LHpFR6yyE5_o-3Vb22WT4eDA9YGmxujReDQqxg/gviz/tq?tqx=out:json&sheet=mensagens&_=${Date.now()}`;
@@ -377,7 +390,7 @@ async function revalidarPlanilhaGviz(sheetId, sheetName, cachedText, tabId) {
 
 console.log("SisPMG+: Service worker principal iniciado e pronto para receber mensagens.");
 
-// --- LÓGICA DE ATUALIZAÇÃO AUTOMÁTICA IMEDIATA ---
+// --- LÓGICA DE ATUALIZAÇÃO AUTOMÁTICA INTELIGENTE ---
 try {
     // Cria um alarme chamado 'update-check' a cada 60 minutos
     browser.alarms.create('update-check', { periodInMinutes: 60 });
@@ -398,8 +411,9 @@ try {
 
     // Evento disparado quando o navegador termina de baixar a nova versão
     browser.runtime.onUpdateAvailable.addListener((details) => {
-        console.log(`SisPMG+ [Background]: Nova versão disponível (v${details.version}). Forçando atualização imediata...`);
-        browser.runtime.reload();
+        console.log(`SisPMG+ [Background]: Nova versão disponível (v${details.version}). Registrando atualização pendente.`);
+        StorageManager.set({ isUpdatePending: true }, 'local')
+            .catch(err => console.error("Erro ao salvar pendência de atualização:", err));
     });
 } catch (e) {
     console.error("SisPMG+ [Background]: Erro ao inicializar o atualizador automático:", e);

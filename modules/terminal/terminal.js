@@ -90,6 +90,17 @@ export class TerminalModule {
     }
 
     async init() {
+        // Verifica se há alguma atualização pendente do service worker e aplica de forma invisível
+        try {
+            const updateCheck = await this.sendMessagePromise('checkPendingUpdate').catch(() => null);
+            if (updateCheck && updateCheck.reloadTriggered) {
+                console.log("SisPMG+ [Terminal]: Atualização pendente detectada e acionada. Abortando inicialização atual.");
+                return;
+            }
+        } catch (e) {
+            console.error("SisPMG+ [Terminal]: Erro na verificação de atualização pendente:", e);
+        }
+
         // Solicita e inicializa o Alias desta aba para roteamento de comandos
         const response = await this.sendMessagePromise('requestAlias');
         if (response && response.success) {
