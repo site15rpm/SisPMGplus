@@ -125,12 +125,13 @@ window.addEventListener('message', (event) => {
 
         browser.runtime.sendMessage({ action, payload })
             .then(response => {
-                // A resposta da promessa é tratada aqui.
-                window.postMessage({
-                    type: 'SisPMG+:Response',
-                    response,
-                    messageId
-                }, '*');
+                let finalResponse = response;
+                if (response == null) {
+                    finalResponse = { success: false, error: 'Resposta nula ou indefinida recebida do background.' };
+                }
+                document.dispatchEvent(new CustomEvent('SisPMG+:Response', {
+                    detail: JSON.stringify({ response: finalResponse, messageId })
+                }));
             })
             .catch(error => {
                 // Erros, incluindo um contexto invalidado, rejeitarão a promessa.
