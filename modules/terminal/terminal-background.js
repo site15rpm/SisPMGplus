@@ -91,7 +91,8 @@ async function fetchAndCacheRotinas(payload = {}) {
             const targetObj = isPublic ? rotinasData.public : rotinasData.user;
             
             // Registra se é uma rotina pública marcada como oculta na planilha (coluna D = true)
-            if (isPublic && (hidden === true || hidden === 'true')) {
+            const isOculta = hidden !== null && String(hidden).trim().toLowerCase() === 'true';
+            if (isPublic && isOculta) {
                 rotinasData.hiddenPublic.push(path.trim());
             }
             
