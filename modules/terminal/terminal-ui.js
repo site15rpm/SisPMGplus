@@ -311,23 +311,16 @@ export function initUI(prototype) {
                 const hiddenEntries = [];
                 
                 for (const [name, content] of Object.entries(items)) {
-                    if (system && name === system && typeof content === 'object') {
-                        // Conteúdo da pasta do sistema atual (Visível)
-                        Object.entries(content).forEach(([subName, subContent]) => {
-                            const fullPath = `${parentPath ? parentPath + '/' : ''}${system}/${subName}`;
-                            
-                            // A chave no hiddenPublic da planilha não inclui o prefixo 'public/' nem 'user/'
-                            const pathParaChecar = `${system}/${subName}`;
-                            const isOcultaNoBanco = isPublic && hiddenPublic.includes(pathParaChecar);
-                            
-                            if (isOcultaNoBanco) {
-                                hiddenEntries.push({ name: subName, content: subContent, path: fullPath });
-                            } else {
-                                visibleEntries.push({ name: subName, content: subContent, path: fullPath });
-                            }
-                        });
+                    const fullPath = parentPath ? `${parentPath}/${name}` : name;
+                    
+                    // Verifica se o caminho está marcado como oculto na lista hiddenPublic
+                    const isOcultaNoBanco = isPublic && hiddenPublic.includes(name);
+                    
+                    if (isOcultaNoBanco) {
+                        hiddenEntries.push({ name: name, content: content, path: fullPath });
+                    } else {
+                        visibleEntries.push({ name: name, content: content, path: fullPath });
                     }
-                    // Outras pastas de sistemas (ex: name !== system) são completamente ignoradas e nunca exibidas
                 }
 
                 // Renderiza itens visíveis
