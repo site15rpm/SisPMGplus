@@ -13,7 +13,7 @@ import { sendMessageToBackground, getCookie, decodeJwt } from '../../common/util
 function checkAbrangencia(abrangenciaString, userData) {
     if (!abrangenciaString) return false; // Sem regra, sem acesso
     const upperString = abrangenciaString.toUpperCase();
-    
+
     // "PMMG" ou "1" concede acesso universal
     if (upperString === "PMMG" || upperString === "1") return true;
 
@@ -116,7 +116,7 @@ export class UIModule {
     async preloadHeaderMenuContent(force = false) {
         // Previne carregamentos paralelos. Se já está carregando, a chamada atual é ignorada.
         // A lógica de debounce em registerModule garante que a última chamada será executada.
-        if (this.isMenuContentLoading) return; 
+        if (this.isMenuContentLoading) return;
 
         // Se não for forçado, evita recarregar se o conteúdo já existir.
         if (!force && this.preloadedMenuContent) {
@@ -137,7 +137,7 @@ export class UIModule {
             }
         }
     }
-    
+
     injectGlobalContainer() {
         if (document.getElementById('sispmg-plus-container')) return;
 
@@ -164,13 +164,13 @@ export class UIModule {
 
     registerModule(module) {
         this.modules[module.name] = module.instance;
-        
+
         clearTimeout(this.preloadDebounceTimer);
         this.preloadDebounceTimer = setTimeout(() => {
             this.preloadHeaderMenuContent(true); // Força o recarregamento
         }, 150);
     }
-    
+
     unregisterModule(moduleName) {
         delete this.modules[moduleName];
 
@@ -205,30 +205,30 @@ export class UIModule {
                 this.iconContainer.addEventListener('mouseleave', () => {
                     this.menuCloseTimer = setTimeout(() => this.closeHeaderMenu(), 300);
                 });
-                
+
                 avatarElement.insertAdjacentElement('beforebegin', this.iconContainer);
-                
+
                 clearInterval(headerCheckInterval);
             }
         }, 500);
     }
-    
+
     toggleHeaderMenu() {
         this.menuVisible ? this.closeHeaderMenu() : this.openHeaderMenu();
     }
-    
+
     async openHeaderMenu() {
         if (this.menuVisible) return;
         this.menuVisible = true;
-        
+
         if (!this.iconContainer) return;
-    
+
         const menu = document.createElement('div');
         menu.id = 'sispmg-plus-header-menu';
-        menu.className = 'sispmg-plus-menu'; 
+        menu.className = 'sispmg-plus-menu';
 
         // Usa o conteúdo pré-carregado ou mostra "Carregando..."
-        const content = this.preloadedMenuContent 
+        const content = this.preloadedMenuContent
             ? `<div>${this.preloadedMenuContent}</div>`
             : `<div><div class="sispmg-menu-header">Carregando...</div></div>`;
 
@@ -241,7 +241,7 @@ export class UIModule {
             left: 'auto',
             right: `${window.innerWidth - iconRect.right}px`
         });
-        
+
         // Modificado: Listeners de mouse para o menu (para manter aberto)
         menu.addEventListener('mouseenter', () => {
             if (this.menuCloseTimer) clearTimeout(this.menuCloseTimer);
@@ -270,7 +270,7 @@ export class UIModule {
             const token = getCookie('tokiuz');
             if (token) {
                 const decoded = decodeJwt(token);
-                
+
                 const userFunctions = Array.isArray(decoded.f) ? decoded.f.map(String) : [];
                 const userFunctionsL = []; // para fl
                 const userFunctionsF = []; // para ff
@@ -285,7 +285,7 @@ export class UIModule {
                         userFunctionsF.push("");   // Sem ponto, ff é vazio
                     }
                 });
-                
+
                 userData = {
                     g: String(decoded.g || ''), // PM Number
                     t: String(decoded.t || ''), // Rank
@@ -306,7 +306,7 @@ export class UIModule {
         try {
             const sheetId = '1e93QrFOFFHRhuq1_5J6scH_JTAEWe4Rk-mIZ1SYaQ1s';
             const sheetName = 'links';
-            
+
             const response = await sendMessageToBackground('obterPlanilhaGviz', {
                 sheetId: sheetId,
                 sheetName: sheetName
@@ -315,23 +315,23 @@ export class UIModule {
             if (!response || !response.success) {
                 throw new Error(response?.error || 'Falha ao buscar links dinâmicos via background.');
             }
-            
+
             let text = response.text;
-            
+
             // Aplicar a lógica de limpeza do usuário
             let jsonString = text.substring(47).slice(0, -2);
             jsonString = jsonString.replace(/\[null/g, "\[\{\"v\":\"NAO\"}"); // Mantido da lógica original
             jsonString = jsonString.replace(/\,null/g, "\,{\"v\":\"\"}");
             jsonString = jsonString.replace(/\:null/g, "\:\"\"");
-            
+
             const json = JSON.parse(jsonString).table;
             let itemsHTML = '';
-            
+
             // Estrutura esperada (baseado no screenshot e lógica anterior):
             // C[0]: Abrangência
             // C[1]: Texto
             // C[2]: Link
-            
+
             if (json.rows && json.rows.length > 0) {
                 for (const row of json.rows) {
                     if (row.c && row.c.length >= 1) {
@@ -364,7 +364,7 @@ export class UIModule {
                     }
                 }
             }
-            
+
             if (itemsHTML) {
                 return itemsHTML; // Retorna os links dinâmicos, subtítulos e separadores
             }
@@ -384,7 +384,7 @@ export class UIModule {
 
     async getHeaderMenuContent() {
         let moduleItems = '';
-        
+
         // SIC3 v3.0 Botão — controlado pela abrangência da planilha (chave: "sic3")
         const _sic3Permitido = (() => {
             try {
@@ -408,7 +408,7 @@ export class UIModule {
         const isSicorPage = window.location.pathname.startsWith('/SICOR/');
 
         if (isPrincipalPage) {
-             moduleItems += `
+            moduleItems += `
                  <div id="config-birthdays-btn" class="sispmg-menu-item">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2a5 5 0 0 0-5 5c0 1.84.97 3.47 2.43 4.39A8.002 8.002 0 0 0 4 20a1 1 0 1 0 2 0a6 6 0 0 1 12 0a1 1 0 1 0 2 0a8.002 8.002 0 0 0-5.43-6.61A4.992 4.992 0 0 0 17 7a5 5 0 0 0-5-5zm0 2a3 3 0 1 1 0 6a3 3 0 0 1 0-6z" fill="currentColor"/></svg>
                     <span>Configurar aniversariantes</span>
@@ -426,7 +426,7 @@ export class UIModule {
        }
         */
         if (isSicorPage && this.modules['SICOR']) {
-             moduleItems += `
+            moduleItems += `
                 <div id="config-sicor-btn" class="sispmg-menu-item">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M12 9.5a2.5 2.5 0 110 5 2.5 2.5 0 010-5zm0 1.5a1 1 0 100 2 1 1 0 000-2z" /><path fill-rule="evenodd" clip-rule="evenodd" d="M11.294 2.05a1 1 0 011.412 0l.544.544a1 1 0 001.02.29l1.242-.43a1 1 0 011.173.743l.26 1.282a1 1 0 00.75.75l1.282.26a1 1 0 01.743 1.173l-.43 1.242a1 1 0 00.29 1.02l.544.544a1 1 0 010 1.412l-.544.544a1 1 0 00-.29 1.02l.43 1.242a1 1 0 01-.743 1.173l-1.282.26a1 1 0 00-.75.75l-.26 1.282a1 1 0 01-1.173.743l-1.242-.43a1 1 0 00-1.02.29l-.544.544a1 1 0 01-1.412 0l-.544-.544a1 1 0 00-1.02-.29l-1.242.43a1 1 0 01-1.173-.743l-.26-1.282a1 1 0 00-.75-.75l-1.282-.26a1 1 0 01-.743-1.173l.43-1.242a1 1 0 00-.29-1.02l-.544-.544a1 1 0 010-1.412l.544-.544a1 1 0 00.29-1.02l-.43-1.242a1 1 0 01.743-1.173l1.282-.26a1 1 0 00.75-.75l.26-1.282a1 1 0 011.173-.743l1.242.43a1 1 0 001.02.29l.544.544zM12 7.75a4.25 4.25 0 100 8.5 4.25 4.25 0 000-8.5z" /></svg>
                     <span>Configurar Módulo SICOR</span>
@@ -446,7 +446,7 @@ export class UIModule {
         }
 
         if (isSirconvConveniosPage && this.modules['Extração de Convênios']) {
-             moduleItems += `
+            moduleItems += `
                 <div id="config-sirconv-convenios-btn" class="sispmg-menu-item">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
                         <path d="M9 2a1 1 0 0 0-1 1v1H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-4V3a1 1 0 1 0-2 0v1H8V3a1 1 0 0 0-1-1zM4 8h16v12H4V8zm2 3v2h3v-2H6zm5 0v2h7v-2h-7zm-5 4v2h7v-2H6zm9 0v2h3v-2h-3z"/>
@@ -459,7 +459,7 @@ export class UIModule {
         // <-- ADICIONADO: Item do menu para Extração de Unidades -->
         const isUnidadesPage = window.location.href.startsWith('https://intranet.policiamilitar.mg.gov.br/legado/operacoes/unidades/');
         if (isUnidadesPage && this.modules['Unidades']) {
-             moduleItems += `
+            moduleItems += `
                 <div id="config-unidades-btn" class="sispmg-menu-item">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
                         <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5zm0 2.18l8 3.6v8.55c0 4.45-3.08 8.64-7.5 9.65v-9.98H10v9.98C5.58 24.97 2.5 20.78 2.5 16.33V7.78l8-3.6zM8 9v2h8V9H8zm0 4v2h8v-2H8z"/>
@@ -472,11 +472,10 @@ export class UIModule {
 
         const dynamicLinksContent = await this.getDynamicLinksContent();
 
-        const version = typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getManifest 
-            ? chrome.runtime.getManifest().version 
-            : '3.0.0';
+        const versionResp = await sendMessageToBackground('getVersion').catch(() => null);
+        const version = versionResp && versionResp.success ? versionResp.version : '3.0.0';
         let finalContent = `<div class="sispmg-menu-header">SisPMG+ Intranet <span class="sispmg-version-text" style="font-size: 0.55em; opacity: 0.7; font-weight: normal; margin-left: 5px; vertical-align: middle;">v${version}</span></div>`;
-        
+
         // Início da Modificação: Inverter a ordem
         if (moduleItems.trim() !== '') {
             finalContent += moduleItems;
@@ -486,17 +485,17 @@ export class UIModule {
         if (dynamicLinksContent && moduleItems.trim() !== '' && (dynamicLinksContent.includes('sispmg-menu-item') || dynamicLinksContent.includes('sispmg-menu-subtitle'))) {
             finalContent += '<div class="sispmg-menu-separator"></div>';
         }
-        
+
         if (dynamicLinksContent) {
             finalContent += dynamicLinksContent;
         }
-        
+
         // Se não houver absolutamente nada
         if (moduleItems.trim() === '' && !dynamicLinksContent.includes('sispmg-menu-item') && !dynamicLinksContent.includes('sispmg-menu-subtitle')) {
-             finalContent += '<div class="sispmg-menu-item">Nenhuma ação disponível.</div>';
+            finalContent += '<div class="sispmg-menu-item">Nenhuma ação disponível.</div>';
         }
         // Fim da Modificação
-        
+
         return finalContent;
     }
 
@@ -528,7 +527,7 @@ export class UIModule {
 
         const sicorButton = menu.querySelector('#config-sicor-btn');
         if (sicorButton && this.modules['SICOR']) {
-             sicorButton.addEventListener('click', () => {
+            sicorButton.addEventListener('click', () => {
                 this.modules['SICOR'].renderSicorModal();
                 this.closeHeaderMenu();
             });
@@ -536,7 +535,7 @@ export class UIModule {
 
         const sirconvConveniosButton = menu.querySelector('#config-sirconv-convenios-btn');
         if (sirconvConveniosButton && this.modules['Extração de Convênios']) {
-             sirconvConveniosButton.addEventListener('click', () => {
+            sirconvConveniosButton.addEventListener('click', () => {
                 this.modules['Extração de Convênios'].showConfig();
                 this.closeHeaderMenu();
             });
@@ -553,13 +552,13 @@ export class UIModule {
         // <-- ADICIONADO: Event listener para Extração de Unidades -->
         const unidadesButton = menu.querySelector('#config-unidades-btn');
         if (unidadesButton && this.modules['Unidades']) {
-             unidadesButton.addEventListener('click', () => {
+            unidadesButton.addEventListener('click', () => {
                 this.modules['Unidades'].showConfig();
                 this.closeHeaderMenu();
             });
         }
         // <-- FIM DA ADIÇÃO -->
-        
+
         // Listeners para os botões estáticos removidos
 
         // Adiciona listener para fechar o menu ao clicar em um link
@@ -575,7 +574,7 @@ export class UIModule {
             this.attachMenuEventListeners(menu);
         }
     }
-    
+
     openFullscreenIframe(url, id) {
         this.closeHeaderMenu(); // Garante que o menu feche ao abrir o iframe
         const containerId = `sispmg-fullscreen-iframe-container-${id}`;
@@ -598,7 +597,7 @@ export class UIModule {
             iframeContainer = document.createElement('div');
             iframeContainer.id = containerId;
             iframeContainer.style.display = 'block'; // Garante que seja visível ao ser criado
-            
+
             iframeContainer.innerHTML = `
                 <iframe src="${url}"></iframe>
                 <button id="sispmg-iframe-back-button-${id}" class="btn-sair btn-dark" title="Voltar à Intranet">
@@ -610,7 +609,7 @@ export class UIModule {
             document.getElementById(`sispmg-iframe-back-button-${id}`).onclick = () => this.restoreOriginalPage(id);
         }
     }
-    
+
     restoreOriginalPage(id) {
         const containerId = `sispmg-fullscreen-iframe-container-${id}`;
         const iframeContainer = document.getElementById(containerId);
@@ -619,17 +618,17 @@ export class UIModule {
             // Em vez de remover, apenas oculta o contêiner do iframe
             iframeContainer.style.display = 'none';
         }
-        
+
         // Sempre remove a classe do body para restaurar a visualização da página original
         document.body.classList.remove('sispmg-fullscreen-active');
     }
-    
+
     createModal(title, contentHTML, onSave = null, customButtons = [], options = {}) {
         document.querySelector('.sispmg-plus-modal')?.remove();
         const modal = document.createElement('div');
         modal.className = 'sispmg-plus-menu sispmg-plus-modal';
         modal.id = `sispmg-modal-${Date.now()}`;
-        
+
         let buttonsHTML = customButtons.map((btn, i) => `<button id="custom-btn-${i}" class="${btn.className || ''}">${btn.text}</button>`).join('');
         if (onSave) {
             buttonsHTML += `<button class="sispmg-modal-btn-secondary">Cancelar</button><button class="sispmg-modal-btn-primary">Salvar</button>`;
@@ -642,7 +641,7 @@ export class UIModule {
         `;
 
         document.getElementById('sispmg-plus-container').appendChild(modal);
-        
+
         modal.querySelector('.sispmg-modal-close-btn').onclick = () => modal.remove();
 
         if (onSave) {
@@ -658,7 +657,7 @@ export class UIModule {
         this.hideLoader(); // Garante que não haja loaders duplicados
         const loader = document.createElement('div');
         loader.id = 'sispmg-loader-overlay';
-        
+
         // Estrutura do loader, com espaço para a mensagem
         loader.innerHTML = `
             <div style="display: flex; flex-direction: column; align-items: center; gap: 15px;">
@@ -694,7 +693,7 @@ export class UIModule {
     async iniciarSic3V3() {
         console.log("[SIC3 v3.0 Log] [UI-Extração] Iniciando fluxo de ativação do SIC3 v3.0...");
         this.showLoader("Identificando sua unidade e município...");
-        
+
         try {
             const token = getCookie('tokiuz');
             if (!token) {
@@ -704,10 +703,10 @@ export class UIModule {
                 window.location.href = "https://intranet.policiamilitar.mg.gov.br/autenticacaosso/login.jsf";
                 return;
             }
-            
+
             // Log do token bruto (apenas indicativo para não poluir demais)
             console.log("[SIC3 v3.0 Log] [UI-Extração] Cookie 'tokiuz' obtido com sucesso.");
-            
+
             const decoded = decodeJwt(token);
             if (!decoded) {
                 console.error("[SIC3 v3.0 Log] [UI-Extração] Falha ao decodificar JWT do token 'tokiuz'.");
@@ -715,7 +714,7 @@ export class UIModule {
                 this.hideLoader();
                 return;
             }
-            
+
             // Detalhando o processo de extração e a definição de cada chave
             console.log("[SIC3 v3.0 Log] [UI-Extração] Credenciais decodificadas do Tokiuz (obtidas do cookie de autenticação JWT):", {
                 g_numeroPM: decoded.g,             // Obtido da chave 'g' do JWT (Número da matrícula/PM do militar)
@@ -730,7 +729,7 @@ export class UIModule {
             });
 
             // A lógica de verificação de administrador (isAdmin) agora é determinada após a resolução do nome da seção do usuário (se contém ALMOXARIFADO ou SOFI).
-            
+
             // Tratamento da RPM amigável a partir do Tokiuz
             let rpmNome = "";
             if (decoded.r) {
@@ -744,11 +743,11 @@ export class UIModule {
             const storageResult = await sendMessageToBackground('getSettings', { keys: ['sic3_user_info', 'sic3_tokiuz_override'] });
             const cachedInfo = (storageResult?.success && storageResult.value?.sic3_user_info) ? storageResult.value.sic3_user_info : null;
             const tokiuzOverride = (storageResult?.success && storageResult.value?.sic3_tokiuz_override) ? storageResult.value.sic3_tokiuz_override : null;
-            
+
             if (tokiuzOverride) {
                 console.log("[SIC3 v3.0 Log] [UI-Extração] Aplicando OVERRIDES de simulação no Tokiuz:", tokiuzOverride);
                 Object.assign(decoded, tokiuzOverride);
-                
+
                 // Recalcula a RPM amigável com base nos dados simulados
                 if (tokiuzOverride.r || tokiuzOverride.e) {
                     if (decoded.r) {
@@ -759,11 +758,11 @@ export class UIModule {
                     console.log(`[SIC3 v3.0 Log] [UI-Tratamento] RPM amigável recalculada para os Overrides: "${rpmNome}"`);
                 }
             }
-            
+
             // 1.1 Preparar dados de abrangência do usuário (com base no token / overrides)
             const userFunctions = Array.isArray(decoded.f) ? decoded.f.map(String) : [];
-            const userFunctionsL = []; 
-            const userFunctionsF = []; 
+            const userFunctionsL = [];
+            const userFunctionsF = [];
 
             userFunctions.forEach(func => {
                 const parts = func.split('.');
@@ -775,7 +774,7 @@ export class UIModule {
                     userFunctionsF.push("");
                 }
             });
-            
+
             const userData = {
                 g: String(decoded.g || ''),
                 t: String(decoded.t || ''),
@@ -799,7 +798,7 @@ export class UIModule {
                     sheetName: 'admin',
                     bypassCache: true
                 });
-                
+
                 if (responseAdmins && responseAdmins.success && responseAdmins.text) {
                     let jsonString = responseAdmins.text.substring(47).slice(0, -2);
                     jsonString = jsonString.replace(/\[null/g, '[{"v":"NAO"}');
@@ -827,16 +826,16 @@ export class UIModule {
             }
 
             let userInfoFinal = null;
-            
-            if (cachedInfo && 
-                String(cachedInfo.numeroPM) === String(decoded.g) && 
+
+            if (cachedInfo &&
+                String(cachedInfo.numeroPM) === String(decoded.g) &&
                 String(cachedInfo.codigoSecao) === String(decoded.c)) {
-                
+
                 console.log("[SIC3 v3.0 Log] [UI-Extração] Cadastro em cache compatível encontrado no Storage Local. Atualizando privilégios de administrador...", cachedInfo);
                 userInfoFinal = { ...cachedInfo };
                 userInfoFinal.isAdmin = usuarioEhAdmin;
                 userInfoFinal.unidadesAdmin = unidadesAdmin;
-                
+
                 // Grava de volta no storage com os novos privilégios
                 await sendMessageToBackground('setStorage', {
                     sic3_user_info: userInfoFinal
@@ -847,17 +846,17 @@ export class UIModule {
                 } else {
                     console.log("[SIC3 v3.0 Log] [UI-Extração] Nenhum dado de usuário em cache. Solicitando busca de unidades ao background...");
                 }
-                
+
                 // Solicitar busca ao background se não tiver cache válido
                 const response = await sendMessageToBackground('sic3-identify-user', { e: decoded.e, c: decoded.c });
-                
+
                 if (!response || !response.success) {
                     const errMsg = response?.error || "Falha na resposta do background ao identificar unidade.";
                     throw new Error(errMsg);
                 }
-                
+
                 console.log("[SIC3 v3.0 Log] [UI-Extração] Identificação de unidade realizada com sucesso pelo background:", response);
-                
+
                 userInfoFinal = {
                     codigoSecao: String(response.codigoSecao),
                     secao: response.secao,
@@ -876,17 +875,17 @@ export class UIModule {
                     unidadesAdmin: unidadesAdmin,
                     timestamp: Date.now()
                 };
-                
+
                 // Salvar informações no storage local para uso posterior do SIC3 v3.0 e evitar nova busca durante a sessão
                 await sendMessageToBackground('setStorage', {
                     sic3_user_info: userInfoFinal
                 });
                 console.log("[SIC3 v3.0 Log] [UI-Gravação] Novas credenciais e dados da unidade gravados no storage local.");
             }
-            
+
             this.updateLoaderMessage("Carregando o SIC3 v3.0...");
             console.log(`[SIC3 v3.0 Log] [UI-Redirecionamento] Abrindo SIC3 v3.0 para o município: ${userInfoFinal.municipio}. Admin: ${userInfoFinal.isAdmin}`);
-            
+
             // Salvar parâmetros de inicialização no storage para o SIC3 v3.0 ler e consumir de forma limpa (sem parâmetros na URL)
             await sendMessageToBackground('setStorage', {
                 sic3_url_params: {
@@ -900,11 +899,11 @@ export class UIModule {
                 rpm: rpmNome,
                 secao: userInfoFinal.secao
             });
-            
+
             await sendMessageToBackground('openSettingsPage', {
                 page: 'modules/sic3/sic3.html'
             });
-            
+
         } catch (error) {
             console.error("[SIC3 v3.0 Log] [UI-Erro] Erro no fluxo iniciarSic3V3:", error);
             alert("Erro ao iniciar o SIC3 v3.0: " + error.message);

@@ -126,6 +126,9 @@ browser.runtime.onMessage.addListener((request, sender) => {
                     await browser.tabs.create({ url });
                     return { success: true };
                 }
+                case 'getVersion': {
+                    return { success: true, version: browser.runtime.getManifest().version };
+                }
                 case 'obterMensagens': {
                     try {
                         const url = `https://docs.google.com/spreadsheets/d/1UPHe_LHpFR6yyE5_o-3Vb22WT4eDA9YGmxujReDQqxg/gviz/tq?tqx=out:json&sheet=mensagens&_=${Date.now()}`;
