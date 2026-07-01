@@ -373,7 +373,7 @@ export function initUI(prototype) {
             return group;
         };
 
-        const publicSubMenu = createSubMenu(rotinas.public || {}, 'Rotinas Públicas', 'public', true, true);
+        const publicSubMenu = createSubMenu(rotinas.public || {}, 'Rotinas Públicas', '', true, true);
         if (publicSubMenu) container.appendChild(publicSubMenu);
 
         const userSubMenu = createSubMenu(rotinas.user || {}, 'Minhas Rotinas', '', false, true);
@@ -788,7 +788,7 @@ export function initUI(prototype) {
             const content = `<div class="rotina-error-message"><pre><code>${formattedMessage}</code></pre></div>`;
             
             const buttons = [];
-            const isPublic = name.startsWith('public/');
+            const isPublic = name.startsWith('public/') || (this.rotinas && this.rotinas.public && this.getRotinaContent(name, true) !== null);
             const canEditPublic = String(this.userPM) === '1453208';
 
             // Botão Editar (Extremidade Esquerda se houver outro botão)
@@ -843,7 +843,7 @@ export function initUI(prototype) {
                 this.sessionDisabledAutoRun.push(name);
                 this.closeModalAndFocus(m);
                 const content = this.getRotinaContent(name);
-                const isPublic = name.startsWith('public/');
+                const isPublic = name.startsWith('public/') || (this.rotinas && this.rotinas.public && this.getRotinaContent(name, true) !== null);
                 if (content !== null) {
                     this.openEditor({ name, content, isUserRotina: !isPublic });
                 }

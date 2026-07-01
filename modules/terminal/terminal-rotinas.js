@@ -719,7 +719,7 @@ export function initRotinas(prototype) {
                             this.rotinaState = 'stopped';
                             const content = customCode ?? this.getRotinaContent(name);
                             if (content !== null) {
-                                const isPublic = !isTestRun && name.startsWith('public/');
+                                 const isPublic = !isTestRun && (name.startsWith('public/') || (this.rotinas && this.rotinas.public && this.getRotinaContent(name, true) !== null));
                                 this.openEditor({ name, content, isUserRotina: isTestRun || !isPublic });
                             }
                             throw new UserCancellationError("Execução cancelada para edição.");
@@ -887,7 +887,7 @@ export function initRotinas(prototype) {
             await findAndExec(this.rotinas.user[system], system);
         }
         if (this.rotinaState === 'stopped' && this.rotinas.public && this.rotinas.public[system]) {
-            await findAndExec(this.rotinas.public[system], `public/${system}`);
+            await findAndExec(this.rotinas.public[system], system);
         }
     };
     
