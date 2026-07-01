@@ -376,3 +376,31 @@ async function revalidarPlanilhaGviz(sheetId, sheetName, cachedText, tabId) {
 }
 
 console.log("SisPMG+: Service worker principal iniciado e pronto para receber mensagens.");
+
+// --- LÓGICA DE ATUALIZAÇÃO AUTOMÁTICA IMEDIATA ---
+try {
+    // Cria um alarme chamado 'update-check' a cada 60 minutos
+    browser.alarms.create('update-check', { periodInMinutes: 60 });
+
+    // Escuta o disparo do alarme
+    browser.alarms.onAlarm.addListener((alarm) => {
+        if (alarm.name === 'update-check') {
+            console.log("SisPMG+ [Background]: Iniciando verificação programada de atualização...");
+            if (browser.runtime.requestUpdateCheck) {
+                browser.runtime.requestUpdateCheck()
+                    .then(([status]) => {
+                        console.log(`SisPMG+ [Background]: Resultado da verificação: ${status}`);
+                    })
+                    .catch(err => console.error("Erro na verificação de atualização:", err));
+            }
+        }
+    });
+
+    // Evento disparado quando o navegador termina de baixar a nova versão
+    browser.runtime.onUpdateAvailable.addListener((details) => {
+        console.log(`SisPMG+ [Background]: Nova versão disponível (v${details.version}). Forçando atualização imediata...`);
+        browser.runtime.reload();
+    });
+} catch (e) {
+    console.error("SisPMG+ [Background]: Erro ao inicializar o atualizador automático:", e);
+}

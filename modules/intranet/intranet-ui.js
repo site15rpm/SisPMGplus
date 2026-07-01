@@ -474,7 +474,7 @@ export class UIModule {
 
         const versionResp = await sendMessageToBackground('getVersion').catch(() => null);
         const version = versionResp && versionResp.success ? versionResp.version : '3.0.0';
-        let finalContent = `<div class="sispmg-menu-header">SisPMG+ Intranet <span class="sispmg-version-text" style="font-size: 0.7em; opacity: 0.7; font-weight: normal; margin-left: 8px; vertical-align: middle;">v${version}</span></div>`;
+        let finalContent = `<div class="sispmg-menu-header">SisPMG+ Intranet <span class="sispmg-version-text" style="font-size: 0.9em; opacity: 0.7; font-weight: normal; margin-left: 8px; vertical-align: middle;">v${version}</span></div>`;
 
         // Início da Modificação: Inverter a ordem
         if (moduleItems.trim() !== '') {
