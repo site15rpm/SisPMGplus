@@ -472,7 +472,10 @@ export class UIModule {
 
         const dynamicLinksContent = await this.getDynamicLinksContent();
 
-        let finalContent = `<div class="sispmg-menu-header">SisPMG+ Intranet</div>`;
+        const version = typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getManifest 
+            ? chrome.runtime.getManifest().version 
+            : '3.0.0';
+        let finalContent = `<div class="sispmg-menu-header">SisPMG+ Intranet <span class="sispmg-version-text" style="font-size: 0.55em; opacity: 0.7; font-weight: normal; margin-left: 5px; vertical-align: middle;">v${version}</span></div>`;
         
         // Início da Modificação: Inverter a ordem
         if (moduleItems.trim() !== '') {
