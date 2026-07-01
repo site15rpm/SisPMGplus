@@ -156,7 +156,8 @@ export function initRotinas(prototype) {
         const response = await new Promise(resolve => this.sendMessage('getRotinas', { 
             showHidden: this.showHiddenFiles, 
             userPM: this.userPM,
-            userName: this.userName
+            userName: this.userName,
+            system: this.selectedSystemName
         }, resolve));
 
         if (response && response.success) {
@@ -210,6 +211,7 @@ export function initRotinas(prototype) {
             showHidden: this.showHiddenFiles, 
             userPM: this.userPM,
             userName: this.userName,
+            system: this.selectedSystemName,
             forceRefresh: 'true'
         }, (response) => {
             this.hideLoadingOverlay();
@@ -516,17 +518,32 @@ export function initRotinas(prototype) {
             finalName = name.substring('public/'.length);
         }
 
-        // Se houver um sistema selecionado (sigla), garante que a rotina seja salva na pasta do sistema
-        if (this.selectedSystemName) {
-            const systemPrefix = this.selectedSystemName + '/';
-            if (!finalName.startsWith(systemPrefix)) {
-                finalName = systemPrefix + finalName;
-            }
+        const system = this.selectedSystemName || '';
+        
+        // Limpa o prefixo do sistema caso o nome venha com a barra (ex: "SIAD/teste" vira "teste")
+        if (system && finalName.startsWith(system + '/')) {
+            finalName = finalName.substring((system + '/').length);
         }
 
         this.showLoadingOverlay('Salvando rotina...');
         const oldName = this.editingRotinaName || '';
-        this.sendMessage('saveRotina', { name: finalName, oldName, content, userPM: this.userPM, userName: this.userName, isPublic }, (response) => {
+        let finalOldName = oldName;
+        if (isPublic && finalOldName.toLowerCase().startsWith('public/')) {
+            finalOldName = finalOldName.substring('public/'.length);
+        }
+        if (system && finalOldName.startsWith(system + '/')) {
+            finalOldName = finalOldName.substring((system + '/').length);
+        }
+
+        this.sendMessage('saveRotina', { 
+            name: finalName, 
+            oldName: finalOldName, 
+            system: system, 
+            content, 
+            userPM: this.userPM, 
+            userName: this.userName, 
+            isPublic 
+        }, (response) => {
             this.hideLoadingOverlay();
             if (response && response.success) {
                 this.exibirNotificacao(`Rotina "${finalName}" salva!`);
@@ -538,9 +555,15 @@ export function initRotinas(prototype) {
     prototype.deleteRotina = function(name) {
         if (!this.userPM) { this.exibirNotificacao("Usuário não logado.", false); return; }
         
-        this.createConfirmationModal('Confirmar Exclusão', `Excluir a rotina "${name}"?`, () => {
+        const system = this.selectedSystemName || '';
+        let finalName = name;
+        if (system && finalName.startsWith(system + '/')) {
+            finalName = finalName.substring((system + '/').length);
+        }
+
+        this.createConfirmationModal('Confirmar Exclusão', `Excluir a rotina "${finalName}"?`, () => {
             this.showLoadingOverlay('Excluindo rotina...');
-            this.sendMessage('deleteRotina', { name, userPM: this.userPM }, async (response) => {
+            this.sendMessage('deleteRotina', { name: finalName, system, userPM: this.userPM }, async (response) => {
                 this.hideLoadingOverlay();
                 if (response && response.success) {
                     this.exibirNotificacao(`Rotina "${name}" excluída.`);
@@ -564,7 +587,19 @@ export function initRotinas(prototype) {
     // --- FUNÇÕES DE EXECUÇÃO E GRAVAÇÃO DE ROTINAS ---
 
     prototype.getRotinaContent = function(name, isPublic = false) {
-        const pathParts = name.split('/');
+        let pathParts = name.split('/');
+        
+        // Normalização de compatibilidade retroativa:
+        // Se o caminho contiver o nome do sistema como o primeiro segmento lógico (ex: public/SIAD/teste ou SIAD/teste),
+        // removemos o nome do sistema pois a planilha nova filtra o sistema direto na query e remove o prefixo.
+        const system = this.selectedSystemName;
+        if (system) {
+            if (pathParts[0].toLowerCase() === 'public' && pathParts[1] === system) {
+                pathParts.splice(1, 1); // remove o SIAD de public/SIAD/teste
+            } else if (pathParts[0] === system) {
+                pathParts.shift(); // remove o SIAD de SIAD/teste
+            }
+        }
         
         const findPath = (obj, path) => {
             let current = obj;

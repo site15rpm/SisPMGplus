@@ -165,7 +165,7 @@ export function initLogin(prototype) {
         
         this.userPM = tokenData.g;
         this.userName = tokenData.n;
-        this.sendMessage('refreshRotinas', { userPM: this.userPM, showHidden: this.showHiddenFiles });
+        this.sendMessage('refreshRotinas', { userPM: this.userPM, system: this.selectedSystemName, showHidden: this.showHiddenFiles });
 
         this.showSystemSelectionModal(tokenData);
     };

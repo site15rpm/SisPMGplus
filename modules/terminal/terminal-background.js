@@ -56,17 +56,20 @@ async function apiCall(method, params) {
 
 async function fetchAndCacheRotinas(payload = {}) {
     try {
-        const { userPM } = payload;
-        const isAdmin = userPM === '1453208';
+        const { userPM, system } = payload;
         
-        // Colunas da Planilha: A(ID), B(UltimaAtualizacao), C(Ambito), D(Oculto), E(Nome/Caminho), F(Conteudo)
-        // Selecionamos C, E, F, D. Filtramos C por 'public'.
-        // Todas as rotinas públicas (ocultas ou não) são baixadas para permitir execução de subrotinas.
-        let query = `SELECT C, E, F, D WHERE (C = 'public'`;
+        // Novas Colunas Planilha: A(ID), B(UltimaAtualizacao), C(Ambito), D(Oculto), E(Sistema), F(Nome/Caminho), G(Conteudo)
+        // Selecionamos C(Ambito), F(Nome/Caminho), G(Conteudo), D(Oculto)
+        // E filtramos na origem pela coluna E (Sistema) igual ao sistema ativo
+        let query = `SELECT C, F, G, D WHERE (C = 'public'`;
         if (userPM) {
             query += ` OR C = '${userPM}'`;
         }
         query += `)`;
+        
+        if (system) {
+            query += ` AND E = '${system.trim()}'`;
+        }
         
         const gvizUrl = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&tq=${encodeURIComponent(query)}&_=${Date.now()}`;
         
@@ -107,10 +110,11 @@ async function fetchAndCacheRotinas(payload = {}) {
             }
         }
         
+        const cacheToSave = { ...rotinasData, system: system || '' };
         await StorageManager.set({ 
-            [STORAGE_KEYS.TERMINAL_CACHED_ROTINAS]: rotinasData
+            [STORAGE_KEYS.TERMINAL_CACHED_ROTINAS]: cacheToSave
         });
-        return { success: true, data: rotinasData };
+        return { success: true, data: cacheToSave };
         
     } catch (error) {
         console.error("Background: Erro crítico ao atualizar o cache de rotinas via gviz.", error);
@@ -143,12 +147,13 @@ export async function handleTerminalMessages(request, sender) {
 
         case 'getRotinas': {
             const result = await StorageManager.get(STORAGE_KEYS.TERMINAL_CACHED_ROTINAS);
-            if (result) {
+            // Verifica se o cache existe e pertence ao mesmo sistema solicitado
+            if (result && result.system === payload.system) {
                 // Não aguarde, apenas dispare a atualização em segundo plano.
                 fetchAndCacheRotinas(payload);
                 return { success: true, data: result };
             } else {
-                // Aguarde a busca inicial e a retorne.
+                // Aguarde a busca inicial e a retorne (sistema diferente ou cache vazio).
                 return fetchAndCacheRotinas(payload);
             }
         }
